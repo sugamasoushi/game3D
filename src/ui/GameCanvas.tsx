@@ -55,6 +55,7 @@ import { Menu } from './menu/Menu';
 import { CameraIllustrationLayer } from './CameraIllustrationLayer';
 import { SettingsMenu } from './SettingsMenu';
 import { TitleScreen } from './TitleScreen';
+import { PwaInstall } from './PwaInstall';
 import { fromSave, newState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
 import { canWalk, useUi } from './store';
@@ -103,6 +104,8 @@ const CLOCK_MS = 1000;
 const mapNumber = (file: string) => file.replace(/\.json$/i, '').split('_')[0];
 
 export default function GameCanvas() {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const screenRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef<GameView | null>(null);
   const cameraIllustrations = useCallback(() => viewRef.current?.cameraIllustrations() ?? [], []);
@@ -116,6 +119,27 @@ export default function GameCanvas() {
   /** イベントの最中か。デバッグの戦闘ボタンはこのあいだ出さない（GS-91）。 */
   const uiBusy = useUi((s) => s.busy);
   const settings = useUi((s) => s.settings);
+
+  /** 1280×720 の論理座標は変えず、端末に収まる倍率だけを外側へ適用する。 */
+  useEffect(() => {
+    const fit = () => {
+      const stage = stageRef.current;
+      const screen = screenRef.current;
+      if (!stage || !screen) return;
+      const viewport = window.visualViewport;
+      const width = viewport?.width ?? stage.clientWidth;
+      const height = viewport?.height ?? stage.clientHeight;
+      const scale = Math.min(1, width / 1280, height / 720);
+      screen.style.setProperty('--game-scale', String(scale));
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    window.visualViewport?.addEventListener('resize', fit);
+    return () => {
+      window.removeEventListener('resize', fit);
+      window.visualViewport?.removeEventListener('resize', fit);
+    };
+  }, []);
 
   /** 今のマップの起動場所とイベント。マップが変わるたび読み直す。 */
   const spotsRef = useRef<EventSpot[]>([]);
@@ -1209,9 +1233,9 @@ export default function GameCanvas() {
   autoSaveRef.current = () => void saveTo(AUTO_SLOT);
 
   return (
-    <div className="stage">
+    <div className="stage" ref={stageRef}>
       {/* 画面は 1280×720（DEC-162）。会話も暗転も**この中**に重ねる。 */}
-      <div className="screen">
+      <div className="screen" ref={screenRef}>
         {/*
          * デバッグ用の戦闘ボタン（GS-91）。開発モードのときだけ、フィールドにいるあいだだけ出す。
          * **マウスの左クリックだけ**——焦点を取らせない（Enter やパッドで押されると、歩いている最中に始まる）。
@@ -1252,6 +1276,7 @@ export default function GameCanvas() {
             onSettings={() => useUi.getState().setSettings(true)}
           />
         ) : null}
+        <PwaInstall visible={phase === 'title'} />
         {phase === 'play' && menu ? (
           <Menu
             items={stateRef.current.items}

@@ -15,6 +15,7 @@ import { loadOpening, openingBackdrop, type OpeningBook } from '../game/opening'
 import { showOpening } from '../game/devMode';
 import { loadSoundBook, playBgm } from '../game/audio';
 import { Opening } from './Opening';
+import { preloadFonts, preloadImages } from '../game/preload';
 
 /**
  * オープニングを見せたか（GS-126）。**1 回の起動で 1 度だけ。**
@@ -58,7 +59,12 @@ export function TitleScreen({
     let alive = true;
     // **音の台帳も待つ。** `opening.json` のほうが小さくて先に着くので、待たずに鳴らすと
     // 「台帳に無い音: opening」で黙って流れない（実際にそうなった）。
-    void Promise.all([loadOpening(), loadSoundBook()]).then(([next]) => {
+    void Promise.all([loadOpening(), loadSoundBook()]).then(async ([next]) => {
+      // Web Animations が時刻を数え始める前に、画像の取得とデコードを終える。
+      await Promise.all([
+        preloadImages(next.cuts.flatMap((cut) => [cut.back, cut.chara])),
+        preloadFonts(),
+      ]).catch((error) => console.warn('[preload]', error));
       if (!alive) return;
       setBook(next);
       const show = showOpening() && !opened && next.cuts.length > 0;

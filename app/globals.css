@@ -42,7 +42,8 @@ body {
 
 .stage {
   position: relative;
-  height: 100%;
+  width: 100dvw;
+  height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -50,7 +51,7 @@ body {
   overflow: hidden;
 }
 
-/* ゲーム画面は 1280×720 固定（DEC-162）。**等倍で出す。**窓が狭ければはみ出す。 */
+/* 論理画面は 1280×720 固定。狭い端末では外側だけを等比縮小する。 */
 .screen {
   --message-background: rgba(25, 25, 112, 0.78);
   position: relative;
@@ -58,6 +59,22 @@ body {
   width: 1280px;
   height: 720px;
   background: #000;
+  transform: scale(var(--game-scale, 1));
+  transform-origin: center;
+}
+
+.pwa-install {
+  position: absolute;
+  z-index: 80;
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 6px;
+  background: var(--message-background);
+  color: #e8edf2;
+  font: inherit;
+  cursor: pointer;
 }
 
 .viewport {

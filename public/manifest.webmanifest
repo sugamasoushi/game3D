@@ -1,0 +1,12 @@
+{
+  "name": "SampleGame",
+  "short_name": "SampleGame",
+  "description": "3D Map Editor で作ったRPG",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#191970",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

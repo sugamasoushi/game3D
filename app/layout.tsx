@@ -6,12 +6,16 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'SampleGame',
   description: '3D Map Editor で作ったマップで遊ぶ',
+  manifest: '/manifest.webmanifest',
+  icons: { icon: '/icon.svg' },
+  appleWebApp: { capable: true, title: 'SampleGame', statusBarStyle: 'black-translucent' },
 };
 
 // ゲームビュー（5926）の index.html と同じ（GS-09）。
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
