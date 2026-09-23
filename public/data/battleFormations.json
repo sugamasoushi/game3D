@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "infomation": "3D戦闘舞台の初期隊形。BattleStageを原点とし、acrossはカメラから見た横、depthは手前が正、heightは床からの高さ（すべてマス）。人数ごとの配列順が party:1 / enemy:1 などの対象番号になる。通常戦闘はmaps.jsonの候補からランダム選択、イベント戦闘はbattle命令のformationを優先し、候補なしではdefaultを使う。standardは配置方式検討中の仮データ。",
+  "default": "standard",
+  "formations": {
+    "standard": {
+      "name": "仮・横一列",
+      "party": {
+        "1": [
+          {
+            "across": 0,
+            "depth": 3,
+            "height": 0
+          }
+        ],
+        "2": [
+          {
+            "across": -1.3,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 1.3,
+            "depth": 3,
+            "height": 0
+          }
+        ],
+        "3": [
+          {
+            "across": -3,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 0,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 3,
+            "depth": 3,
+            "height": 0
+          }
+        ],
+        "4": [
+          {
+            "across": -3.9,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": -1.3,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 1.3,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 3.9,
+            "depth": 3,
+            "height": 0
+          }
+        ],
+        "5": [
+          {
+            "across": -5.2,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": -2.6,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 0,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 2.6,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 5.2,
+            "depth": 3,
+            "height": 0
+          }
+        ],
+        "6": [
+          {
+            "across": -6.5,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": -3.9,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": -1.3,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 1.3,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 3.9,
+            "depth": 3,
+            "height": 0
+          },
+          {
+            "across": 6.5,
+            "depth": 3,
+            "height": 0
+          }
+        ]
+      },
+      "enemy": {
+        "1": [
+          {
+            "across": 0,
+            "depth": -3,
+            "height": 0
+          }
+        ],
+        "2": [
+          {
+            "across": -1.1,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 1.1,
+            "depth": -3,
+            "height": 0
+          }
+        ],
+        "3": [
+          {
+            "across": -2.2,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 0,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 2.2,
+            "depth": -3,
+            "height": 0
+          }
+        ],
+        "4": [
+          {
+            "across": -3.3,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": -1.1,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 1.1,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 3.3,
+            "depth": -3,
+            "height": 0
+          }
+        ],
+        "5": [
+          {
+            "across": -4.4,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": -2.2,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 0,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 2.2,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 4.4,
+            "depth": -3,
+            "height": 0
+          }
+        ],
+        "6": [
+          {
+            "across": -5.5,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": -3.3,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": -1.1,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 1.1,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 3.3,
+            "depth": -3,
+            "height": 0
+          },
+          {
+            "across": 5.5,
+            "depth": -3,
+            "height": 0
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "illustrations": {
+    "meina": {
+      "name": "メイナ",
+      "src": "assets/img/CharaStand/20250609.png"
+    },
+    "lamy": {
+      "name": "ラミィ",
+      "src": "assets/img/CharaStand/20240908.png"
+    },
+    "grandpa": {
+      "name": "じいちゃん",
+      "src": "assets/img/CharaStand/20240622_鶏.png"
+    }
+  }
+}

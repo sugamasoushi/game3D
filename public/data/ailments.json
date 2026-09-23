@@ -1,0 +1,23 @@
+{
+  "infomation": "状態異常の台帳（GS-69 / GS-71）。id をキーに、名前とふるまい。turnDamage はターンの終わりに減る HP、keep は戦いが終わっても続く、walk は歩いて何マスごとに turnDamage を受けるか（フィールドでは HP 1 で止まる）、skip は行動できない、recover は毎ターン抜ける見込み（0〜1）、wakeOnHit は殴られると抜ける。hit と gone は「〈名前〉 は 」に続く形で書く。",
+  "ailments": {
+    "poison": {
+      "name": "どく",
+      "short": "毒",
+      "turnDamage": 4,
+      "keep": true,
+      "walk": 6,
+      "hit": "どくに おかされた！",
+      "gone": "どくが 消えて 楽に なった。"
+    },
+    "sleep": {
+      "name": "ねむり",
+      "short": "眠",
+      "skip": true,
+      "recover": 0.35,
+      "wakeOnHit": true,
+      "hit": "ねむってしまった！",
+      "gone": "目を さました！"
+    }
+  }
+}

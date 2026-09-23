@@ -1,0 +1,83 @@
+{
+  "infomation": "スプライトシート（コマに区切って使う画像）の台帳（GS-121）。キーは assets/spritesheet/ の中のファイル名。frameWidth / frameHeight は 1 コマの大きさ（px）、columns は横のコマ数（これで折り返す）、rows は縦の行数。キャラの立ち姿（actors.json）も攻撃の絵（effects.json）も同じこの台帳を見る。台帳エディタの「スプライトシート」で編集する。",
+  "sheets": {
+    "Chests.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": 3
+    },
+    "blackCat.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 4
+    },
+    "bubble.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 1
+    },
+    "chicken_walk.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": 4
+    },
+    "enemy02.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 4
+    },
+    "flames32.png": {
+      "frameWidth": 32,
+      "frameHeight": 48,
+      "columns": 4,
+      "rows": 3
+    },
+    "lamy_32_40.png": {
+      "frameWidth": 32,
+      "frameHeight": 40,
+      "columns": 3,
+      "rows": 4
+    },
+    "meina2_32_40.png": {
+      "frameWidth": 32,
+      "frameHeight": 40,
+      "columns": 3,
+      "rows": 4
+    },
+    "pipo-btleffect002.png": {
+      "frameWidth": 120,
+      "frameHeight": 120,
+      "columns": 9,
+      "rows": 1
+    },
+    "pipo-btleffect161.png": {
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "columns": 5,
+      "rows": 2
+    },
+    "pipo-charachip029.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 4
+    },
+    "pipo-charachip030.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 4
+    },
+    "whiteCat.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 4
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "infomation": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/CharaStand の名前（拡張子なし）。hp/mp は満タンの値。倒すと exp と gold が入る。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
+  "enemies": {
+    "enemy00": {
+      "name": "ラミア娘",
+      "image": "enemy00",
+      "level": 1,
+      "hp": 40,
+      "mp": 20,
+      "attack": 12,
+      "guard": 1,
+      "speed": 9,
+      "exp": 4,
+      "gold": 2,
+      "skills": [
+        {
+          "id": "enemy01",
+          "chance": 0.4
+        }
+      ]
+    },
+    "enemy01": {
+      "name": "ラミア",
+      "image": "enemy01",
+      "level": 2,
+      "hp": 50,
+      "mp": 0,
+      "attack": 40,
+      "guard": 1,
+      "speed": 5,
+      "exp": 9,
+      "gold": 2,
+      "skills": [
+        {
+          "id": "enemy02",
+          "chance": 0.5
+        }
+      ]
+    },
+    "enemy02": {
+      "name": "いらすとやのスライム",
+      "image": "enemy02",
+      "level": 1,
+      "hp": 30,
+      "mp": 0,
+      "attack": 10,
+      "guard": 1,
+      "speed": 9,
+      "exp": 3,
+      "gold": 2
+    },
+    "enemy03": {
+      "name": "グレートベア",
+      "image": "enemy03",
+      "level": 1,
+      "hp": 90,
+      "mp": 20,
+      "attack": 45,
+      "guard": 10,
+      "speed": 5,
+      "exp": 20,
+      "gold": 2,
+      "skills": [
+        {
+          "id": "enemy03",
+          "chance": 0.35
+        }
+      ]
+    }
+  }
+}

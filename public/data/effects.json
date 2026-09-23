@@ -1,0 +1,35 @@
+{
+  "infomation": "攻撃の絵（GS-83 / GS-121）。技の effect がこのキーを指す。書かなければ normal（素手と同じ絵）。image は assets/spritesheet/ の中のファイル名で、1 コマの大きさ・横のコマ数・縦の行数は spriteSheets.json が持つ。frames は [最初, 最後] のコマ番号（左上から右へ、columns で折り返す）、fps は 1 秒にめくるコマ数。scale は [始め, 終わり] で scaleMs ごとに伸ばす（yoyo なら行って戻る）。ms は絵を出しておく時間。se は出したときに鳴らす音。戦闘演出エディタで編集する。",
+  "effects": {
+    "normal": {
+      "name": "打撃",
+      "image": "pipo-btleffect002.png",
+      "frames": [0, 8],
+      "fps": 30,
+      "scale": [1, 2],
+      "scaleMs": 500,
+      "yoyo": false,
+      "ms": 1000,
+      "se": "strike"
+    },
+    "fire": {
+      "name": "火の玉",
+      "image": "flames32.png",
+      "frames": [0, 7],
+      "fps": 10,
+      "scale": [1, 2],
+      "scaleMs": 250,
+      "yoyo": true,
+      "ms": 1500,
+      "se": "fire"
+    },
+    "wind": {
+      "name": "風の刃",
+      "image": "pipo-btleffect161.png",
+      "frames": [0, 9],
+      "fps": 30,
+      "ms": 400,
+      "se": "slash"
+    }
+  }
+}

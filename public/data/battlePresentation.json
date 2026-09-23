@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "bindings": {
+    "battle.start": "cue_1",
+    "command.party.complete": "battle_command_release",
+    "command.attack.open@1": "cue_2",
+    "command.attack.open@2": "cue_3",
+    "command.attack.open@3": "cue_4"
+  }
+}

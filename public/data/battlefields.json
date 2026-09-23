@@ -1,0 +1,18 @@
+{
+  "infomation": "2D戦闘背景。マップ内に BattleStage=true の点があれば3D舞台が優先され、この絵は使わない。BattleStageが無い場合は maps.json の battleField がこのキーを指し、未指定時は hill を使う。images は assets/img/background/ の中のファイル名で、奥から手前の順に重ねる。",
+  "battlefields": {
+    "hill": {
+      "name": "丘",
+      "images": ["battle_hill_03.png", "battle_hill_02.png", "battle_hill_01.png"],
+      "sky": "linear-gradient(180deg, #00bfff 0%, #7fdcff 55%, #fff5bf 100%)"
+    },
+    "forest": {
+      "name": "森",
+      "images": ["battle_forest.png"]
+    },
+    "forestMansion": {
+      "name": "森の館",
+      "images": ["battle_forest_mansion.png"]
+    }
+  }
+}

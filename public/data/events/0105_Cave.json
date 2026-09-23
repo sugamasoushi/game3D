@@ -1,0 +1,61 @@
+{
+  "map": "0105_Cave",
+  "events": [
+    {
+      "id": "EVENT020101",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT010401", "is": false }, { "switch": "EVENT020101", "is": true }],
+      "commands": [
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["よ～し、こいつを狩るか", "足引っ張らないでよ！"] },
+            { "who": "lamy", "lines": ["任せときなって！", "まずあたしが軽くジャブ打ってぇ！", "それからぁ！"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "battle", "enemies": ["enemy03"] },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["あ、危なかった・・・。"] },
+            { "who": "lamy", "lines": ["ら、楽勝だったわぁ・・・。"] }
+          ]
+        },
+        { "type": "shot", "kind": "shake", "ms": 400, "power": 0.2 },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["いきなり特攻するな馬鹿！！", "熊の肥やしにでもなるつもりだったの！？"] },
+            { "who": "lamy", "lines": ["あ、あたし不味いから吐き出されたって！！"] },
+            { "who": "meina", "lines": ["そういう話じゃないって！！", "・・・この蛇食わして太らせるべきだったか？"] },
+            { "who": "lamy", "lines": ["ちょっと！！そこまで言うな！！"] }
+          ]
+        },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["よし、帰って処理しないとね"] },
+            { "who": "lamy", "lines": ["今日はどんな料理！？"] },
+            { "who": "meina", "lines": ["干し肉"] },
+            { "who": "lamy", "lines": ["なんで！こんなにあるのに！？"] },
+            { "who": "meina", "lines": ["もしもの為に備蓄するの", "計画的に食べないとすぐ無くなっちゃうじゃない"] },
+            { "who": "lamy", "lines": ["ちぇ～っ"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "setSwitch", "key": "EVENT020101", "value": false },
+        { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "transfer", "map": "0101", "at": { "x": 5, "y": 0, "z": 2 }, "face": "up" },
+        { "type": "fade", "to": "in", "ms": 400 }
+      ],
+      "kind": "scenario"
+    }
+  ]
+}

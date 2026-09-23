@@ -1,0 +1,26 @@
+{
+  "infomation": "オープニングの台帳（GS-126）。旧作 title/view/Opening.ts の並びをそのまま写した。時間はミリ秒。cuts は順に重なる（後のものが上）。",
+  "version": 1,
+  "bgm": "opening",
+  "title": "ちょっとだけ RPG",
+  "cuts": [
+    {
+      "who": "ラミィ",
+      "back": "assets/img/background/battle_forest_mansion.png",
+      "chara": "assets/img/CharaStand/ラミィOP画像.png",
+      "from": "left",
+      "stand": "right",
+      "at": 0,
+      "out": 2200
+    },
+    {
+      "who": "メイナ",
+      "back": "assets/img/background/ComfyUI_temp_xsgbd_00098_.png",
+      "chara": "assets/img/CharaStand/メイナOP画像.png",
+      "from": "right",
+      "stand": "left",
+      "at": 1000,
+      "out": 2000
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "infomation": "技の台帳（GS-60 / GS-69）。kind は「特技」か「魔法」、type は attack / guard / avoid / ailment / cure。効き目の数は value、当たったときの音は se。ailment は与える状態異常（chance は当たる見込み 0〜1）、cure は消す状態異常。",
+  "skills": {
+    "special01": {
+      "name": "防御",
+      "kind": "特技",
+      "type": "guard",
+      "text": "がっちりガード！",
+      "mp": 5,
+      "value": 20
+    },
+    "special02": {
+      "name": "回避",
+      "kind": "特技",
+      "type": "avoid",
+      "text": "馬鹿め！後ろだ！",
+      "mp": 15,
+      "value": 0
+    },
+    "special03": {
+      "name": "投石",
+      "kind": "特技",
+      "type": "attack",
+      "text": "恐っ！",
+      "mp": 0,
+      "value": 10,
+      "se": "hit"
+    },
+    "magic01": {
+      "effect": "fire",
+      "name": "火の玉",
+      "kind": "魔法",
+      "type": "attack",
+      "text": "メラメラ～",
+      "mp": 10,
+      "value": 30,
+      "se": "fire"
+    },
+    "magic02": {
+      "effect": "wind",
+      "name": "風の刃",
+      "kind": "魔法",
+      "type": "attack",
+      "text": "ヒューン！",
+      "mp": 10,
+      "value": 35,
+      "se": "slash"
+    },
+    "magic03": {
+      "name": "氷の塊",
+      "kind": "魔法",
+      "type": "attack",
+      "text": "ぐさ～っ！",
+      "mp": 10,
+      "value": 20,
+      "se": "hit"
+    },
+    "enemy01": {
+      "name": "ねむりのいき",
+      "kind": "魔法",
+      "type": "ailment",
+      "text": "あまい かおりが ただよう",
+      "mp": 0,
+      "value": 0,
+      "ailment": "sleep",
+      "chance": 0.6,
+      "se": "fire"
+    },
+    "enemy02": {
+      "name": "どくのキバ",
+      "kind": "特技",
+      "type": "attack",
+      "text": "じわりと しびれる",
+      "mp": 0,
+      "value": 5,
+      "ailment": "poison",
+      "chance": 0.5,
+      "se": "hit"
+    },
+    "enemy03": {
+      "name": "なぎはらい",
+      "kind": "特技",
+      "type": "attack",
+      "text": "うでを 大きく ふりまわす",
+      "mp": 0,
+      "value": 10,
+      "se": "slash"
+    },
+    "magic04": {
+      "name": "やすらぎ",
+      "kind": "魔法",
+      "type": "cure",
+      "text": "ざわめきを しずめる",
+      "mp": 8,
+      "value": 0,
+      "cure": [
+        "poison",
+        "sleep"
+      ],
+      "se": "fire"
+    }
+  }
+}

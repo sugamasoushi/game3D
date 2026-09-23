@@ -1,0 +1,22 @@
+{
+  "infomation": "置いてある物の一覧（DEC-374）。node tools/fileIndex.mjs で作り直す。",
+  "normals": [
+    "assets/tilesets_normal/2ffdb342da8b7d2c_normal.png",
+    "assets/tilesets_normal/Chests_normal.png",
+    "assets/tilesets_normal/FantagyHouse_03_normal.png",
+    "assets/tilesets_normal/Interior_normal.png",
+    "assets/tilesets_normal/WaterAndFire_normal.png",
+    "assets/tilesets_normal/city_inside_normal.png",
+    "assets/tilesets_normal/floors_normal.png",
+    "assets/tilesets_normal/terrain_normal.png",
+    "assets/tilesets_normal/walls_normal.png",
+    "assets/tilesets_normal/water_and_fire_normal.png"
+  ],
+  "events": [
+    "0101_home",
+    "0102_HomeForest",
+    "0103_ForestMantion",
+    "0105_Cave",
+    "0201_Gensou"
+  ]
+}

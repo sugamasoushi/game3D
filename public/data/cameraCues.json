@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "cues": {
+    "impact": {
+      "name": "衝撃・寄りと揺れ",
+      "duration": 900,
+      "hold": false,
+      "frames": [
+        {
+          "at": 0
+        },
+        {
+          "at": 250,
+          "distance": 0.85
+        },
+        {
+          "at": 900,
+          "distance": 1
+        }
+      ],
+      "effects": [
+        {
+          "at": 100,
+          "kind": "shake",
+          "ms": 450,
+          "power": 0.15
+        }
+      ]
+    },
+    "ally_slide_in": {
+      "name": "味方イラスト・左から登場",
+      "duration": 1200,
+      "hold": false,
+      "frames": [
+        {
+          "at": 0,
+          "distance": 1
+        }
+      ],
+      "effects": [
+        {
+          "at": 0,
+          "kind": "illustration",
+          "ms": 1200,
+          "asset": "meina",
+          "x": 25,
+          "y": 100,
+          "height": 96,
+          "opacity": 1,
+          "enter": "left",
+          "enterMs": 320,
+          "exit": "right",
+          "exitMs": 240,
+          "easing": "easeOut"
+        }
+      ]
+    },
+    "event010201_camera01": {
+      "name": "イベント_仰角-30",
+      "duration": 300,
+      "hold": true,
+      "frames": [
+        {
+          "at": 300,
+          "pitch": -30
+        }
+      ],
+      "effects": []
+    },
+    "event010201_camera02": {
+      "name": "イベント_仰角戻す",
+      "duration": 300,
+      "hold": true,
+      "frames": [
+        {
+          "at": 300,
+          "pitch": -20
+        }
+      ],
+      "effects": []
+    }
+  }
+}

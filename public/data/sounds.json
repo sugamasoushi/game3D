@@ -1,0 +1,69 @@
+{
+  "infomation": "音の台帳。key → ファイルと音量。ここに 1 行足せば、イベントの playBgm / playSe から呼べる。",
+  "sounds": {
+    "field": {
+      "file": "おとぼけダンス(Silly_dance).mp3",
+      "volume": 0.5,
+      "loop": true
+    },
+    "opening": {
+      "file": "opening.mp3",
+      "volume": 0.5,
+      "loop": true
+    },
+    "waterfall": {
+      "file": "滝1.mp3",
+      "volume": 0.15,
+      "loop": true
+    },
+    "message": {
+      "file": "メッセージ表示音3.mp3",
+      "volume": 0.25
+    },
+    "decide": {
+      "file": "決定ボタンを押す44.mp3",
+      "volume": 0.6
+    },
+    "cancel": {
+      "file": "キャンセル4.mp3",
+      "volume": 0.6
+    },
+    "chest": {
+      "file": "受話器を置く.mp3",
+      "volume": 0.7
+    },
+    "battle": {
+      "file": "悪魔軍特攻隊長～電影のアルゲス～.mp3",
+      "volume": 0.15,
+      "loop": true
+    },
+    "hit": {
+      "file": "打撃3.mp3",
+      "volume": 0.7
+    },
+    "slash": {
+      "file": "刀で斬る3.mp3",
+      "volume": 0.7
+    },
+    "fire": {
+      "file": "火炎魔法1.mp3",
+      "volume": 0.3
+    },
+    "strike": { "file": "打撃6.mp3", "volume": 0.7 },
+    "punch": { "file": "重いパンチ1.mp3", "volume": 0.7 },
+    "dodge": { "file": "高速移動.mp3", "volume": 0.7 },
+    "fanfare": {
+      "file": "ジャジャーン.mp3",
+      "volume": 0.7
+    },
+    "levelup": {
+      "file": "ひらめく2.mp3",
+      "volume": 0.6
+    }
+  },
+  "ui": {
+    "message": "message",
+    "decide": "decide",
+    "cancel": "cancel"
+  }
+}

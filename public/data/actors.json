@@ -1,0 +1,64 @@
+{
+  "infomation": "キャラの立ち姿（GS-16 / GS-121）。キーは characterdata.json と合わせる。sheet は assets/spritesheet/ の中のファイル名で、1 コマの大きさ・横のコマ数・縦の行数は spriteSheets.json が持つ。order は行の並び（省略すると 下・左・右・上）、footPx は足元の補正（絵だけ下げる。GS-52）、walk は歩きの見せ方、poses は静止コマ、wander はうろつき方。台帳エディタの「スプライトシート」で編集する。",
+  "actors": {
+    "meina": {
+      "sheet": "meina2_32_40.png"
+    },
+    "lamy": {
+      "sheet": "lamy_32_40.png"
+    },
+    "grandpa": {
+      "sheet": "chicken_walk.png",
+      "order": [
+        "north",
+        "west",
+        "south",
+        "east"
+      ],
+      "wander": {
+        "range": 2
+      }
+    },
+    "enemy02": {
+      "sheet": "enemy02.png",
+      "wander": {
+        "range": 2
+      },
+      "footPx": 4
+    },
+    "blackCat": {
+      "sheet": "blackCat.png",
+      "wander": {
+        "range": 2
+      }
+    },
+    "whiteCat": {
+      "sheet": "whiteCat.png",
+      "wander": {
+        "range": 2
+      }
+    },
+    "Chests": {
+      "sheet": "Chests.png",
+      "poses": {
+        "閉じている": 0,
+        "開いた": 4
+      }
+    },
+    "pipo-charachip029": {
+      "sheet": "pipo-charachip029.png",
+      "wander": {
+        "range": 2
+      }
+    },
+    "pipo-charachip030": {
+      "sheet": "pipo-charachip030.png",
+      "wander": {
+        "range": 2
+      }
+    },
+    "lamy_32_40": {
+      "sheet": "lamy_32_40.png"
+    }
+  }
+}

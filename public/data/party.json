@@ -1,0 +1,89 @@
+{
+  "infomation": "はじめの仲間と数値（GS-63）。キーは characterdata.json の人。hp/mp は「レベル 1 の」満タンの値で、いま減っている量はセーブが持つ。level が 1 上がるごとに growth のぶん増える。learn はレベル → そこで覚える技。levelUp は次のレベルに要る経験の出し方。 equip は はじめから身に着けている物（GS-67）。 party に載っていない人は「まだ仲間ではない」（GS-70。イベントの party 命令で入る）。",
+  "party": [
+    "meina"
+  ],
+  "members": {
+    "meina": {
+      "level": 1,
+      "hp": 50,
+      "mp": 20,
+      "attack": 30,
+      "guard": 5,
+      "speed": 10,
+      "skills": [
+        "special01",
+        "special02",
+        "magic01"
+      ],
+      "equip": {
+        "weapon": "短剣",
+        "armor": "マント"
+      },
+      "growth": {
+        "hp": 6,
+        "mp": 3,
+        "attack": 3,
+        "guard": 1,
+        "speed": 1
+      },
+      "learn": {
+        "3": [
+          "magic02"
+        ],
+        "5": [
+          "special03"
+        ],
+        "7": [
+          "magic03"
+        ],
+        "9": [
+          "magic04"
+        ]
+      }
+    },
+    "grandpa": {
+   "level": 1,
+   "hp": 45,
+   "mp": 10,
+   "attack": 24,
+   "guard": 8,
+   "speed": 7,
+   "skills": [
+    "special01"
+   ],
+   "growth": {
+    "hp": 5,
+    "mp": 1,
+    "attack": 2,
+    "guard": 2,
+    "speed": 1
+   }
+  },
+  "lamy": {
+      "level": 1,
+      "hp": 38,
+      "mp": 32,
+      "attack": 22,
+      "guard": 4,
+      "speed": 12,
+      "skills": ["magic01", "magic02", "magic04"],
+      "equip": {
+        "weapon": "木のぼう"
+      },
+      "growth": {
+        "hp": 4,
+        "mp": 5,
+        "attack": 2,
+        "guard": 1,
+        "speed": 1
+      },
+      "learn": {"6": ["magic03"]}
+    }
+  },
+  "levelUp": {
+    "base": 8,
+    "rate": 1.7,
+    "max": 50
+  }
+}

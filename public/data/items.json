@@ -1,0 +1,88 @@
+{
+  "infomation": "持ち物の台帳（GS-46 / GS-64 / GS-66 / GS-67）。id をキーに name と text。use を書くと「使える物」、equip を書くと「身に着ける物」（slot は weapon / armor、attack・guard・speed が増える）、price を書くと店で売り買いできる（売値は半分）。持っている数はセーブが持つ。書き方は note/01-イベントの書き方.md",
+  "items": {
+    "やくそう": {
+      "name": "やくそう",
+      "text": "HP が 30 もどる。",
+      "price": 20,
+      "use": {
+        "where": "both",
+        "hp": 30,
+        "say": "ぐっと 力が わいた！"
+      }
+    },
+    "おにぎり": {
+      "name": "おにぎり",
+      "text": "HP が 全部 もどる。",
+      "price": 60,
+      "use": {
+        "where": "both",
+        "hp": "full",
+        "say": "おいしい！"
+      }
+    },
+    "ばんそうこう": {
+      "name": "ばんそうこう",
+      "text": "MP が 20 もどる。",
+      "price": 30,
+      "use": {
+        "where": "both",
+        "mp": 20,
+        "say": "ふしぎと 頭が さえる。"
+      }
+    },
+    "どく消し": {
+      "name": "どく消し",
+      "text": "どくを 消す。",
+      "price": 15,
+      "use": {
+        "where": "both",
+        "cure": [
+          "poison"
+        ],
+        "say": "すっと 楽に なった。"
+      }
+    },
+    "家のかぎ": {
+      "name": "家のかぎ",
+      "text": "家のとびらの かぎ。"
+    },
+    "木のぼう": {
+      "name": "木のぼう",
+      "text": "どこにでも ある ぼう。",
+      "price": 20,
+      "equip": {
+        "slot": "weapon",
+        "attack": 2
+      }
+    },
+    "短剣": {
+      "name": "短剣",
+      "text": "小さくて 軽い 剣。",
+      "price": 80,
+      "equip": {
+        "slot": "weapon",
+        "attack": 5
+      }
+    },
+    "マント": {
+      "name": "マント",
+      "text": "風を ふせぐ ぬの。",
+      "price": 60,
+      "equip": {
+        "slot": "armor",
+        "guard": 3
+      }
+    },
+    "皮のよろい": {
+      "name": "皮のよろい",
+      "text": "しっかりした つくり。",
+      "price": 120,
+      "equip": {
+        "slot": "armor",
+        "guard": 5,
+        "speed": -1
+      }
+    }
+  }
+}

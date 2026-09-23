@@ -1,0 +1,273 @@
+{
+  "map": "0101_home",
+  "events": [
+    {
+      "id": "EVENT010101",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT010101", "is": true }],
+      "commands": [
+        {
+          "type": "scroll",
+          "speed": 1200,
+          "dim": 0.5,
+          "lines": [
+            "昔々（？）",
+            "ある山奥に一人の魔術師見習い「メイナ」が暮らしていました。",
+            "",
+            "物心付いた頃から家具付きの家に住んでおり、キッチンも寝室も別々でした。",
+            "謎の鶏に育てられ、基本的な生活習慣は身についており、最近は魚料理を夢見ています。",
+            "山奥ですからね。",
+            "",
+            "グローバルでスタンダードな言語を習得しているが、読書は苦手。",
+            "基礎学力はそこそこ高いが世間知らず。",
+            "この間も食料調達に町へ出かけた際、道中で狩った熊をそのまま売りつけてしまったとか。",
+            "",
+            "魔術を勉強しており、その習得の速さは鶏もトサカを巻く程。",
+            "将来は大魔導士になると先月まで豪語していたが、最近は魔法戦士がかっこいいと思っている。",
+            "長続きしないタイプ。",
+            "",
+            "今日は山を下りて近くを探索するようだ。"
+          ]
+        },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["ごちそうさまでした。", "う～ん、そろそろ食料が尽きてきたし", "今日は狩にでも行くか"] }]
+        },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "setSwitch", "key": "EVENT010101", "value": false }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "click0001",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "style": "bubble",
+          "talk": [{ "who": "meina", "lines": ["新しく覚える魔法は何が良いかな？", "やっぱり生活に役立つ方が良いかな", "・・・・・また今度！！"] }]
+        }
+      ],
+      "kind": "click"
+    },
+    {
+      "id": "click0002",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "style": "bubble",
+          "talk": [
+            { "who": "meina", "lines": ["う～ん、服がボロボロに", "なってきたなぁ"] },
+            { "who": "meina", "lines": ["そろそろ新調しないとなぁ", "お金無いけど・・・"] }
+          ]
+        }
+      ],
+      "kind": "click"
+    },
+    {
+      "id": "talk_grandpa",
+      "npc": "chicken_walk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "style": "bubble",
+          "talk": [
+            { "who": "meina", "lines": ["今日は何食べようかな～♪"] },
+            { "who": "grandpa", "lines": ["ちゃんと野菜を食べやさい"] },
+            { "who": "meina", "lines": ["アツアツのから揚げ・・・"] },
+            { "who": "grandpa", "lines": ["若鳥じゃないからまずいじゃろうて"] },
+            { "who": "meina", "lines": ["冗談だってば！"] }
+          ]
+        }
+      ],
+      "kind": "talk"
+    },
+    {
+      "id": "EVENT010401",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT010302", "is": false }, { "switch": "EVENT010401", "is": true }],
+      "commands": [
+        { "type": "playSe", "key": "punch" },
+        { "type": "shot", "id": "impact" },
+        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "normal" },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamyNPC", "lines": ["見つけたぁ！！！"] },
+            { "who": "meina", "lines": ["痛\"っ！", "あ～～～もう！！なんなの！！！"] },
+            { "who": "lamyNPC", "lines": ["お前っ！！", "あたしにご飯を作れっ！！"] },
+            { "who": "meina", "lines": ["・・・・・・・・・・・・・・・・・・・💢💢💢"] },
+            { "who": "lamyNPC", "lines": ["・・・・・・・・・・・・・・・・・・・泣泣泣"] }
+          ]
+        },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamyNPC", "lines": ["お願い、あたしが悪かったからご飯恵んでよぉ・・・。"] },
+            {
+              "who": "meina",
+              "lines": ["（・・・そういえば、よく考えたら先に攻撃したの私か）", "", "分かったよ、何食べる？", "あ、鶏はダメだからね。"]
+            }
+          ]
+        },
+        { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "wait", "ms": 300 },
+        { "type": "fade", "to": "in", "ms": 400 },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamyNPC", "lines": ["もぐもぐ、もぐもぐ・・・", "ん～美味しい！"] },
+            { "who": "meina", "lines": ["お～い、少しは遠慮したらどうなのよ？"] },
+            { "who": "lamyNPC", "lines": ["こんな美味しいご飯食べたのは生まれて初めて！", "もう美味しくて美味しくて！！"] },
+            {
+              "who": "meina",
+              "lines": ["くっ・・・悪い気がしない・・・。", "まあ、あんたの口に合ったなら良かったよ。", "そういえば名前は？", "あたしはメイナ"]
+            },
+            { "who": "lamyNPC", "lines": ["名前は無いから好きに呼んで！"] },
+            { "who": "meina", "lines": ["ふ～ん、じゃあラミィって呼ぶね。"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "wait", "ms": 300 },
+        { "type": "fade", "to": "in", "ms": 400 },
+        { "type": "portrait", "slot": "center", "who": "grandpa", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "grandpa", "lines": ["帰ってきたと思ったら", "ラミアを連れてくるとはたまげたわい"] },
+            { "who": "grandpa", "lines": ["それにしてもよく食べるのぉ", "よほど腹減ってたんじゃな"] },
+            { "who": "lamy", "lines": ["もぐも・・・鶏がしゃべった！？"] },
+            { "who": "meina", "lines": ["あんたも蛇なのにしゃべってるじゃん？"] },
+            { "who": "lamy", "lines": ["もぐもぐ・・・それもそうね（？）", "", "じゅるり"] },
+            { "who": "grandpa", "lines": ["やめておけ、ワシはまずいぞ"] }
+          ]
+        },
+        { "type": "portrait", "slot": "center", "hide": true },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamy", "lines": ["ご馳走様！あ～～～お腹いっぱい！！"] },
+            { "who": "meina", "lines": ["私の分まで全部・・・"] },
+            { "who": "lamy", "lines": ["いや～なかなか美味しかった～", "また作ってよね！"] },
+            {
+              "who": "meina",
+              "lines": ["あんたねぇ・・・", "食べた分はちゃんと返してもらうからね。", "明日デカいのを狩りに行くから付き合ってもらうよ！"]
+            },
+            { "who": "lamy", "lines": ["まかしとけって！", "あたしめっちゃ強いから期待しといてよ！！☆彡"] },
+            { "who": "meina", "lines": ["（私より弱いくせに・・・なんか不安だ・・・。）"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "fade", "to": "out", "ms": 600 },
+        { "type": "message", "talk": [{ "lines": ["━ 翌朝 ━"] }] },
+        { "type": "fade", "to": "in", "ms": 800 },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["よし、それじゃあ狩に行くよ！"] },
+            { "who": "lamy", "lines": ["お～！腕が鳴るね！"] }
+          ]
+        },
+        { "type": "message", "talk": [{ "lines": ["ラミィが仲間になった！！"] }] },
+        { "type": "party", "op": "join", "who": "lamy" },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["ラミィと会った場所から更に東に洞窟があるから", "そこでデカいのを狩ろう。"] }]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "setSwitch", "key": "EVENT010401", "value": false }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "EVENT020201",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT020101", "is": false }, { "switch": "EVENT020201", "is": true }],
+      "commands": [
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamy", "lines": ["お肉もうちょっと食べたかったぁ～", "けど美味しかったぁ～"] },
+            { "who": "meina", "lines": ["ラミィはこれからどうするの？", "居つくなら・・・", "私はもうすぐ出ていくからこの家使っていいよ"] },
+            { "who": "lamy", "lines": ["え\"え\"！？", "それじゃ美味しいご飯食べれないじゃん・・・。", "私も付いていく！！"] },
+            { "who": "meina", "lines": ["言うと思った", "分かった、準備が整ったら一緒に出よう。"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "setSwitch", "key": "EVENT020201", "value": false },
+        { "type": "setSwitch", "key": "ゲーム_クリア", "value": true },
+        {
+          "type": "scroll",
+          "speed": 1800,
+          "dim": 0.7,
+          "lines": ["ラミア娘ことラミィを仲間にしたメイナ。", "ついに冒険に出る事を決意した。", "冒険の目的とは？", "", "彼女たちの旅はこれからだ！"]
+        },
+        {
+          "type": "scroll",
+          "speed": 1200,
+          "dim": 1,
+          "lines": [
+            "シナリオ：俺",
+            "企画：俺",
+            "プロップデザイン：俺",
+            "キャラクターデザイン：俺",
+            "ストーリー制作：俺",
+            "BGM：「DOVA-SYNDROME」様",
+            "効果音：「効果音ラボ」様",
+            "マップチップ：「OpenGameArt.Org」様、「ぴぽや倉庫」様",
+            "編集：俺",
+            "アニメーション制作：俺",
+            "アニメーションプロデューサー：俺",
+            "タイトルロゴデザイン：俺",
+            "マップデザイン：俺",
+            "プログラム：俺",
+            "絵コンテ・演出：俺",
+            "仕上げ：俺",
+            "ディレクター：俺",
+            "プロデューサー：俺",
+            "監督：俺",
+            "",
+            "",
+            "おしり"
+          ]
+        },
+        { "type": "stopBgm", "fade": 1200 },
+        { "type": "fade", "to": "out", "ms": 800 },
+        { "type": "message", "talk": [{ "lines": ["Thank you for playing!!"] }] },
+        { "type": "wait", "ms": 1200 },
+        { "type": "fade", "to": "in", "ms": 800 }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "宝箱",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "開けた" },
+          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
+          "else": [
+            { "type": "playSe", "key": "chest" },
+            { "type": "getItem" },
+            { "type": "setSelfSwitch", "key": "開けた", "value": true },
+            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] }
+          ]
+        }
+      ],
+      "kind": "object"
+    }
+  ]
+}

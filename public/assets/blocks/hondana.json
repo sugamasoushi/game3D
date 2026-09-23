@@ -1,0 +1,51 @@
+{
+  "format": "mep3d-block",
+  "version": 2,
+  "id": "hondana",
+  "name": "hondana",
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "shape": "box",
+      "ts": "interior",
+      "tile": 0,
+      "faces": {
+        "top": -4857623,
+        "bottom": -4857623,
+        "front": 245,
+        "back": -4857623,
+        "left": -4857623,
+        "right": -4857623
+      },
+      "thickness": [
+        -32,
+        17
+      ]
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "z": 0,
+      "shape": "box",
+      "ts": "interior",
+      "tile": 213,
+      "faces": {
+        "top": 213,
+        "bottom": -4857623,
+        "front": 213,
+        "back": -4857623,
+        "left": -4857623,
+        "right": -4857623
+      },
+      "thickness": [
+        -15,
+        17
+      ],
+      "faceAnchor": {
+        "top": "tl"
+      }
+    }
+  ]
+}

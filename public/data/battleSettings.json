@@ -1,0 +1,31 @@
+{
+  "infomation": "戦闘の共通の演出（GS-106）。台帳エディタの「戦闘共通」で編集する。bgm と se は sounds.json のキー、ms はミリ秒。書かない値・壊れた値はゲームの既定値（src/game/battle/settings.ts）を使う。技ごとの絵と音は skills.json、持ち物の音は items.json、画面の音は sounds.json の ui。",
+  "bgm": "battle",
+  "normalAttack": {
+    "party": {
+      "effect": "normal",
+      "se": ""
+    },
+    "enemy": {
+      "effect": "",
+      "se": "punch"
+    }
+  },
+  "se": {
+    "hit": "hit",
+    "dodge": "dodge",
+    "win": "fanfare",
+    "enemyAttack": "punch",
+    "item": "levelup",
+    "levelUp": "levelup",
+    "walkPoison": "hit"
+  },
+  "ms": {
+    "say": 900,
+    "beat": 260,
+    "hit": 520,
+    "lean": 200,
+    "enemyAct": 500,
+    "noItem": 1200
+  }
+}

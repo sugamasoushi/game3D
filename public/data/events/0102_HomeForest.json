@@ -1,0 +1,149 @@
+{
+  "map": "0102_HomeForest",
+  "events": [
+    {
+      "id": "EVENT010201",
+      "trigger": "touch",
+      "when": [{ "is": true, "switch": "EVENT010201" }],
+      "commands": [
+        { "type": "message", "talk": [{ "lines": ["お～い！！"] }], "style": "window" },
+        { "type": "turn", "target": "player", "to": "up" },
+        { "type": "shot", "id": "event010201_camera01", "wait": false },
+        {
+          "type": "place",
+          "target": "npc:chicken_walk",
+          "at": { "x": -6, "y": 10, "z": -1 },
+          "face": "left"
+        },
+        {
+          "type": "move",
+          "target": "npc:chicken_walk",
+          "to": { "x": -6, "y": 10, "z": 1 },
+          "first": "upDown"
+        },
+        { "type": "wait", "ms": 200 },
+        {
+          "type": "portrait",
+          "slot": "left",
+          "who": "grandpa",
+          "face": "normal",
+          "id": "じいちゃんイラスト",
+          "flip": true
+        },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "grandpa", "lines": ["待て！！", "・・・・・・・", "ついに行くのか？"] },
+            { "who": "meina", "lines": ["う～ん、どうしようかな", "もう行こうかな？"] }
+          ]
+        },
+        {
+          "type": "choice",
+          "choices": ["はい", "いいえ"],
+          "cancel": 1,
+          "branches": [
+            [
+              {
+                "type": "message",
+                "talk": [
+                  {
+                    "who": "grandpa",
+                    "lines": ["ついに旅立ちじゃな・・・", "近頃、ラミア族が増えている", "見たら逃げるんじゃよ", "助からないかもしれんからな"]
+                  },
+                  { "who": "meina", "lines": ["（いや今日は普通に帰るけど）"] }
+                ]
+              }
+            ],
+            [
+              {
+                "type": "message",
+                "talk": [
+                  {
+                    "who": "grandpa",
+                    "lines": ["あまり遠くに行きすぎんようにな", "そうそう、最近ラミア族が増えている", "絶対逃げるんじゃよ"]
+                  },
+                  { "who": "meina", "lines": ["おっけー"] }
+                ]
+              }
+            ]
+          ]
+        },
+        {
+          "type": "move",
+          "target": "npc:chicken_walk",
+          "to": { "x": -6, "y": 10, "z": -1 },
+          "first": "upDown"
+        },
+        {
+          "type": "move",
+          "target": "npc:chicken_walk",
+          "to": { "x": 6, "y": 10, "z": -1 },
+          "first": "leftRight",
+          "wait": false
+        },
+        { "type": "shot", "id": "event010201_camera02" },
+        { "type": "wait", "ms": 600 },
+        { "type": "place", "target": "npc:chicken_walk", "at": { "x": 3, "y": 10, "z": -2 } },
+        { "type": "setSwitch", "key": "EVENT010201", "value": false },
+        { "type": "setSwitch", "key": "EVENT010202", "value": false }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "EVENT010202",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT010202", "is": true }],
+      "commands": [
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "meina",
+              "lines": ["ちょっと山を下りて散策しようかな", "そういえば最近ラミア族が多いんだよね", "勝てそうにないから気を付けよう・・・。"]
+            }
+          ]
+        },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "setSwitch", "key": "EVENT010202", "value": false },
+        { "type": "setSwitch", "key": "EVENT010201", "value": false }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "talk_whiteCat",
+      "npc": "whiteCat",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "style": "bubble",
+          "talk": [
+            { "who": "mob", "lines": ["我が力を欲するか？", "・・・・・・・", "我が力いらない？"] },
+            { "who": "meina", "lines": ["えぇ？", "う～ん、どうしようかな", "やっぱりいらねっす・・・"] },
+            { "who": "mob", "lines": ["そんなぁ・・・"] }
+          ]
+        }
+      ],
+      "kind": "talk"
+    },
+    {
+      "id": "talk_blackCat",
+      "npc": "blackCat",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "style": "bubble",
+          "talk": [
+            { "lines": ["遊んでくれてありがとう！"] },
+            { "lines": ["プログラム勉強しながらゲーム制作だ！ってことで", "RPG を作ってみましたが"] },
+            { "lines": ["RPG ツクールで良くね？", "っていう(泣)"] }
+          ]
+        }
+      ],
+      "kind": "talk"
+    }
+  ]
+}

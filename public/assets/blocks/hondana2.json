@@ -1,0 +1,35 @@
+{
+  "format": "mep3d-block",
+  "version": 2,
+  "id": "hondana2",
+  "name": "hondana2",
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "shape": "box",
+      "ts": "interior",
+      "tile": 123,
+      "faces": {
+        "top": 123,
+        "bottom": -4857623,
+        "front": 249,
+        "back": -4857623,
+        "left": -4857623,
+        "right": -4857623
+      },
+      "thickness": [
+        -26,
+        20
+      ],
+      "faceAnchor": {
+        "bottom": "tl",
+        "front": "tl",
+        "back": "tl",
+        "left": "tl",
+        "right": "tl"
+      }
+    }
+  ]
+}

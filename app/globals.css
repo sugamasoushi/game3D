@@ -1,0 +1,2441 @@
+/* 画面はゲームビュー（5926）と同じ（GS-09）。canvas 1 枚で、UI はその上に重ねる。 */
+
+/*
+ * 文字は旧作と同じドット絵フォント（GS-20）。PixelMplus は **10px の絵**なので、
+ * 20px（2 倍）で出すと 1 ドットが 2 画素にきっちり乗る。半端な大きさにすると滲む。
+ * 使ってよいかは assets/fonts/README.txt（M+ FONT LICENSE）。
+ */
+@font-face {
+  font-family: 'PixelMplus10';
+  src: url('/assets/fonts/PixelMplus10-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PixelMplus10';
+  src: url('/assets/fonts/PixelMplus10-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  /* 無い字（絵文字や難しい漢字）は後ろのフォントが受ける。 */
+  font-family: 'PixelMplus10', 'Noto Sans JP', system-ui, sans-serif;
+  font-size: 13px;
+  color: #e8edf2;
+  background: #10151b;
+  overflow: hidden;
+  /* 画面をなぞって動かす操作の邪魔になるので、引っぱりスクロールを止める。 */
+  overscroll-behavior: none;
+}
+
+.stage {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  overflow: hidden;
+}
+
+/* ゲーム画面は 1280×720 固定（DEC-162）。**等倍で出す。**窓が狭ければはみ出す。 */
+.screen {
+  --message-background: rgba(25, 25, 112, 0.78);
+  position: relative;
+  flex: none;
+  width: 1280px;
+  height: 720px;
+  background: #000;
+}
+
+.viewport {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  outline: none;
+  touch-action: none;
+}
+
+/* カメラ演出の画面イラスト。位置と移動はGameViewの時刻評価をそのまま反映する。 */
+.camera-illustrations {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.camera-illustrations img {
+  position: absolute;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+  user-select: none;
+  will-change: transform, opacity;
+}
+
+/* 読み込み中と、読めなかったときの札。 */
+.notice {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  color: #cfd8e3;
+  pointer-events: none;
+}
+
+/* ── 会話まわり。canvas の上に重ねる（構想 §3.1） ────────────── */
+
+/* 暗転。canvas と同じ 1280×720 の中だけを覆う。 */
+.fade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  transition: opacity 400ms linear;
+}
+
+/*
+ * 会話ウィンドウ（GS-107）。**戦闘の出来事の窓（`.battle-message`）と同じ場所・大きさ・字**にそろえる——
+ * 左右240px（仮想パッドとの間を12px空ける）、上端 560、高さ 140、字 24px。
+ * 値を変えるときは `.battle` の `--battle-top` / `--battle-row` と一緒に変える。
+ */
+.message {
+  position: absolute;
+  left: 240px;
+  right: 240px;
+  top: 560px;
+  min-height: 140px;
+  padding: 14px 22px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: var(--message-background);
+  color: #f2f5ff;
+  cursor: pointer;
+}
+
+.message-name {
+  position: absolute;
+  top: -20px;
+  left: 18px;
+  padding: 3px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 6px;
+  background: rgba(25, 25, 112, 0.95);
+  /* ドット絵フォントは 10px の倍数で出す（GS-20）。 */
+  font-size: 20px;
+}
+
+/*
+ * 文字の窓（GS-146）。**3 行だけ見せて、あふれたぶんは上へ巻き上げる**（旧作と同じ）。
+ * 窓の丈はここで決まる（35px × 3 行）ので、`.message` の高さ 140px は動かない。
+ * はみ出しを隠すのがこの箱の役目——中身（`.message-body`）を動かすのは JS。
+ */
+.message-view {
+  position: relative;
+  overflow: hidden;
+  height: 105px;
+}
+
+.message-body {
+  margin: 0;
+  /* 戦闘の出来事の窓と同じ 24px。行の高さは**px で決める**——巻き上げる量を測るので。 */
+  font-size: 24px;
+  line-height: 35px;
+  /* あふれたら上へ滑らせる（GS-146）。ずらす量は JS が測って入れる。 */
+  transition: transform 200ms ease-out;
+  /* 日本語の折り返しはブラウザに任せる。ここが DOM で作る一番の得（構想 §3.1）。 */
+  white-space: pre-wrap;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+
+/* 空にした瞬間は滑らせない。滑らせると次の人の 1 行目が下から降りてくる。 */
+.message-body.at-top {
+  transition: none;
+}
+
+.message-next {
+  margin-left: 6px;
+  font-size: 14px;
+  opacity: 0.8;
+  animation: blink 1s steps(2, start) infinite;
+}
+
+/*
+ * 仮想パッド（GS-155）。左右端へ寄せ、会話窓との間を12px空ける。
+ * キーイベントへ変換するため、会話・メニュー・戦闘も同じボタンで操作できる。
+ */
+.virtual-pad {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 旧作と同じ円形の操作範囲。空白部分も背後へ押下を通さない。 */
+.virtual-control {
+  position: absolute;
+  bottom: 8px;
+  width: 220px;
+  height: 220px;
+  border: 2px solid #8ea6c8;
+  border-radius: 50%;
+  background: var(--message-background);
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.virtual-left { left: 8px; }
+.virtual-right { right: 8px; }
+
+.virtual-button {
+  display: grid;
+  place-items: center;
+  border: 2px solid #8ea6c8;
+  background: transparent;
+  color: #f2f5ff;
+  font-family: inherit;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  text-shadow: 0 1px 2px #000;
+}
+
+.virtual-button:focus-visible {
+  outline: 3px solid #ffd479;
+  outline-offset: 2px;
+}
+
+.virtual-button:active {
+  border-color: #ffd479;
+  background: transparent;
+  transform: translateY(1px);
+}
+
+.virtual-dpad {
+  position: absolute;
+  inset: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  grid-template-rows: repeat(3, 64px);
+}
+
+.virtual-dpad::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Cpath d='M64 1H128V64H191V128H128V191H64V128H1V64H64Z' fill='none' stroke='%238ea6c8' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.virtual-direction {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  margin: 2px;
+  padding: 0;
+  border-radius: 8px;
+  font-size: 31px;
+}
+
+/* 斜めは独立したキーに見せず、十字の四隅にある透明な入力領域として扱う。 */
+.virtual-direction:nth-child(1),
+.virtual-direction:nth-child(3),
+.virtual-direction:nth-child(7),
+.virtual-direction:nth-child(9) {
+  width: 64px;
+  height: 64px;
+  margin: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.virtual-direction:nth-child(1):active,
+.virtual-direction:nth-child(3):active,
+.virtual-direction:nth-child(7):active,
+.virtual-direction:nth-child(9):active {
+  border-color: transparent;
+  background: transparent;
+}
+
+/* 上下左右と中央は、一枚の十字形の上に透明な入力面として置く。 */
+.virtual-direction:nth-child(2),
+.virtual-direction:nth-child(4),
+.virtual-direction:nth-child(6),
+.virtual-direction:nth-child(8),
+.virtual-dpad-center {
+  width: 64px;
+  height: 64px;
+  margin: 0;
+  border-radius: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.virtual-direction:nth-child(2):active,
+.virtual-direction:nth-child(4):active,
+.virtual-direction:nth-child(6):active,
+.virtual-direction:nth-child(8):active {
+  border-color: transparent;
+  background: transparent;
+  color: #ffd479;
+}
+
+.virtual-face {
+  position: absolute;
+  inset: 0;
+}
+
+.virtual-face-button {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 34px;
+}
+
+.virtual-face-button.triangle { left: 76px; top: 6px; }
+.virtual-face-button.cross { left: 76px; bottom: 6px; }
+.virtual-face-button.square { left: 6px; top: 76px; }
+.virtual-face-button.circle { right: 6px; top: 76px; }
+
+.virtual-face-button.triangle { color: #9ce6bb; }
+.virtual-face-button.cross { color: #a9cfff; }
+.virtual-face-button.square { color: #e6a8ca; }
+.virtual-face-button.circle { color: #ffaaa4; }
+
+@keyframes blink {
+  to {
+    opacity: 0.2;
+  }
+}
+
+.choices {
+  position: absolute;
+  left: 50%;
+  bottom: 180px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 260px;
+  padding: 10px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.9);
+}
+
+.choices button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 20px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.choices button.on {
+  background: rgba(142, 166, 200, 0.35);
+}
+
+.choices button.on::before {
+  content: '▶ ';
+}
+
+/* ── 立ち絵（GS-20）────────────────────────────────────────── */
+
+/*
+ * 画面の下端に足を付けて立たせる。**大きすぎる絵は縮めるが、引き伸ばしはしない**（GS-145）。
+ * 絵の縦横比がまちまち（正方形から 1:3 まで）なので、幅ではなく丈（と幅）の上限だけを決める。
+ * `height: 86%` と丈を**決めて**いたころは、小さい絵（342×361 の鶏）が
+ * 1.7 倍に引き伸ばされて粗く見えた。**大きさを変えるのは効果（`imageFx` の `zoom`）だけ。**
+ * 会話ウィンドウより先に描くので、下半分はウィンドウに隠れる。
+ */
+.portrait {
+  position: absolute;
+  bottom: 0;
+  max-height: 86%;
+  max-width: 46%;
+  object-fit: contain;
+  object-position: bottom;
+  /*
+   * 大きさを変える効果（GS-145）の軸は**足元**。中心を軸にすると床から浮いて見える。
+   * 左右反転（`--flip`。GS-146）も同じ軸なので、反転しても立ち位置は動かない。
+   */
+  transform-origin: bottom center;
+  pointer-events: none;
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.55));
+  /* 出ていくとき・薄くするときに動く（GS-31 / GS-143）。入りは animation のほう。 */
+  transition: transform var(--ms, 280ms) ease-in, opacity var(--ms, 280ms) linear;
+}
+
+/*
+ * 出入りは**来た側から／来た側へ**（GS-31 / GS-143）。
+ * 入りは差し込んだ瞬間に 1 回だけ動かすので animation、
+ * 出は印が付いてから動かすので transition。
+ * `--dx` / `--dy` が「置き場所からどれだけずらすか」で、出ていく向きはこれで決まる。
+ * `in-none`（昔の `instant`）を立てると**どちらも動かない**（暗転の裏で並べておくときなど）。
+ */
+@keyframes portrait-in-left {
+  from {
+    transform: translateX(-160%) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+@keyframes portrait-in-right {
+  from {
+    transform: translateX(160%) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+@keyframes portrait-in-top {
+  from {
+    transform: translateY(-140%) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+@keyframes portrait-in-bottom {
+  from {
+    transform: translateY(140%) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+/* 中央の絵は**置き場所そのものが translateX(-50%)** なので、入りもそこから測る。 */
+.portrait.center.in-left {
+  animation-name: portrait-in-center-left;
+}
+
+.portrait.center.in-right {
+  animation-name: portrait-in-center-right;
+}
+
+@keyframes portrait-in-center-left {
+  from {
+    transform: translateX(-50%) translateX(-160%) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+@keyframes portrait-in-center-right {
+  from {
+    transform: translateX(-50%) translateX(160%) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+/*
+ * ぶるぶる揺らす（GS-143）。幅は `--shake`、戻りは 0 なので終われば元の位置。
+ *
+ * **同じ中身を 2 つ置いてある。** CSS のアニメは「名前が同じまま」だと走り直さないので、
+ * 続けて揺らすときに交互の名前を当てて**必ず頭から動かす**（`shakeAt` の偶奇で選ぶ）。
+ */
+@keyframes portrait-shake-a {
+  0%,
+  100% {
+    transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+  20% {
+    transform: translate(calc(var(--dx, 0px) - var(--shake, 0px)), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+  45% {
+    transform: translate(calc(var(--dx, 0px) + var(--shake, 0px)), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+  70% {
+    transform: translate(calc(var(--dx, 0px) - var(--shake, 0px) * 0.5), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+@keyframes portrait-shake-b {
+  0%,
+  100% {
+    transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+  20% {
+    transform: translate(calc(var(--dx, 0px) - var(--shake, 0px)), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+  45% {
+    transform: translate(calc(var(--dx, 0px) + var(--shake, 0px)), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+  70% {
+    transform: translate(calc(var(--dx, 0px) - var(--shake, 0px) * 0.5), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+  }
+}
+
+.portrait.left {
+  left: 16px;
+}
+
+.portrait.right {
+  right: 16px;
+}
+
+.portrait.center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/*
+ * ずらし（出ていく先・揺れ）。**置き場所より後ろ**に書いて勝たせる。
+ * 中央だけは置き場所の `-50%` を足してから動かす。
+ */
+.portrait.left,
+.portrait.right {
+  transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+}
+
+.portrait.center {
+  transform: translateX(-50%) translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
+}
+
+.portrait.in-left {
+  animation: portrait-in-left var(--ms, 280ms) ease-out;
+}
+
+.portrait.in-right {
+  animation: portrait-in-right var(--ms, 280ms) ease-out;
+}
+
+.portrait.in-top {
+  animation: portrait-in-top var(--ms, 280ms) ease-out;
+}
+
+.portrait.in-bottom {
+  animation: portrait-in-bottom var(--ms, 280ms) ease-out;
+}
+
+/* 揺れは入りのアニメより後に書く。かけている間はそちらが走る（名前はJS が当てる）。 */
+.portrait[style*='portrait-shake'] {
+  animation-duration: var(--ms, 280ms);
+  animation-timing-function: ease-in-out;
+}
+
+/*
+ * 出ていく絵は**入りのアニメを止める**。置き場所の指定（`.portrait.left` など）と
+ * 同じ強さなので、**後ろに置いて**勝たせる。
+ * これが無いと、何かの拍子に入りのアニメが走り直したとき、消えるはずの絵が
+ * 画面の外から現れてしまう。
+ */
+.portrait.leaving {
+  animation: none;
+}
+
+/* 滑らせない指定は**置き場所より後ろ**に置く。前に書くと同じ強さで負けて効かない。 */
+.portrait.instant {
+  animation: none;
+  transition: none;
+}
+
+/* ── 話せる合図（GS-49）。NPC の頭の上で 3 コマを回す ───────── */
+
+/*
+ * コマ送りは JS（`TalkMarks.tsx`）がやる（GS-122）。絵の大きさ・コマの位置は
+ * **台帳（`spriteSheets.json`）の区切り**から決まるので、ここには書かない——
+ * 以前は 96×32 の 3 コマを `@keyframes` に直に書いていて、この絵だけ台帳の外に居た。
+ * 近づいたら止めるだけで消さない（GS-49）のも JS 側で見る。
+ */
+.talk-mark {
+  position: absolute;
+  /* 頭のすぐ上に浮かせる。会話の吹き出しと重ならない高さ。 */
+  margin-top: -38px;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* ── 吹き出し（GS-23）。フィールドの立ち話 ─────────────────── */
+
+/*
+ * 喋っている人の**頭の上**に出す。位置は 3D から測った画面座標で、
+ * 下辺の真ん中がその点に来るように置く（`translate(-50%, -100%)`）。
+ */
+.bubble {
+  position: absolute;
+  /* 頭のすぐ上だと**キャラの顔まで覆う**ので、少し浮かせる（GS-23）。角はそのぶん伸ばす。 */
+  transform: translate(-50%, calc(-100% - 22px));
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 560px;
+  padding: 10px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 10px;
+  background: rgba(25, 25, 112, 0.86);
+  cursor: pointer;
+}
+
+/* 下向きの角。吹き出しの持ち主を指す。 */
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -22px;
+  width: 0;
+  height: 0;
+  margin-left: -9px;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 22px solid #8ea6c8;
+}
+
+.bubble-icon {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  object-fit: cover;
+}
+
+.bubble-body {
+  min-width: 0;
+}
+
+.bubble-text {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+
+/* ── 流れる文字（GS-23）。オープニングの読み物 ───────────────── */
+
+.scroll-back {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  cursor: pointer;
+  /* 終わりだけ薄れて消える（GS-23）。長さは JS が入れる。 */
+  transition-property: opacity;
+  transition-timing-function: linear;
+}
+
+.scroll-back.out {
+  opacity: 0;
+}
+
+/*
+ * 黒の覆い（GS-23）。**暗幕を張る所を見せない**ための物。
+ * 置いた瞬間は真っ黒で、その裏で暗幕と文字が揃う。明けると
+ * 「暗幕が最初からかかった画面」が現れる。
+ */
+.scroll-cover {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 1;
+  pointer-events: none;
+  transition-property: opacity;
+  transition-timing-function: linear;
+}
+
+.scroll-back.run .scroll-cover,
+.scroll-back.out .scroll-cover {
+  opacity: 0;
+}
+
+/*
+ * 下から出て上へ抜ける。**画面の高さぶん下から始めて、文字の高さぶん上まで**運ぶので、
+ * どれだけ長い文章でも最後まで流れ切る。
+ * 出る位置（`--scroll-from`）と時間は JS が測って入れる——**速さは 1 行ぶんの時間**で
+ * 決めるので、行数ぶんの丈が分からないと総時間が出ない（GS-144）。
+ */
+.scroll-text {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 900px;
+  margin-left: -450px;
+  text-align: center;
+  font-size: 20px;
+  line-height: 2;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  animation-name: scroll-up;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  /* 透明なあいだは止めておく。流し始めるのは濃くなってから。 */
+  animation-play-state: paused;
+}
+
+.scroll-back.run .scroll-text,
+.scroll-back.out .scroll-text {
+  animation-play-state: running;
+}
+
+.scroll-text p {
+  margin: 0;
+}
+
+@keyframes scroll-up {
+  from {
+    transform: translateY(var(--scroll-from, 720px));
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+/* ── タイトルとセーブ（GS-27）───────────────────────────── */
+
+.title {
+  position: absolute;
+  inset: 0;
+  background: #05070c center / cover no-repeat;
+  overflow: hidden;
+}
+
+/* 題名とボタン（GS-126）。**背景の上に重ねる**ので、下地を少し暗くして字を読めるようにする。 */
+.title-in {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: linear-gradient(rgba(5, 7, 12, 0.35), rgba(5, 7, 12, 0.72));
+  animation: title-in 900ms ease-out both;
+}
+
+@keyframes title-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.title-name {
+  margin: 0;
+  /* 旧作の題名（`TitleLogo.showTitleText`）と同じ青。縁取りは影を四方に重ねて作る。 */
+  font-size: 72px;
+  letter-spacing: 6px;
+  color: #00a6ed;
+  text-shadow:
+    -3px -3px 0 #2d2d2d,
+    3px -3px 0 #2d2d2d,
+    -3px 3px 0 #2d2d2d,
+    3px 3px 0 #2d2d2d,
+    6px 6px 10px rgba(0, 0, 0, 0.8);
+  /* 旧作は 1 秒かけて白と行き来していた（`addCounter` + yoyo）。同じ間で光らせる。 */
+  animation:
+    title-name 900ms ease-out both,
+    title-glow 2s ease-in-out 900ms infinite;
+}
+
+@keyframes title-name {
+  from {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes title-glow {
+  0%,
+  100% {
+    color: #00a6ed;
+  }
+  50% {
+    color: #ffffff;
+  }
+}
+
+/* ────── オープニング（GS-126）────── */
+/* 並びは `data/opening.json`、動かすのは `ui/Opening.tsx`（Web Animations）。 */
+
+.opening {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.opening-back {
+  position: absolute;
+  inset: 0;
+  /* 画面と同じ大きさで決め打つ（DEC-162）。読み終えた拍子に跳ねない。 */
+  width: 1280px;
+  height: 720px;
+  object-fit: cover;
+}
+
+.opening-stand {
+  position: absolute;
+}
+
+.opening-chara {
+  display: block;
+  /* 置き場所は `top`（画面の真ん中から少し下）。絵の高さが違っても真ん中で合う。 */
+  transform: translateY(-50%);
+}
+
+.opening-hint {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  margin: 0;
+  font-size: 14px;
+  color: #e8edf2;
+  text-shadow: 2px 2px 4px #000;
+  opacity: 0.6;
+  animation: title-in 600ms ease-out both;
+}
+
+.title-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 420px;
+}
+
+.title-menu button {
+  padding: 10px 18px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.7);
+  color: inherit;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.title-menu button:hover:not(:disabled) {
+  background: rgba(60, 60, 160, 0.8);
+}
+
+.title-menu button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.title-note {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* セーブ画面。画面の中だけを覆う。 */
+.menu-back {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.menu {
+  width: 760px;
+  padding: 20px 24px;
+  border: 2px solid #8ea6c8;
+  border-radius: 10px;
+  background: rgba(25, 25, 112, 0.92);
+}
+
+.menu-head {
+  margin: 0 0 14px;
+  font-size: 24px;
+}
+
+.menu-slots {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.menu-slots li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-slot {
+  flex: none;
+  /* 「オート」が入る幅（GS-33）。数字だけのときも同じ幅で揃える。 */
+  width: 72px;
+  font-size: 20px;
+  text-align: center;
+}
+
+.menu-info {
+  flex: 1;
+  min-width: 0;
+  font-size: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* 設定の 1 行（GS-32）。見出し・つまみ・いまの値。 */
+.menu-label {
+  flex: none;
+  width: 110px;
+  font-size: 20px;
+}
+
+.menu-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: #8ea6c8;
+  cursor: pointer;
+}
+
+.menu-value {
+  flex: none;
+  width: 72px;
+  font-size: 18px;
+  text-align: right;
+  opacity: 0.85;
+  /* 値が変わっても行が揺れないよう、数字の幅をそろえる。 */
+  font-variant-numeric: tabular-nums;
+}
+
+.menu button,
+.menu-actions button {
+  padding: 6px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.menu button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* 開発用のつまみ（GS-126）。**本番では出ない**ので、目立たせない。 */
+.menu-label-wide {
+  width: 220px;
+}
+
+.menu-check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  accent-color: #8ea6c8;
+  cursor: pointer;
+}
+
+.menu-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+/* 持ち物（GS-46）。見せるだけなので、詰めて並べる。 */
+.menu-sub {
+  margin: 14px 0 6px;
+  font-size: 18px;
+  opacity: 0.85;
+}
+
+.menu-empty {
+  margin: 0 0 12px;
+  font-size: 16px;
+  opacity: 0.55;
+}
+
+.menu-items {
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  max-height: 168px;
+  overflow: auto;
+}
+
+.menu-items li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 17px;
+  padding: 2px 0;
+}
+
+.item-name { flex: none; min-width: 160px; }
+/* 数は右端をそろえる。桁がずれると数えにくい。 */
+.item-count {
+  flex: none;
+  width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/*
+ * 使える物（GS-64）。**行の名前がそのままボタン**——右に「つかう」を並べると、
+ * 押す場所が名前から離れて、どの行を触っているのか見失う。
+ */
+.item-use {
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 1px 8px;
+  margin: -1px -8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item-use:hover:not(:disabled),
+.item-use:focus-visible {
+  border-color: #ffd479;
+  outline: none;
+}
+
+/* 効かない物（満タンのときの やくそう など）。**消さずに押せなくする。** */
+.item-use:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 使い先を選ぶ列（仲間が 2 人以上のとき）。 */
+.menu-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.menu-pick button {
+  padding: 2px 12px;
+  border: 2px solid #8ea6c8;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 使った結果の一言。**消さずに残す**——次に何かするまで読み返せる。 */
+.menu-note {
+  margin: 0;
+  font-size: 16px;
+  color: #ffd479;
+}
+
+.item-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+  font-size: 15px;
+}
+
+.menu-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/*
+ * メニュー（GS-54）。旧作と同じ並び——**左に主人公、上にタブ、下に中身**。
+ * 画面（1280×720）の中だけを覆う。外を押すと閉じる。
+ */
+.gmenu-back {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.gmenu {
+  display: flex;
+  gap: 20px;
+  width: 1080px;
+  height: 600px;
+  padding: 18px 22px;
+  border: 2px solid #8ea6c8;
+  border-radius: 10px;
+  background: rgba(25, 25, 112, 0.92);
+  /* 旧作の Tween に当たる。ぱっと出すと、Esc を押したのか分かりにくい。 */
+  animation: gmenu-in 0.16s ease-out;
+}
+
+@keyframes gmenu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* 左の柱。絵の高さが中身を押し広げないよう、幅を決め打ちする。 */
+.gmenu-who {
+  flex: none;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-right: 20px;
+  border-right: 2px solid rgba(142, 166, 200, 0.4);
+}
+
+.gmenu-face {
+  width: 100%;
+  /* 縦に伸ばさない。素材の縦横比はそのまま。 */
+  height: auto;
+  max-height: 380px;
+  object-fit: contain;
+  image-rendering: auto;
+}
+
+.gmenu-name {
+  margin: 0;
+  font-size: 24px;
+}
+
+.gmenu-facts {
+  width: 100%;
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  font-size: 16px;
+}
+
+.gmenu-facts dt {
+  opacity: 0.6;
+}
+
+.gmenu-facts dd {
+  margin: 0;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gmenu-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.gmenu-tabs {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid rgba(142, 166, 200, 0.4);
+}
+
+.gmenu-tabs button {
+  padding: 6px 18px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 20px;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.gmenu-tabs button:hover {
+  opacity: 0.85;
+}
+
+/* 開いているタブ。**枠と色の両方**で示す——色だけだと、どれが開いているか分かりにくい。 */
+.gmenu-tabs button.on {
+  border-color: #8ea6c8;
+  background: rgba(142, 166, 200, 0.18);
+  opacity: 1;
+}
+
+/* 中身。ページによって長さが違うので、**ここだけ**が縦に伸び縮みする。 */
+.gmenu-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 4px 14px 0;
+}
+
+/* ページの中では枠いっぱいに広げる（`.menu` の中と違って幅が決まっているため）。 */
+.gmenu-body .menu-items {
+  max-height: none;
+  margin-bottom: 0;
+}
+
+.gmenu-body .menu-slots {
+  margin-bottom: 12px;
+}
+
+.gmenu-body button {
+  padding: 6px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.gmenu-body button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* キーで選んでいる所を見せる。マウスだけだと当たり前に見えるが、↑↓ では要る。 */
+.gmenu-body [data-pick]:focus-visible {
+  outline: 2px solid #ffd479;
+  outline-offset: 2px;
+}
+
+.gmenu-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 2px solid rgba(142, 166, 200, 0.4);
+}
+
+.gmenu-hint {
+  flex: 1;
+  font-size: 15px;
+  opacity: 0.55;
+}
+
+.gmenu-foot button {
+  padding: 6px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/*
+ * ── 戦闘（GS-60）──────────────────────────────────────────
+ *
+ * 画面いっぱいに重ねる。**3D は裏でそのまま動いている**（止める必要が無い）ので、
+ * 下地は半透明の黒にして「同じ場所で戦っている」ように見せる。
+ * 並びは旧作と同じ——上に敵、真ん中に文、下に味方と命令。
+ */
+.battle {
+  /*
+   * 下の段の高さ（GS-79）。**隊列の窓と出来事の窓で同じ値を使う**——
+   * 別々に書くと、顔の大きさを変えたときに片方だけずれて「窓が 2 つある」ように見える。
+   */
+  /* **左の窓（隊列の命令 4 行）と同じ高さ**（GS-82）。隊列の窓もこれに合わせる。 */
+  --battle-row: 140px;
+  /* 下の段の上端（GS-83）。命令・隊列・出来事・技の窓がこの値を見る。
+   * 旧作は 520 だったが、敵との間を空けるため少し下げた（下端 700、余白 20px）。 */
+  --battle-top: 560px;
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 18, 0.72);
+  color: #f2f5ff;
+  font-size: 22px;
+  z-index: 40;
+}
+
+/*
+ * 用意した背景（GS-79）。**下地の黒は敷かない**——絵をそのまま見せる。
+ * マップの 3D を使うときはこの層が無いので、下地の黒越しに 3D が見える。
+ */
+.battle.has-back {
+  background: #04081a;
+}
+
+/*
+ * マップの 3D を背景に使う（GS-86 / GS-87）。**暗くしない**——
+ * 3D の舞台そのものを見せる。窓の字は窓の地が支える。
+ */
+.battle.has-3d {
+  background: transparent;
+}
+
+/*
+ * 3D の舞台（GS-87）。敵の絵は 3D の板が描くので、ここは**板の位置へ重ねる箱**だけ
+ * （帯・数字・技の絵・クリックの当たり）。箱の位置と大きさは画面が毎フレーム合わせる。
+ */
+.battle-field.on3d {
+  display: block;
+  height: auto;
+  bottom: 0;
+  padding: 0;
+}
+
+.battle-foe.on3d {
+  position: absolute;
+  display: block;
+}
+
+/* 帯は**板の頭の上**。 */
+.battle-foe.on3d .battle-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  margin-bottom: 8px;
+  transform: translateX(-50%);
+}
+
+.battle-foe.on3d .ail-tags {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translate(-50%, -22px);
+}
+
+/* 技の絵は板の真ん中。 */
+.battle-foe.on3d .battle-fx {
+  top: 50%;
+}
+
+/* 敵の素手の攻撃の絵を、殴られた味方の板へ重ねる枠（GS-123）。 */
+.battle-party-fx {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* 板が画面から外れているとき（2D の戦闘や、カメラの手前すぎる板）は画面の下寄りへ。 */
+.battle-party-fx.loose {
+  left: 50%;
+  top: 72%;
+  width: 0;
+  height: 0;
+}
+
+.battle-party-fx .battle-fx {
+  top: 50%;
+}
+
+.battle-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* 重ねる絵は**奥から手前の順**に並べる（旧作の視差の部品と同じ）。 */
+.battle-stage img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/*
+ * 敵の並ぶ場所。何体居ても真ん中に寄せる。
+ *
+ * **高さを決め打つ**（GS-79）。下の窓は絶対配置で外に出してあるので、
+ * 文が 1 行から 2 行に増えても、命令の一覧が長くなっても、**敵の足元は動かない**。
+ * 流れの中に置いていたころは、下の段が伸びるたびに敵が上下していた。
+ */
+.battle-field {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 490px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 48px;
+  padding: 32px 32px 0;
+  z-index: 1;
+}
+
+.battle-foe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 400ms linear;
+}
+
+/* 倒れた敵は**消さずに薄くする**——数が急に減ると、何体居たのか分からなくなる。 */
+.battle-foe.gone {
+  opacity: 0.18;
+  filter: grayscale(1);
+}
+
+.battle-foe img {
+  max-height: 320px;
+  image-rendering: pixelated;
+}
+
+/* 絵が無い敵の代わり。名前だけ出す。 */
+.battle-foe-name {
+  font-size: 18px;
+  text-shadow: 0 2px 4px #000;
+}
+
+/*
+ * 減り具合の帯（GS-78）。**絵の上**に出す（旧作と同じ）——
+ * 名前の札は出さない。誰に何が起きたかは下の窓が言う。
+ */
+.battle-bar {
+  width: 168px;
+  height: 14px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.battle-bar span {
+  display: block;
+  height: 100%;
+  background: #e2694f;
+  transition: width 200ms linear;
+}
+
+/*
+ * 下の段（GS-77）。**旧作と同じ並び**——命令が左（旧作 x=250）、
+ * その右に隊列（x=400）。下端はメッセージ窓に譲るので、そのぶん空けておく。
+ */
+.battle-bottom {
+  position: absolute;
+  /* **左端も右端も決め打つ**（GS-79 / GS-80）。右端は 200px 空ける——
+   * 旧作は左右 200px を**仮想パッドの場所**として空けてあり（`windowMarginX = 200`）、
+   * 技や持ち物の窓もその内側に描いている。右端に寄せると触る所の上に窓が来る。 */
+  left: 250px;
+  right: 200px;
+  /* **旧作と同じ y=520**（`height - 200`）。画面のいちばん下には何も置かない——
+   * 出来事の文はこの段の上に重ねる（下に窓を置くと敵の居場所が狭くなる）。 */
+  top: var(--battle-top);
+  height: var(--battle-row);
+  /*
+   * 中の 2 つは**旧作と同じで座標で置く**（命令 x=250／隊列 x=420）。
+   * 横に並べる（flex）と、命令の窓が広がったぶん隊列の窓が動く——
+   * 技や持ち物の一覧を開くたびに顔と帯が右へずれて落ち着かなかった。
+   */
+  z-index: 2;
+}
+
+/*
+ * 命令の窓（GS-77）。**幅を決め打つ**——選ぶ物の長さで窓が動くと押しにくい。
+ * 旧作と同じで縦 1 列。窓の色は会話ウィンドウに合わせる。
+ */
+.battle-command {
+  flex: none;
+  /*
+   * **中身の幅に合わせる**（GS-79）。命令だけなら詰まり、技の一覧を開けば広がる。
+   * 隊列の窓は座標で置いてあるので、広がっても**顔と帯は動かない**——
+   * 代わりに隊列の窓の左端へ少し被る（旧作も別々の窓を上に重ねていた）。
+   */
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: fit-content;
+  /* 旧作の `BattleSelectWindow` と同じ幅（250 ＋ 150 ＝ 隊列の窓の左端 400）。 */
+  min-width: 150px;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 10px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.78);
+  /* 聞かれていない間も窓は残す（GS-79）ので、**空のときの大きさを隊列にそろえる**。 */
+  min-height: var(--battle-row);
+}
+
+.battle-picks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.battle-ask {
+  margin: 0 0 4px;
+  font-size: 18px;
+  opacity: 0.75;
+}
+
+/*
+ * 味方の状態（GS-77）。旧作と同じで**顔・名前・HP・MP を横 1 行**、1 人 1 行。
+ * 窓の色は会話ウィンドウに合わせる（戦闘だけ別の見た目にしない）。
+ */
+.battle-party {
+  /*
+   * **旧作と同じ x=420 から右端まで**（GS-79）。3 人でも入るように 1 人ぶんを等分し、
+   * 人数でも段でも**窓の位置と幅は変わらない**——出来事の窓と端をそろえるため。
+   */
+  position: absolute;
+  /* **旧作と同じ x=400**（命令の窓 250 ＋ その幅 150）。 */
+  left: 150px;
+  right: 0;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  /* **横並び**（GS-79）。旧作は顔を左から順に並べ、その右に Lv/HP/MP を置く。
+   * 縦に積むと仲間が増えたぶんだけ窓が高くなり、敵の居場所を押し上げてしまう。 */
+  flex-direction: row;
+  gap: 16px;
+  /* 左の窓と**同じ高さに決め打つ**（GS-82）。人数や字の大きさで伸び縮みさせない。 */
+  height: var(--battle-row);
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.78);
+}
+
+.battle-party li {
+  /* 1 人ぶんを等分する。**3 人でも収まる**幅で組んであるので、
+   * 2 人のときは間が空くだけで、並びは動かない。 */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+}
+
+/* 倒れた仲間。敵と同じ見せ方にそろえる。 */
+.battle-party li.gone {
+  opacity: 0.4;
+}
+
+/* 顔は**素の大きさ**（100×100。旧作も等倍で置いていた）。 */
+.battle-party img {
+  width: 100px;
+  height: 100px;
+  flex: none;
+  image-rendering: pixelated;
+}
+
+.battle-who {
+  flex: none;
+  min-width: 4.5em;
+}
+
+/* 数は桁をそろえる。減るたびに位置が動くと読みにくい。 */
+.battle-num {
+  flex: none;
+  min-width: 5.5em;
+  font-variant-numeric: tabular-nums;
+}
+
+
+/*
+ * ── 店（GS-66）─────────────────────────────────────────────
+ *
+ * イベントの最中に開くので、会話ウィンドウより上。メニューと同じ枠の作りにして、
+ * **同じ見た目・同じキー**で操作できるようにする（覚えることを増やさない）。
+ */
+.shop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 8, 18, 0.6);
+  z-index: 45;
+}
+
+.shop-box {
+  width: 720px;
+  max-width: calc(100% - 64px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 22px;
+  border: 2px solid #8ea6c8;
+  border-radius: 10px;
+  background: rgba(10, 16, 32, 0.95);
+  color: #f2f5ff;
+  font-size: 18px;
+}
+
+.shop-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shop-tabs {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+
+.shop-tabs button {
+  padding: 4px 16px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+/* 開いているタブ。**枠と濃さの両方**で示す（色だけだと分かりにくい）。 */
+.shop-tabs button.on {
+  border-color: #ffd479;
+  opacity: 1;
+}
+
+/* 所持金は右端で桁をそろえる。買うたびに動くので、位置が動くと読みにくい。 */
+.shop-gold {
+  font-variant-numeric: tabular-nums;
+  color: #ffd479;
+}
+
+.shop-note {
+  margin: 0;
+  min-height: 26px;
+  font-size: 17px;
+  opacity: 0.85;
+}
+
+.shop-body {
+  max-height: 260px;
+  overflow: auto;
+}
+
+.shop-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop-list button {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 8px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.shop-list button:hover:not(:disabled),
+.shop-list button:focus-visible {
+  border-color: #ffd479;
+  outline: none;
+}
+
+/* 買えない物（お金が足りない）。**消さずに押せなくする**——何が置いてあるかは見せる。 */
+.shop-list button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.shop-name { flex: none; min-width: 150px; }
+.shop-price {
+  flex: none;
+  width: 70px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #ffd479;
+}
+.shop-have {
+  flex: none;
+  width: 60px;
+  text-align: right;
+  opacity: 0.7;
+  font-size: 15px;
+}
+.shop-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.65;
+  font-size: 15px;
+}
+
+.shop-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 2px solid rgba(142, 166, 200, 0.4);
+}
+
+.shop-foot button {
+  padding: 4px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/*
+ * ── そうび・ステータス（GS-67）─────────────────────────────
+ *
+ * メニューの中身なので、枠（`.gmenu-body`）の中で完結させる。
+ * **数の並びは `.gmenu-facts` と同じ形**にして、左の柱と見比べられるようにする。
+ */
+.equip-sum,
+.status-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.equip-sum dt,
+.status-facts dt {
+  opacity: 0.6;
+}
+
+.equip-sum dd,
+.status-facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 装備で増えたぶん。**素の値と分けて出す**——何がどれだけ効いているか分かるように。 */
+.equip-plus {
+  margin-left: 6px;
+  font-size: 14px;
+  opacity: 0.7;
+  color: #ffd479;
+}
+
+.equip-slot {
+  margin-bottom: 10px;
+}
+
+.equip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 4px;
+  font-size: 17px;
+}
+
+.equip-kind {
+  min-width: 4em;
+  opacity: 0.6;
+}
+
+/* いま着けている物。**「はずす」を名前のすぐ隣に**——右端へ飛ばすと、
+   どの行のボタンなのか目で追うことになる。 */
+.equip-now {
+  flex: none;
+  min-width: 8em;
+  color: #ffd479;
+}
+
+.equip-head button,
+.equip-list button {
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 1px 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.equip-head button {
+  border-color: #8ea6c8;
+  font-size: 15px;
+}
+
+.equip-head button:hover,
+.equip-head button:focus-visible,
+.equip-list button:hover,
+.equip-list button:focus-visible {
+  border-color: #ffd479;
+  outline: none;
+}
+
+.equip-list {
+  margin: 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+}
+
+.equip-list button {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  font-size: 16px;
+}
+
+.equip-name { flex: none; min-width: 130px; }
+.equip-count { flex: none; width: 34px; opacity: 0.7; font-size: 14px; }
+.equip-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.6;
+  font-size: 14px;
+}
+
+.equip-none {
+  margin: 0 0 0 12px;
+  font-size: 15px;
+  opacity: 0.5;
+}
+
+.status-name {
+  margin: 0 0 8px;
+  font-size: 19px;
+}
+
+.status-level {
+  opacity: 0.7;
+  font-size: 16px;
+}
+
+/* 装備の行は「置き場所 → 物」の対で並べる。 */
+.status-pair {
+  display: contents;
+}
+
+/*
+ * ── 戦いの手ごたえ（GS-68）─────────────────────────────────
+ *
+ * **点滅・揺れ・数字の 3 つだけ。** 出来事は 1 手ずつ進むので、
+ * 派手にしなくても「いま誰に何が起きたか」は伝わる。長い演出を挟むと、
+ * 打ち合いのたびに待たされて、**飛ばせない待ち時間**になる。
+ *
+ * 数字が消えるのは時間（`HIT_MS`）で、次の手を待たない——
+ * 「文が出る前に数字が消えている」ほうが、重なって読めなくなるより良い。
+ */
+
+/* 食らった側の点滅。**白ではなく赤寄り**にして、回復（緑）と見分ける。 */
+@keyframes mep-hurt {
+  0%, 100% { filter: none; }
+  20%, 60% { filter: brightness(1.9) sepia(1) hue-rotate(-40deg) saturate(4); }
+}
+
+@keyframes mep-healed {
+  0%, 100% { filter: none; }
+  30%, 70% { filter: brightness(1.5) sepia(1) hue-rotate(60deg) saturate(3); }
+}
+
+/* 当たった相手だけを小さく揺らす。**画面ごと揺らすのは味方のときだけ**。 */
+@keyframes mep-jolt {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+/* 旧作の点滅（GS-83）。**半透明 ⇄ 不透明を 100ms ずつ 4 回**（`blinking`）。 */
+@keyframes mep-flicker {
+  0%, 50% { opacity: 0.5; }
+  25%, 75%, 100% { opacity: 1; }
+}
+
+.battle-foe.hit-damage img,
+.battle-foe.hit-damage .battle-foe-name {
+  animation: mep-hurt 320ms steps(1, end), mep-jolt 260ms ease-out, mep-flicker 400ms steps(1, end);
+}
+
+.battle-foe.hit-heal img {
+  animation: mep-healed 400ms steps(1, end);
+}
+
+/* かわしたときは色を変えず、横へ逃げる動きだけ。 */
+.battle-foe.hit-miss img {
+  animation: mep-jolt 300ms ease-out;
+}
+
+.battle-party li.hit-damage img {
+  animation: mep-hurt 320ms steps(1, end), mep-flicker 400ms steps(1, end);
+}
+
+.battle-party li.hit-heal img {
+  animation: mep-healed 400ms steps(1, end);
+}
+
+/* 画面ゆれ。**敵が攻めかかるたび**（GS-83。旧作 `cameras.main.shake(100, 0.02)`）。 */
+@keyframes mep-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-5px, 3px); }
+  40% { transform: translate(4px, -3px); }
+  60% { transform: translate(-3px, -2px); }
+  80% { transform: translate(2px, 2px); }
+}
+
+/* 長さは `BattleView.tsx` の `SHAKE_MS` と同じ。 */
+.battle.shake {
+  animation: mep-shake 260ms ease-out;
+}
+
+/*
+ * ── 攻めかかる見せ場（GS-83）──────────────────────────────
+ * 旧作 `PlayerAttack` / `EnemyAttack` と同じ動き。
+ */
+
+/* 技の絵。**敵の絵の真ん中**に重ねる。コマ送りと大きさは画面が 1 コマずつ書き換える。 */
+.battle-fx {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translate(-50%, -50%);
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 殴られた敵の仰け反り（旧作 `leanBack`: 上へ 20px を 100ms で行って戻る）。 */
+@keyframes mep-lean {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+.battle-foe.lean img {
+  animation: mep-lean 200ms ease-in-out;
+}
+
+/* 攻めかかる敵（旧作 `attackTween`: 少し待ってから、ひと回り大きくなって戻る）。 */
+@keyframes mep-lunge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* 遅れと長さは 3D の `STAGE_LUNGE_DELAY_S` / `STAGE_LUNGE_S` を戦闘画面が変数で渡す（GS-110）。音と揺れは遅れの後に出す（GS-109）。 */
+.battle-foe.lunge img {
+  transform-origin: 50% 100%;
+  animation: mep-lunge var(--lunge-ms, 200ms) ease-in-out var(--lunge-delay, 300ms);
+}
+
+/* 浮かぶ数字。**絵の上**に出して、下の一行（文）と役割を分ける。 */
+@keyframes mep-pop {
+  0% { transform: translate(-50%, 0); opacity: 0; }
+  20% { transform: translate(-50%, -18px); opacity: 1; }
+  80% { transform: translate(-50%, -26px); opacity: 1; }
+  100% { transform: translate(-50%, -34px); opacity: 0; }
+}
+
+.battle-pop {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  transform: translate(-50%, 0);
+  font-size: 30px;
+  font-weight: bold;
+  text-shadow: 0 0 4px #000, 0 2px 6px #000;
+  pointer-events: none;
+  animation: mep-pop 520ms ease-out forwards;
+  z-index: 2;
+}
+
+.pop-damage { color: #ffd0c0; }
+.pop-heal { color: #b6f0a0; }
+.pop-miss { font-size: 20px; color: #dfe6f5; }
+
+/* 数字を絵の上に置くための土台。 */
+.battle-foe { position: relative; }
+.battle-party li { position: relative; }
+
+/* 味方の数字は小さめ（顔アイコンが 40px なので、同じ大きさだと隠れる）。 */
+.battle-party .battle-pop {
+  left: 24px;
+  top: -4px;
+  font-size: 22px;
+}
+
+/*
+ * 状態異常の札（GS-69 / GS-71）。**1 文字だけ**——名前を並べると HP の数が押し出される。
+ * 戦闘の外（メニュー）でも同じ札を使うので、名前は戦闘から外してある。
+ */
+.ail-tags {
+  margin-left: 6px;
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: middle;
+}
+
+.ail-tag {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 2px;
+  border-radius: 4px;
+  background: #7a4bb5;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* 状態異常にかかった瞬間。**紫**にして、ダメージ（赤）・回復（緑）と分ける。 */
+@keyframes mep-ailed {
+  0%, 100% { filter: none; }
+  25%, 75% { filter: brightness(1.4) sepia(1) hue-rotate(220deg) saturate(4); }
+}
+
+.battle-foe.hit-ailment img,
+.battle-party li.hit-ailment img {
+  animation: mep-ailed 400ms steps(1, end);
+}
+
+.pop-ailment { color: #d9b8ff; font-size: 22px; }
+
+/*
+ * ── 隊列（GS-70）─────────────────────────────────────────
+ *
+ * 左の柱に**全員の HP/MP**を並べる（旧作の「コンディション」に当たる）。
+ * **2 人以上のときだけ**出す——1 人なら上の数字と同じことしか言わない。
+ */
+.gmenu-party {
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  list-style: none;
+  border-top: 2px solid rgba(142, 166, 200, 0.4);
+  font-size: 15px;
+}
+
+.gmenu-party li {
+  display: flex;
+  gap: 8px;
+  opacity: 0.6;
+}
+
+/* いま見ている人。**色ではなく濃さ**で示す（左の柱は色数を増やしたくない）。 */
+.gmenu-party li.on {
+  opacity: 1;
+}
+
+.gmenu-party-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gmenu-party-num { flex: none; font-variant-numeric: tabular-nums; }
+
+/* 誰を見るかの列。開いている人は枠で示す（タブと同じ見せ方）。 */
+.menu-pick button.on {
+  border-color: #ffd479;
+}
+
+/*
+ * 歩いているあいだの毒（GS-71）。**会話ウィンドウは使わない**——
+ * 出すたびに歩きが止まると、宿へ急いでいる最中に何度も足を取られる。
+ * 上のほうに一瞬だけ出して、自分で消える札にする。
+ */
+.walk-note {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 5px 16px;
+  border: 2px solid #7a4bb5;
+  border-radius: 8px;
+  background: rgba(10, 16, 32, 0.85);
+  color: #ffd0c0;
+  font-size: 17px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: mep-walk-note 2200ms ease-out forwards;
+}
+
+@keyframes mep-walk-note {
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  10%, 80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -6px); }
+}
+
+/* 並べ替えのボタンを人の一覧から少し離す（GS-72）。押し間違いを減らす。 */
+.menu-pick-gap {
+  flex: none;
+  width: 18px;
+}
+
+/*
+ * ── 戦闘の選択カーソル（GS-77）───────────────────────────────
+ *
+ * **選んでいる行が分からない**のが一番困る（ゲームパッドでは焦点の枠すら出ない）。
+ * 旧作と同じ形にした：**選んでいる行の左に ▶**、ほかの行は沈めて（灰）出す。
+ * ▶ は少し揺らす——止まっていると背景の飾りに見える。
+ */
+/* **折り返さない**（GS-79）。窓が中身に合わせて広がるので、折り返す意味が無い。 */
+.battle-picks button {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  width: 100%;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: #aeb7c8;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/*
+ * 相手を選んでいるあいだの一言（GS-80）。旧作 `EnemySelectWindow` と同じ場所
+ * （画面の真ん中・下の帯のすぐ上）。**一覧は出さない**ので、これが唯一の案内になる。
+ */
+.battle-aim {
+  position: absolute;
+  left: 50%;
+  /* 下の段のすぐ上。 */
+  top: calc(var(--battle-top) - 54px);
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 8px 18px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.78);
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+/* 攻め方を選んでいるあいだの命令の窓（GS-80）。**消さずに沈める**（旧作の `move()`）。 */
+.battle-command.dim {
+  opacity: 0.5;
+}
+
+/*
+ * 攻め方の窓（GS-80）。**その人の顔の近く**に出す——旧作は
+ * 「隊列の窓の x ＋ 顔の x ＋ 200、y ー 75」に置いていた。同じ見え方になるよう、
+ * 顔の右・隊列の窓の少し上へ、その人の枠を基準に置く。
+ */
+.battle-attack {
+  position: absolute;
+  left: 104px;
+  top: -84px;
+  z-index: 6;
+  width: fit-content;
+  min-width: 96px;
+  padding: 10px 10px 10px 8px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  /* 隊列の窓と同じ濃さ（GS-83）。 */
+  background: rgba(25, 25, 112, 0.78);
+}
+
+/*
+ * 技・持ち物の一覧（GS-80）。旧作と同じ**下の帯いっぱい**（左右 200px の内側、
+ * 高さ 200px）に 2 列で並べる。命令の窓より上に重なる。
+ */
+.battle-list {
+  position: absolute;
+  left: 200px;
+  right: 200px;
+  top: var(--battle-top);
+  bottom: 8px;
+  z-index: 6;
+  padding: 10px 16px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  /* 隊列の窓と同じ濃さ（GS-83）。 */
+  background: rgba(25, 25, 112, 0.78);
+}
+
+/* 一覧は 2 列（旧作も 2 列）。増えたら下へ伸びる。 */
+.battle-list .battle-picks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+  align-content: start;
+}
+
+/* もどるの ✖（旧作も窓の右上に置いていた）。 */
+.battle-close {
+  position: absolute;
+  top: -14px;
+  right: -10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 2px solid #8ea6c8;
+  border-radius: 50%;
+  background: rgba(25, 25, 112, 0.78);
+  color: #dfe6f5;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.battle-close:hover {
+  color: #fff;
+  border-color: #ffd479;
+}
+
+/*
+ * 項目の右に出す小さな字（GS-79）。技の MP・持ち物の個数。
+ * **名前と同じ大きさで並べると窓が広くなる**ので、小さくして右へ寄せる。
+ */
+.battle-note {
+  margin-left: auto;
+  padding-left: 10px;
+  white-space: nowrap;
+  font-size: 15px;
+  opacity: 0.75;
+}
+
+/* 選んでいる行。**色と ▶ の両方**で示す（色だけだと沈んだ行と見分けにくい）。 */
+.battle-picks button.on {
+  color: #fff;
+  text-shadow: 0 0 6px rgba(255, 212, 121, 0.5);
+}
+
+/* 押せない行（MP 不足）。**消さずに沈める。** */
+.battle-picks button.off {
+  color: #6b7385;
+  cursor: default;
+}
+
+.battle-cursor {
+  flex: none;
+  /* ▶ の字は 1em に収まらないので**少し広く**取る（詰めると名前にくっつく）。 */
+  width: 1.1em;
+  font-size: 0.85em;
+  opacity: 0;
+  color: #ffd479;
+}
+
+.battle-picks button.on .battle-cursor {
+  opacity: 1;
+  animation: mep-cursor 500ms ease-in-out infinite alternate;
+}
+
+@keyframes mep-cursor {
+  from { transform: translateX(0); }
+  to { transform: translateX(3px); }
+}
+
+.battle-back {
+  margin: 6px 0 0;
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+/*
+ * 出来事の窓（GS-79）。**旧作と同じ場所——命令の窓の上に重ねる**
+ * （旧作 `BattleMessageWindow` は x=250 / y=height-200 に深度 9999999 で置いていた）。
+ * 画面のいちばん下には置かない：下に窓があると敵の居場所がそのぶん狭くなる。
+ * **文の長さで伸びる**ので、長い文は隊列の窓の上にも被る（旧作と同じ）。
+ */
+.battle-message {
+  position: absolute;
+  /* **下の段とぴったり同じ幅**（左 250／右 24）で上に重ねる（GS-79）。
+   * 文の長さで伸ばしていたころは、窓の右端が毎回変わって落ち着かなかった。 */
+  left: 240px;
+  right: 240px;
+  top: var(--battle-top);
+  z-index: 5;
+  /* **隊列の窓とぴったり同じ大きさ**で重ねる（GS-79）。
+   * 文の高さで決めると、窓の下から隊列の窓が覗いて 2 枚に見える。 */
+  min-height: var(--battle-row);
+  padding: 14px 22px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  /* **隊列の窓と同じ濃さ**（GS-83）。濃くすると、この窓だけ浮いて見える。 */
+  background: rgba(25, 25, 112, 0.78);
+  font-size: 24px;
+}
+
+/*
+ * ── 戦闘（GS-78）。旧作に寄せた並びと点滅 ─────────────────────
+ */
+
+/* 引っ込めるとき。**要素は残す**——出し入れで下の段が跳ねないように。 */
+.battle-bottom.hidden,
+.battle-command.hidden,
+.battle-picks.hidden {
+  visibility: hidden;
+}
+
+/*
+ * 顔と数の段（GS-78）。旧作の `PlayerPartyWindow` と同じ組み——
+ * 顔の右に Lv / HP / MP を縦に並べ、数の後ろに帯を敷く。
+ */
+.battle-party li {
+  /* Lv・HP・MP は**顔の下端にそろえる**（GS-82）。窓の高さに余りがあっても、
+   * 顔と数がそろって窓の下に座る。 */
+  align-items: flex-end;
+}
+
+.battle-stats {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 6px;
+  margin: 0;
+  font-size: 17px;
+}
+
+/* 名前（GS-84）。**2 列ぶんを使う**（Lv の欄に押し込むと帯が名前の長さで押し出される）。 */
+.battle-stats .battle-name {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 1;
+}
+
+.battle-stats dt {
+  opacity: 0.7;
+}
+
+/*
+ * 数は帯の中に入っているので**並べる必要が無い**（GS-79）。
+ * `display: flex` のままだと、幅を持たない帯（`width: auto`）が**枠線ぶんまで潰れる**
+ * ——実際に 2px になって帯が消えた。ブロックにして枠いっぱいに敷く。
+ */
+.battle-stats dd {
+  display: block;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 帯（GS-79）。**数は帯の上に重ねる**——旧作も同じ置き方（帯を x+40、数を x+70 の
+ * 同じ y に描いていた）。横に並べると 1 人ぶんの幅が伸びて、仲間が増えたときに収まらない。
+ */
+.battle-gauge {
+  position: relative;
+  display: block;
+  /* **枠の余りに合わせて伸びる**（3 人なら詰まり、2 人なら少し広い）。
+   * 伸ばしっぱなしにすると 1 人のときに帯だけが長くなるので上限を付ける。 */
+  width: auto;
+  max-width: 110px;
+  height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.battle-gauge > span {
+  display: block;
+  height: 100%;
+  background: #3cb371;
+  transition: width 200ms linear;
+}
+
+/* 数は帯の真ん中。**縁を付ける**（旧作は 5px の縁）——帯の色の上でも読める。 */
+.battle-gauge > b {
+  font-size: 15px;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+  text-shadow:
+    1px 1px 0 #2d2d2d,
+    -1px 1px 0 #2d2d2d,
+    1px -1px 0 #2d2d2d,
+    -1px -1px 0 #2d2d2d;
+}
+
+/* 4 割を切ったら赤（旧作と同じ）。**色だけで危ないと分かる。** */
+.battle-gauge.low > span {
+  background: #dc143c;
+}
+
+.battle-gauge.mp > span {
+  background: #4169e1;
+}
+
+/*
+ * 点滅（GS-78）。旧作と同じ**明るさ 255↔128 を 400ms で往復**。
+ * 手を聞かれている人の顔と、狙っている敵の絵に使う——
+ * 「いま誰が」「どれを」を絵の側で示す。
+ */
+@keyframes mep-blink {
+  from { filter: brightness(1); }
+  to { filter: brightness(0.5); }
+}
+
+.battle-party img.acting,
+.battle-foe.picking img,
+.battle-foe.picking .battle-foe-name {
+  animation: mep-blink 400ms linear infinite alternate;
+}
+
+/* 相手を選んでいるあいだは**絵をクリックして選べる**（GS-83）。 */
+.battle-foe.pickable {
+  cursor: pointer;
+}
+
+/* 狙っている敵は帯も明るく（絵が暗いときでも分かるように）。 */
+.battle-foe.picking .battle-bar {
+  border-color: #ffd479;
+}
+
+/*
+ * ── デバッグの道具（GS-91）─────────────────────────────────
+ * 開発モードのときだけ出る。**遊ぶ画面の見た目に混ざらない**よう、窓の色ではなく素の黒で。
+ */
+.debug-battle {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 30;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.debug-battle:hover {
+  background: rgba(0, 0, 0, 0.75);
+  border-color: #ffd479;
+}

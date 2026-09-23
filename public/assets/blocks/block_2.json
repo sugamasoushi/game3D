@@ -1,0 +1,56 @@
+{
+  "format": "mep3d-block",
+  "version": 2,
+  "id": "block_2",
+  "name": "本棚",
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "shape": "box",
+      "ts": "interior",
+      "tile": 0,
+      "faces": {
+        "top": -4857623,
+        "bottom": -4857623,
+        "front": 618,
+        "back": -4857623,
+        "left": -4857623,
+        "right": -4857623
+      },
+      "thickness": [
+        -25,
+        12
+      ],
+      "faceAnchor": {
+        "front": "tl"
+      }
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "z": 0,
+      "shape": "box",
+      "ts": "interior",
+      "tile": 554,
+      "faces": {
+        "top": 554,
+        "bottom": -4857623,
+        "front": 586,
+        "back": -4857623,
+        "left": -4857623,
+        "right": -4857623
+      },
+      "thickness": [
+        -32,
+        12
+      ],
+      "offset": [
+        0,
+        -7,
+        0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "map": "0201_Gensou",
+  "events": [
+    {
+      "id": "EVENT020301",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT020301", "is": true }],
+      "commands": [
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["ここは一体・・・", "今までこんな場所あったっけ？"] },
+            { "who": "lamy", "lines": ["なんか怪しい家があるね", "食べ物あるかな？"] },
+            { "who": "meina", "lines": ["あんたそればっかりね", "", "ん？あれは・・・？"] }
+          ]
+        },
+        { "type": "shot", "kind": "flash", "ms": 500 },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamy", "lines": ["あの家にいるな！？", "待て！！"] },
+            { "who": "meina", "lines": ["入って大丈夫かな・・・"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "setSwitch", "key": "EVENT020301", "value": false }
+      ],
+      "kind": "scenario"
+    }
+  ]
+}

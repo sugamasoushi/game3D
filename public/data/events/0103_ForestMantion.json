@@ -1,0 +1,166 @@
+{
+  "map": "0103_ForestMantion",
+  "events": [
+    {
+      "id": "EVENT010301",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT010301", "is": true }],
+      "commands": [
+        { "type": "setSwitch", "key": "EVENT010301", "value": false },
+        { "type": "playSe", "key": "punch" },
+        { "type": "shot", "id": "impact" },
+        { "type": "turn", "target": "player", "to": "up" },
+        {
+          "type": "move",
+          "target": "player",
+          "to": { "x": "player", "y": 0, "z": 8 },
+          "first": "upDown",
+          "slide": true,
+          "speed": 10
+        },
+        {
+          "type": "place",
+          "target": "npc:lamy_32_40",
+          "at": { "x": "player", "y": "player", "z": 7 },
+          "face": "down"
+        },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["痛っ！！", "・・・何？"] },
+            { "who": "lamyNPC", "lines": ["誰だお前！？", "この家は私が住んでるんだ！！", "返さないからな！"] },
+            { "who": "meina", "lines": ["ごめんごめん！帰るから！"] }
+          ]
+        },
+        {
+          "type": "move",
+          "target": "player",
+          "to": { "x": "player", "y": 0, "z": 9 },
+          "first": "upDown"
+        },
+        {
+          "type": "message",
+          "talk": [{ "who": "lamyNPC", "lines": ["ふんっ・・・取り返すこともしないなんて弱っちいの。", "ま、あたしに勝てるわけないしね！"] }]
+        },
+        {
+          "type": "move",
+          "target": "player",
+          "to": { "x": "player", "y": 0, "z": 8 },
+          "first": "upDown"
+        },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["あ\"？"] }, { "who": "lamyNPC", "lines": ["へぁ？"] }]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "battle", "enemies": ["enemy00"] },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "normal" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamyNPC", "lines": ["ごめんなさい！！", "ゆるしてぇ！！泣"] },
+            { "who": "meina", "lines": ["あ、ごめん。", "・・・なんか思ったより弱いけど、ラミア族だよね？"] },
+            { "who": "lamyNPC", "lines": ["う、うるさいな・・・。", "あんたが強いだけだ！"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "EVENT010302",
+      "trigger": "touch",
+      "when": [{ "switch": "EVENT010301", "is": false }, { "switch": "EVENT010302", "is": true }],
+      "commands": [
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["なんか変わったラミア族だったな。"] },
+            { "who": "meina", "lines": ["お腹すいたし、そろそろ帰ろうかな。"] }
+          ]
+        },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "setSwitch", "key": "EVENT010302", "value": false },
+        { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "transfer", "map": "0101", "at": { "x": 5, "y": 0, "z": 2 }, "face": "up" },
+        { "type": "fade", "to": "in", "ms": 400 }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "man0001",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            { "lines": ["この辺で不思議な家を見なかった？"] },
+            { "who": "meina", "lines": ["近辺に住んでるけどそんなもの無いよ？", "そもそも住んでる人が殆どいないし"] },
+            { "lines": ["おかしいな・・・", "情報は誤りだったかな"] }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "pipo-charachip029"
+    },
+    {
+      "id": "woman0001",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "switch": "EVENT010401", "is": false },
+          "then": [
+            {
+              "type": "message",
+              "talk": [
+                { "lines": ["あの建物には何かいるから", "気を付けなよ"] },
+                { "who": "lamy", "lines": ["マジで！？", "あたし危なかったんだ"] },
+                { "who": "meina", "lines": ["あんたの事だよ・・・"] }
+              ],
+              "style": "bubble"
+            }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                { "lines": ["あの古城から不気味な声が・・・"] },
+                { "who": "meina", "lines": ["なんか言ってた？"] },
+                { "lines": ["「ついに雨風を凌げる！」て聞こえた"] },
+                { "who": "meina", "lines": ["なんだ、ただのホームレスか"] }
+              ],
+              "style": "bubble"
+            }
+          ]
+        }
+      ],
+      "npc": "pipo-charachip030"
+    },
+    {
+      "id": "talk_lamyNPC",
+      "kind": "talk",
+      "trigger": "action",
+      "when": [{ "switch": "EVENT010301", "is": false }],
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamy", "lines": ["あぁもう！どっかいけ！", "私はお腹すいてんだ！！"] },
+            { "who": "meina", "lines": ["元気だなぁ"] }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "lamy_32_40"
+    }
+  ]
+}

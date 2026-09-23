@@ -1,0 +1,38 @@
+{
+  "infomation": "マップの番号 → ファイル名と、そのマップの音・戦闘設定。MapMove などの行き先はこの番号で書く。マップ内に BattleStage=true の点があれば3D舞台となり、battleStage.formationsの候補から戦闘ごとに隊形を選ぶ。イベント戦闘は命令のformationで上書きできる。無ければ battleField の2D背景（未指定時は hill）を使う。",
+  "maps": {
+    "0101": {
+      "file": "0101_home.json",
+      "bgm": "field"
+    },
+    "0102": {
+      "file": "0102_HomeForest.json",
+      "bgm": "field",
+      "bgs": "waterfall",
+      "battleField": "hill",
+      "battleStage": {
+        "formations": [
+          "standard"
+        ]
+      }
+    },
+    "0103": {
+      "file": "0103_ForestMantion.json",
+      "battleField": "forestMansion"
+    },
+    "0104": {
+      "file": "0104_ForestCave.json",
+      "battleField": "forest"
+    },
+    "0105": {
+      "file": "0105_Cave.json"
+    },
+    "0106": {
+      "file": "0106_NextField.json"
+    },
+    "0201": {
+      "file": "0201_Gensou.json",
+      "battleField": "hill"
+    }
+  }
+}
