@@ -1,4 +1,4 @@
-const CACHE = 'samplegame-v1';
+const CACHE = 'samplegame-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (event) => {

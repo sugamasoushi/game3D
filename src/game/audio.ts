@@ -4,8 +4,8 @@
 // 音を増やすのに TS を触らなくてよくする——ファイルを `public/assets/sound/` へ置いて
 // 台帳に 1 行足せば、イベントの `playBgm` / `playSe` から呼べる（GS-21）。
 //
-// 鳴らす仕掛けは `HTMLAudioElement` 1 枚ずつ。WebAudio で組むと音量やループの
-// 細かい制御はできるが、**mp3 を流すだけ**ならこれで足りるし、読み込みも要らない。
+// BGM・環境音は `HTMLAudioElement` で流し、短い効果音は Web Audio へ事前デコードする。
+// モバイルで効果音を鳴らすたびに MP3 の読み込み・デコードを待たないため。
 
 import { assetUrl } from './assets';
 import { bgmAllowed, seAllowed } from './devMode';
@@ -38,6 +38,9 @@ const FADE_STEP = 40;
 let book: Record<string, SoundDef> = {};
 let ui: Partial<Record<UiSound, string>> = {};
 let pending: Promise<void> | null = null;
+let effectContext: AudioContext | null = null;
+const effectBuffers = new Map<string, AudioBuffer>();
+let effectsPending: Promise<void> | null = null;
 
 /** 台帳を読む。**1 回だけ読んで使い回す**。 */
 export function loadSoundBook(): Promise<void> {
@@ -47,6 +50,7 @@ export function loadSoundBook(): Promise<void> {
     .then((file) => {
       book = file?.sounds ?? {};
       ui = file?.ui ?? {};
+      void preloadSoundEffects();
     })
     .catch((error) => {
       console.warn('[sound] 台帳を読めなかった', error);
@@ -55,6 +59,30 @@ export function loadSoundBook(): Promise<void> {
 }
 
 const urlOf = (file: string): string => assetUrl(`${SOUND_DIR}/${encodeURIComponent(file)}`);
+
+function audioContext(): AudioContext | null {
+  if (effectContext || typeof window === 'undefined' || !window.AudioContext) return effectContext;
+  effectContext = new AudioContext({ latencyHint: 'interactive' });
+  return effectContext;
+}
+
+/** ループしない短い音だけを先に取得・デコードする。BGM類はストリーミングのまま。 */
+function preloadSoundEffects(): Promise<void> {
+  if (effectsPending) return effectsPending;
+  const context = audioContext();
+  if (!context) return Promise.resolve();
+  effectsPending = Promise.all(
+    Object.entries(book).filter(([, def]) => !def.loop).map(async ([key, def]) => {
+      const response = await fetch(urlOf(def.file));
+      if (!response.ok) throw new Error(`効果音を読めません: ${key}`);
+      effectBuffers.set(key, await context.decodeAudioData(await response.arrayBuffer()));
+    }),
+  ).then(() => undefined).catch((error) => {
+    effectsPending = null;
+    console.warn('[sound] 効果音の事前読み込みに失敗', error);
+  });
+  return effectsPending;
+}
 
 /** 音量は設定（`options.ts`）が持つ（GS-25）。ここでは掛けるだけ。 */
 const volumeOf = (kind: 'bgm' | 'se'): number =>
@@ -143,6 +171,8 @@ onOptionsChanged(() => {
 export function unlockAudio(): void {
   if (unlocked) return;
   unlocked = true;
+  const context = audioContext();
+  if (context?.state === 'suspended') void context.resume();
   for (const channel of [bgm, bgs]) {
     if (channel.el) void channel.el.play().catch(() => undefined);
   }
@@ -230,6 +260,21 @@ export function playSe(key: string, gain = 1): void {
   if (!unlocked) return;
   // 開発モードで「効果音を鳴らさない」にしているとき（GS-129）。台帳に無い音の印は先に出す。
   if (!seAllowed()) return;
+  const context = audioContext();
+  const buffer = effectBuffers.get(key);
+  if (context && buffer) {
+    // iOS は別アプリから戻ったあと context を再び止めることがある。
+    if (context.state === 'suspended') void context.resume();
+    const source = context.createBufferSource();
+    const volume = context.createGain();
+    source.buffer = buffer;
+    source.loop = def.loop ?? false;
+    volume.gain.value = levelOf(def, gain, 'se');
+    source.connect(volume).connect(context.destination);
+    source.start();
+    return;
+  }
+  // 初回のデコードがまだ終わっていない場合だけ、従来の器で鳴らす。
   const el = voiceOf(key, def);
   el.loop = def.loop ?? false;
   el.volume = levelOf(def, gain, 'se');
