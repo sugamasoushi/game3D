@@ -324,6 +324,13 @@ export interface FieldEffects {
    */
   setReflectSources(objects: readonly Object3D[], hooks?: ReflectHooks): void;
   /**
+   * 映り込みを焼くか（GS-173）。**描画モードの入口**——低負荷では切る。
+   * 切っても水面の波と色はそのまま出る（もう 1 回描くのをやめるだけ）。
+   * 決めるのは呼ぶ側（`GameView`）。ここは受けた札を見るだけにする——
+   * 画面の層（`view/`）が設定を直に読みに行くと、同じ判断が 2 か所に増える。
+   */
+  setMirror(on: boolean): void;
+  /**
    * 空の絵（DEC-316）。**うねり**が環境として引く。書き割りの絵をそのまま渡す。
    * 渡さなければ「うねり」は水の色だけになる。画面をもう一度描かないので**軽い**。
    */
@@ -1163,6 +1170,8 @@ function bakeMirror(
 export function createFieldEffects(): FieldEffects {
   /** 水面へ映すもの（DEC-303）。呼び元が渡す。 */
   let reflectSources: readonly Object3D[] = [];
+  /** 映り込みを焼くか（GS-173）。既定は焼く——切るのは低負荷モードのときだけ。 */
+  let mirrorOn = true;
   /** 焼く前後の下ごしらえ（DEC-311）。 */
   let reflectHooks: ReflectHooks | undefined;
 
@@ -1361,7 +1370,8 @@ export function createFieldEffects(): FieldEffects {
           if (REFLECTS[kind]) {
             mesh.onBeforeRender = (renderer, _scene, drawCamera) => {
               // 映り込みが先（DEC-303）。別の的へ描くので、画面の写しより前に済ませる。
-              const wants = material.uniforms.mirror.value > 0 && reflectSources.length > 0;
+              // 低負荷モードでは焼かない（GS-173）。**シーンをもう 1 回描く**のが重い所。
+              const wants = mirrorOn && material.uniforms.mirror.value > 0 && reflectSources.length > 0;
               if (wants) {
                 const rig = mirrorRig(renderer, material);
                 /*
@@ -1456,6 +1466,9 @@ export function createFieldEffects(): FieldEffects {
       reflectHooks = hooks;
     },
 
+    setMirror(on) {
+      mirrorOn = on;
+    },
     setSkyTexture(texture) {
       // 書き割りは読み込みが非同期なので、毎フレーム呼ばれる。同じなら何もしない。
       if (skyTexture === texture) return;

@@ -6,6 +6,8 @@
 //
 // 開発中は `window.__options`（`GameCanvas` が入れる）から触って試せる。
 
+import type { DrawModeSetting } from './quality';
+
 export interface Options {
   /**
    * 文字送りの速さ（1 文字あたりのミリ秒。GS-25）。**大きいほど遅い。**
@@ -18,6 +20,11 @@ export interface Options {
    * 「話ごとの速さの差」は台帳、「その人に合う速さ」はここで持つ。
    */
   scrollScale: number;
+  /**
+   * 描画モード（GS-173）。`auto` は端末から見当を付ける（スマホ・PWA は低負荷）。
+   * **重い絵を出すかどうかの入口はここ 1 つ**——判断そのものは `quality.ts`。
+   */
+  drawMode: DrawModeSetting;
   /** 音量（0〜1）。全体・BGM と環境音・効果音。 */
   masterVolume: number;
   bgmVolume: number;
@@ -28,6 +35,8 @@ export interface Options {
 export const DEFAULT_OPTIONS: Options = {
   charMs: 40,
   scrollScale: 1,
+  // 既定は自動（GS-173）。**端末を見て決める**ので、スマホは初めから低負荷で始まる。
+  drawMode: 'auto',
   masterVolume: 1,
   bgmVolume: 1,
   seVolume: 1,
@@ -40,6 +49,11 @@ export const options: Options = { ...DEFAULT_OPTIONS };
 
 /** 置き場所（GS-32）。端末ごとの好みなので localStorage。 */
 const STORE_KEY = 'samplegame.options';
+
+/** 知っている描画モードだけ受ける（GS-173）。読めない値は自動に落とす。 */
+function saneDrawMode(value: unknown): DrawModeSetting {
+  return value === 'high' || value === 'light' || value === 'auto' ? value : DEFAULT_OPTIONS.drawMode;
+}
 
 /** 数として読めるものだけ受ける。壊れた値で画面が固まらないように。 */
 function sane(value: unknown, fallback: number, min: number, max: number): number {
@@ -57,6 +71,7 @@ export function loadOptions(): void {
     setOptions({
       charMs: sane(saved.charMs, DEFAULT_OPTIONS.charMs, 5, 200),
       scrollScale: sane(saved.scrollScale, DEFAULT_OPTIONS.scrollScale, 0.5, 4),
+      drawMode: saneDrawMode(saved.drawMode),
       masterVolume: sane(saved.masterVolume, DEFAULT_OPTIONS.masterVolume, 0, 1),
       bgmVolume: sane(saved.bgmVolume, DEFAULT_OPTIONS.bgmVolume, 0, 1),
       seVolume: sane(saved.seVolume, DEFAULT_OPTIONS.seVolume, 0, 1),

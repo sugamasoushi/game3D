@@ -1103,6 +1103,22 @@ body {
   cursor: pointer;
 }
 
+/*
+ * 選ぶつまみ（GS-173。描画モード）。目盛り（`.menu-range`）と同じ列に収まる幅にする。
+ * 窓の色に合わせて素の `select` から作り直す——既定の白い箱だけ浮いて見える。
+ */
+.menu-pick {
+  flex: none;
+  min-width: 190px;
+  padding: 4px 8px;
+  border: 1px solid rgba(142, 166, 200, 0.5);
+  border-radius: 4px;
+  background: rgba(10, 18, 32, 0.9);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
 .menu-hint {
   flex: 1;
   min-width: 0;

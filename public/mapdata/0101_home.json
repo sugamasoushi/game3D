@@ -45297,7 +45297,7 @@
       "id": "光源",
       "name": "光源",
       "kind": "group",
-      "visible": false,
+      "visible": true,
       "guides": true,
       "x": 0,
       "y": 0,
@@ -45458,7 +45458,7 @@
       "distance": 15,
       "orthographic": false
     },
-    "activeLayer": "オブジェクトレイヤー_3",
+    "activeLayer": "光源",
     "height": 0,
     "brush": {
       "shape": "wall",
@@ -49736,7 +49736,7 @@
       "name": "光源",
       "kind": "light",
       "parent": "",
-      "visible": false,
+      "visible": true,
       "opacity": 1,
       "collision": false,
       "properties": [],

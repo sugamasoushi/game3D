@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { DEFAULT_OPTIONS, options, setOptions, type Options } from '../../game/options';
+import { DRAW_MODE_LABELS, drawMode, guessDrawMode, type DrawModeSetting } from '../../game/quality';
 import { DEV_MODE, devOptions, setDevOptions, type DevOptions } from '../../game/devMode';
 import { stopBgm, stopBgs } from '../../game/audio';
 
@@ -107,6 +108,33 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
             onChange={(event) => change({ scrollScale: Number(event.currentTarget.value) / 100 })}
           />
           <span className="menu-value">×{now.scrollScale.toFixed(1)}</span>
+        </li>
+        <li>
+          {/*
+            描画モード（GS-173）。旧作と同じ「ＰＣ（高負荷）／ＳＰ（低負荷）」に、
+            端末から見当を付ける「自動」を足した。**変えたその場で効く**（マップは読み直さない）。
+          */}
+          <span className="menu-label">描画モード</span>
+          <select
+            className="menu-pick"
+            value={now.drawMode}
+            data-pick
+            onChange={(event) => change({ drawMode: event.currentTarget.value as DrawModeSetting })}
+          >
+            {(['auto', 'high', 'light'] as DrawModeSetting[]).map((key) => (
+              <option key={key} value={key}>
+                {DRAW_MODE_LABELS[key]}
+              </option>
+            ))}
+          </select>
+          {/* **いまどちらで描いているか**を必ず出す。「自動」だけだと、重いのか軽いのか分からない。 */}
+          <span className="menu-hint">
+            {now.drawMode === 'auto'
+              ? `いまは ${DRAW_MODE_LABELS[guessDrawMode()]}`
+              : drawMode() === 'light'
+                ? '光源と水面の映り込みを出しません'
+                : '全部出します'}
+          </span>
         </li>
         {volume('全体', 'masterVolume')}
         {volume('BGM', 'bgmVolume')}

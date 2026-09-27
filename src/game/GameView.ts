@@ -50,6 +50,8 @@ import { createInput } from './input';
 import { createPlayer, type Facing, type Player } from './player';
 import { loadActorBook, sheetOf, wanderOf, WANDER_DEFAULT, type WanderDef } from './actors';
 import { canWalk, useUi } from '../ui/store';
+import { heavyOn } from './quality';
+import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { withoutHiddenLayers } from './hiddenLayers';
@@ -551,6 +553,12 @@ export function createGameView(
     solidCellAt: (x, y, z) => base.solidCellAt(x, y, z) || npcBlocks(x, y, z),
   });
   let mapDef: MapDef | null = null;
+  /**
+   * そのマップで**実際に出す**配置光源（GS-173）。低負荷モードでは空——
+   * 光も光の玉も出さず、環境光だけで照らす。**間引きの判断はここだけ**で、
+   * 呼ぶ側（マップ・プレイヤー・NPC）は同じ一覧を受け取る。
+   */
+  const litLights = (map: MapDef | null) => (map && heavyOn('pointLights') ? (map.pointLights ?? []) : []);
   let buildGen = 0;
   /** 奈落に落ちたときに戻す位置。 */
   const spawnPoint = new Vector3();
@@ -723,8 +731,10 @@ export function createGameView(
         mapModels.apply(models, map.grid?.unit ?? 1, map.lighting, map.camera, map.pointLights);
         built.setSunModels([mapModels.group]);
       }
-      built.setPointLights(map.pointLights ?? []);
+      built.setPointLights(litLights(map));
       fieldEffects.setVolumes(readFieldVolumes(map), map.grid?.unit ?? 1);
+      // 映り込みを焼くか（GS-173）。マップを読むたびに渡し直す——描画モードは途中で変わる。
+      fieldEffects.setMirror(heavyOn('mirror'));
       // 画面エフェクト（DEC-389）。**隠したレイヤーとは無関係**——置き場所を持たない。
       screenEffects.set(map.screenEffects ?? []);
 
@@ -762,7 +772,7 @@ export function createGameView(
         player.spawn(collision, map.bounds);
       }
       // キャラをマップの光に合わせる（GF-3.7）。
-      player.setLighting(map.lighting ?? {}, map.pointLights ?? [], unit, built.cameraFx);
+      player.setLighting(map.lighting ?? {}, litLights(map), unit, built.cameraFx);
       // ブロックの投射影をキャラにも効かせる（GC-34）。
       built.attachShadowMask(player.bodyMaterial);
       built.bindLightWalls(player.bodyMaterial);
@@ -815,7 +825,7 @@ export function createGameView(
         const spot = standOn(def.x, def.y, def.z, unit);
         actor.placeAt(spot.x, spot.y, spot.z);
         actor.face(DIR_FACE[def.facing]);
-        actor.setLighting(map.lighting ?? {}, map.pointLights ?? [], unit, scenery.cameraFx);
+        actor.setLighting(map.lighting ?? {}, litLights(map), unit, scenery.cameraFx);
         scenery.attachShadowMask(actor.bodyMaterial);
         scenery.bindLightWalls(actor.bodyMaterial);
         actor.setShadowField(field.solid, field.surface, field.top, field.selfSolid);
@@ -1808,6 +1818,22 @@ export function createGameView(
     step(dt);
   });
 
+  /**
+   * 描画モードが変わったときに組み直す（GS-173）。**マップを読み直さない**——
+   * 設定画面を閉じたら戻る、では「変えた効果」が分からない。
+   * 重い描画を足したら、**ここへも 1 行足す**（設定を変えたその場で効くように）。
+   */
+  const applyDrawMode = () => {
+    fieldEffects.setMirror(heavyOn('mirror'));
+    if (!built || !mapDef) return;
+    const lights = litLights(mapDef);
+    const unit = mapDef.grid?.unit ?? 1;
+    built.setPointLights(lights);
+    player?.setLighting(mapDef.lighting ?? {}, lights, unit, built.cameraFx);
+    for (const npc of npcs.values()) npc.actor.setLighting(mapDef.lighting ?? {}, lights, unit, built.cameraFx);
+  };
+  const stopOptionWatch = onOptionsChanged(applyDrawMode);
+
   return {
     load,
     setMode,
@@ -2284,6 +2310,7 @@ export function createGameView(
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('contextmenu', onContext);
       input.dispose();
+      stopOptionWatch();
       player?.dispose();
       for (const npc of npcs.values()) npc.actor.dispose();
       npcs.clear();
