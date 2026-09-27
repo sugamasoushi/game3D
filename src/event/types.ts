@@ -4,8 +4,14 @@
 // 命令の中身（実際に動く関数）は `commands.ts` の表に持つ。
 // だからイベントエディタは**この型どおりの入力欄を出すだけ**で済む。
 
-/** 動かす相手。`this` は起動したイベント自身、`npc:<id>` はマップ上の名前。 */
-export type ActorRef = 'player' | 'this' | `npc:${string}`;
+/**
+ * 動かす相手。主人公か、マップに置いた物の名前（`npc:<id>`）。
+ *
+ * **`this`（話しかけた相手）はやめた**（GS-162）。踏む・入ったら動くイベントでは
+ * 誰も指さず、**黙って動かない**だけだった——画面では「命令を書いたのに何も起きない」
+ * としか見えない。名指しなら取り違えようがない。
+ */
+export type ActorRef = 'player' | `npc:${string}`;
 
 /**
  * ブロックの面（GS-53）。**描画側の型は引かない**——イベントの型は
@@ -33,8 +39,15 @@ export interface TalkLine {
 export type TalkStyle = 'window' | 'bubble';
 
 export type EventCommand =
-  /** 会話。`face` は表情キー（`characterdata` の `normal` / `smile` …）。 */
-  | { type: 'message'; talk: TalkLine[]; face?: string; style?: TalkStyle }
+  /**
+   * 会話。`face` は表情キー（`characterdata` の `normal` / `smile` …）。
+   *
+   * **`hold` を書くと、押さなくても時間で送る**（GS-172。ミリ秒）。旧作の
+   * 「ラミィが仲間になった！！」のような**お知らせの窓**——読ませるだけで、
+   * 選ばせも待たせもしないものに使う。数えるのは**文字が出そろってから**なので、
+   * 長い文でも途中で消えない。押せばそれより早く送れる。
+   */
+  | { type: 'message'; talk: TalkLine[]; face?: string; style?: TalkStyle; hold?: number }
   /**
    * 選択肢。`choices` の並びが答えの番号になり、`branches` の同じ番号を実行する。
    * `cancel` はキャンセルで選ばれる番号（省略なら不可）。
@@ -58,27 +71,89 @@ export type EventCommand =
    * 行き先は `place` と同じ書き方（GS-154）。軸に `"player"` と書けば**プレイヤーと同じ座標**
    * ——自分を動かすときは「その軸は動かさない」の意味になる（殴られて**真後ろへ**飛ぶ、など）。
    */
-  | {
+  /**
+   * **書き方は 2 通り**（GS-158）。どちらも歩き方（速さ・滑らせる・待つ）は同じ。
+   *
+   *   1. **行き先（座標）**: `to` にマス。上に書いたとおり、道順はゲームが組む
+   *   2. **向きと歩数**: `dir` に向き、`cells` にマス数。曲がらずまっすぐ歩く
+   *
+   * 2 の `relative` を入れると、`dir` は**向いている方から見た前後左右**になる
+   * （`up` が前、`down` が後ろ、`left` / `right` はその人から見た左右）。
+   * **向きは動き出す前に 1 度だけ解く**——ふつうの歩きは進む方を向くので、
+   * 1 歩ごとに解き直すと「後ろへ 3 マス」が 1 歩目で折り返してしまう。
+   */
+  | ({
       type: 'move';
       /** 向きも足も動かさずに運ぶ（GS-155）。殴られて後ろへ飛ぶ、氷で滑る。 */
       slide?: boolean;
       target: ActorRef;
-      to: PlaceAt;
-      first?: 'leftRight' | 'upDown';
       speed?: number;
       wait?: boolean;
-    }
+    } & (
+      | { to: PlaceAt; first?: 'leftRight' | 'upDown'; dir?: undefined; cells?: undefined; relative?: undefined }
+      | { dir: Step; cells?: number; relative?: boolean; to?: undefined; first?: undefined }
+    ))
   /** 向きだけ変える。 */
   | { type: 'turn'; target: ActorRef; to: Step }
+  /**
+   * その場で足踏み（GS-168）。**進まずに足だけ動かす。**
+   * もがく・慌てる・走り出す前の溜め・その場で駆ける、といった絵に使う。
+   *
+   * `dir` を書くとその向きを向いて踏む（省くと今の向きのまま）。
+   * `steps` は**足を踏み替える回数**（省くと 4）。かかる時間はその絵の台帳しだい
+   * （`actors.json` の `walk.ms`。既定 160ms／歩、走ると速い）。
+   * `wait` を false にすると踏み終わるのを待たない。
+   *
+   * **`always` で「止めるまでずっと」**（GS-169）。数を数えないので**待たない**——
+   * そのまま次の命令へ進み、`stop` を書いた所（かイベントの終わり）で止まる。
+   * `stop` は**そのキャラの足踏みを止める**。マップの `StepInPlace`（常時の足踏み）も
+   * これで止まる（次にマップを読み直すまで）。
+   */
+  | {
+      type: 'stepInPlace';
+      target: ActorRef;
+      dir?: Step;
+      steps?: number;
+      run?: boolean;
+      wait?: boolean;
+      always?: boolean;
+      stop?: boolean;
+    }
   /**
    * その場に置き直す（GS-137）。**歩かず一瞬で移る。** `at` はマス（整数）。
    * 「画面の外から歩いて来る」を作るためのもの——出番の前に道の奥へ置き、そこから `move` で歩かせる。
    * マップに置いた場所は**書き換えない**ので、入り直せば元の場所に戻る。
    *
+   * **プレイヤーも置ける**（GS-163）。カメラの追い先も一緒に移るので、置いた先から滑ってこない。
+   * 別のマップへ移すのは `transfer`。
+   *
+   * 画面を動かしたくないときは、手前で **`cameraFollow`**（カメラ追従）を切る（GS-166）。
+   *
    * 軸ごとに **`"player"`** と書くと**主人公と同じ座標**に合わせる（GS-154）。
    * 旧作の `setPosition(player.x, 902)`（横は主人公に合わせ、奥行きは決め打ち）がこれに当たる。
    */
   | { type: 'place'; target: ActorRef; at: PlaceAt; face?: Step }
+  /**
+   * カメラ追従（GS-166）。**主人公を追うかどうかを切り替える。** 既定は追う。
+   *
+   * 切ると画面はその場に止まり、`on: true` で戻すとその場で主人公へ寄る。
+   * **戻し忘れても、イベントの終わりとマップの読み直しで既定へ戻る。**
+   *
+   * 移動の欄ではなく**別の命令**にしてあるのは、`置き直す` を 2 つ並べたときに
+   * 2 つ目の「追う」で画面が跳ね返ってしまうため（GS-165 の作りの取り消し）。
+   * 止めたいところで切り、動かしたいところで戻す——**書いた所だけが効く**。
+   */
+  | { type: 'cameraFollow'; on: boolean }
+  /**
+   * 消す（GS-157）。**その場ですぐ居なくなる。** 見送った鶏、倒したイベント敵、去っていく人。
+   *
+   * 消えたことは**そのキャラ自身の覚え**（`self:消えた`）に残るので、
+   * **マップを読み直しても戻ってこない**。逆に出すのは「置き直す」（`place`）で、
+   * こちらは `self:出た` を残す。**マップに `HideIf` とイベント名を書く必要はない。**
+   *
+   * `remember` を切ると覚えない——その場だけ消し、マップに入り直せば元どおり立っている。
+   */
+  | { type: 'hide'; target: ActorRef; remember?: boolean }
   /**
    * キャライラスト。`slot` は左・中・右。`who` を空にする（`hide`）とその絵を引っ込める。
    *
@@ -93,10 +168,20 @@ export type EventCommand =
    * `from` は入ってくる向き（`none` で滑らせない）。省くと置いた側から滑り込む。
    *
    * `flip` は**左右反転**（GS-146）。右に置いた絵を左向きにしたいときに使う。
+   *
+   * `x` / `y` は置き場所からのずれ（GS-170）。**画面の幅・高さに対する割合（％）**で、
+   * `x` は右が＋、`y` は上が＋。3 枚並べて重ねるときの寄せに使う
+   * （旧作の「じいちゃんは主人公の少し左」= 中央から少し右へ寄せる）。
+   * 場面絵（`scene`）は画面いっぱいなので効かない。
    */
   | {
       type: 'portrait';
-      slot: 'left' | 'center' | 'right';
+      /**
+       * 置き場所。`scene` だけ別物で、**イベントイラスト**（GS-161）——
+       * `assets/img/Event/` の一枚絵を**画面いっぱい**に出す（立ち絵の後ろ）。
+       * こちらは `image` に**拡張子まで**書く（`20250603.jpg`）。
+       */
+      slot: 'left' | 'center' | 'right' | 'scene';
       id?: string;
       who?: string;
       face?: string;
@@ -106,6 +191,10 @@ export type EventCommand =
       ms?: number;
       hide?: boolean;
       instant?: boolean;
+      /** 横のずれ（画面の幅に対する％。右が＋。GS-170）。 */
+      x?: number;
+      /** 高さのずれ（画面の高さに対する％。上が＋。GS-170）。 */
+      y?: number;
     }
   /**
    * 出ているキャライラストに効果をかける（GS-143）。**`id` で 1 枚を指す**。
@@ -167,6 +256,23 @@ export type EventCommand =
    * 総時間で決めると、行数の少ない読み物ほど速く流れて読めない。
    */
   | { type: 'scroll'; lines: string[]; speed?: number; dim?: number }
+  /**
+   * テロップ（GS-171）。**画面を黒で覆って、真ん中に一言だけ**出す。
+   * 旧作の「━ 翌朝 ━」——時間や場所が飛んだことを知らせるためのもの。
+   *
+   * **会話ウィンドウは使わない。** 窓に入れると「地の文を喋る人」が居るように見える。
+   * 黒は一瞬で置き、**クリック（か決定キー）で薄れて消える**。消え切ってから次の命令へ進むので、
+   * 前後に `fade` を書く必要はない——この命令ひとつで暗転から明けまで済む。
+   *
+   * `ms` は消えるのにかける時間（省くと 800。旧作と同じ）。`dim` は黒さ（省くと 1＝真っ黒）。
+   * `size` は字の大きさ（画素。省くと 56。旧作と同じ）。
+   *
+   * **消し方は 2 通り**（GS-172）。`click` を `false` にすると**押しても消えず**、
+   * `hold`（ミリ秒）で勝手に消える——旧作の「1 秒置いて薄める」がこちら。
+   * `click` を切って `hold` も書かなければ 1000 とみなす（**押せない・消えない**を作らないため）。
+   * 両方在れば**早いほうが勝つ**（待ちきれない人は押して飛ばせる）。
+   */
+  | { type: 'telop'; lines: string[]; ms?: number; dim?: number; size?: number; click?: boolean; hold?: number }
   /** 音。 */
   | { type: 'playSe'; key: string; volume?: number }
   | { type: 'playBgm'; key: string; volume?: number }

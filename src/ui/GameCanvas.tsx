@@ -127,17 +127,21 @@ export default function GameCanvas() {
       const screen = screenRef.current;
       if (!stage || !screen) return;
       const viewport = window.visualViewport;
-      const width = viewport?.width ?? stage.clientWidth;
-      const height = viewport?.height ?? stage.clientHeight;
+      // visualViewport と CSS の表示領域が異なる端末でも、狭い方へ収める。
+      const width = Math.min(stage.clientWidth, viewport?.width ?? stage.clientWidth);
+      const height = Math.min(stage.clientHeight, viewport?.height ?? stage.clientHeight);
       const scale = Math.min(1, width / 1280, height / 720);
       screen.style.setProperty('--game-scale', String(scale));
     };
     fit();
     window.addEventListener('resize', fit);
     window.visualViewport?.addEventListener('resize', fit);
+    const observer = new ResizeObserver(fit);
+    observer.observe(stageRef.current!);
     return () => {
       window.removeEventListener('resize', fit);
       window.visualViewport?.removeEventListener('resize', fit);
+      observer.disconnect();
     };
   }, []);
 
@@ -592,6 +596,8 @@ export default function GameCanvas() {
       if (!(error instanceof GameOver)) throw error;
     } finally {
       viewRef.current?.stopCameraCue();
+      // カメラ追従は既定へ戻す（GS-166）。切ったまま歩き出すと、画面が付いてこない。
+      viewRef.current?.setCameraFollow(true);
       bridge.setScene({});
       useUi.getState().setTalk(null);
       useUi.getState().setChoices(null);
@@ -768,6 +774,11 @@ export default function GameCanvas() {
         seek: (ms: number) => view.seekCameraCue(ms),
         pause: (paused: boolean) => view.pauseCameraCue(paused),
         stop: () => view.stopCameraCue(),
+        // マス目と、押したマスの知らせ（GS-167）。**カメラエディタ専用**——
+        // 遊ぶ画面では出ないし、拾い先を入れないかぎりクリックは今までどおり。
+        grid: (on: boolean) => view.setEditorGrid(on),
+        pickCell: (handler: ((cell: { x: number; y: number; z: number }) => void) | null) =>
+          view.setCellPicker(handler),
         // 戦闘（ビルボード仮配置・戦闘の実行）はカメラエディタから削除した（GS-115。カメラ演出はイベント用）。
         async event(id: string) {
           idle(); view.unstageBattle();

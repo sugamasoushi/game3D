@@ -16,10 +16,18 @@ import type { ActorRef, BlockFace, EventCommand, EventDef, PlaceAt, Step, TalkSt
  * **ここに無いことはイベントにはできない**——コマンド表を増やすときは、まずここへ足す。
  */
 export interface EventContext {
-  /** 会話を出して、読み終わるまで待つ。`style` で吹き出しにできる（GS-23）。 */
-  message(talk: { who?: string; lines: string[] }[], face?: string, style?: TalkStyle): Promise<void>;
+  /**
+   * 会話を出して、読み終わるまで待つ。`style` で吹き出しにできる（GS-23）。
+   * `hold`（ミリ秒）を渡すと、**文字が出そろってからその時間で勝手に送る**（GS-172）。
+   */
+  message(talk: { who?: string; lines: string[] }[], face?: string, style?: TalkStyle, hold?: number): Promise<void>;
   /** 流れる文字。読み終わる（か飛ばされる）まで待つ。`speed` は 1 行ぶんの時間（GS-144）。 */
   scroll(lines: string[], speed: number, dim: number): Promise<void>;
+  /**
+   * テロップ（GS-171）。**画面を黒で覆って真ん中に一言**出し、薄れて消えるまで待つ。
+   * `click` が偽なら押しても消えず、`hold`（ミリ秒）が経つと消え始める（GS-172）。
+   */
+  telop(lines: string[], look: { ms: number; dim: number; size?: number; click: boolean; hold?: number }): Promise<void>;
   /** 選択肢を出して、選ばれた番号を返す。 */
   choice(choices: string[], cancel?: number): Promise<number>;
   /** 1 マス歩く。歩き終わったら返る。`slide` は向きも足も動かさずに運ぶ（GS-155）。 */
@@ -27,10 +35,38 @@ export interface EventContext {
   /** 向きだけ変える。 */
   turn(target: ActorRef, dir: Step): void;
   /**
-   * その場に置き直す（GS-137）。歩かず一瞬で移す。居ない相手なら何もしない。
-   * 軸に `"player"` と書けば**主人公と同じ座標**（GS-154）。解くのは実行機側。
+   * その場で足踏み（GS-168）。**進まない。** `dir` を省くと今の向きのまま踏む。
+   * 踏み終わったら返る。居ない相手なら何もしない。
+   */
+  stepInPlace(target: ActorRef, dir: Step | undefined, steps: number, run: boolean): Promise<void>;
+  /**
+   * 足踏みを**止めるまで続ける**（GS-169）。数を数えないので**すぐ返る**。
+   * 止めるのは `stopStepInPlace`（かイベントの終わり・マップの読み直し）。
+   */
+  keepStepInPlace(target: ActorRef, dir: Step | undefined, run: boolean): void;
+  /** 足踏みを止める（GS-169）。踏んでいなければ何もしない。 */
+  stopStepInPlace(target: ActorRef): void;
+  /**
+   * その場に置き直す（GS-137 / GS-163）。歩かず一瞬で移す。居ない相手なら何もしない。
+   * **プレイヤーも受ける。** 軸に `"player"` と書けば**主人公と同じ座標**（GS-154）
+   * ——プレイヤー自身を置くときは「その軸は動かさない」の意味になる。解くのは実行機側。
    */
   place(target: ActorRef, at: PlaceAt, face?: Step): void;
+  /**
+   * カメラが主人公を追うかどうか（GS-166）。**その時点から効く。**
+   * 戻すのは `on: true` の書き直しか、イベントの終わり（マップの読み直しでも戻る）。
+   */
+  cameraFollow(on: boolean): void;
+  /**
+   * 消す（GS-157）。**その場ですぐ居なくなる。** `remember` が真なら、
+   * そのキャラ自身の覚えに残してマップを読み直しても出さない。居ない相手なら何もしない。
+   */
+  hide(target: ActorRef, remember: boolean): void;
+  /**
+   * いま向いている方（GS-158）。**前後左右で歩かせる**ときだけ使う。
+   * 居ない相手なら null。
+   */
+  facingOf(target: ActorRef): Step | null;
   /**
    * いまの場所から行き先のマスまでの道順（GS-138 / GS-139）。**歩かせはしない**——
    * 1 歩ずつ `step` に渡すのは呼ぶ側。居ない相手なら空。
@@ -51,6 +87,9 @@ export interface EventContext {
     flip?: boolean;
     ms?: number;
     instant?: boolean;
+    /** 置き場所からのずれ（GS-170）。画面の幅・高さに対する％。 */
+    x?: number;
+    y?: number;
   }): Promise<void>;
   /** 出ているキャライラストに効果をかける（GS-143）。知らない `id` なら何もしない。 */
   imageFx(
@@ -137,8 +176,31 @@ export interface EventContext {
  */
 export const SCROLL_SPEED = 1800;
 
+/**
+ * テロップが消えるのにかける既定の時間（ミリ秒。GS-171）。
+ * 旧作の「━ 翌朝 ━」と同じ 800ms——これより速いと場面が切り替わった感じが出ない。
+ */
+export const TELOP_MS = 800;
+
+/**
+ * 押さずに消すときの、出しておく時間（ミリ秒。GS-172）。
+ * 旧作の「1 秒置いてから薄める」に合わせた。
+ */
+export const TELOP_HOLD = 1000;
+
 /** 命令 1 つを動かす関数。 */
 type Handler<T extends EventCommand = EventCommand> = (ctx: EventContext, cmd: T) => Promise<void>;
+
+/** 画面の向きを時計回りに並べたもの（GS-158）。前後左右を解くのに使う。 */
+const CLOCK: Step[] = ['up', 'right', 'down', 'left'];
+
+/**
+ * 向いている方から見た前後左右 → 画面の向き（GS-158）。
+ * `up` が前、`right` がその人の右、`down` が後ろ、`left` が左。
+ * 下を向いて立っている人の「前」は画面の下、というふうに回す。
+ */
+const turnFrom = (facing: Step, relative: Step): Step =>
+  CLOCK[(CLOCK.indexOf(facing) + CLOCK.indexOf(relative)) % 4];
 
 /**
  * 命令の表。**これがイベントエディタに出せる命令の一覧そのもの**。
@@ -146,11 +208,25 @@ type Handler<T extends EventCommand = EventCommand> = (ctx: EventContext, cmd: T
  */
 const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { type: K }>> } = {
   message: async (ctx, cmd) => {
-    await ctx.message(cmd.talk, cmd.face, cmd.style);
+    await ctx.message(cmd.talk, cmd.face, cmd.style, cmd.hold);
   },
 
   scroll: async (ctx, cmd) => {
     await ctx.scroll(cmd.lines, cmd.speed ?? SCROLL_SPEED, cmd.dim ?? 0.5);
+  },
+
+  // テロップ（GS-171）。**押されるまで出したまま**、薄れ切ってから次へ。
+  // 既定は旧作と同じ（真っ黒・800ms で薄れる）。
+  telop: async (ctx, cmd) => {
+    const click = cmd.click !== false;
+    await ctx.telop(cmd.lines, {
+      ms: cmd.ms ?? TELOP_MS,
+      dim: cmd.dim ?? 1,
+      size: cmd.size,
+      click,
+      // **押せないなら必ず時間で消す**（GS-172）。どちらも無いと、そこで話が止まる。
+      hold: cmd.hold ?? (click ? undefined : TELOP_HOLD),
+    });
   },
 
   choice: async (ctx, cmd) => {
@@ -171,10 +247,17 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   // ここが質問の核心。JSON の `route` を 1 歩ずつ関数呼び出しに変える。
   // `wait: false` なら待たずに次の命令へ進む（歩かせながら喋る、ができる）。
   move: async (ctx, cmd) => {
+    // **歩く前に道順を決める**（GS-158）。向きと歩数で書いた形は、
+    // 進む方を向いてしまう前に 1 度だけ解く——でないと「後ろへ 3 マス」が折り返す。
+    const route: Step[] = cmd.dir
+      ? new Array(Math.max(1, Math.trunc(cmd.cells ?? 1))).fill(
+          cmd.relative ? turnFrom(ctx.facingOf(cmd.target) ?? 'down', cmd.dir) : cmd.dir,
+        )
+      : // 道順はゲームが組む（GS-138）。カメラの方位で向きが回るので、
+        // 「どの向きに何歩か」はイベントからは決められない。
+        ctx.routeTo(cmd.target, cmd.to, cmd.first);
     const walk = async () => {
-      // 道順はゲームが組む（GS-138）。カメラの方位で向きが回るので、
-      // 「どの向きに何歩か」はイベントからは決められない。
-      for (const dir of ctx.routeTo(cmd.target, cmd.to, cmd.first)) {
+      for (const dir of route) {
         await ctx.step(cmd.target, dir, cmd.speed, cmd.slide);
       }
     };
@@ -186,8 +269,35 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
     ctx.turn(cmd.target, cmd.to);
   },
 
+  // その場で足踏み（GS-168）。既定は 4 歩、踏み終わるまで待つ。
+  stepInPlace: async (ctx, cmd) => {
+    // 止める（GS-169）。**歩数より先に見る**——「止める」に歩数が残っていても止まる。
+    if (cmd.stop === true) {
+      ctx.stopStepInPlace(cmd.target);
+      return;
+    }
+    // ずっと踏む（GS-169）。終わりが無いので**待たない**。
+    if (cmd.always === true) {
+      ctx.keepStepInPlace(cmd.target, cmd.dir, cmd.run === true);
+      return;
+    }
+    const march = ctx.stepInPlace(cmd.target, cmd.dir, Math.max(1, Math.trunc(cmd.steps ?? 4)), cmd.run === true);
+    if (cmd.wait === false) void march;
+    else await march;
+  },
+
   place: async (ctx, cmd) => {
     ctx.place(cmd.target, cmd.at, cmd.face);
+  },
+
+  // カメラ追従（GS-166）。**書いた所だけが効く**——切ったら戻すまで画面は止まったまま。
+  cameraFollow: async (ctx, cmd) => {
+    ctx.cameraFollow(cmd.on);
+  },
+
+  // 消す（GS-157）。**覚えるのが既定**——見送った鶏が入り直すと戻っていたら話が合わない。
+  hide: async (ctx, cmd) => {
+    ctx.hide(cmd.target, cmd.remember ?? true);
   },
 
   portrait: async (ctx, cmd) => {
@@ -203,6 +313,8 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
       flip: cmd.flip,
       ms: cmd.ms,
       instant: cmd.instant,
+      x: cmd.x,
+      y: cmd.y,
     });
   },
 

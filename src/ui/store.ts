@@ -8,6 +8,12 @@ import { create } from 'zustand';
 export interface Talk {
   /** 名前欄。空なら地の文。 */
   name: string;
+  /**
+   * 喋っている人のキー（GS-170。`characterdata.json` の名前）。
+   * **立ち絵の前後と明るさをこれで決める**——名前欄（`name`）は表示用の文字なので、
+   * 「ラミィ」と「ラミィ？」のように出し分けると絵と結び付かなくなる。
+   */
+  who?: string;
   /** 本文の行。 */
   lines: string[];
   /**
@@ -17,6 +23,12 @@ export interface Talk {
   bubble?: string;
   /** 顔アイコンの URL（吹き出しのとき）。無ければ絵なし。 */
   icon?: string;
+  /**
+   * **押さずに送る時間**（ミリ秒。GS-172）。旧作の「お知らせの窓」——
+   * 数えるのは**文字が出そろってから**なので、長い文でも途中で消えない。
+   * 無ければ今までどおり、押されるまで出したまま。
+   */
+  hold?: number;
 }
 
 /** 流れる文字（GS-23）。オープニングのような読み物。 */
@@ -62,7 +74,21 @@ export interface Portrait {
   id: string;
   /** 置き場所（left / right / center）。同じ場所に重ねても構わない——見分けるのは `id`。 */
   slot: string;
+  /**
+   * 誰の絵か（GS-170）。**会話中の絵を手前に出す**ための手掛かり。
+   * フリーイラスト（`image`）や場面絵には無い——そちらは喋らないので暗くもしない。
+   */
+  who?: string;
   src: string;
+  /**
+   * 置き場所からのずれ（GS-170）。**画面の幅・高さに対する割合（％）**。
+   * `x` は右が＋、`y` は上が＋。px ではなく割合にしてあるのは、
+   * 画面の寸法（1280×720）を縮めて出しても立ち位置が変わらないようにするため。
+   *
+   * **ずれは `left` / `bottom` で効かせる**（`transform` は出入り・揺れ・拡大が使っている）。
+   */
+  x: number;
+  y: number;
   /** 入ってきた向き。`none` は滑らせずにその場へ出す。帰る向きの既定にもなる。 */
   from: PortraitSide | 'none';
   /** 左右反転（GS-146）。右に置いた絵を左向きにするなど。 */
@@ -87,6 +113,51 @@ export interface Portrait {
   shakeAt: number;
   /** いまの動きにかける時間（ミリ秒）。 */
   ms: number;
+}
+
+/**
+ * テロップ（GS-171）。**画面いっぱいの黒に、真ん中へ一言だけ**出す。
+ * 旧作の「━ 翌朝 ━」——時間や場所が飛んだことを、会話ウィンドウを使わずに知らせる。
+ */
+export interface Telop {
+  lines: string[];
+  /** 背景の黒さ（0〜1）。1 で真っ黒。 */
+  dim: number;
+  /** 消えるのにかける時間（ミリ秒）。消え始めてからこのあいだ薄れる。 */
+  ms: number;
+  /** 字の大きさ（画素。GS-172）。省くと 56（旧作と同じ）。 */
+  size?: number;
+  /** 押して消せるか（GS-172）。偽なら時間（`hold`）でだけ消える。 */
+  click: boolean;
+  /** 出しておく時間（ミリ秒。GS-172）。無ければ押されるまで出したまま。 */
+  hold?: number;
+}
+
+/**
+ * 立ち絵の前後と明るさ（GS-170）。**喋っている人を手前に、ほかの人を少し暗く。**
+ *
+ * 画面側（`MessageWindow`）から切り出してあるのは**試せるようにする**ため——
+ * 「誰の絵を暗くするか」は見た目の話に見えて、間違えると**喋っている人が暗くなる**。
+ *
+ * - `talking` …… その人が喋っている。いちばん手前に出す
+ * - `dimmed` …… **人の絵が 2 枚以上**出ていて、その人は喋っていない
+ *
+ * `who` を持たない絵（フリーイラスト・場面絵）はどちらにもしない——喋らないので。
+ * 1 枚しか出ていないときも暗くしない（比べる相手が居ない）。
+ */
+export function portraitLook(
+  entry: Pick<Portrait, 'who'>,
+  speaker: string,
+  faces: number,
+): { talking: boolean; dimmed: boolean } {
+  if (!entry.who) return { talking: false, dimmed: false };
+  if (entry.who === speaker) return { talking: true, dimmed: false };
+  return { talking: false, dimmed: !!speaker && faces > 1 };
+}
+
+/** 出ている**人の絵**の数（GS-170）。場面絵やフリーイラストは数えない。 */
+export function faceCount(portraits: Pick<Portrait, 'who'>[]): number {
+  return portraits.filter((entry) => entry.who).length;
 }
 
 /** いま何の画面か（GS-27）。タイトルとゲームを行き来する。 */
@@ -130,6 +201,8 @@ interface UiState {
   settings: boolean;
   talk: Talk | null;
   scroll: ScrollText | null;
+  /** 出しているテロップ（GS-171）。null なら出していない。 */
+  telop: Telop | null;
   choices: string[] | null;
   /** 立ち絵。同じ `slot` は 1 枚だけ。 */
   portraits: Portrait[];
@@ -157,9 +230,20 @@ interface UiState {
   setSettings(open: boolean): void;
   setTalk(talk: Talk | null): void;
   setScroll(scroll: ScrollText | null): void;
+  setTelop(telop: Telop | null): void;
   setChoices(choices: string[] | null): void;
   /** 1 枚出す（GS-143）。同じ `id` が出ていれば差し替える。 */
-  showPortrait(entry: { id: string; slot: string; src: string; from?: PortraitSide | 'none'; flip?: boolean; ms?: number }): void;
+  showPortrait(entry: {
+    id: string;
+    slot: string;
+    src: string;
+    who?: string;
+    from?: PortraitSide | 'none';
+    flip?: boolean;
+    ms?: number;
+    x?: number;
+    y?: number;
+  }): void;
   /** 出ている絵に効果をかける（GS-143）。知らない `id` なら何もしない。 */
   fxPortrait(id: string, fx: Partial<Pick<Portrait, 'out' | 'opacity' | 'shake' | 'scale' | 'ms'>>): void;
   /** その `id` を出ていかせる。`now` ならその場で消す。 */
@@ -180,6 +264,7 @@ export const useUi = create<UiState>((set) => ({
   settings: false,
   talk: null,
   scroll: null,
+  telop: null,
   choices: null,
   portraits: [],
   fade: 0,
@@ -192,13 +277,17 @@ export const useUi = create<UiState>((set) => ({
   setSettings: (settings) => set({ settings }),
   setTalk: (talk) => set({ talk }),
   setScroll: (scroll) => set({ scroll }),
+  setTelop: (telop) => set({ telop }),
   setChoices: (choices) => set({ choices }),
-  showPortrait: ({ id, slot, src, from = 'none', flip = false, ms = PORTRAIT_MS }) =>
+  showPortrait: ({ id, slot, src, who, from = 'none', flip = false, ms = PORTRAIT_MS, x = 0, y = 0 }) =>
     set((state) => {
-      const made = { id, slot, src, from, flip, opacity: 1, shake: 0, shakeAt: 0, scale: 1, ms };
+      const made = { id, slot, who, src, from, flip, opacity: 1, shake: 0, shakeAt: 0, scale: 1, ms, x, y };
       // 同じ名前が出ていれば**その場で差し替える**（出ていく途中でも）。
       const at = state.portraits.findIndex((entry) => entry.id === id);
-      if (at < 0) return { portraits: [...state.portraits, made] };
+      // 前後は**並び順**で決まる（後のものが上）。イベントイラスト（GS-161）は
+      // 画面いっぱいなので**先頭へ**——あとから出しても立ち絵を覆わない。
+      // `z-index` で持ち上げると、会話ウィンドウより前に出て文字が読めなくなる（実際に出た）。
+      if (at < 0) return { portraits: slot === 'scene' ? [made, ...state.portraits] : [...state.portraits, made] };
       // **並びは変えない。** 末尾へ積み直すと React が DOM を並べ替え、
       // 移された `<img>` は**入りのアニメがもう一度走る**。
       const portraits = [...state.portraits];

@@ -2,28 +2,20 @@
   "version": 1,
   "cues": {
     "impact": {
-      "name": "衝撃・寄りと揺れ",
-      "duration": 900,
+      "name": "衝撃・揺れ",
+      "duration": 450,
       "hold": false,
       "frames": [
         {
           "at": 0
-        },
-        {
-          "at": 250,
-          "distance": 0.85
-        },
-        {
-          "at": 900,
-          "distance": 1
         }
       ],
       "effects": [
         {
-          "at": 100,
+          "at": 0,
           "kind": "shake",
           "ms": 450,
-          "power": 0.15
+          "power": 0.5
         }
       ]
     },
@@ -75,6 +67,20 @@
         {
           "at": 300,
           "pitch": -20
+        }
+      ],
+      "effects": []
+    },
+    "pan01": {
+      "name": "pan",
+      "duration": 900,
+      "hold": true,
+      "frames": [
+        {
+          "at": 400,
+          "x": -6,
+          "z": -3,
+          "cell": true
         }
       ],
       "effects": []

@@ -62,3 +62,32 @@ test('イラストは画面外から入り、シーク時刻から位置と透�
   assert.deepEqual(sampleCue(illustrated, 1000, -20).illustrations, []);
 });
 // フィールドオブジェクトトラック・注視対象・選択中の味方（subject）の試験は、機能ごと削除した（GS-115。カメラ演出はイベント用）。
+
+// 注視点をマップのマスで指定する（GS-167）。**差に直してから混ぜる**ので、
+// 差のキーとマスのキーが並んでいても、その間はまっすぐ動く。
+// 画面では「なんとなく違う所を映している」としか見えないので、値をここで留める。
+test('`cell` のキーは場面の基準からの差に直る（マス指定）', () => {
+  const toCell: CameraCue = {
+    name: 'cell', duration: 1000, hold: false,
+    frames: [{ at: 0, x: 0, z: 0 }, { at: 1000, cell: true, x: -8, z: 2 }],
+    effects: [],
+  };
+  const base = { x: -4.5, y: 0.6, z: -2.5 };
+  // 終わりは「マス −8」＝ 基準から −3.5 マス、「マス 2」＝ ＋4.5 マス。
+  const end = sampleCue(toCell, 1000, -20, undefined, base);
+  assert.equal(end.x, -3.5);
+  assert.equal(end.z, 4.5);
+  // 途中は差の空間でまっすぐ。
+  const half = sampleCue(toCell, 500, -20, undefined, base);
+  assert.equal(half.x, -1.75);
+  assert.equal(half.z, 2.25);
+  // 基準を渡さなければ、書いた値がそのまま差になる（道具から呼ぶときの逃げ道）。
+  assert.equal(sampleCue(toCell, 1000, -20).x, -8);
+});
+
+test('`cell` を書かないキーは今までどおり場面からの差（基準を渡しても動かない）', () => {
+  const offset: CameraCue = { name: 'offset', duration: 1000, hold: false, frames: [{ at: 1000, x: 2, z: 3 }], effects: [] };
+  const sample = sampleCue(offset, 1000, -20, undefined, { x: -4.5, y: 0.6, z: -2.5 });
+  assert.equal(sample.x, 2);
+  assert.equal(sample.z, 3);
+});

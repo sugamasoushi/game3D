@@ -13,6 +13,15 @@ export interface CueFrame {
   y?: number;
   z?: number;
   tilt?: boolean;
+  /**
+   * 注視点の読み方（GS-167）。**既定は場面の基準からの差**（マス）。
+   * `true` にすると **x/y/z はマップのマスそのもの**——主人公がどこに居ても同じ所を映す。
+   * 「特定の場所を映す」演出（門・祭壇・遠くの人）に使う。
+   *
+   * 中身は**差に直してから**混ぜる（`sampleCue` に場面の基準を渡す）ので、
+   * 差のキーとマスのキーを並べても、その間はまっすぐ動く。
+   */
+  cell?: boolean;
 }
 export type IllustrationMotion = 'none' | 'fade' | 'left' | 'right' | 'top' | 'bottom';
 export interface CameraIllustrationEffect {
@@ -80,7 +89,16 @@ export function cameraCue(id: string): CameraCue {
 /** 未保存の台帳は開発用プレビューからだけ渡す。 */
 export function previewCameraCues(next: CameraCueBook): void { book = structuredClone(next); }
 
-export function sampleCue(cue: CameraCue, time: number, basePitch: number, inherited?: CameraCueState): CameraCueSample {
+/** 場面の基準（マス）。`cell` のキーを差に直すのに使う（GS-167）。 */
+export interface CueBase { x: number; y: number; z: number }
+
+export function sampleCue(
+  cue: CameraCue,
+  time: number,
+  basePitch: number,
+  inherited?: CameraCueState,
+  base?: CueBase,
+): CameraCueSample {
   const t = Math.max(0, Math.min(time, cue.duration));
   const frames = cue.frames;
   const defaults = {
@@ -92,11 +110,21 @@ export function sampleCue(cue: CameraCue, time: number, basePitch: number, inher
     z: inherited?.z ?? 0,
   };
   const numbers = { ...defaults };
+  /**
+   * キーの値（GS-167）。`cell` のキーの注視点は**場面の基準からの差に直す**——
+   * 直してから混ぜるので、差のキーとマスのキーが並んでいてもまっすぐ動く。
+   */
+  const valueOf = (frame: CueFrame, key: keyof typeof defaults): number | undefined => {
+    const raw = frame[key];
+    if (raw === undefined) return undefined;
+    if (!frame.cell || (key !== 'x' && key !== 'y' && key !== 'z')) return raw;
+    return raw - (base?.[key] ?? 0);
+  };
   for (const key of Object.keys(defaults) as Array<keyof typeof defaults>) {
     let previous = defaults[key];
     let at = 0;
     for (const frame of frames) {
-      const value = frame[key];
+      const value = valueOf(frame, key);
       if (value === undefined) continue;
       if (frame.at > t) {
         const ratio = frame.at > at ? (t - at) / (frame.at - at) : 1;
@@ -177,7 +205,8 @@ export function createCuePlayer() {
     },
     pause(value: boolean) { paused = value; },
     seek(ms: number) { time = Math.max(0, Math.min(ms, current?.duration ?? 0)); paused = true; },
-    update(dt: number, pitch: number) {
+    /** `base` は場面の基準（マス。GS-167）。`cell` のキーを差に直すのに要る。 */
+    update(dt: number, pitch: number, base?: CueBase) {
       if (!current) return last ? restoredSample(last) : null;
       if (!paused) time += Math.max(0, dt) * 1000;
       if (time > current.duration && !current.hold && !paused) {
@@ -185,7 +214,7 @@ export function createCuePlayer() {
         last = before;
         return last ? restoredSample(last) : null;
       }
-      const sample = sampleCue(current, time, pitch, before ?? undefined);
+      const sample = sampleCue(current, time, pitch, before ?? undefined, base);
       last = stateOf(sample);
       return sample;
     },

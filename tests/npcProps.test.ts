@@ -27,7 +27,7 @@ const mapOf = (layerName: string, objects: Array<{ name: string; properties: Pro
     ],
   }) as unknown as MapDef;
 
-const prop = (name: string, value: string | number): PropertyDef => ({ name, type: 'string', value }) as PropertyDef;
+const prop = (name: string, value: string | number | boolean): PropertyDef => ({ name, type: 'string', value }) as PropertyDef;
 
 test('NPC になるのは `Npc` を書いたものか、`NPC` レイヤーのキャラ画像だけ', () => {
   // レイヤー名が違うと、キャラ画像を置いても**立たない**（実際に 0105 で 2 人消えていた）。
@@ -96,6 +96,44 @@ test('ShowIf / HideIf。**両方書いたら両方満たすときだけ**出す'
   strictEqual(npcShown({ showIf: 'EVENT010401', hideIf: 'EVENT020101' }, on('EVENT010401', 'EVENT020101')), false);
 });
 
+// 出入りはイベントが決める（GS-157）。**マップに `HideIf` とイベント名を書くのをやめた**ので、
+// 「キャラ自身の覚えのほうが強い」が崩れると、消したはずの人が入り直すと戻ってくる。
+test('Standby は最初から出さない。イベントの覚え（自分の `消えた` / `出た`）が一番強い（GS-157）', () => {
+  const on = (...keys: string[]) => (key: string) => keys.includes(key);
+  // マップは真偽でも文字でも書ける（エディタが型を選べる）。
+  const read = (value: boolean | string) =>
+    readNpcs(mapOf('NPC', [{ name: 'a', properties: [prop('Sprite', 'x.png'), prop('Standby', value)] }]))[0].standby;
+  strictEqual(read(true), true);
+  strictEqual(read('true'), true);
+  strictEqual(read(false), undefined);
+  strictEqual(readNpcs(mapOf('NPC', [{ name: 'a', properties: [prop('Sprite', 'x.png')] }]))[0].standby, undefined);
+
+  // 控えている人は、イベントが `place` で出すまで居ない。
+  strictEqual(npcShown({ standby: true }, on()), false);
+  strictEqual(npcShown({ standby: true }, on('self:出た')), true, 'イベントが出したら立つ');
+  // 消した人は入り直しても出ない。**条件より覚えが強い**（`ShowIf` が満たされていても出さない）。
+  strictEqual(npcShown({}, on('self:消えた')), false);
+  strictEqual(npcShown({ showIf: 'EVENT010401' }, on('self:出た')), true);
+  strictEqual(npcShown({ showIf: 'EVENT010401' }, on('EVENT010401', 'self:消えた')), false);
+});
+
+// ゲームには出さない物（GS-160）。**エディタでは見えるがゲームには居ない**——
+// 置き場所の目印に置いたスプライトが立ち上がってしまうのを止める。
+test('Hidden を付けた物は NPC にならない（GS-160）', () => {
+  const props = [prop('Sprite', 'x.png'), prop('Hidden', true)];
+  strictEqual(readNpcs(mapOf('NPC', [{ name: 'a', properties: props }])).length, 0);
+  // 文字で書いても受ける（エディタは型を選べる）。物（SPRITE レイヤー）も同じ。
+  strictEqual(
+    readNpcs(mapOf('SPRITE', [{ name: 'a', properties: [prop('Sprite', 'x.png'), prop('Hidden', 'true')] }])).length,
+    0,
+  );
+  // false や書き忘れは今までどおり立つ。
+  strictEqual(
+    readNpcs(mapOf('NPC', [{ name: 'a', properties: [prop('Sprite', 'x.png'), prop('Hidden', false)] }])).length,
+    1,
+  );
+});
+
 test('`SPRITE` レイヤーは**物**。うろつかせず、話しかけても向かせない（GS-133）', () => {
   const [thing] = readNpcs(mapOf('SPRITE', [{ name: '宝箱', properties: [prop('Sprite', 'Chests.png#32x32#0')] }]));
   strictEqual(thing.thing, true);
@@ -114,4 +152,21 @@ test('Pose / PoseIf。**見た目はイベントではなくマップが決め�
   // 片方だけでは効かない（画面側が両方そろって初めて当てる）。
   const [half] = readNpcs(mapOf('SPRITE', [{ name: '宝箱', properties: [prop('Sprite', 'x.png'), prop('Pose', '開いた')] }]));
   strictEqual(half.poseIf, undefined);
+});
+
+// 常時その場で足踏み（GS-169）。**旗を読み落とすと「動いていない」だけ**で、
+// 原因はマップにもゲームにも見えない（綴り違いでも同じ見え方）。
+test('StepInPlace を付けた物は常時足踏みになる（GS-169）', () => {
+  const read = (value: boolean | string) =>
+    readNpcs(mapOf('NPC', [{ name: 'a', properties: [prop('Sprite', 'x.png'), prop('StepInPlace', value)] }]))[0].stepping;
+  strictEqual(read(true), true);
+  strictEqual(read('true'), true, '文字で書いても受ける（エディタは型を選べる）');
+  strictEqual(read(false), undefined);
+  // 書いていなければ踏まない。ここが undefined でないと、全員がその場で足踏みし出す。
+  strictEqual(readNpcs(mapOf('NPC', [{ name: 'a', properties: [prop('Sprite', 'x.png')] }]))[0].stepping, undefined);
+  // 物（SPRITE レイヤー）でも踏める——揺れる旗や回る風車のため。
+  strictEqual(
+    readNpcs(mapOf('SPRITE', [{ name: 'a', properties: [prop('Sprite', 'x.png'), prop('StepInPlace', true)] }]))[0].stepping,
+    true,
+  );
 });

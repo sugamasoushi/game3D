@@ -6063,17 +6063,17 @@
   "editor": {
     "camera": {
       "target": [
-        6.283965674818674,
-        3.358808079091544,
-        -13.875428716921554
+        20.8449176458675,
+        2.2037139806919672,
+        -12.442080105048937
       ],
-      "yaw": 0,
-      "pitch": -23,
-      "distance": 37.47832228782305,
+      "yaw": 342.80000000000007,
+      "pitch": -33.49999999999999,
+      "distance": 24.589527253040703,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "decoration",
+    "activeLayer": "objects",
     "brush": {
       "shape": "wall",
       "rotation": 3,
@@ -24093,6 +24093,11 @@
               "name": "Direction",
               "type": "string",
               "value": "Right"
+            },
+            {
+              "name": "MoveTo",
+              "type": "string",
+              "value": "-11,5,-4"
             }
           ],
           "space": "solid",

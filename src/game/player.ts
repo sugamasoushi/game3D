@@ -191,6 +191,11 @@ export interface Player {
    * 歩かないので足は止まったまま——立ち止まって振り向く絵になる。
    */
   face(to: Facing): void;
+  /**
+   * 足を 1 回踏み替えるのにかかる時間（秒。GS-168）。**絵の台帳しだい**なので外から聞けるようにする
+   * ——「その場で足踏み」の歩数を時間に直すのに要る。走ると速い。
+   */
+  stepSeconds(run?: boolean): number;
   /** いま向いている方（GS-16）。目の前に居る相手を探すのに使う。 */
   facingNow(): Facing;
   /**
@@ -786,6 +791,8 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       stepIndex = STAND;
       refreshFrame();
     },
+    // 足を 1 回踏み替える時間（GS-168）。台帳の `walk.ms` から出す。
+    stepSeconds: (run = false) => (run ? RUN_STEP_S : STEP_S),
     facingNow: () => facing,
     pose(name) {
       if (name === null) {

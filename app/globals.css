@@ -41,7 +41,8 @@ body {
 }
 
 .stage {
-  position: relative;
+  position: fixed;
+  inset: 0;
   width: 100dvw;
   height: 100dvh;
   display: flex;
@@ -54,12 +55,14 @@ body {
 /* 論理画面は 1280×720 固定。狭い端末では外側だけを等比縮小する。 */
 .screen {
   --message-background: rgba(25, 25, 112, 0.78);
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   flex: none;
   width: 1280px;
   height: 720px;
   background: #000;
-  transform: scale(var(--game-scale, 1));
+  transform: translate(-50%, -50%) scale(var(--game-scale, 1));
   transform-origin: center;
 }
 
@@ -395,9 +398,28 @@ body {
  * 1.7 倍に引き伸ばされて粗く見えた。**大きさを変えるのは効果（`imageFx` の `zoom`）だけ。**
  * 会話ウィンドウより先に描くので、下半分はウィンドウに隠れる。
  */
+/*
+ * 立ち絵の入れ物（GS-170）。**前後をこの中だけで決める**ための箱。
+ *
+ * `isolation: isolate` は「積み重ねの箱を作る」だけの指定で、置き場所も見た目も変えない。
+ * これが無いと、絵に付けた `z-index` が**会話ウィンドウより前**まで持ち上げてしまい、
+ * 文字が絵の裏に隠れる（GS-161 で実際に出た。あのときは順番で逃げていた）。
+ * 箱そのものは `z-index` を持たないので、**画面の中の位置は今までと同じ**
+ * ——書いた順のまま、暗転・会話ウィンドウより後ろ。
+ */
+.portraits {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  pointer-events: none;
+}
+
 .portrait {
   position: absolute;
-  bottom: 0;
+  /* 立ち位置のずれ（GS-170）。**画面の高さに対する割合**で、＋が上。 */
+  bottom: var(--oy, 0%);
+  /* 人の絵はみな同じ段。**喋っている人だけ**が 1 段上がる（`.talking`）。 */
+  z-index: 1;
   max-height: 86%;
   max-width: 46%;
   object-fit: contain;
@@ -409,8 +431,32 @@ body {
   transform-origin: bottom center;
   pointer-events: none;
   filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.55));
-  /* 出ていくとき・薄くするときに動く（GS-31 / GS-143）。入りは animation のほう。 */
-  transition: transform var(--ms, 280ms) ease-in, opacity var(--ms, 280ms) linear;
+  /*
+   * 出ていくとき・薄くするときに動く（GS-31 / GS-143）。入りは animation のほう。
+   * 明るさ（GS-170。喋っていない人を落とす）も滑らせる——切り替わりが唐突だと、
+   * 会話を送るたびに画面がちらつく。
+   */
+  transition:
+    transform var(--ms, 280ms) ease-in,
+    opacity var(--ms, 280ms) linear,
+    filter 180ms linear;
+}
+
+/*
+ * 喋っている人の絵は**いちばん手前**（GS-170）。絵が重なっても声の主が隠れない。
+ * 前後は入れ物（`.portraits`）の中だけの話なので、会話ウィンドウには届かない。
+ */
+.portrait.talking {
+  z-index: 2;
+}
+
+/*
+ * 喋っていない人の絵は**少し明かりを落とす**（GS-170）。消さずに落とすだけ——
+ * 相手が居ることは見えていてほしい。影（`drop-shadow`）は残す：
+ * `filter` は後から書いたものが丸ごと勝つので、**影も一緒に書き直す**。
+ */
+.portrait.dimmed {
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.55)) brightness(0.62);
 }
 
 /*
@@ -503,17 +549,59 @@ body {
   }
 }
 
+/*
+ * 置き場所（GS-20）と、そこからのずれ（GS-170。`--ox` は**画面の幅に対する割合**で＋が右）。
+ * **ずらしは `left` / `right` で効かせる**——`transform` は出入り・揺れ・拡大がもう使っており、
+ * 足すと入りのアニメ（`translateX(-160%)` から）と食い合う。
+ */
 .portrait.left {
-  left: 16px;
+  left: calc(16px + var(--ox, 0%));
 }
 
 .portrait.right {
-  right: 16px;
+  /* 右に置いた絵も**＋で右へ**動くように、こちらは引く。 */
+  right: calc(16px - var(--ox, 0%));
 }
 
 .portrait.center {
-  left: 50%;
+  left: calc(50% + var(--ox, 0%));
   transform: translateX(-50%);
+}
+
+/*
+ * イベントイラスト（GS-161）。**画面いっぱいの一枚絵**（16:9 の場面絵）。
+ * 立ち絵と置き方が別物なので、上限も軸も影も打ち消す——足元で立たせず、画面に収める。
+ * **立ち絵より後ろ**に置く（並び順で決まる。`store.ts` が先頭へ入れる）——
+ * あとから出しても人の絵を覆わない。**`z-index` では持ち上げない**：
+ * 立ち絵が会話ウィンドウより前に出て、文字が読めなくなる。
+ */
+.portrait.scene {
+  inset: 0;
+  /* 場面絵は**人の絵より後ろ**（GS-161 / GS-170）。並び順と合わせて二重に留める。 */
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: 100%;
+  object-position: center;
+  transform-origin: center center;
+  filter: none;
+}
+
+/* 場面絵は横から滑り込ませず、**淡く現れる**（大きい絵が横切ると落ち着かない）。 */
+.portrait.scene.instant {
+  animation: scene-art-in var(--ms, 280ms) ease-out;
+}
+
+@keyframes scene-art-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ずらし（揺れ・効果）の軸は中央。立ち絵の規則（足元）を上書きする。 */
+.portrait.scene {
+  transform: translate(var(--dx, 0px), var(--dy, 0px)) scale(var(--zoom, 1)) scaleX(var(--flip, 1));
 }
 
 /*
@@ -676,6 +764,49 @@ body {
 .scroll-back.run .scroll-cover,
 .scroll-back.out .scroll-cover {
   opacity: 0;
+}
+
+/* ── テロップ（GS-171）───────────────────────────────────── */
+
+/*
+ * **画面を黒で覆って真ん中に一言**。旧作の「━ 翌朝 ━」と同じ見せ方
+ * （画面いっぱいの黒 ＋ 56px の字 ＋ 押したら薄れて消える）。
+ *
+ * 会話ウィンドウは使わない。時間や場所が飛んだことを知らせるのは**画面の仕事**で、
+ * 誰かのせりふではない——窓に入れると「地の文を喋る人」が居るように見える。
+ *
+ * 黒は**一瞬で置く**（入りを滑らせない）。かけて出すと、その間だけ立ち絵の消え際が見える。
+ */
+.telop {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  /* 消えるときだけ滑らせる。長さは JS が入れる（命令の `ms`）。 */
+  transition-property: opacity;
+  transition-timing-function: linear;
+}
+
+.telop.out {
+  opacity: 0;
+}
+
+.telop-text {
+  /* 旧作と同じ 56px。長い言葉でも画面の端に触らないよう、左右に余白を残す。 */
+  padding: 0 48px;
+  color: #f2f5ff;
+  /* 命令で変えられる（GS-172）。書かなければ旧作と同じ大きさ。 */
+  font-size: var(--telop-size, 56px);
+  font-weight: bold;
+  line-height: 1.5;
+  text-align: center;
+  text-shadow: 0 0 8px #000, 0 2px 8px #000;
+}
+
+.telop-text p {
+  margin: 0;
 }
 
 /*

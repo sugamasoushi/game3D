@@ -50,6 +50,7 @@
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "hide", "target": "npc:boss" },
         { "type": "setSwitch", "key": "EVENT020101", "value": false },
         { "type": "fade", "to": "out", "ms": 400 },
         { "type": "transfer", "map": "0101", "at": { "x": 5, "y": 0, "z": 2 }, "face": "up" },

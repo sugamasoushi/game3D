@@ -7,6 +7,7 @@ import type { EventContext } from '../event/interpreter';
 import type { ActorRef, PlaceAt, PlaceAxis, Step } from '../event/types';
 import type { GameView, WalkDir } from './GameView';
 import { selfKey, switchOn, type GameState } from './state';
+import { NPC_CAME, NPC_GONE } from './npcs';
 import { commonEvent } from './commons';
 import { scriptFn } from './scriptBook';
 import { itemName, knownItem } from './items';
@@ -19,6 +20,12 @@ import { PLAYER_CHARACTER, type CharacterBook } from './characters';
 
 /** 立ち絵の置き場所（GS-20）。絵は `assets/img/CharaStand/<名前>.png`。 */
 const STAND_DIR = 'assets/img/CharaStand';
+/**
+ * イベントイラストの置き場所（GS-161）。**画面いっぱいの一枚絵**（16:9 の場面絵）。
+ * 立ち絵と分けてあるのは置き方が別物だから——こちらは足元で立たせず、画面に収める。
+ * **名前は拡張子まで**書く。ここには jpg と png が混ざっている。
+ */
+const EVENT_ART_DIR = 'assets/img/Event';
 /** 顔アイコンの置き場所（GS-23）。吹き出しの左に出す。 */
 const ICON_DIR = 'assets/img/charIcon';
 /**
@@ -43,7 +50,7 @@ export interface EventBridge {
   pick(index: number): void;
   /**
    * いま動かしているイベントの持ち主（GS-16 / GS-27）。
-   * `this` は `npc` を指し、セルフスイッチは `map` と `event` で決まる。
+   * `npc` は吹き出しの相手、セルフスイッチは `map` と `event`（と `owner`）で決まる。
    * **イベントを動かす前に必ず入れる**——条件を見るときにも要る。
    */
   setScene(scene: { npc?: string; map?: string; event?: string; item?: string; num?: number; owner?: string }): void;
@@ -98,7 +105,10 @@ function solveAt(at: PlaceAt, me: { x: number; y: number; z: number } | null): {
 export function createEventBridge(options: EventBridgeOptions): EventBridge {
   const ui = useUi.getState;
   let waiter: Waiter | null = null;
-  /** `this` が指す相手。話しかけて始まったイベントの持ち主。 */
+  /**
+   * 話しかけて始まったイベントの持ち主。**吹き出しを誰の頭に出すか**に使う（GS-23）。
+   * 動かす相手としては使わない（`this` はやめた。GS-162）。
+   */
   let self = '';
   /** いま見ているイベント（セルフスイッチの宛先）。 */
   let sceneMap = '';
@@ -117,6 +127,17 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
   let sceneOwner = '';
   /** 覚えの宛先。物に名前が付いていればそちら、無ければイベント自身。 */
   const selfScope = (): string => (sceneOwner ? `@${sceneOwner}` : sceneEvent);
+
+  /**
+   * 出入りの覚え（GS-157）。**書く先は動かした相手**——`setSelfSwitch` の宛先
+   * （イベントを起こした物）とは別なので、誰のイベントから消しても取り違えない。
+   * これが在るおかげで、マップに `HideIf` とイベント名を書かずに済む。
+   */
+  const rememberNpc = (id: string, gone: boolean) => {
+    options.state.self.set(selfKey(sceneMap, `@${id}`, NPC_GONE), gone);
+    options.state.self.set(selfKey(sceneMap, `@${id}`, NPC_CAME), !gone);
+    options.onSwitch?.();
+  };
 
   /**
    * 持ち物の id を決める（GS-132）。**空ならマップの `Item`**。
@@ -143,11 +164,12 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
 
   /**
    * 動かす相手を名前にする。プレイヤーなら null。
-   * `this` はイベントの持ち主——誰の物か分からなければ動かさない。
+   *
+   * **`npc:` で始まらないものは誰も指さない**（GS-162）。古い台帳に残った `this` もここへ落ちる
+   * ——呼んだ側が `todo()` を出すので、黙って別人が動くことはない。
    */
   const actorId = (target: ActorRef): string | null => {
-    if (target === 'player') return null;
-    if (target === 'this') return self || null;
+    if (!String(target).startsWith('npc:')) return null;
     return target.slice('npc:'.length) || null;
   };
 
@@ -175,7 +197,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
   /**
    * 吹き出しを誰の頭の上に出すか（GS-23）。
    * 主人公が喋っていればプレイヤー、それ以外は**話しかけた相手**。
-   * 話し相手が分からない場面（`this` が無い）は吹き出しにできないので、下のウィンドウへ落とす。
+   * 話し相手が分からない場面（踏む・入ったら動くイベント）は吹き出しにできないので、
+   * 下のウィンドウへ落とす。
    */
   const bubbleAnchor = (who?: string): string => {
     if (who === PLAYER_CHARACTER) return 'player';
@@ -183,9 +206,11 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
   };
 
   /** 1 メッセージ出して、読み終わるまで待つ。 */
-  const showTalk = (name: string, lines: string[], bubble?: string, icon?: string) =>
+  const showTalk = (name: string, lines: string[], bubble?: string, icon?: string, who?: string, hold?: number) =>
     new Promise<void>((resolve) => {
-      ui().setTalk({ name, lines, bubble, icon });
+      // **誰の声かも渡す**（GS-170）。画面側が、その人の立ち絵を手前に出して明るく保つ。
+      // `hold` は押さずに送る時間（GS-172）。数えるのは画面側——**文字が出そろってから**。
+      ui().setTalk({ name, lines, bubble, icon, who, hold });
       waiter = {
         advance() {
           waiter = null;
@@ -198,11 +223,18 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     });
 
   const ctx: EventContext = {
-    async message(talk, _face, style) {
+    async message(talk, _face, style, hold) {
       for (const line of talk) {
         // 吹き出しは喋る人の頭の上（GS-23）。相手が分からなければウィンドウで出す。
         const anchor = style === 'bubble' ? bubbleAnchor(line.who) : '';
-        await showTalk(nameOf(line.who), line.lines.map(fill), anchor || undefined, anchor ? iconOf(line.who) : undefined);
+        await showTalk(
+          nameOf(line.who),
+          line.lines.map(fill),
+          anchor || undefined,
+          anchor ? iconOf(line.who) : undefined,
+          line.who,
+          hold,
+        );
       }
       ui().setTalk(null);
     },
@@ -214,6 +246,22 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
           advance() {
             waiter = null;
             ui().setScroll(null);
+            resolve();
+          },
+          pick() {
+            /* 選択肢ではない */
+          },
+        };
+      });
+    },
+
+    telop(lines, look) {
+      return new Promise<void>((resolve) => {
+        ui().setTelop({ lines, ...look });
+        waiter = {
+          advance() {
+            waiter = null;
+            ui().setTelop(null);
             resolve();
           },
           pick() {
@@ -266,19 +314,122 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     },
 
     /**
-     * 置き直す（GS-137）。**プレイヤーは受けない**——立ち位置を飛ばすのはマップ移動の仕事で、
-     * 同じマップの中で瞬間移動させると、追うカメラと記録（`transfer`）の辻褄が合わなくなる。
+     * 置き直す（GS-137 / GS-163）。歩かず一瞬で移す。**プレイヤーも受ける**——
+     * 同じマップの中で位置を飛ばす演出（暗転の裏で並べ直す、など）に要る。
+     * カメラの追い先も一緒に移すので（`placePlayer`）、置いた先から滑ってこない。
+     * 別のマップへ移すのは今までどおり `transfer` の仕事。
      */
     place(target, at, face) {
       const view = options.getView();
       if (!view) return;
       const id = actorId(target);
       if (id === null) {
-        todo(`置き直す（${target}）——${target === 'player' ? 'プレイヤーはマップ移動で動かす' : '誰を指すか決まらない'}`);
+        if (target !== 'player') {
+          todo(`置き直す（${target}）——誰を指すか決まらない`);
+          return;
+        }
+        // 軸の `"player"` は**その軸は動かさない**（GS-154。`move` と同じ読み方）。
+        const to = solveAt(at, view.playerAt());
+        // 画面を止めたまま置きたいときは、手前で「カメラ追従」を切っておく（GS-166）。
+        view.placePlayer(to.x, to.y, to.z);
+        if (face) view.face(DIR[face]);
         return;
       }
       const spot = solveAt(at, view.playerAt());
+      // **居なかった人を置いたときだけ「出た」を覚える**（GS-157）。
+      // ただの置き直し（出番前に道の奥へ寄せる、など）では何も覚えない——
+      // 覚えてしまうと、条件で隠しているはずの人がその先ずっと立ち続ける。
+      const came = !view.hasNpc(id);
       view.placeNpc(id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined);
+      if (came && view.hasNpc(id)) rememberNpc(id, false);
+    },
+
+    /**
+     * 消す（GS-157）。**その場ですぐ居なくなる。** 覚えるのが既定なので、
+     * マップに入り直しても戻ってこない（旧作の `setVisible(false)` が残るのと同じ）。
+     */
+    hide(target, remember) {
+      const view = options.getView();
+      if (!view) return;
+      const id = actorId(target);
+      if (id === null) {
+        todo(`消す（${target}）——${target === 'player' ? 'プレイヤーは消せない' : '誰を指すか決まらない'}`);
+        return;
+      }
+      if (remember) rememberNpc(id, true);
+      view.removeNpc(id);
+    },
+
+    /**
+     * その場で足踏み（GS-168）。**進まない**——向きと歩数だけ渡す。
+     * 向きを省いたら今の向きのまま踏む（振り向かせずに足だけ動かす）。
+     */
+    async stepInPlace(target, dir, steps, run) {
+      const view = options.getView();
+      if (!view) return;
+      const id = actorId(target);
+      // 向きを省いたら**いま向いている方**。`this` に頼らず見に行く（呼び方で変わらないように）。
+      const now = id === null ? view.playerFacing() : (view.npcAt(id)?.facing ?? null);
+      const facing = dir ?? now ?? 'down';
+      if (id === null) {
+        if (target !== 'player') {
+          todo(`その場で足踏み（${target}）——誰を指すか決まらない`);
+          return;
+        }
+        await view.march(DIR[facing], steps, run);
+        return;
+      }
+      await view.marchNpc(id, DIR[facing], steps, run);
+    },
+
+    /**
+     * 足踏みを**止めるまで続ける**（GS-169）。数えないので待たない。
+     * 向きを省いたら**今の向きのまま**——`turn` で振り向かせたらそちらを向いて踏み続ける。
+     */
+    keepStepInPlace(target, dir, run) {
+      const view = options.getView();
+      if (!view) return;
+      const id = actorId(target);
+      const facing = dir ? DIR[dir] : null;
+      if (id === null) {
+        if (target !== 'player') {
+          todo(`その場で足踏み（${target}）——誰を指すか決まらない`);
+          return;
+        }
+        void view.march(facing, 0, run);
+        return;
+      }
+      void view.marchNpc(id, facing, 0, run);
+    },
+
+    /** 足踏みを止める（GS-169）。マップの常時（`StepInPlace`）もここで切れる。 */
+    stopStepInPlace(target) {
+      const view = options.getView();
+      if (!view) return;
+      const id = actorId(target);
+      if (id === null) {
+        if (target === 'player') view.stopMarch();
+        else todo(`足踏みを止める（${target}）——誰を指すか決まらない`);
+        return;
+      }
+      view.stopMarchNpc(id);
+    },
+
+    /**
+     * いま向いている方（GS-158）。前後左右で歩かせるときに使う。
+     * 画面の向き（上下左右）で返す——`step` に渡す向きと同じ物差し。
+     */
+    facingOf(target) {
+      const view = options.getView();
+      if (!view) return null;
+      const id = actorId(target);
+      if (id === null) return target === 'player' ? view.playerFacing() : null;
+      return view.npcAt(id)?.facing ?? null;
+    },
+
+    /** カメラが主人公を追うか（GS-166）。切ったら戻すのは書いた人の役目。 */
+    cameraFollow(on) {
+      options.getView()?.setCameraFollow(on);
     },
 
     /** 行き先までの道順（GS-138）。**いまどこに立っているか**から組むので、途中で呼び直せば組み直る。 */
@@ -297,15 +448,21 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     },
 
     async portrait(spec) {
-      const { slot, who, face, image, from, flip, ms } = spec;
+      const { slot, who, face, image, from, flip, ms, x, y } = spec;
       // このイベントの中での名前（GS-143）。付けなければ**画面位置がそのまま名前**になるので、
       // 今までの書き方（左の絵・右の絵）はそのまま通る。
       const id = spec.id || slot;
       // 入り方。書かなければ**置いた側から**滑り込む（左の絵は左から）。
       // `instant` は昔の書き方——滑らせない、と同じ意味。
-      const side = spec.instant ? 'none' : (from ?? (slot === 'right' ? 'right' : 'left'));
-      const show = (file: string) =>
-        ui().showPortrait({ id, slot, src: assetUrl(`${STAND_DIR}/${file}.png`), from: side, flip, ms });
+      // イベントイラストは滑り込ませない（GS-161）。画面いっぱいの絵が横から入ると落ち着かない。
+      const side = spec.instant || slot === 'scene' ? 'none' : (from ?? (slot === 'right' ? 'right' : 'left'));
+      // イベントイラスト（GS-161）は別の置き場から、**名前そのまま**（拡張子つき）で出す。
+      const src = (file: string) =>
+        slot === 'scene' ? assetUrl(`${EVENT_ART_DIR}/${file}`) : assetUrl(`${STAND_DIR}/${file}.png`);
+      // `who` も渡す（GS-170）。**誰の絵か**が分かると、喋っている人を手前に出して
+      // ほかの人を少し暗くできる。フリーイラスト（`image`）には付けない——喋らないので。
+      const show = (file: string, owner?: string) =>
+        ui().showPortrait({ id, slot, who: owner, src: src(file), from: side, flip, ms, x, y });
       // フリーイラスト（GS-142）。**台帳を引かない**——人に結び付かない一枚絵を名前で直に出す。
       // 名前を間違えても絵が出ないだけなので、届かなかったことは画面側（`img` の読み込み）に任せる。
       if (image) {
@@ -328,7 +485,7 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
         todo(`キャライラスト（${who} / ${face ?? '既定'}）——${who} の絵が characterdata.json に無い`);
         return;
       }
-      show(name);
+      show(name, who);
     },
 
     /**

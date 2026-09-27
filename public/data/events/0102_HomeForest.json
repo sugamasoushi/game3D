@@ -84,7 +84,7 @@
         },
         { "type": "shot", "id": "event010201_camera02" },
         { "type": "wait", "ms": 600 },
-        { "type": "place", "target": "npc:chicken_walk", "at": { "x": 3, "y": 10, "z": -2 } },
+        { "type": "hide", "target": "npc:chicken_walk" },
         { "type": "setSwitch", "key": "EVENT010201", "value": false },
         { "type": "setSwitch", "key": "EVENT010202", "value": false }
       ],

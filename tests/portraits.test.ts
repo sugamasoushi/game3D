@@ -6,7 +6,7 @@
 
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
-import { useUi } from '../src/ui/store';
+import { faceCount, portraitLook, useUi } from '../src/ui/store';
 
 const ids = () => useUi.getState().portraits.map((entry) => entry.id);
 const marks = () => useUi.getState().portraits.map((entry) => `${entry.id}${entry.out ? `:出${entry.out}` : ''}`);
@@ -23,6 +23,19 @@ test('置いた順に並ぶ', () => {
   put('left', 'a.png');
   put('right', 'b.png');
   deepStrictEqual(ids(), ['left', 'right']);
+});
+
+// イベントイラスト（GS-161）は**画面いっぱい**なので、立ち絵の後ろに出したい。
+// 前後は並び順で決まる（後のものが上）ので、**先頭へ**入れる。
+// `z-index` で持ち上げる形にしたら、立ち絵が会話ウィンドウより前に出て文字が読めなくなった。
+test('場面絵（scene）は**先頭**に入る。あとから出しても立ち絵を覆わない', () => {
+  put('left', 'a.png');
+  put('right', 'b.png');
+  useUi.getState().showPortrait({ id: 'scene', slot: 'scene', src: 'cg.jpg', from: 'none' });
+  deepStrictEqual(ids(), ['scene', 'left', 'right']);
+  // 差し替えは今までどおり**その場**（並びは動かない）。
+  useUi.getState().showPortrait({ id: 'left', slot: 'left', src: 'c.png', from: 'none' });
+  deepStrictEqual(ids(), ['scene', 'left', 'right']);
 });
 
 test('消す指示は印を付けるだけ。**並びは変えない**（GS-31 の落とし穴）', () => {
@@ -157,4 +170,55 @@ test('片付けの速さは**いつも 280ms**。最後にかけた効果の時�
     [280, 280],
     '1 枚だけ長く残ると、取り残されたように見える',
   );
+});
+
+// ---- 立ち位置のずれ（GS-170）-----------------------------------------------
+
+test('ずれは書かなければ 0。書けばそのまま持つ（画面の幅・高さに対する％）', () => {
+  put('left', 'a.png');
+  strictEqual(one('left')?.x, 0, '既定は寄せない');
+  strictEqual(one('left')?.y, 0);
+  useUi.getState().showPortrait({ id: 'center', slot: 'center', src: 'b.png', from: 'none', x: 12, y: -4 });
+  strictEqual(one('center')?.x, 12);
+  strictEqual(one('center')?.y, -4);
+  // 置き直したら 0 から。前の絵の寄せを引きずらない（大きさ・反転と同じ扱い）。
+  useUi.getState().showPortrait({ id: 'center', slot: 'center', src: 'c.png', from: 'none' });
+  strictEqual(one('center')?.x, 0);
+});
+
+// ---- 重なったときの前後と明るさ（GS-170）-----------------------------------
+//
+// **間違えると「喋っている人が暗くなる」。** 画面を見れば分かるが、
+// 会話を送るたびに切り替わるので、どの行で崩れたのか追いにくい。
+
+test('喋っている人の絵だけ手前。ほかの人の絵は暗くなる', () => {
+  const lamy = { who: 'lamyNPC' };
+  const meina = { who: 'meina' };
+  deepStrictEqual(portraitLook(lamy, 'lamyNPC', 2), { talking: true, dimmed: false });
+  deepStrictEqual(portraitLook(meina, 'lamyNPC', 2), { talking: false, dimmed: true });
+});
+
+test('**1 枚しか出ていなければ暗くしない**（比べる相手が居ない）', () => {
+  deepStrictEqual(portraitLook({ who: 'meina' }, 'lamyNPC', 1), { talking: false, dimmed: false });
+});
+
+test('地の文（誰も喋っていない）では暗くしない', () => {
+  deepStrictEqual(portraitLook({ who: 'meina' }, '', 3), { talking: false, dimmed: false });
+});
+
+test('場面絵・フリーイラストは数えないし、暗くもしない', () => {
+  // `who` の無い絵は喋らない——暗くすると、回想の一枚絵だけが沈んで見える。
+  deepStrictEqual(portraitLook({ who: undefined }, 'meina', 3), { talking: false, dimmed: false });
+  useUi.setState({ portraits: [] });
+  useUi.getState().showPortrait({ id: 'scene', slot: 'scene', src: 'cg.jpg', from: 'none' });
+  useUi.getState().showPortrait({ id: 'left', slot: 'left', src: 'a.png', from: 'none', who: 'meina' });
+  strictEqual(faceCount(useUi.getState().portraits), 1, '人の絵だけ数える');
+});
+
+test('名前欄の文字ではなく**キャラのキー**で見分ける', () => {
+  // 「ラミィ？」のように名前を出し分けても、絵との結び付きは切れない。
+  useUi.setState({ portraits: [] });
+  useUi.getState().showPortrait({ id: 'left', slot: 'left', src: 'a.png', from: 'none', who: 'lamyNPC' });
+  strictEqual(one('left')?.who, 'lamyNPC');
+  deepStrictEqual(portraitLook(one('left')!, 'lamyNPC', 2), { talking: true, dimmed: false });
 });

@@ -11,10 +11,13 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  Plane,
   PlaneGeometry,
+  Raycaster,
   SRGBColorSpace,
   Scene,
   TextureLoader,
+  Vector2,
   type ShaderMaterial,
   Vector3,
   WebGLRenderer,
@@ -27,6 +30,7 @@ import { createTiltShiftPass } from '../mep3d/tiltshift';
 import { createFieldEffects, readFieldVolumes } from '../view/fieldEffects';
 import { CAMERA_SHOT_DEFAULTS, applyCameraShot, createCameraShots, type CameraShot } from '../view/cameraShots';
 import { createScreenEffects } from '../view/screenEffects';
+import { createEditorGrid } from '../view/editorGrid';
 import type { AssetsDef, FaceName, MapDef } from '../mep3d/types';
 import { buildCollision, type CollisionMap, type LayerVerdict } from '../mep3d/collision';
 import { createCollisionWires, type CollisionWires } from '../mep3d/collisionWires';
@@ -170,6 +174,17 @@ export interface GameView {
   walk(dir: WalkDir, run?: boolean, slide?: boolean): Promise<boolean>;
   /** イベントから向きだけ変える。 */
   face(dir: WalkDir): void;
+  /**
+   * その場で足踏みさせる（GS-168）。**進まない**——向きと歩数だけ渡す。
+   * 歩数はその絵の踏み替え時間で秒に直す。踏み終わったら返る。
+   */
+  march(dir: WalkDir | null, steps: number, run?: boolean): Promise<boolean>;
+  /** NPC をその場で足踏みさせる（GS-168）。居ない相手なら false。 */
+  marchNpc(id: string, dir: WalkDir | null, steps: number, run?: boolean): Promise<boolean>;
+  /** 足踏みを止める（GS-169）。踏んでいなければ何もしない。 */
+  stopMarch(): void;
+  /** NPC の足踏みを止める（GS-169）。**常時の足踏みもここで切れる**（マップを読み直すまで）。 */
+  stopMarchNpc(id: string): void;
   /** NPC を 1 マス歩かせる（GS-16）。居ない相手なら false。`slide` は `walk` と同じ。 */
   walkNpc(id: string, dir: WalkDir, run?: boolean, slide?: boolean): Promise<boolean>;
   /** NPC の向きを変える。 */
@@ -277,6 +292,21 @@ export interface GameView {
    * 半端な位置を書けるようにすると、書く側が小数を気にすることになる。
    */
   placePlayer(x: number, y: number, z: number): void;
+  /**
+   * カメラが主人公を追うかどうか（GS-166）。**既定は追う。**
+   * 切ると画面はその場に止まり、戻すとその場で主人公へ戻る。
+   */
+  setCameraFollow(on: boolean): void;
+  /**
+   * マス目の表示（GS-167）。**カメラエディタ用**——主人公を中心にしたマス目と、
+   * いまカメラが見ているマスの枠を出す。遊ぶ画面では使わない。
+   */
+  setEditorGrid(on: boolean): void;
+  /**
+   * 画面を押したマスを知らせる先（GS-167）。`null` で止める。
+   * 高さは**主人公の立っている面**で見る（床の上のマスを拾う）。
+   */
+  setCellPicker(handler: ((cell: { x: number; y: number; z: number }) => void) | null): void;
   /**
    * マップに置いた**点オブジェクトの名前**でプレイヤーを置き直す（GS-17）。
    * 高さは出発点と同じで、その柱の足場に乗せる。見つからなければ false。
@@ -400,6 +430,14 @@ export function createGameView(
   /** 画面エフェクト（DEC-389）。マップの一覧をそのまま出す。 */
   const screenEffects = createScreenEffects();
   scene.add(fieldEffects.group);
+  /** カメラエディタ用のマス目（GS-167）。既定は非表示——遊ぶ画面には出ない。 */
+  const editorGrid = createEditorGrid(scene);
+  /** 画面を押したマスの知らせ先（GS-167）。入っているあいだだけ拾う。 */
+  let cellPicker: ((cell: { x: number; y: number; z: number }) => void) | null = null;
+  const pickRay = new Raycaster();
+  const pickNdc = new Vector2();
+  const pickPlane = new Plane(new Vector3(0, 1, 0), 0);
+  const pickHit = new Vector3();
   const sky = createSkyBinder(scene);
   const rig = createCameraRig();
   const input = createInput();
@@ -422,6 +460,15 @@ export function createGameView(
     actor: Player;
     walk: ScriptWalk | null;
     /** うろつき方（GS-48）。null ならうろつかない。 */
+    /** その場で足踏み（GS-168）。踏んでいるあいだはうろつきも歩きも入らない。 */
+    march?: March | null;
+    /**
+     * **常時その場で足踏みする**（GS-169。マップの `StepInPlace`）。
+     * 旗だけ持ち、実際の踏みは毎フレーム「踏んでいなければ踏み直す」で保つ——
+     * こうしておくと、イベントが歩かせたり止めたりしても**歩き終わりに勝手に戻る**。
+     * うろつきとは**両立しない**（踏んでいるあいだうろつきは入らない）。
+     */
+    stepping?: boolean;
     wander: Required<WanderDef> | null;
     /** いまうろついている最中（GS-50）。マスではなく距離で進む。 */
     wandering: {
@@ -444,8 +491,21 @@ export function createGameView(
    * 勝手には湧かない（条件が満たされただけでは出さない）。
    */
   const hiddenNpcs = new Map<string, NpcDef>();
+  /**
+   * 歩いている途中で消した人（GS-157）。**残りの 1 歩ずつを黙って捨てる**ための覚え。
+   * イベントの「移動」は 1 歩ごとに呼ばれるので、途中で消すと残りが「居ない」と言い続ける
+   * ——綴り間違いの知らせと区別が付かなくなる。**わざと消したぶんだけ**黙らせる。
+   */
+  const cutWalks = new Set<string>();
   /** 1 人ぶんを作る手。マップを読んだときに `load()` が入れる。 */
   let makeNpc: ((def: NpcDef) => boolean) | null = null;
+
+  /**
+   * カメラが主人公を追うか（GS-166）。**既定は追う。** イベントの命令「カメラ追従」で切ると、
+   * 戻すまで画面が止まる——飛ばされる・並べ直すときの絵作り用。
+   * **切りっぱなしは事故のもと**なので、イベントの終わりとマップの読み直しで必ず戻す。
+   */
+  let cameraFollow = true;
 
   /** 同じ高さと見なす差（マス）。体は 2 マスぶんあるので、その範囲を塞ぐ。 */
   const NPC_LEVEL = 1.5;
@@ -462,6 +522,11 @@ export function createGameView(
    */
   const npcBlocks = (x: number, y: number, z: number): boolean => {
     if (!npcs.size || !player || !collision) return false;
+    // **イベント中はキャラ同士の当たりを解く**（GS-157）。殴られて後ろへ飛ぶ、
+    // 出てきた相手と同じマスに立つ、詰め寄る——どれも「人が邪魔で届かない」と絵が崩れる。
+    // 演出のあいだは人を書き割りとして扱い、終われば元どおり塞ぐ。
+    // 並行イベント（GS-43）は `busy` を立てないので、裏で何か動いていても塞いだまま。
+    if (useUi.getState().busy) return false;
     const unit = collision.unit || 1;
     const cx = Math.floor(x);
     const cz = Math.floor(z);
@@ -720,6 +785,9 @@ export function createGameView(
       }
       npcs.clear();
       hiddenNpcs.clear();
+      cutWalks.clear();
+      // 追従は既定へ戻す（GS-166）。前のマップで切ったまま持ち越さない。
+      cameraFollow = true;
       // 1 人ぶんを作る（GS-153）。**関数にしてあとからも呼べるようにする**——
       // 条件で隠していた人を、イベントの `place` がその場に出せる。
       // 景色（`built`）はこのマップのものを掴んでおく。読み直せば新しい手に入れ替わる。
@@ -776,6 +844,9 @@ export function createGameView(
           def,
           actor,
           walk: null,
+          // 常時の足踏み（GS-169）。**物（`SPRITE` レイヤー）でも踏める**——
+          // 揺れる旗や回る風車のように「その場で動いている物」に使えるので止めない。
+          ...(def.stepping ? { stepping: true } : {}),
           wander,
           wandering: null,
           // 最初の 1 歩をばらけさせる。全員が同じ拍子で動き出すと機械じみて見える。
@@ -1224,12 +1295,74 @@ export function createGameView(
     stall: number;
     resolve(arrived: boolean): void;
   }
+  /**
+   * その場で足踏み（GS-168）。**進まずに足だけ動かす。**
+   * 絵の足は「軸が入っているか」で動く（壁に押し当てても足踏みする作り）ので、
+   * **軸だけ渡して進む向きは渡さない**。向きも軸で決まるので、こちらを向かせたまま踏める。
+   */
+  interface March {
+    /**
+     * 踏んでいるあいだ向く方。**null は「今の向きのまま」**（GS-169）——
+     * 毎フレーム絵の向きから軸を出すので、途中で `turn` されたらそちらを向いて踏み続ける。
+     * マップの `StepInPlace`（常時の足踏み）はこちら。
+     */
+    dir: WalkDir | null;
+    /** 残り秒。0 を切ったら止めて約束を解く。**`Infinity` は「止めるまでずっと」**（GS-169）。 */
+    left: number;
+    run: boolean;
+    resolve(): void;
+  }
   /** 歩きの入れ物。プレイヤーも NPC も**同じ仕組み**で動かす（GS-16）。 */
   interface Walker {
     walk: ScriptWalk | null;
+    march?: March | null;
   }
   /** プレイヤーの歩き。ここに入っているあいだはキー入力より優先する。 */
   const hero: Walker = { walk: null };
+
+  /**
+   * 足踏みを 1 フレーム進める（GS-168）。時間で止める——歩数は始めるときに時間へ直してある。
+   * **止めたら約束を解く**。解き忘れるとイベントがそこで止まったままになる。
+   */
+  const advanceMarch = (who: Walker, dt: number) => {
+    const march = who.march;
+    if (!march) return;
+    march.left -= dt;
+    if (march.left > 0) return;
+    who.march = null;
+    march.resolve();
+  };
+
+  /**
+   * その場で足踏みを始める（GS-168）。歩数は**その絵の踏み替え時間**で秒に直す。
+   * すでに踏んでいれば打ち切って新しいほうを採る（歩きと同じ扱い）。
+   */
+  const beginMarch = (who: Walker, actor: Player, dir: WalkDir | null, steps: number, run: boolean): Promise<void> => {
+    who.march?.resolve();
+    // 歩数 0 以下は**止めるまでずっと**（GS-169）。終わりが無いので**約束はその場で解く**
+    // ——待たせると、止めるまでイベントがそこから進まない。
+    if (steps <= 0) {
+      who.march = { dir, left: Infinity, run, resolve: () => {} };
+      return Promise.resolve();
+    }
+    const count = Math.max(1, Math.trunc(steps));
+    return new Promise<void>((resolve) => {
+      who.march = { dir, left: count * actor.stepSeconds(run), run, resolve };
+    });
+  };
+
+  /**
+   * 足踏みを止める（GS-169）。**約束を解いてから捨てる**——
+   * 解き忘れると「待つ」で踏ませたイベントがそこで止まったままになる。
+   */
+  const stopMarch = (who: Walker) => {
+    who.march?.resolve();
+    who.march = null;
+  };
+
+  /** 足踏みの軸（GS-169）。向きを書いていなければ**いま向いている方**から出す。 */
+  const marchAxis = (march: March, actor: Player) =>
+    DIR_AXIS[march.dir ?? FACE_DIR[actor.facingNow()]];
 
   /** 画面基準の向き → 入力の軸。奥（画面の上）が −y。 */
   /**
@@ -1267,6 +1400,9 @@ export function createGameView(
       }
       // 前の歩きが残っていたら打ち切る。1 人を 2 か所へは歩かせられない。
       endWalk(who, false);
+      // 足踏みしていたら**歩きが勝つ**（GS-169）。踏んだままだと軸を取り合って進まない
+      // ——常時の足踏み（`stepping`）は、歩き終われば次のフレームで戻る。
+      stopMarch(who);
       who.walk = {
         axis: DIR_AXIS[dir],
         from: { x: actor.position.x, z: actor.position.z },
@@ -1322,8 +1458,8 @@ export function createGameView(
   const advanceWander = (npc: NpcActor, dt: number, unit: number) => {
     const def = npc.wander;
     if (!def || def.range <= 0) return;
-    // イベントが歩かせている間は触らない（取り合わない）。
-    if (npc.walk) {
+    // イベントが歩かせている・足踏みさせている間は触らない（取り合わない）。
+    if (npc.walk || npc.march) {
       npc.wandering = null;
       return;
     }
@@ -1437,6 +1573,28 @@ export function createGameView(
   // --- ループ -------------------------------------------------------------
 
   const observer = new ResizeObserver(resize);
+  /**
+   * 画面を押したマスを拾う（GS-167）。**主人公の立っている高さの床**へ線を飛ばして当てる。
+   * 拾い先が入っていないときは何もしない——ふだんの操作（会話送り）と取り合わない。
+   */
+  const pickCellFromEvent = (event: PointerEvent) => {
+    if (!cellPicker || !player || !collision) return;
+    const unit = collision.unit || 1;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    pickNdc.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    pickRay.setFromCamera(pickNdc, rig.active());
+    // 床は主人公の足下の高さ。`constant` は原点からの距離なので符号を反転して入れる。
+    pickPlane.constant = -player.position.y;
+    if (!pickRay.ray.intersectPlane(pickPlane, pickHit)) return;
+    cellPicker({
+      x: Math.floor(pickHit.x / unit),
+      y: Math.round(player.position.y / unit),
+      z: Math.floor(pickHit.z / unit),
+    });
+  };
+  canvas.addEventListener('pointerdown', pickCellFromEvent);
+
   observer.observe(canvas);
   // ResizeObserver はタブが隠れているあいだ配送されない。取りこぼすと描画バッファが
   // 既定の 300×150 のままになり、ブラウザが引き伸ばして滲む。窓のリサイズでも呼ぶ。
@@ -1457,29 +1615,55 @@ export function createGameView(
     // メニュー中・イベント中も同じ（GS-59）。**止める理由は `canWalk` に集める**——
     // 「メニューがキーを飲み込むから止まる」に頼ると、入力の出どころが増えたときに崩れる。
     const playable = canWalk(useUi.getState());
-    const axis = hero.walk ? hero.walk.axis : playable ? input.axis() : { x: 0, y: 0 };
-    const running = hero.walk ? hero.walk.run : playable && input.shift();
+    // その場で足踏み（GS-168）。**歩きより先に見る**——踏んでいるあいだはキーも歩きも入らない。
+    const march = hero.march ?? null;
+    const axis =
+      march && player
+        ? marchAxis(march, player)
+        : hero.walk
+          ? hero.walk.axis
+          : playable
+            ? input.axis()
+            : { x: 0, y: 0 };
+    const running = march ? march.run : hero.walk ? hero.walk.run : playable && input.shift();
     const unit = collision?.unit ?? 1;
     eventBusy = useUi.getState().busy;
     if (status.mode === 'play' && player && collision) {
       // 人にはぶつかる（GS-35）。壁と同じ仕組みなので、通路へのマス寄せ（GS-116）もそのまま効く。
       player.update(
         // 滑らせているあいだは向きも足も止める（GS-155）。
+        // 足踏み（GS-168）は**進む向きだけ渡さない**——軸は渡すので足と向きはそのまま動く。
         dt,
-        { move: moveVector(axis), axis, running, yaw: rig.yaw, ...(hero.walk?.slide ? { slide: true } : {}) },
+        {
+          move: march ? { x: 0, z: 0 } : moveVector(axis),
+          axis,
+          running,
+          yaw: rig.yaw,
+          ...(hero.walk?.slide ? { slide: true } : {}),
+        },
         playerCollision ?? collision,
       );
+      if (march) advanceMarch(hero, dt);
       advanceWalk(hero, player, dt, unit);
       // NPC も同じ更新を通す（GS-16）。入力の代わりにイベントの歩きを渡すだけ。
       // 通しておけば足場に乗り、光も影もプレイヤーと同じ手順で付く。
       for (const npc of npcs.values()) {
+        // 常時の足踏み（GS-169）。**踏んでいなければ踏み直す**だけ。
+        // 歩きやイベントの足踏みに割り込まれても、終わった次のフレームで戻る。
+        // 向きは渡さない（null）——`turn` で振り向かせたらそちらを向いて踏み続ける。
+        if (npc.stepping && !npc.march && !npc.walk) void beginMarch(npc, npc.actor, null, 0, false);
         // うろつきの判断は**動かす前**に。止める指示がその場で効く（GS-50）。
         advanceWander(npc, dt, unit);
-        const npcAxis = npc.walk ? npc.walk.axis : (npc.wandering?.axis ?? STILL);
+        const npcMarch = npc.march ?? null;
+        const npcAxis = npcMarch
+          ? marchAxis(npcMarch, npc.actor)
+          : npc.walk
+            ? npc.walk.axis
+            : (npc.wandering?.axis ?? STILL);
         npc.actor.update(
           dt,
           {
-            move: moveVector(npcAxis),
+            move: npcMarch ? { x: 0, z: 0 } : moveVector(npcAxis),
             axis: npcAxis,
             running: npc.walk?.run ?? false,
             yaw: rig.yaw,
@@ -1490,6 +1674,7 @@ export function createGameView(
           collision,
         );
         advanceWalk(npc, npc.actor, dt, unit);
+        if (npcMarch) advanceMarch(npc, dt);
         // 置き場所が悪くて落ちても消えないように、置いた所へ戻す。
         if (npc.actor.position.y <= VOID_DEPTH * unit) {
           npc.actor.placeAt(npc.home.x, npc.home.y, npc.home.z);
@@ -1502,7 +1687,10 @@ export function createGameView(
       }
       lookAt.copy(player.position);
       lookAt.y += 0.6 * unit;
-      rig.follow(lookAt);
+      // 追従は**命令「カメラ追従」で切れる**（GS-166）。既定は追う——切るのは飛ばされる・
+      // 置き直すなど、画面を動かしたくない演出のときだけ。切りっぱなしにならないよう、
+      // イベントが終わるときと、マップを読み直すときに戻す。
+      if (cameraFollow) rig.follow(lookAt);
       const at = player.cell();
       // セルが変わったときだけ差し替える。毎フレーム React を起こさない。
       if (!status.cell || status.cell.x !== at.x || status.cell.y !== at.y || status.cell.z !== at.z) {
@@ -1532,7 +1720,13 @@ export function createGameView(
       for (const figure of stage?.figures.values() ?? []) figure.mesh.rotation.y = rig.yaw * Math.PI / 180;
     }
     // イベント用のカメラ演出（GS-115 で戦闘の板を動かす・注視する機能は削除）。
-    const cue = cuePlayer.update(dt, rig.pitch);
+    // 場面の基準（マス。GS-167）。`cell` のキーはここからの差に直して重ねる。
+    const cueUnit = mapDef?.grid?.unit ?? 1;
+    const cue = cuePlayer.update(dt, rig.pitch, {
+      x: rig.target.x / cueUnit,
+      y: rig.target.y / cueUnit,
+      z: rig.target.z / cueUnit,
+    });
     renderedIllustrations = cue?.illustrations ?? [];
     if (cue) {
       rig.yaw += cue.yaw;
@@ -1583,6 +1777,8 @@ export function createGameView(
         shot.veilAlpha = cue.shot.veilAlpha;
       }
     }
+    // マス目（GS-167）。**演出を重ねた後**に置き直す——いま映しているマスが枠になる。
+    if (player) editorGrid.update(player.position, rig.target, mapDef?.grid?.unit ?? 1);
     applyCameraShot(rig.active(), shot, mapDef?.grid?.unit ?? 1);
     tilt.setVeil(shot.veil, shot.veilAlpha);
     tilt.render(renderer, scene, rig.active());
@@ -1622,9 +1818,35 @@ export function createGameView(
     face(dir) {
       player?.face(DIR_FACE[dir]);
     },
+    march(dir, steps, run = false) {
+      if (!player) return Promise.resolve(false);
+      return beginMarch(hero, player, dir, steps, run).then(() => true);
+    },
+    marchNpc(id, dir, steps, run = false) {
+      const npc = npcs.get(id);
+      if (!npc) {
+        if (cutWalks.has(id)) return Promise.resolve(false);
+        console.warn(`[npc] 居ない: ${id}`);
+        return Promise.resolve(false);
+      }
+      return beginMarch(npc, npc.actor, dir, steps, run).then(() => true);
+    },
+    stopMarch() {
+      stopMarch(hero);
+    },
+    stopMarchNpc(id) {
+      const npc = npcs.get(id);
+      if (!npc) return;
+      stopMarch(npc);
+      // 常時の足踏み（マップの `StepInPlace`）も**止めたら戻さない**（GS-169）。
+      // 戻すと、止めた次のフレームでまた踏み出してしまう。マップを読み直せば元どおり。
+      npc.stepping = false;
+    },
     walkNpc(id, dir, run = false, slide = false) {
       const npc = npcs.get(id);
       if (!npc) {
+        // 歩いている途中で消した人の残りは黙って捨てる（GS-157）。
+        if (cutWalks.has(id)) return Promise.resolve(false);
         // 居ない相手を歩かせようとしても止めない。イベントはそのまま次へ進む。
         console.warn(`[npc] 居ない: ${id}`);
         return Promise.resolve(false);
@@ -1683,6 +1905,7 @@ export function createGameView(
         const def = hiddenNpcs.get(id) as NpcDef;
         if (makeNpc(def)) {
           hiddenNpcs.delete(id);
+          cutWalks.delete(id);
           npc = npcs.get(id);
         }
       }
@@ -1750,6 +1973,11 @@ export function createGameView(
     removeNpc(id) {
       const npc = npcs.get(id);
       if (!npc) return false;
+      // **消した人は控えに戻す**（GS-157）。同じ場面で「消す」→「置き直す」と書けるように
+      // ——戻さないと、いちど消した人は入り直すまで二度と出せない。
+      hiddenNpcs.set(id, npc.def);
+      // 歩かせている最中に消されたら、残りの 1 歩は黙って捨てる（GS-157）。
+      if (npc.walk) cutWalks.add(id);
       scene.remove(npc.actor.group);
       npc.actor.dispose();
       npcs.delete(id);
@@ -1844,7 +2072,20 @@ export function createGameView(
       // マスの真ん中へ。高さは出発点や目印と同じ取り方で、そのマスの床に乗せる。
       const spot = standOn(x, y, z, unit);
       player.placeAt(spot.x, spot.y, spot.z);
-      rig.target.copy(player.position);
+      // 追従を切っているあいだは画面を動かさない（GS-166）。
+      // 暗転の裏で並べ直すような使い方のため。ふだん（マップ移動・復帰）は今までどおり寄せる。
+      if (cameraFollow) rig.target.copy(player.position);
+    },
+    setEditorGrid(on) {
+      editorGrid.setVisible(on);
+    },
+    setCellPicker(handler) {
+      cellPicker = handler;
+    },
+    setCameraFollow(on) {
+      cameraFollow = on;
+      // 追い直すときは**その場で**主人公へ戻す（`follow` は遅らせない作り。DEC-268）。
+      if (on && player) rig.target.copy(player.position);
     },
     placeAtMarker(name) {
       if (!player || !collision || !mapDef) return false;
@@ -2033,6 +2274,8 @@ export function createGameView(
       figure.pose = { ...pose };
     },
     dispose() {
+      canvas.removeEventListener('pointerdown', pickCellFromEvent);
+      editorGrid.dispose();
       unstage();
       buildGen += 1;
       renderer.setAnimationLoop(null);

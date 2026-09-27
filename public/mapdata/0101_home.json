@@ -45297,7 +45297,7 @@
       "id": "光源",
       "name": "光源",
       "kind": "group",
-      "visible": true,
+      "visible": false,
       "guides": true,
       "x": 0,
       "y": 0,
@@ -45449,13 +45449,13 @@
   "editor": {
     "camera": {
       "target": [
-        1.3619546905786284,
-        0.05050087490280119,
-        -2.6837810337602033
+        -2.2425070986512594,
+        0.07102486569201359,
+        -1.5109473055101992
       ],
       "yaw": 0,
       "pitch": -44,
-      "distance": 12.024458843085718,
+      "distance": 15,
       "orthographic": false
     },
     "activeLayer": "オブジェクトレイヤー_3",
@@ -49736,7 +49736,7 @@
       "name": "光源",
       "kind": "light",
       "parent": "",
-      "visible": true,
+      "visible": false,
       "opacity": 1,
       "collision": false,
       "properties": [],
@@ -49773,6 +49773,34 @@
             [
               -0.5,
               -1.5
+            ]
+          ]
+        },
+        {
+          "id": "obj_2",
+          "name": "lamy_32_40",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Sprite",
+              "type": "string",
+              "value": "lamy_32_40.png#32x42#1"
+            },
+            {
+              "name": "Standby",
+              "type": "boolean",
+              "value": true
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              4.5,
+              -3.5
             ]
           ]
         }

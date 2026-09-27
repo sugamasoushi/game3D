@@ -91,7 +91,15 @@
       "when": [{ "switch": "EVENT010302", "is": false }, { "switch": "EVENT010401", "is": true }],
       "commands": [
         { "type": "playSe", "key": "punch" },
-        { "type": "shot", "id": "impact" },
+        { "type": "shot", "id": "impact", "wait": false },
+        {
+          "type": "place",
+          "target": "npc:lamy_32_40",
+          "at": { "x": "player", "y": "player", "z": 3 },
+          "face": "up"
+        },
+        { "type": "move", "target": "player", "dir": "up", "cells": 2, "slide": true, "speed": 10 },
+        { "type": "turn", "target": "player", "to": "down" },
         { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "normal" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         {
@@ -104,6 +112,31 @@
             { "who": "lamyNPC", "lines": ["・・・・・・・・・・・・・・・・・・・泣泣泣"] }
           ]
         },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "portrait", "slot": "scene", "image": "20250603.jpg" },
+        { "type": "cameraFollow", "on": false },
+        {
+          "type": "place",
+          "target": "player",
+          "at": { "x": -8, "y": 0, "z": -3 },
+          "face": "right",
+          "follow": false
+        },
+        {
+          "type": "place",
+          "target": "npc:lamy_32_40",
+          "at": { "x": -5, "y": 0, "z": -3 },
+          "face": "left",
+          "follow": false
+        },
+        {
+          "type": "stepInPlace",
+          "target": "npc:lamy_32_40",
+          "steps": 4,
+          "wait": false,
+          "always": true
+        },
         {
           "type": "message",
           "talk": [
@@ -115,8 +148,12 @@
           ]
         },
         { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "portrait", "slot": "scene", "hide": true },
+        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk", "instant": true },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk", "instant": true },
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
+        { "type": "shot", "id": "pan01", "wait": false },
         {
           "type": "message",
           "talk": [
@@ -131,11 +168,24 @@
             { "who": "meina", "lines": ["ふ～ん、じゃあラミィって呼ぶね。"] }
           ]
         },
-        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
         { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk", "from": "none" },
+        {
+          "type": "place",
+          "target": "npc:chicken_walk",
+          "at": { "x": -7, "y": 0, "z": 0 },
+          "face": "right"
+        },
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
-        { "type": "portrait", "slot": "center", "who": "grandpa", "face": "normal" },
+        {
+          "type": "portrait",
+          "slot": "center",
+          "who": "grandpa",
+          "face": "normal",
+          "x": 12,
+          "from": "right"
+        },
         {
           "type": "message",
           "talk": [
@@ -147,7 +197,11 @@
             { "who": "grandpa", "lines": ["やめておけ、ワシはまずいぞ"] }
           ]
         },
-        { "type": "portrait", "slot": "center", "hide": true },
+        { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "place", "target": "npc:chicken_walk", "at": { "x": -1, "y": 0, "z": -1 } },
+        { "type": "portrait", "slot": "center", "hide": true, "from": "left", "who": "grandpa" },
+        { "type": "wait", "ms": 300 },
+        { "type": "fade", "to": "in", "ms": 400 },
         {
           "type": "message",
           "talk": [
@@ -164,9 +218,7 @@
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
-        { "type": "fade", "to": "out", "ms": 600 },
-        { "type": "message", "talk": [{ "lines": ["━ 翌朝 ━"] }] },
-        { "type": "fade", "to": "in", "ms": 800 },
+        { "type": "telop", "lines": ["━ 翌朝 ━"], "click": false },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
         {
@@ -176,7 +228,7 @@
             { "who": "lamy", "lines": ["お～！腕が鳴るね！"] }
           ]
         },
-        { "type": "message", "talk": [{ "lines": ["ラミィが仲間になった！！"] }] },
+        { "type": "message", "talk": [{ "lines": ["ラミィが仲間になった！！"] }], "hold": 1500 },
         { "type": "party", "op": "join", "who": "lamy" },
         {
           "type": "message",
@@ -184,6 +236,7 @@
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "hide", "target": "npc:lamy_32_40" },
         { "type": "setSwitch", "key": "EVENT010401", "value": false }
       ],
       "kind": "scenario"
@@ -204,21 +257,20 @@
             { "who": "meina", "lines": ["言うと思った", "分かった、準備が整ったら一緒に出よう。"] }
           ]
         },
-        { "type": "portrait", "slot": "left", "hide": true },
-        { "type": "portrait", "slot": "right", "hide": true },
         { "type": "setSwitch", "key": "EVENT020201", "value": false },
         { "type": "setSwitch", "key": "ゲーム_クリア", "value": true },
         {
           "type": "scroll",
-          "speed": 1800,
-          "dim": 0.7,
-          "lines": ["ラミア娘ことラミィを仲間にしたメイナ。", "ついに冒険に出る事を決意した。", "冒険の目的とは？", "", "彼女たちの旅はこれからだ！"]
-        },
-        {
-          "type": "scroll",
           "speed": 1200,
-          "dim": 1,
+          "dim": 0.7,
           "lines": [
+            "ラミア娘ことラミィを仲間にしたメイナ。",
+            "ついに冒険に出る事を決意した。",
+            "冒険の目的とは？",
+            "",
+            "彼女たちの旅はこれからだ！",
+            "",
+            "",
             "シナリオ：俺",
             "企画：俺",
             "プロップデザイン：俺",

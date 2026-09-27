@@ -9,7 +9,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { playUi } from '../game/audio';
 import { options } from '../game/options';
-import { scrollMs, useUi } from './store';
+import { faceCount, portraitLook, scrollMs, useUi } from './store';
 
 /**
  * 流れる文字の出入り（ミリ秒。GS-23）。
@@ -43,6 +43,7 @@ export function MessageWindow({
 }) {
   const talk = useUi((s) => s.talk);
   const scroll = useUi((s) => s.scroll);
+  const telop = useUi((s) => s.telop);
   const choices = useUi((s) => s.choices);
   const fade = useUi((s) => s.fade);
   const fadeMs = useUi((s) => s.fadeMs);
@@ -60,6 +61,11 @@ export function MessageWindow({
    * `ms` は流れ切るまでの時間。行数で時間が変わるので、置いてから測って決める。
    */
   const [scrollRun, setScrollRun] = useState<{ from: number; ms: number } | null>(null);
+  /**
+   * テロップの段（GS-171）。出た瞬間は真っ黒（`run`）で、押されたら薄れる（`out`）。
+   * **入りは滑らせない**——旧作も黒を一瞬で置いてから薄めていた（場面が切り替わった合図）。
+   */
+  const [telopStep, setTelopStep] = useState<'run' | 'out'>('run');
   const scrollBackRef = useRef<HTMLDivElement | null>(null);
   const scrollTextRef = useRef<HTMLDivElement | null>(null);
   const [shown, setShown] = useState(0);
@@ -119,6 +125,24 @@ export function MessageWindow({
   useEffect(() => {
     setCursor(0);
   }, [choices]);
+
+  /**
+   * 押さずに送る会話（GS-172）。**文字が出そろってから**数える——
+   * 出し始めから数えると、長い文ほど読む間が短くなり、行によって間が変わる。
+   * 押せば今までどおり早く送れる（こちらは上のキー・クリックの道）。
+   */
+  useEffect(() => {
+    if (!talk || talk.hold === undefined || !done) return;
+    const id = window.setTimeout(onAdvance, Math.max(0, talk.hold));
+    return () => window.clearTimeout(id);
+  }, [talk, done, onAdvance]);
+
+  // 押さずに消えるテロップ（GS-172）。出しておく時間が来たら薄れ始める。
+  useEffect(() => {
+    if (!telop || telop.hold === undefined || telopStep !== 'run') return;
+    const id = window.setTimeout(() => setTelopStep('out'), Math.max(0, telop.hold));
+    return () => window.clearTimeout(id);
+  }, [telop, telopStep]);
 
   // 出ていく立ち絵は、**外へ出切ってから**消す（GS-31）。
   // 画面から出た時点で消せば、途中で切れて見えることはない。
@@ -191,11 +215,22 @@ export function MessageWindow({
     return () => window.clearTimeout(id);
   }, [scroll, scrollStep, onAdvance]);
 
+  // テロップ（GS-171）。**薄れ切ってから次へ**——先に進めると、次の絵が黒の裏で動いて見える。
+  useEffect(() => {
+    if (!telop) {
+      setTelopStep('run');
+      return;
+    }
+    if (telopStep !== 'out') return;
+    const id = window.setTimeout(onAdvance, telop.ms);
+    return () => window.clearTimeout(id);
+  }, [telop, telopStep, onAdvance]);
+
   const stateRef = useRef({ done, choices, onAdvance, onPick, cursor });
   stateRef.current = { done, choices, onAdvance, onPick, cursor };
 
   useEffect(() => {
-    if (!talk && !choices && !scroll) return;
+    if (!talk && !choices && !scroll && !telop) return;
     const onKey = (event: KeyboardEvent) => {
       const now = stateRef.current;
       // ここで止めるので、ゲームの移動キーには届かない。
@@ -204,6 +239,12 @@ export function MessageWindow({
       // 流れる文字は決定キーで飛ばす（旧作と同じ）。薄れてから次へ進む。
       if (scroll) {
         if (DECIDE.includes(event.code)) setScrollStep('out');
+        return;
+      }
+      // テロップも決定キーで消せる（GS-171）。クリックと同じ扱い。
+      // **押して消さない指定**（GS-172）なら受けない——時間が来るまで出したまま。
+      if (telop) {
+        if (telop.click && DECIDE.includes(event.code)) setTelopStep('out');
         return;
       }
       if (now.choices) {
@@ -222,24 +263,44 @@ export function MessageWindow({
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [talk, choices, scroll, full.length]);
+  }, [talk, choices, scroll, telop, full.length]);
+
+  /**
+   * 喋っている人（GS-170）。**その人の絵を手前に出し、ほかの人の絵は少し暗くする。**
+   * 絵が重なっていても「いま誰が喋っているか」が見て分かるように——
+   * 旧作は 1 枚ずつ出していたので要らなかったが、3 枚並べると誰の声か分からなくなる。
+   */
+  const speaker = talk?.who ?? '';
+  // 暗くするのは**人の絵が 2 枚以上あるとき**だけ。1 枚しか出ていなければ暗くする意味がない
+  // （場面絵・看板のような `who` の無い絵は数えない——喋らないので暗くもしない）。
+  const facesOut = faceCount(portraits);
 
   return (
     <>
-      {/* 立ち絵（GS-20）。**暗転より下**に置く——暗転したら一緒に消えてほしい。 */}
+      {/*
+        立ち絵（GS-20）。**暗転より下**に置く——暗転したら一緒に消えてほしい。
+        入れ物で囲んであるのは、**この中だけで前後を決める**ため（GS-170。`isolation: isolate`）。
+        `z-index` を絵に直に付けると、会話ウィンドウより前に出て文字が読めなくなる（実際に出た）。
+      */}
+      <div className="portraits">
       {portraits.map((entry) => {
         // 出入りも効果も**この 3 つの値**で決まる（GS-143）。
         // 置き場所（left / right / center）は CSS が持ち、ここは「そこからどれだけずらすか」だけ。
         const shift = entry.out ? OUT_SHIFT[entry.out] : null;
+        // 喋っている人の絵は手前へ、ほかの人の絵は少し暗く（GS-170）。決め方は店（store）側。
+        const { talking, dimmed } = portraitLook(entry, speaker, facesOut);
         return (
           <img
             // 名前が変わったら別の絵。**同じ名前なら差し替え**なので入りのアニメは走り直さない。
             key={entry.id}
-            className={`portrait ${entry.slot}${entry.out ? ' leaving' : ''}${entry.from === 'none' ? ' instant' : ` in-${entry.from}`}`}
+            className={`portrait ${entry.slot}${talking ? ' talking' : ''}${dimmed ? ' dimmed' : ''}${entry.out ? ' leaving' : ''}${entry.from === 'none' ? ' instant' : ` in-${entry.from}`}`}
             src={entry.src}
             alt=""
             style={
               {
+                // 置き場所からのずれ（GS-170）。**画面の幅・高さに対する割合**。
+                '--ox': `${entry.x}%`,
+                '--oy': `${entry.y}%`,
                 // **単位を付けて置く。** `calc(0 - 14px)` は単位なしの 0 と混ぜられず、
                 // 丸ごと捨てられて揺れが効かなくなる（実測）。
                 '--dx': shift?.x ?? '0px',
@@ -259,9 +320,40 @@ export function MessageWindow({
           />
         );
       })}
+      </div>
 
       {/* 暗転。会話の下に敷く。 */}
       <div className="fade" style={{ opacity: fade, transitionDuration: `${fadeMs}ms` }} />
+
+      {/*
+        テロップ（GS-171）。**画面を黒で覆って真ん中に一言**——旧作の「━ 翌朝 ━」。
+        黒は一瞬で置き、押されたら文字ごと薄れて消える。立ち絵より後に描くので、
+        絵が出ていても隠れる（そのために暗転よりも後ろに書かない）。
+      */}
+      {telop ? (
+        <div
+          className={`telop ${telopStep}`}
+          style={
+            {
+              background: `rgba(0, 0, 0, ${telop.dim})`,
+              transitionDuration: `${telop.ms}ms`,
+              // 字の大きさ（GS-172）。書かなければ CSS の既定（56px）。
+              ...(telop.size ? { '--telop-size': `${telop.size}px` } : {}),
+              // 押して消さないなら**掴まない**——下の画面へも渡さないよう、覆いはそのまま。
+              ...(telop.click ? {} : { cursor: 'default' }),
+            } as CSSProperties
+          }
+          onClick={() => {
+            if (telop.click) setTelopStep('out');
+          }}
+        >
+          <div className="telop-text">
+            {telop.lines.map((line, index) => (
+              <p key={index}>{line || ' '}</p>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* 流れる文字（GS-23）。旧作のオープニングと同じで、背景を少し暗くして下から上へ。 */}
       {scroll ? (

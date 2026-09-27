@@ -9,6 +9,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import type { EventCommand, EventDef, EventFile } from '../src/event/types';
+import type { MapDef } from '../src/mep3d/types';
+import { readNpcs } from '../src/game/npcs';
 
 const ROOT = join(import.meta.dirname, '..');
 const read = (path: string) => JSON.parse(readFileSync(join(ROOT, 'public', 'data', path), 'utf8'));
@@ -204,12 +206,134 @@ test('「置き直す」「移動」の行き先は、マスの整数か「playe
   everyCommand((command, where) => {
     if (command.type !== 'place' && command.type !== 'move') return;
     const at = command.type === 'place' ? command.at : command.to;
+    // 「移動（方向指定）」は行き先を持たない（GS-158）。向きと歩数は下のテストで見る。
+    if (!at) return;
     for (const axis of ['x', 'y', 'z'] as const) {
       const value = (at as unknown as Record<string, unknown>)[axis];
       if (value === 'player') continue;
       if (typeof value === 'number' && Number.isFinite(value)) continue;
       gone.push(`${where}: at.${axis} = ${JSON.stringify(value)}`);
     }
+  });
+  deepStrictEqual(gone, []);
+});
+
+// 出入りはイベントが決める（GS-157）。**宛先を書き損じても画面は静か**——
+// 「消す」が空振りしても見た目は何も起きず、`place` は警告 1 行で終わる。
+// マップの `HideIf` をやめて命令に移した以上、宛先の綴りはここで当てる。
+test('「消す」「置き直す」の宛先は、そのマップに実在する NPC', () => {
+  const gone: string[] = [];
+  for (const { file, book } of books) {
+    const path = join(ROOT, 'public', 'mapdata', file);
+    let ids: Set<string>;
+    try {
+      ids = new Set(readNpcs(JSON.parse(readFileSync(path, 'utf8')) as MapDef).map((npc) => npc.id));
+    } catch {
+      continue; // マップが無い台帳（共通イベントなど）は見ない。
+    }
+    for (const event of book.events) {
+      each(event.commands, (command) => {
+        if (command.type !== 'hide' && command.type !== 'place') return;
+        if (!command.target.startsWith('npc:')) return; // `this` / `player` はここでは見ない。
+        const id = command.target.slice('npc:'.length);
+        if (!ids.has(id)) gone.push(`${file} ${event.id}: ${command.type} の宛先 ${id} がマップに居ない`);
+      });
+    }
+  }
+  deepStrictEqual(gone, []);
+});
+
+// 向きと歩数で書く「移動（方向指定）」（GS-158）。**綴りを間違えると 1 歩も動かない**
+// （知らない向きは道順が空になるだけ）。歩数 0 や負の数も画面では「動かない」にしか見えない。
+test('「移動（方向指定）」の向きは上下左右、マス数は 1 以上の整数', () => {
+  const dirs = ['up', 'down', 'left', 'right'];
+  const gone: string[] = [];
+  everyCommand((command, where) => {
+    if (command.type !== 'move' || !command.dir) return;
+    if (!dirs.includes(command.dir)) gone.push(`${where}: dir = ${JSON.stringify(command.dir)}`);
+    const cells = command.cells;
+    if (cells === undefined) return;
+    if (!Number.isInteger(cells) || cells < 1) gone.push(`${where}: cells = ${JSON.stringify(cells)}`);
+  });
+  deepStrictEqual(gone, []);
+});
+
+// イベントイラスト（GS-161）。**名前は拡張子まで**（置き場に jpg と png が混ざっている）。
+// 書き損じても画面では「絵が出ない」だけなので、置き場と突き合わせる。
+test('イベントイラスト（slot: scene）の絵は assets/img/Event に在る', () => {
+  const dir = join(ROOT, 'public', 'assets', 'img', 'Event');
+  let files: Set<string>;
+  try {
+    files = new Set(readdirSync(dir));
+  } catch {
+    files = new Set(); // 置き場ごと無いなら、使っていないはず（下で落ちる）。
+  }
+  const gone: string[] = [];
+  everyCommand((command, where) => {
+    if (command.type !== 'portrait' || command.slot !== 'scene') return;
+    if (command.hide === true) return; // 引っ込めるときは絵を書かない。
+    if (!command.image) gone.push(`${where}: 絵の名前が空`);
+    else if (!files.has(command.image)) gone.push(`${where}: ${command.image} が assets/img/Event に無い`);
+  });
+  deepStrictEqual(gone, []);
+});
+
+// テロップ（GS-171）。**中身が空だと真っ黒な画面が出て、押すまで何も分からない。**
+// 画面では「固まった」ようにしか見えないので、空とずれた黒さをここで落とす。
+test('テロップは中身が在る。黒さは 0〜1、消える時間は正の数', () => {
+  const gone: string[] = [];
+  everyCommand((command, where) => {
+    if (command.type !== 'telop') return;
+    const lines = command.lines ?? [];
+    if (!lines.length || !lines.some((line) => line.trim())) gone.push(`${where}: 中身が空`);
+    if (command.dim !== undefined && !(command.dim >= 0 && command.dim <= 1)) gone.push(`${where}: dim = ${command.dim}`);
+    if (command.ms !== undefined && !(command.ms > 0)) gone.push(`${where}: ms = ${command.ms}`);
+    // 字の大きさ（GS-172）。小さすぎ・大きすぎは画面で読めない／はみ出す。
+    if (command.size !== undefined && !(command.size >= 12 && command.size <= 200)) gone.push(`${where}: size = ${command.size}`);
+    if (command.hold !== undefined && !(command.hold >= 0)) gone.push(`${where}: hold = ${command.hold}`);
+  });
+  deepStrictEqual(gone, []);
+});
+
+// 押さずに送る会話（GS-172）。**負の数や文字が入ると、その行で止まったままになる。**
+test('会話の「時間で消す」は 0 以上の数', () => {
+  const gone: string[] = [];
+  everyCommand((command, where) => {
+    if (command.type !== 'message' || command.hold === undefined) return;
+    if (typeof command.hold !== 'number' || !(command.hold >= 0)) gone.push(`${where}: hold = ${JSON.stringify(command.hold)}`);
+  });
+  deepStrictEqual(gone, []);
+});
+
+// 立ち絵のずれ（GS-170）。**画面の外へ出した絵は「出ていない」ようにしか見えない。**
+// 割合（％）なので、桁を間違える（120 と書く）と黙って画面の外に立つ。
+test('立ち絵のずれは画面の内（±60%）。場面絵には書かない', () => {
+  const gone: string[] = [];
+  everyCommand((command, where) => {
+    if (command.type !== 'portrait') return;
+    for (const key of ['x', 'y'] as const) {
+      const value = command[key];
+      if (value === undefined) continue;
+      if (typeof value !== 'number' || Number.isNaN(value)) gone.push(`${where}: ${key} = ${JSON.stringify(value)}`);
+      else if (Math.abs(value) > 60) gone.push(`${where}: ${key} = ${value}%（画面の外）`);
+      // 場面絵は画面いっぱいなので効かない。書いてあれば書き間違い。
+      else if (command.slot === 'scene') gone.push(`${where}: 場面絵に ${key} を書いている`);
+    }
+  });
+  deepStrictEqual(gone, []);
+});
+
+// 動かす相手は**主人公か名指し**だけ（GS-162）。`this`（話しかけた相手）はやめた——
+// 踏む・入ったら動くイベントでは誰も指さず、**黙って動かない**だけだったので、
+// 画面では「命令を書いたのに何も起きない」としか見えなかった。書き残しはここで落とす。
+test('動かす相手は player か npc:<名前> だけ（this は使わない）', () => {
+  const gone: string[] = [];
+  everyCommand((command, where) => {
+    const target = (command as { target?: unknown }).target;
+    if (target === undefined) return;
+    if (target === 'player') return;
+    if (typeof target === 'string' && target.startsWith('npc:') && target.length > 'npc:'.length) return;
+    gone.push(`${where}: ${command.type} の相手が ${JSON.stringify(target)}`);
   });
   deepStrictEqual(gone, []);
 });
@@ -249,18 +373,24 @@ test('宝箱は「開けた」を**メッセージより先**に立てる（読�
   deepStrictEqual(gone, []);
 });
 
-// 「歩く」は行き先だけ（GS-139）。1 マスずつの道順は無くなったので、書き残しが在れば落とす。
-// **ゲームは黙って無視する**——`route` が残ったイベントは、その場から動かないまま次へ進む。
-test('「歩く」は行き先（to）を持つ。1 マスずつの道順（route）は残っていない', () => {
+// 「移動」の書き方は 2 通り（GS-158）。**座標なら 3 軸そろっている**、方向指定なら向きが在る。
+// 1 マスずつの道順（`route`）は無くなったので、書き残しが在れば落とす——
+// **ゲームは黙って無視する**ので、その場から動かないまま次へ進んでしまう。
+test('「移動」は行き先（to）か向き（dir）のどちらかを持つ。道順（route）は残っていない', () => {
   const gone: string[] = [];
   everyCommand((command, where) => {
     if (command.type !== 'move') return;
     if ('route' in command) gone.push(`${where}: 道順（route）が残っている`);
-    // 行き先の中身は次のテストが見る（マスの整数 / "player" / 範囲。GS-154 / GS-156）。
+    // 向きと歩数で書く形（GS-158）。向きの中身は下のテストが見る。
+    if (command.dir !== undefined) {
+      if (command.to !== undefined) gone.push(`${where}: 行き先と向きの両方が書いてある`);
+      return;
+    }
+    // 行き先の中身は次のテストが見る（マスの整数 / "player"。GS-154）。
     // ここは**3 軸そろっているか**だけ。
     const to = (command as unknown as { to?: Record<string, unknown> }).to;
     if (!to || to.x === undefined || to.y === undefined || to.z === undefined) {
-      gone.push(`${where}: 行き先（x/y/z）がそろっていない`);
+      gone.push(`${where}: 行き先（x/y/z）も向き（dir）も無い`);
     }
     const first = (command as { first?: unknown }).first;
     if (first !== undefined && first !== 'leftRight' && first !== 'upDown') {

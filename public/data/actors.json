@@ -58,7 +58,10 @@
       }
     },
     "lamy_32_40": {
-      "sheet": "lamy_32_40.png"
+      "sheet": "lamy_32_40.png",
+      "wander": {
+        "range": 2
+      }
     }
   }
 }

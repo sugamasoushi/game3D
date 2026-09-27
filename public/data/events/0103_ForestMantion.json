@@ -8,24 +8,26 @@
       "commands": [
         { "type": "setSwitch", "key": "EVENT010301", "value": false },
         { "type": "playSe", "key": "punch" },
-        { "type": "shot", "id": "impact" },
-        { "type": "turn", "target": "player", "to": "up" },
-        {
-          "type": "move",
-          "target": "player",
-          "to": { "x": "player", "y": 0, "z": 8 },
-          "first": "upDown",
-          "slide": true,
-          "speed": 10
-        },
         {
           "type": "place",
           "target": "npc:lamy_32_40",
           "at": { "x": "player", "y": "player", "z": 7 },
           "face": "down"
         },
+        { "type": "shot", "id": "impact", "wait": false },
+        { "type": "turn", "target": "player", "to": "up" },
+        {
+          "type": "move",
+          "target": "player",
+          "dir": "down",
+          "cells": 3,
+          "relative": false,
+          "speed": 10,
+          "slide": true
+        },
+        { "type": "shot", "id": "event010201_camera01" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "normal" },
+        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
         {
           "type": "message",
           "talk": [
@@ -34,22 +36,12 @@
             { "who": "meina", "lines": ["ごめんごめん！帰るから！"] }
           ]
         },
-        {
-          "type": "move",
-          "target": "player",
-          "to": { "x": "player", "y": 0, "z": 9 },
-          "first": "upDown"
-        },
+        { "type": "move", "target": "player", "dir": "down", "cells": 1 },
         {
           "type": "message",
           "talk": [{ "who": "lamyNPC", "lines": ["ふんっ・・・取り返すこともしないなんて弱っちいの。", "ま、あたしに勝てるわけないしね！"] }]
         },
-        {
-          "type": "move",
-          "target": "player",
-          "to": { "x": "player", "y": 0, "z": 8 },
-          "first": "upDown"
-        },
+        { "type": "move", "target": "player", "dir": "up", "cells": 2, "speed": 15 },
         {
           "type": "message",
           "talk": [{ "who": "meina", "lines": ["あ\"？"] }, { "who": "lamyNPC", "lines": ["へぁ？"] }]
@@ -68,7 +60,8 @@
           ]
         },
         { "type": "portrait", "slot": "left", "hide": true },
-        { "type": "portrait", "slot": "right", "hide": true }
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "shot", "id": "event010201_camera02" }
       ],
       "kind": "scenario"
     },

@@ -6080,13 +6080,13 @@
   "editor": {
     "camera": {
       "target": [
-        0.23839674806294509,
-        7.163985275625411,
-        -0.9397985237717128
+        -8.20186686349534,
+        7.998740578892151,
+        -0.3598519968274907
       ],
       "yaw": 0,
       "pitch": -15,
-      "distance": 9.993281825547122,
+      "distance": 11.157709819180356,
       "orthographic": false
     },
     "height": 0,
@@ -15752,6 +15752,98 @@
             ],
             [
               2,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "obj_6",
+          "name": "0103",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "MapMove",
+              "type": "string",
+              "value": "0103"
+            },
+            {
+              "name": "Direction",
+              "type": "string",
+              "value": "Right"
+            },
+            {
+              "name": "MoveTo",
+              "type": "string",
+              "value": "-25,2,28"
+            }
+          ],
+          "space": "solid",
+          "y": 5,
+          "height": 1,
+          "points": [
+            [
+              5,
+              -8
+            ],
+            [
+              6,
+              -8
+            ],
+            [
+              6,
+              1
+            ],
+            [
+              5,
+              1
+            ]
+          ]
+        },
+        {
+          "id": "obj_7",
+          "name": "0106",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "MapMove",
+              "type": "string",
+              "value": "0106"
+            },
+            {
+              "name": "Direction",
+              "type": "string",
+              "value": "Left"
+            },
+            {
+              "name": "MoveTo",
+              "type": "string",
+              "value": "17,11,3"
+            }
+          ],
+          "space": "solid",
+          "y": 5,
+          "height": 1,
+          "points": [
+            [
+              -12,
+              -8.320461707665302
+            ],
+            [
+              -11,
+              -8.320461707665302
+            ],
+            [
+              -11,
+              1
+            ],
+            [
+              -12,
               1
             ]
           ]

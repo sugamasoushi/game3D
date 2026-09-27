@@ -27,10 +27,21 @@
 //   Pose   … スイッチが入っているときの静止コマの名前（GS-133。`actors.json` の `poses`）
 //   PoseIf … その `Pose` にするスイッチ。**見た目はイベントではなくここで決まる**
 //            `self:開けた` と書くと**その物自身の覚え**（GS-134）。ふつうに書くと通しのスイッチ
-//   ShowIf … このスイッチが**入っているときだけ**出す
-//   HideIf … このスイッチが**入っていると出さない**（倒したら現れないイベント敵など）
+//   StepInPlace … **常時その場で足踏みする**（GS-169）。値は真偽。進まず足だけ動く
+//            （揺れる旗・回る風車・じっとしていない人）。**うろつきとは両立しない**
+//   Hidden … **ゲームには出さない**（GS-160）。エディタでは見える。置き場所の目印用
+//   Standby … **最初は出さない**（GS-157）。イベントの「置き直す」で出すまで居ない。
+//             出入りはイベントが決めるので、**ここにイベント名は書かない**
+//   ShowIf … このスイッチが**入っているときだけ**出す（古い書き方。GS-157 を見よ）
+//   HideIf … このスイッチが**入っていると出さない**（古い書き方。GS-157 を見よ）
+//
+// **出入りはイベントの命令で決める**（GS-157）。イベントが「消す」「置き直す」を通ると、
+// その**キャラ自身の覚え**（`self:消えた` / `self:出た`）に書く——マップを読み直しても
+// 消えたままだし、出たままになる。`ShowIf` / `HideIf` にイベント名を書いていた頃は、
+// フラグの向きを変えるたびにマップを直す必要があった（GS-147 で実際に壊れた）。
 
 import type { MapDef, MapObjectDef, PropertyDef } from '../mep3d/types';
+import { HIDDEN_PROPERTY } from './hiddenLayers';
 import type { WalkDir } from './GameView';
 
 /** エディタの「キャラ画像」の指定（GS-18）。`ファイル名#幅x高さ#コマ番号`。 */
@@ -65,6 +76,11 @@ export interface NpcDef {
   showIf?: string;
   /** このスイッチが入っていると出さない（GS-130。マップの `HideIf`）。 */
   hideIf?: string;
+  /**
+   * **最初は出さない**（GS-157。マップの `Standby`）。イベントが「置き直す」で出すまで居ない。
+   * 「イベントで初めて現れる人」はこれ 1 つで足りる——**イベント名は要らない。**
+   */
+  standby?: boolean;
   /** 中身（GS-132。マップの `Item` / `Num`）。話しかけたイベントの `getItem` が使う。 */
   item?: string;
   num?: number;
@@ -85,6 +101,12 @@ export interface NpcDef {
    * 書いてなければ undefined（台帳の言うとおり）、`0` なら**この個体だけ動かない**。
    */
   wander?: number;
+  /**
+   * **常時その場で足踏みする**（GS-169。マップの `StepInPlace`）。
+   * イベントの「その場で足踏み」と同じ見せ方を、イベントの外でも続ける。
+   * 踏んでいるあいだ**うろつきは入らない**（動かずに足だけ動く物・人のためのもの）。
+   */
+  stepping?: boolean;
   x: number;
   y: number;
   z: number;
@@ -105,9 +127,13 @@ const WANDER_PROPERTY = 'Wander';
 const ENEMY_PROPERTY = 'EnemyData';
 /** 絵の大きさの倍率（GS-130）。見た目だけ。 */
 const SCALE_PROPERTY = 'Scale';
-/** 出す・出さないの条件（GS-130）。値はスイッチの名前。 */
+/** 出す・出さないの条件（GS-130）。値はスイッチの名前。**古い書き方**（GS-157）。 */
 const SHOW_IF_PROPERTY = 'ShowIf';
 const HIDE_IF_PROPERTY = 'HideIf';
+/** 最初は出さない（GS-157）。値は真偽（`true` / `"true"`）。 */
+const STANDBY_PROPERTY = 'Standby';
+/** 常時その場で足踏みする（GS-169）。値は真偽。 */
+const STEP_IN_PLACE_PROPERTY = 'StepInPlace';
 /** 中身（GS-132）。宝箱の「何が」「いくつ」。 */
 const ITEM_PROPERTY = 'Item';
 const NUM_PROPERTY = 'Num';
@@ -142,6 +168,17 @@ function textOf(properties: PropertyDef[] | undefined, name: string): string {
 }
 
 /**
+ * 真偽のプロパティ（GS-157）。エディタは型を選べるので、**`true` でも `"true"` でも受ける**
+ * （`1` / `yes` / `はい` も同じ扱い）。読めない値は false。
+ */
+function truthOf(properties: PropertyDef[] | undefined, name: string): boolean {
+  const hit = properties?.find((entry) => entry.name === name);
+  if (!hit) return false;
+  if (typeof hit.value === 'boolean') return hit.value;
+  return ['true', '1', 'yes', 'はい'].includes(String(hit.value).trim().toLowerCase());
+}
+
+/**
  * 数のプロパティ。**数で書いても文字で書いても受ける**——エディタのプロパティ欄は
  * 型を選べるので、同じ物が `4` でも `"4"` でも来る。読めない値は undefined。
  */
@@ -153,10 +190,30 @@ function numberOf(properties: PropertyDef[] | undefined, name: string): number |
 }
 
 /**
- * その NPC を出すか（GS-130）。`ShowIf` は入っていれば出す、`HideIf` は入っていれば出さない。
- * **両方書いたら両方満たすときだけ**出す。どちらも無ければいつでも出す。
+ * 出入りの覚え（GS-157）。**その物自身のセルフスイッチ**（GS-134）なので、
+ * 同じ姿を何人置いても混ざらない。書くのはイベントの「消す」「置き直す」だけ。
  */
-export function npcShown(def: Pick<NpcDef, 'showIf' | 'hideIf'>, switchOn: (key: string) => boolean): boolean {
+export const NPC_GONE = '消えた';
+export const NPC_CAME = '出た';
+
+/**
+ * その NPC を出すか（GS-130 / GS-157）。上から順に見て、最初に決まったところで止まる。
+ *
+ *   1. **キャラ自身の覚え**（`self:消えた` / `self:出た`）。イベントが書いたもの——一番強い
+ *   2. マップの `Standby`（最初は出さない）
+ *   3. マップの `ShowIf` / `HideIf`（古い書き方）。**両方書いたら両方満たすときだけ**出す
+ *
+ * どれも無ければいつでも出す。
+ */
+export function npcShown(
+  def: Pick<NpcDef, 'showIf' | 'hideIf' | 'standby'>,
+  switchOn: (key: string) => boolean,
+): boolean {
+  // イベントが消した人は、マップを読み直しても出さない（旧作の `setVisible(false)` が残る）。
+  if (switchOn(`self:${NPC_GONE}`)) return false;
+  // イベントが出した人は、`Standby` でも `ShowIf` でも出す。**命令のほうが後の話**。
+  if (switchOn(`self:${NPC_CAME}`)) return true;
+  if (def.standby) return false;
   if (def.showIf && !switchOn(def.showIf)) return false;
   if (def.hideIf && switchOn(def.hideIf)) return false;
   return true;
@@ -214,6 +271,10 @@ export function readNpcs(map: MapDef): NpcDef[] {
     const thingLayer = layerName === SPRITE_LAYER;
     for (const object of layer.objects ?? []) {
       if ((object.plane ?? 'xz') !== 'xz') continue;
+      // ゲームでは出さない物（GS-160。マップの `Hidden`）。レイヤーに付けたときと同じ言葉で、
+      // **エディタには見えるがゲームには出ない**——置き場所の目印に使う。
+      // 当たりや起動枠は今までどおり（`Hidden` は見た目の話。GS-57）。
+      if (truthOf(object.properties, HIDDEN_PROPERTY)) continue;
       const named = textOf(object.properties, NPC_PROPERTY);
       const sprite = parseSprite(textOf(object.properties, SPRITE_PROPERTY));
       // `Npc` が在ればどこでも。無ければ **`NPC` / `SPRITE` レイヤーのキャラ画像**だけ。
@@ -236,6 +297,10 @@ export function readNpcs(map: MapDef): NpcDef[] {
           : {}),
         ...(textOf(object.properties, SHOW_IF_PROPERTY) ? { showIf: textOf(object.properties, SHOW_IF_PROPERTY) } : {}),
         ...(textOf(object.properties, HIDE_IF_PROPERTY) ? { hideIf: textOf(object.properties, HIDE_IF_PROPERTY) } : {}),
+        // 最初は出さない（GS-157）。イベントの「置き直す」で出す。
+        ...(truthOf(object.properties, STANDBY_PROPERTY) ? { standby: true } : {}),
+        // 常時その場で足踏み（GS-169）。イベントを書かなくても動いて見える。
+        ...(truthOf(object.properties, STEP_IN_PLACE_PROPERTY) ? { stepping: true } : {}),
         ...(textOf(object.properties, ITEM_PROPERTY) ? { item: textOf(object.properties, ITEM_PROPERTY) } : {}),
         ...(numberOf(object.properties, NUM_PROPERTY) !== undefined
           ? { num: Math.max(0, Math.trunc(numberOf(object.properties, NUM_PROPERTY) ?? 1)) }
