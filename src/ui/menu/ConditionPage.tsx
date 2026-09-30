@@ -5,9 +5,7 @@
 import { memberStats } from '../../game/battle/party';
 import { characterIcon, characterName } from '../../game/characters';
 import { ailmentDef } from '../../game/battle/book';
-import { itemName } from '../../game/items';
 import type { MemberState } from '../../game/state';
-import { AilTags } from '../AilTags';
 
 export function ConditionPage({ party, members, gold }: { party: string[]; members: Map<string, MemberState>; gold: number }) {
   if (party.length === 0) return <><p className="condition-gold">所持金　{gold} G</p><p className="menu-empty">まだ 仲間が いない</p></>;
