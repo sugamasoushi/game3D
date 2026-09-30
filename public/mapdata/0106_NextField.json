@@ -6063,23 +6063,23 @@
   "editor": {
     "camera": {
       "target": [
-        20.8449176458675,
-        2.2037139806919672,
-        -12.442080105048937
+        8.411882135094803,
+        2.42408537876116,
+        2.458001838987249
       ],
       "yaw": 342.80000000000007,
       "pitch": -33.49999999999999,
-      "distance": 24.589527253040703,
+      "distance": 27.048479978344776,
       "orthographic": false
     },
     "height": 0,
     "activeLayer": "objects",
     "brush": {
-      "shape": "wall",
+      "shape": "floor",
       "rotation": 3,
       "color": "#2b3a24",
-      "tileset": "terrain_mountain_summer_",
-      "tile": 22,
+      "tileset": "collision",
+      "tile": 0,
       "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
@@ -24097,7 +24097,7 @@
             {
               "name": "MoveTo",
               "type": "string",
-              "value": "-11,5,-4"
+              "value": "-10,5,-4"
             }
           ],
           "space": "solid",
@@ -24171,7 +24171,7 @@
       "collision": true,
       "properties": [
         {
-          "name": "Collision",
+          "name": "NoEntry",
           "type": "boolean",
           "value": true
         },
@@ -24192,14 +24192,11 @@
           "protos": [
             "p_collision_0_floor"
           ],
-          "count": 113,
+          "count": 117,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
             "cell": [
-              17,
-              11,
-              0,
               17,
               11,
               -1,
@@ -24535,9 +24532,28 @@
               13,
               -1,
               7,
-              10
+              10,
+              17,
+              11,
+              0,
+              18,
+              11,
+              0,
+              19,
+              11,
+              0,
+              19,
+              11,
+              6,
+              19,
+              11,
+              5
             ],
             "proto": [
+              0,
+              0,
+              0,
+              0,
               0,
               0,
               0,
@@ -24765,7 +24781,11 @@
               0,
               0,
               0,
-              0
+              3,
+              3,
+              3,
+              3,
+              3
             ]
           }
         }
@@ -24773,7 +24793,7 @@
     }
   ],
   "stats": {
-    "tiles": 3456,
+    "tiles": 3460,
     "batches": 15,
     "drawCalls": 15
   }

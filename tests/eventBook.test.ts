@@ -326,13 +326,24 @@ test('立ち絵のずれは画面の内（±60%）。場面絵には書かない
 // 動かす相手は**主人公か名指し**だけ（GS-162）。`this`（話しかけた相手）はやめた——
 // 踏む・入ったら動くイベントでは誰も指さず、**黙って動かない**だけだったので、
 // 画面では「命令を書いたのに何も起きない」としか見えなかった。書き残しはここで落とす。
-test('動かす相手は player か npc:<名前> だけ（this は使わない）', () => {
+// 隊列の仲間（`party:<id>`。GS-184）は**受ける命令だけ**（置き直す・向く・ジャンプ）、相手は `party.json` の `members`。
+test('動かす相手は player か npc:<名前> だけ（this は使わない。party: は受ける命令だけ）', () => {
   const gone: string[] = [];
+  const members = Object.keys((read('party.json') as { members?: Record<string, unknown> }).members ?? {});
+  const partyCommands = new Set(['place', 'turn', 'jump']);
   everyCommand((command, where) => {
     const target = (command as { target?: unknown }).target;
     if (target === undefined) return;
     if (target === 'player') return;
     if (typeof target === 'string' && target.startsWith('npc:') && target.length > 'npc:'.length) return;
+    if (
+      typeof target === 'string' &&
+      target.startsWith('party:') &&
+      partyCommands.has(command.type) &&
+      members.includes(target.slice('party:'.length))
+    ) {
+      return;
+    }
     gone.push(`${where}: ${command.type} の相手が ${JSON.stringify(target)}`);
   });
   deepStrictEqual(gone, []);

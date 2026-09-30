@@ -33,6 +33,7 @@ export function SavePage({
   }));
 
   return (
+    <div className="save-page">
     <ul className="menu-slots">
       {rows.map(({ slot, data }) => (
         <li key={slot}>
@@ -71,5 +72,6 @@ export function SavePage({
         </li>
       ))}
     </ul>
+    </div>
   );
 }

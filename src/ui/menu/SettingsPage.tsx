@@ -151,7 +151,7 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
           </ul>
         </>
       ) : null}
-      <div className="menu-actions">
+      <div className="menu-actions settings-actions">
         <button type="button" data-pick onClick={() => change({ ...DEFAULT_OPTIONS })}>
           既定に戻す
         </button>

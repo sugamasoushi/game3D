@@ -11,7 +11,8 @@ export function PwaInstall({ visible }: { visible: boolean }) {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+    // エディタの /game/ プレビューでは SW を登録しない。エディタ全体のキャッシュを避ける。
+    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production' && window.location.pathname === '/') {
       void navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('[pwa]', error));
     }
     const remember = (event: Event) => {

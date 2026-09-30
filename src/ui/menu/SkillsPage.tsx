@@ -7,34 +7,26 @@
 // 押せるのに何も起きない場所ができる（メニューのタブを絞ったのと同じ理由。GS-54）。
 // 使うのは戦闘の「とくぎ」「まほう」から。
 
-import { levelUpRule, skillDef } from '../../game/battle/book';
-import { learnedAt } from '../../game/battle/growth';
-import { memberDef } from '../../game/battle/book';
+import { skillDef } from '../../game/battle/book';
+import { characterIcon } from '../../game/characters';
 import type { MemberState } from '../../game/state';
 
 export function SkillsPage({ who, member }: { who: string; member: MemberState | null }) {
   if (!member) return <p className="menu-empty">まだ 仲間が いない</p>;
   if (member.skills.length === 0) return <p className="menu-empty">まだ 何も 覚えていない</p>;
 
-  const def = memberDef(who);
-  const max = levelUpRule().max;
-  /** これから覚える物（レベルの近い順に 3 つ）。**先が見えると育てる気になる。** */
-  const coming: Array<{ level: number; id: string }> = [];
-  if (def) {
-    for (let level = member.level + 1; level <= max && coming.length < 3; level += 1) {
-      for (const id of learnedAt(def, level)) coming.push({ level, id });
-    }
-  }
+  const image = characterIcon(who);
 
   return (
     <>
-      <ul className="menu-items">
+      <div className="skill-page">
+       <ul className="menu-items skill-items">
         {member.skills.map((id) => {
           const skill = skillDef(id);
           return (
             <li key={id}>
               <span className="item-name">{skill?.name ?? id}</span>
-              <span className="item-count">{skill?.mp ? `MP ${skill.mp}` : ''}</span>
+              <span className="item-count">{skill?.mp ? `MP ${skill.mp}` : '—'}</span>
               <span className="item-text">
                 {skill?.kind ? `［${skill.kind}］` : ''}
                 {skill?.text ?? ''}
@@ -42,12 +34,9 @@ export function SkillsPage({ who, member }: { who: string; member: MemberState |
             </li>
           );
         })}
-      </ul>
-      {coming.length > 0 ? (
-        <p className="menu-note">
-          この先: {coming.map((one) => `Lv${one.level} ${skillDef(one.id)?.name ?? one.id}`).join('　')}
-        </p>
-      ) : null}
+       </ul>
+       {image ? <img className="skill-character-icon" src={image} alt="" /> : null}
+      </div>
     </>
   );
 }

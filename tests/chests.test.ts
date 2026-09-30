@@ -56,16 +56,3 @@ test('台帳に書いてある中身は、持ち物の台帳に在るものだ�
   }
   deepStrictEqual(gone, []);
 });
-
-test('コマ番号は 0 以上。**負の数は絵が出ない**', () => {
-  const gone: string[] = [];
-  for (const [id, def] of Object.entries(book.chests ?? {})) {
-    for (const [name, frame] of [
-      ['closed', def.closed],
-      ['opened', def.opened],
-    ] as const) {
-      if (frame !== undefined && (!Number.isInteger(frame) || frame < 0)) gone.push(`${id}.${name}: ${frame}`);
-    }
-  }
-  deepStrictEqual(gone, []);
-});

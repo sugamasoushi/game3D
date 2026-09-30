@@ -154,6 +154,23 @@
         }
       ],
       "npc": "lamy_32_40"
+    },
+    {
+      "id": "click010301",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            { "who": "noName", "lines": ["木です"] },
+            { "who": "meina", "lines": ["ｷｬｱｱｱｱｱｱｱ!!", "ｼｬﾍﾞｯﾀｱｱｱｱｱｱ!!!!"] },
+            { "who": "noName", "lines": ["気にするなって", "ふふっ・・・"] },
+            { "who": "meina", "lines": ["（真顔）"] }
+          ],
+          "style": "bubble"
+        }
+      ]
     }
   ]
 }

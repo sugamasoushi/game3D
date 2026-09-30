@@ -114,11 +114,25 @@ import {
   isWallShape,
   shapeRotates,
   normaliseFaceValue,
+  expandChipStretches,
+  FACE_PASTE_FACES,
+  packChipStretchAttr,
+  packChipOffsetAttr,
+  readChipStretch,
   packFaceAnchorAttr,
   packFaceFitAttr,
   type AssetsDef,
   type BatchDef,
   type CameraFxDef,
+  type ChipStretch,
+  type ChipStretchByFace,
+  type ChipOffset,
+  type ChipOffsetByFace,
+  type FaceAnchor,
+  type FaceAnchorByFace,
+  type FaceChips,
+  type FaceFit,
+  type FaceFitByFace,
   type FaceName,
   type GameViewDef,
   type LayerDef,
@@ -202,6 +216,27 @@ export interface Mep3DCarry {
   meshes: Map<string, CarriedMesh>;
 }
 
+/**
+ * マス 1 つの見た目（GS-176）。**プレハブのセル 1 個**がそのまま渡せる形にしてある。
+ * 宝箱の開け閉めのように「置いてあるブロックを別のプレハブの見た目にする」ために使う。
+ *
+ * **形（`shape`）と絵柄（`ts`）は変えられない**——同じバッチの中で属性を書き換えるだけなので、
+ * 違う形・違うタイルセットへは差し替えられない。渡されたら断る（false）。
+ */
+export interface CellLook {
+  shape?: Shape;
+  ts?: string;
+  tile?: number;
+  faces?: FaceChips;
+  thickness?: number | [number, number] | [number, number, number];
+  faceAnchor?: FaceAnchor | FaceAnchorByFace;
+  faceFit?: FaceFit | FaceFitByFace;
+  chipStretch?: ChipStretch | ChipStretchByFace;
+  chipOffset?: ChipOffset | ChipOffsetByFace;
+  emissive?: boolean | number;
+  edge?: number;
+}
+
 /** 引き継ぐバッチ 1 つぶん（DEC-276）。 */
 export interface CarriedMesh {
   object: Object3D;
@@ -210,7 +245,13 @@ export interface CarriedMesh {
   animated: AnimatedBatch | null;
   /** マス 1 つの絵を差し替える口（GS-53）。引き継いでも使えるように持ち歩く。 */
   cellAt?: Map<string, number>;
-  swapChip?: (index: number, faces: Partial<Record<FaceName, number>>) => void;
+  swapChip?: (
+    index: number,
+    faces: Partial<Record<FaceName, number>>,
+    stretch?: Partial<Record<FaceName, ChipStretch>>,
+  ) => void;
+  /** 見た目まるごとの差し替え口（GS-176）。 */
+  swapLook?: (index: number, look: CellLook) => boolean;
 }
 
 export interface Mep3DScene {
@@ -256,6 +297,8 @@ export interface Mep3DScene {
    * 書けるのは**チップ番号**で、形も材質も変えない——同じバッチの中の話に閉じるので、
    * ジオメトリも当たりも影も組み直さずに済む（属性を書いて印を立てるだけ）。
    * `faces` に書いた面だけ変わる。`layer` を書けばそのレイヤーのマスだけ。
+   * `stretch` は**面ごとの引き延ばし**（1/32 刻み・32 でマスいっぱい。DEC-415）。
+   * 開いた宝箱のように、絵の高さが違う差し替えで使う。**箱だけ**効く。
    *
    * 差し替えられなければ false（そのマスにブロックが無い、など）。
    */
@@ -263,7 +306,29 @@ export interface Mep3DScene {
     at: { x: number; y: number; z: number },
     faces: Partial<Record<FaceName, number>>,
     layer?: string,
+    stretch?: Partial<Record<FaceName, ChipStretch>>,
   ): boolean;
+  /**
+   * マス 1 つの見た目を**まるごと**差し替える（GS-176）。プレハブのセル 1 個をそのまま渡す。
+   * 宝箱の開け閉めのように「置いたブロックを別のプレハブの見た目にする」ためのもの。
+   *
+   * 面のチップ・厚み・貼り基準・引き延ばし・発光・縁が変わる。
+   * **形と絵柄（タイルセット）は変えられない**——違うものを渡すと false。
+   */
+  setCellLook(
+    at: { x: number; y: number; z: number },
+    look: CellLook,
+    layer?: string,
+  ): boolean;
+  /**
+   * レイヤーを出す／隠す（GS-179）。宝箱の開け閉めのように、**同じマスに重ねて置いた
+   * 2 つの見た目**を入れ替えるためのもの。形も絵柄も違ってよい（どちらもマップに在る）。
+   *
+   * **描かないだけ**——当たり・影・面の隠し合いは組んだときのまま。重ねる 2 つは
+   * 同じマスに置く前提なので、どちらが見えていても当たりは変わらない。
+   * `id` はレイヤーの id。無ければ false。
+   */
+  setLayerShown(id: string, shown: boolean): boolean;
   shadowField(): {
     solid: (x: number, y: number, z: number, fx?: number, fz?: number, dirX?: number, dirZ?: number) => boolean;
     /**
@@ -1422,7 +1487,13 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       id: string;
       name: string;
       index: number;
-      swap: (i: number, faces: Partial<Record<FaceName, number>>) => void;
+      swap: (
+        i: number,
+        faces: Partial<Record<FaceName, number>>,
+        stretch?: Partial<Record<FaceName, ChipStretch>>,
+      ) => void;
+      /** 見た目まるごと（GS-176）。形と絵柄が違えば false。 */
+      look?: (i: number, look: CellLook) => boolean;
     }>
   >();
   /**
@@ -1431,13 +1502,22 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
    */
   const rememberSwaps = (
     layer: { id: string; name?: string },
-    built: { cellAt?: Map<string, number>; swapChip?: (i: number, faces: Partial<Record<FaceName, number>>) => void },
+    built: {
+      cellAt?: Map<string, number>;
+      swapChip?: (
+        i: number,
+        faces: Partial<Record<FaceName, number>>,
+        stretch?: Partial<Record<FaceName, ChipStretch>>,
+      ) => void;
+      swapLook?: (i: number, look: CellLook) => boolean;
+    },
   ) => {
     if (!built.cellAt || !built.swapChip) return;
     const swap = built.swapChip;
+    const look = built.swapLook;
     for (const [key, index] of built.cellAt) {
       const list = cellSwaps.get(key) ?? [];
-      list.push({ id: layer.id, name: layer.name ?? layer.id, index, swap });
+      list.push({ id: layer.id, name: layer.name ?? layer.id, index, swap, look });
       cellSwaps.set(key, list);
     }
   };
@@ -1921,13 +2001,32 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       lightWalls = collectLightWalls(layers);
       applyAllLightWalls();
     },
-    setCellChip(at, faces, layer) {
+    /**
+     * マス 1 つの見た目をまるごと差し替える（GS-176）。プレハブのセルをそのまま渡す。
+     * 形か絵柄が違うと当てられないので false を返す。
+     */
+    setCellLook(at, look, layer) {
+      const list = cellSwaps.get(`${at.x},${at.y},${at.z}`);
+      if (!list || list.length === 0) return false;
+      const hits = layer ? list.filter((entry) => entry.id === layer || entry.name === layer) : list.slice(-1);
+      if (hits.length === 0) return false;
+      let ok = false;
+      for (const hit of hits) ok = (hit.look?.(hit.index, look) ?? false) || ok;
+      return ok;
+    },
+    setLayerShown(id, shown) {
+      const layerGroup = groups.get(id);
+      if (!layerGroup) return false;
+      layerGroup.visible = shown;
+      return true;
+    },
+    setCellChip(at, faces, layer, stretch) {
       const list = cellSwaps.get(`${at.x},${at.y},${at.z}`);
       if (!list || list.length === 0) return false;
       // 名指しが無ければ**最後に置いた物**（一番上のレイヤー）を差し替える。
       const hits = layer ? list.filter((entry) => entry.id === layer || entry.name === layer) : list.slice(-1);
       if (hits.length === 0) return false;
-      for (const hit of hits) hit.swap(hit.index, faces);
+      for (const hit of hits) hit.swap(hit.index, faces, stretch);
       return true;
     },
     shadowField() {
@@ -2193,7 +2292,13 @@ interface BuiltBatch {
   /** マス（`x,y,z`）→ そのバッチの中の番号。 */
   cellAt?: Map<string, number>;
   /** その番号の絵を差し替える。書いた面だけ変える。 */
-  swapChip?: (index: number, faces: Partial<Record<FaceName, number>>) => void;
+  swapChip?: (
+    index: number,
+    faces: Partial<Record<FaceName, number>>,
+    stretch?: Partial<Record<FaceName, ChipStretch>>,
+  ) => void;
+  /** その番号の見た目をまるごと差し替える（GS-176）。形と絵柄が違えば false。 */
+  swapLook?: (index: number, look: CellLook) => boolean;
 }
 
 interface AnimatedBatch {
@@ -2236,18 +2341,21 @@ function buildBatch(
   const sides = new Float32Array(count * 4);
   const edges = new Float32Array(count);
   const emitAttr = new Float32Array(count);
-  const thickYAttr = new Float32Array(count);
-  const thickZAttr = new Float32Array(count);
-  const thickXAttr = new Float32Array(count);
+  // 厚みは [幅, 高さ, 奥行] の 1 枠にまとめてある。頂点属性が 16 個で上限のため（GC-36 / DEC-415）。
+  const thickAttr = new Float32Array(count * 3);
+  // 面ごとのチップの引き延ばし。1 成分に 8bit × 3 面（DEC-415）。
+  const stretchAttr = new Float32Array(count * 4);
+  // 面ごとのチップのずらし。並びは引き延ばしと同じ（DEC-422）。
+  const chipOffsetAttr = new Float32Array(count * 4);
   const faceAnchorAttr = new Float32Array(count);
   const faceFitAttr = new Float32Array(count);
   geometry.setAttribute('chip', new InstancedBufferAttribute(chips, 4));
   geometry.setAttribute('chipSides', new InstancedBufferAttribute(sides, 4));
   geometry.setAttribute('chipEdge', new InstancedBufferAttribute(edges, 1));
   geometry.setAttribute('chipEmit', new InstancedBufferAttribute(emitAttr, 1));
-  geometry.setAttribute('boxThickY', new InstancedBufferAttribute(thickYAttr, 1));
-  geometry.setAttribute('boxThickZ', new InstancedBufferAttribute(thickZAttr, 1));
-  geometry.setAttribute('boxThickX', new InstancedBufferAttribute(thickXAttr, 1));
+  geometry.setAttribute('boxThick', new InstancedBufferAttribute(thickAttr, 3));
+  geometry.setAttribute('chipStretch', new InstancedBufferAttribute(stretchAttr, 4));
+  geometry.setAttribute('chipOffset', new InstancedBufferAttribute(chipOffsetAttr, 4));
   geometry.setAttribute('faceAnchor', new InstancedBufferAttribute(faceAnchorAttr, 1));
   geometry.setAttribute('faceFit', new InstancedBufferAttribute(faceFitAttr, 1));
 
@@ -2287,13 +2395,13 @@ function buildBatch(
     const hx = thickness ? boxHeight(thickX) : 1;
     scale.set(context.unit, context.unit, context.unit);
     if (thickness && Math.abs(hy - 1) > 1e-6) {
-      thickYAttr[i] = thickY < 0 ? -hy : hy;
+      thickAttr[i * 3 + 1] = thickY < 0 ? -hy : hy;
     }
     if (thickness && Math.abs(hz - 1) > 1e-6) {
-      thickZAttr[i] = thickZ < 0 ? -hz : hz;
+      thickAttr[i * 3 + 2] = thickZ < 0 ? -hz : hz;
     }
     if (thickness && Math.abs(hx - 1) > 1e-6) {
-      thickXAttr[i] = thickX < 0 ? -hx : hx;
+      thickAttr[i * 3] = thickX < 0 ? -hx : hx;
     }
 
     if (isEdgeWallShape(batch.shape)) {
@@ -2331,6 +2439,13 @@ function buildBatch(
     if (batch.shape === 'box') {
       faceAnchorAttr[i] = packFaceAnchorAttr(proto?.faceAnchor);
       faceFitAttr[i] = packFaceFitAttr(proto?.faceFit);
+      // 面ごとのチップの引き延ばし（DEC-415）。マスいっぱいなら 0 のまま。
+      const stretch = packChipStretchAttr(proto?.chipStretch);
+      stretchAttr[i * 4] = stretch[0];
+      stretchAttr[i * 4 + 1] = stretch[1];
+      stretchAttr[i * 4 + 2] = stretch[2];
+      stretchAttr[i * 4 + 3] = stretch[3];
+      chipOffsetAttr.set(packChipOffsetAttr(proto?.chipOffset), i * 4);
       sides[i * 4 + 3] = context.faceHideAt?.(cells[i * 3], cells[i * 3 + 1], cells[i * 3 + 2]) ?? 0;
     }
   }
@@ -2352,7 +2467,11 @@ function buildBatch(
    * 形も材質も同じバッチの中の話なので、ジオメトリも組み直さない。
    * アニメーションするチップ（滝など）が毎フレームやっているのと同じ手口。
    */
-  const swapChip = (index: number, faces: Partial<Record<FaceName, number>>): void => {
+  const swapChip = (
+    index: number,
+    faces: Partial<Record<FaceName, number>>,
+    stretch?: Partial<Record<FaceName, ChipStretch>>,
+  ): void => {
     if (index < 0 || index >= count) return;
     const proto = context.protosById.get(batch.protos[protoIndices[index]]);
     const now = faceChips(proto);
@@ -2365,6 +2484,73 @@ function buildBatch(
     // `sides[3]` は隠す面と切り取りの目印。**隣のマスで決まる話**なので触らない。
     (geometry.getAttribute('chip') as InstancedBufferAttribute).needsUpdate = true;
     (geometry.getAttribute('chipSides') as InstancedBufferAttribute).needsUpdate = true;
+    // 引き延ばし（DEC-415）。**箱だけ**——ほかの形はこの属性を読まない。
+    // 書いていない面はプロトの値のまま。開いた宝箱のように絵の高さが違うときに使う。
+    if (!stretch || batch.shape !== 'box') return;
+    const span = expandChipStretches(proto?.chipStretch);
+    for (const name of FACE_PASTE_FACES) {
+      const value = stretch[name];
+      if (value !== undefined) span[name] = readChipStretch(value);
+    }
+    const packed = packChipStretchAttr(span);
+    stretchAttr[index * 4] = packed[0];
+    stretchAttr[index * 4 + 1] = packed[1];
+    stretchAttr[index * 4 + 2] = packed[2];
+    stretchAttr[index * 4 + 3] = packed[3];
+    (geometry.getAttribute('chipStretch') as InstancedBufferAttribute).needsUpdate = true;
+  };
+
+  /**
+   * マス 1 つの**見た目をまるごと**差し替える（GS-176）。プレハブのセル 1 個を受け取り、
+   * 面のチップ・厚み・貼り基準・引き延ばし・発光・縁を**属性の書き換えだけ**で当てる。
+   *
+   * **形（shape）と絵柄（ts）は変えられない**——同じバッチの中の話に閉じるための制限。
+   * 違うものを渡したら false を返して呼んだ側に知らせる（黙って見た目が変わらないのが一番困る）。
+   */
+  const swapLook = (index: number, look: CellLook): boolean => {
+    if (index < 0 || index >= count) return false;
+    if (look.shape && look.shape !== batch.shape) return false;
+    if (look.ts && batch.ts && look.ts !== batch.ts) return false;
+    const tile = look.tile ?? 0;
+    const faces = look.faces ?? {};
+    const pick = (name: FaceName) => faces[name] ?? (name === 'top' || name === 'bottom' ? tile : (faces.side ?? tile));
+    const top = context.spreadOf ? context.spreadOf(index) : pick('top');
+    writeChip(chips, index, [top, pick('front'), pick('bottom'), flags[index] ?? 0]);
+    sides[index * 4] = pick('back');
+    sides[index * 4 + 1] = pick('left');
+    sides[index * 4 + 2] = pick('right');
+    // `sides[3]` は隠す面・切り取りの目印。**隣のマスで決まる話**なので触らない。
+    edges[index] = EDGE_SHAPES.has(batch.shape) ? (look.edge ?? 0) : 0;
+    emitAttr[index] = emitMaskOf(look as ProtoDef);
+    if (batch.shape === 'box' || cropsFaceShape(batch.shape)) {
+      const [ty, tz, tx] = readThickness(look.thickness);
+      const hy = boxHeight(ty);
+      const hz = boxHeight(tz);
+      const hx = boxHeight(tx);
+      thickAttr[index * 3] = Math.abs(hx - 1) > 1e-6 ? (tx < 0 ? -hx : hx) : 0;
+      thickAttr[index * 3 + 1] = Math.abs(hy - 1) > 1e-6 ? (ty < 0 ? -hy : hy) : 0;
+      thickAttr[index * 3 + 2] = Math.abs(hz - 1) > 1e-6 ? (tz < 0 ? -hz : hz) : 0;
+      (geometry.getAttribute('boxThick') as InstancedBufferAttribute).needsUpdate = true;
+    }
+    if (batch.shape === 'box') {
+      faceAnchorAttr[index] = packFaceAnchorAttr(look.faceAnchor);
+      faceFitAttr[index] = packFaceFitAttr(look.faceFit);
+      const stretch = packChipStretchAttr(look.chipStretch);
+      stretchAttr[index * 4] = stretch[0];
+      stretchAttr[index * 4 + 1] = stretch[1];
+      stretchAttr[index * 4 + 2] = stretch[2];
+      stretchAttr[index * 4 + 3] = stretch[3];
+      chipOffsetAttr.set(packChipOffsetAttr(look.chipOffset), index * 4);
+      (geometry.getAttribute('faceAnchor') as InstancedBufferAttribute).needsUpdate = true;
+      (geometry.getAttribute('faceFit') as InstancedBufferAttribute).needsUpdate = true;
+      (geometry.getAttribute('chipStretch') as InstancedBufferAttribute).needsUpdate = true;
+      (geometry.getAttribute('chipOffset') as InstancedBufferAttribute).needsUpdate = true;
+    }
+    (geometry.getAttribute('chip') as InstancedBufferAttribute).needsUpdate = true;
+    (geometry.getAttribute('chipSides') as InstancedBufferAttribute).needsUpdate = true;
+    (geometry.getAttribute('chipEdge') as InstancedBufferAttribute).needsUpdate = true;
+    (geometry.getAttribute('chipEmit') as InstancedBufferAttribute).needsUpdate = true;
+    return true;
   };
 
   /** どのマスがどの番号か。差し替えのときに引く。 */
@@ -2374,7 +2560,7 @@ function buildBatch(
   }
 
   if (!batch.anim || batch.anim.frames.length === 0) {
-    return { object: mesh, hiddenFaces: hiddenCount, swapChip, cellAt };
+    return { object: mesh, hiddenFaces: hiddenCount, swapChip, swapLook, cellAt };
   }
 
   const chipAttribute = geometry.getAttribute('chip') as InstancedBufferAttribute;
@@ -2383,6 +2569,7 @@ function buildBatch(
     object: mesh,
     hiddenFaces: hiddenCount,
     swapChip,
+    swapLook,
     cellAt,
     animated: {
       sequence: playSequence(batch.anim),

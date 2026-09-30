@@ -18,21 +18,26 @@
     },
     "0103": {
       "file": "0103_ForestMantion.json",
-      "battleField": "forestMansion"
+      "battleField": "forestMansion",
+      "bgm": "field"
     },
     "0104": {
       "file": "0104_ForestCave.json",
-      "battleField": "forest"
+      "battleField": "forest",
+      "bgm": "The_Cave"
     },
     "0105": {
-      "file": "0105_Cave.json"
+      "file": "0105_Cave.json",
+      "bgm": "The_Cave"
     },
     "0106": {
-      "file": "0106_NextField.json"
+      "file": "0106_NextField.json",
+      "bgm": "field"
     },
     "0201": {
       "file": "0201_Gensou.json",
-      "battleField": "hill"
+      "battleField": "hill",
+      "bgm": "Crystal_Cave"
     }
   }
 }

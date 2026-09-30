@@ -2,56 +2,6 @@
   "map": "0101_home",
   "events": [
     {
-      "id": "EVENT010101",
-      "trigger": "touch",
-      "when": [{ "switch": "EVENT010101", "is": true }],
-      "commands": [
-        {
-          "type": "scroll",
-          "speed": 1200,
-          "dim": 0.5,
-          "lines": [
-            "昔々（？）",
-            "ある山奥に一人の魔術師見習い「メイナ」が暮らしていました。",
-            "",
-            "物心付いた頃から家具付きの家に住んでおり、キッチンも寝室も別々でした。",
-            "謎の鶏に育てられ、基本的な生活習慣は身についており、最近は魚料理を夢見ています。",
-            "山奥ですからね。",
-            "",
-            "グローバルでスタンダードな言語を習得しているが、読書は苦手。",
-            "基礎学力はそこそこ高いが世間知らず。",
-            "この間も食料調達に町へ出かけた際、道中で狩った熊をそのまま売りつけてしまったとか。",
-            "",
-            "魔術を勉強しており、その習得の速さは鶏もトサカを巻く程。",
-            "将来は大魔導士になると先月まで豪語していたが、最近は魔法戦士がかっこいいと思っている。",
-            "長続きしないタイプ。",
-            "",
-            "今日は山を下りて近くを探索するようだ。"
-          ]
-        },
-        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        {
-          "type": "message",
-          "talk": [{ "who": "meina", "lines": ["ごちそうさまでした。", "う～ん、そろそろ食料が尽きてきたし", "今日は狩にでも行くか"] }]
-        },
-        { "type": "portrait", "slot": "right", "hide": true },
-        { "type": "setSwitch", "key": "EVENT010101", "value": false }
-      ],
-      "kind": "scenario"
-    },
-    {
-      "id": "click0001",
-      "trigger": "action",
-      "commands": [
-        {
-          "type": "message",
-          "style": "bubble",
-          "talk": [{ "who": "meina", "lines": ["新しく覚える魔法は何が良いかな？", "やっぱり生活に役立つ方が良いかな", "・・・・・また今度！！"] }]
-        }
-      ],
-      "kind": "click"
-    },
-    {
       "id": "click0002",
       "trigger": "action",
       "commands": [
@@ -61,6 +11,21 @@
           "talk": [
             { "who": "meina", "lines": ["う～ん、服がボロボロに", "なってきたなぁ"] },
             { "who": "meina", "lines": ["そろそろ新調しないとなぁ", "お金無いけど・・・"] }
+          ]
+        }
+      ],
+      "kind": "click"
+    },
+    {
+      "id": "click0001",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "style": "bubble",
+          "talk": [
+            { "who": "meina", "lines": ["新しく覚える魔法は何が良いかな？", "やっぱり生活に役立つ方が良いかな"] },
+            { "who": "meina", "lines": ["・・・・・また今度！！"] }
           ]
         }
       ],
@@ -84,6 +49,42 @@
         }
       ],
       "kind": "talk"
+    },
+    {
+      "id": "EVENT010101",
+      "kind": "scenario",
+      "trigger": "touch",
+      "commands": [
+        {
+          "type": "scroll",
+          "speed": 500,
+          "dim": 0.5,
+          "lines": [
+            "昔々（？）",
+            "ある山奥に一人の魔術師見習い「メイナ」が暮らしていました。",
+            "",
+            "物心付いた頃から家具付きの家に住んでおり、キッチンも寝室も別々でした。",
+            "謎の鶏に育てられ、基本的な生活習慣は身についており、最近は魚料理を夢見ています。",
+            "山奥ですからね。",
+            "",
+            "グローバルでスタンダードな言語を習得しているが、読書は苦手。",
+            "基礎学力はそこそこ高いが世間知らず。",
+            "この間も食料調達に町へ出かけた際、道中で狩った熊をそのまま売りつけてしまったとか。",
+            "",
+            "魔術を勉強しており、その習得の速さは鶏もトサカを巻く程。",
+            "将来は大魔導士になると先月まで豪語していたが、最近は魔法戦士がかっこいいと思っている。",
+            "長続きしないタイプ。",
+            "",
+            "今日は山を下りて近くを探索するようだ。"
+          ]
+        },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["ごちそうさまでした。", "う～ん、そろそろ食料が尽きてきたし", "今日は狩にでも行くかな"] }],
+          "style": "window"
+        }
+      ]
     },
     {
       "id": "EVENT010401",
@@ -242,10 +243,39 @@
       "kind": "scenario"
     },
     {
+      "id": "宝箱_特殊イベント",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "開けた" },
+          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
+          "else": [
+            { "type": "playSe", "key": "chest" },
+            { "type": "getItem" },
+            { "type": "setSelfSwitch", "key": "開けた", "value": true },
+            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！！！"] }] }
+          ]
+        }
+      ],
+      "kind": "object"
+    },
+    {
       "id": "EVENT020201",
       "trigger": "touch",
       "when": [{ "switch": "EVENT020101", "is": false }, { "switch": "EVENT020201", "is": true }],
       "commands": [
+        { "type": "cameraFollow", "on": false },
+        { "type": "fade", "to": "out", "ms": 400 },
+        { "type": "place", "target": "player", "at": { "x": -5, "y": 0, "z": -3 }, "face": "left" },
+        {
+          "type": "place",
+          "target": "party:lamy",
+          "at": { "x": -8, "y": 0, "z": -3 },
+          "face": "right"
+        },
+        { "type": "fade", "to": "in", "ms": 400 },
+        { "type": "shot", "id": "pan01" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
         {
@@ -261,16 +291,16 @@
         { "type": "setSwitch", "key": "ゲーム_クリア", "value": true },
         {
           "type": "scroll",
-          "speed": 1200,
+          "speed": 800,
           "dim": 0.7,
+          "lead": 5,
+          "hold": 4000,
           "lines": [
             "ラミア娘ことラミィを仲間にしたメイナ。",
             "ついに冒険に出る事を決意した。",
             "冒険の目的とは？",
             "",
             "彼女たちの旅はこれからだ！",
-            "",
-            "",
             "シナリオ：俺",
             "企画：俺",
             "プロップデザイン：俺",
@@ -297,29 +327,19 @@
         },
         { "type": "stopBgm", "fade": 1200 },
         { "type": "fade", "to": "out", "ms": 800 },
-        { "type": "message", "talk": [{ "lines": ["Thank you for playing!!"] }] },
-        { "type": "wait", "ms": 1200 },
-        { "type": "fade", "to": "in", "ms": 800 }
+        { "type": "portrait", "slot": "right", "from": "none" },
+        { "type": "portrait", "slot": "left", "face": "normal", "from": "none" },
+        {
+          "type": "telop",
+          "lines": ["Thank you for playing!!"],
+          "hold": 4000,
+          "ms": 800,
+          "dim": 0.5
+        },
+        { "type": "wait", "ms": 300 },
+        { "type": "returnToTitle" }
       ],
       "kind": "scenario"
-    },
-    {
-      "id": "宝箱",
-      "trigger": "action",
-      "commands": [
-        {
-          "type": "if",
-          "when": { "self": "開けた" },
-          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
-          "else": [
-            { "type": "playSe", "key": "chest" },
-            { "type": "getItem" },
-            { "type": "setSelfSwitch", "key": "開けた", "value": true },
-            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] }
-          ]
-        }
-      ],
-      "kind": "object"
     }
   ]
 }

@@ -109,6 +109,13 @@
         "w": 512,
         "h": 1024,
         "filter": "nearest"
+      },
+      {
+        "id": "tex_chests",
+        "src": "assets/tilesets/Chests.png",
+        "w": 128,
+        "h": 96,
+        "filter": "nearest"
       }
     ],
     "tilesets": [
@@ -219,6 +226,16 @@
         "tile": 32,
         "cols": 16,
         "rows": 32,
+        "margin": 0,
+        "spacing": 0
+      },
+      {
+        "id": "chests",
+        "tex": "tex_chests",
+        "mat": "mat_chests",
+        "tile": 32,
+        "cols": 4,
+        "rows": 3,
         "margin": 0,
         "spacing": 0
       }
@@ -337,6 +354,16 @@
       {
         "id": "mat_plants",
         "tex": "tex_plants",
+        "kind": "tiles",
+        "shading": "unlit",
+        "alphaTest": 0.5,
+        "transparent": false,
+        "side": "double",
+        "depthWrite": true
+      },
+      {
+        "id": "mat_chests",
+        "tex": "tex_chests",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -24640,6 +24667,324 @@
           -5,
           0
         ]
+      },
+      {
+        "id": "p_chests_box_f0--5102029-4--5102029--6830382--6830382",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 4,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        }
+      },
+      {
+        "id": "p_chests_box_f0--5102029-4--5102029--6830382--6830382_t-25",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 4,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f0--5102029-4--5102029--6830382--6830382",
+        "thickness": -25
+      },
+      {
+        "id": "p_chests_box_f0--5102029-4--5102029--6830382--6830382_t-25_fpx0020223bzx32.63-32.32-32.58-32.32-32.64-32.64",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 4,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f0--5102029-4--5102029--6830382--6830382",
+        "thickness": -25,
+        "faceAnchor": {
+          "front": "tl",
+          "left": "tl",
+          "right": "tl"
+        },
+        "faceFit": {
+          "top": "stretch",
+          "bottom": "stretch",
+          "back": "stretch",
+          "left": "stretch",
+          "right": "stretch"
+        },
+        "chipStretch": {
+          "top": [
+            32,
+            63
+          ],
+          "front": [
+            32,
+            58
+          ],
+          "left": [
+            32,
+            64
+          ],
+          "right": [
+            32,
+            64
+          ]
+        }
+      },
+      {
+        "id": "p_chests_box_f0--5102029-0--5102029--6830382--6830382",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        }
+      },
+      {
+        "id": "p_chests_box_f0--5102029-0--5102029--6830382--6830382_t-25",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f0--5102029-0--5102029--6830382--6830382",
+        "thickness": -25
+      },
+      {
+        "id": "p_chests_box_f0--5102029-0--5102029--6830382--6830382_t-25_fpx0020223bzx32.63-32.32-32.65-32.32-32.64-32.64",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f0--5102029-0--5102029--6830382--6830382",
+        "thickness": -25,
+        "faceAnchor": {
+          "front": "tl",
+          "left": "tl",
+          "right": "tl"
+        },
+        "faceFit": {
+          "top": "stretch",
+          "bottom": "stretch",
+          "back": "stretch",
+          "left": "stretch",
+          "right": "stretch"
+        },
+        "chipStretch": {
+          "top": [
+            32,
+            63
+          ],
+          "front": [
+            32,
+            65
+          ],
+          "left": [
+            32,
+            64
+          ],
+          "right": [
+            32,
+            64
+          ]
+        }
+      },
+      {
+        "id": "p_chests_box_f0--5102029-0--5102029--6830382--6830382_t-24",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f0--5102029-0--5102029--6830382--6830382",
+        "thickness": -24
+      },
+      {
+        "id": "p_chests_box_f0--5102029-0--5102029--6830382--6830382_t-24_fpx2000223ezx32.60-32.32-32.64-32.32-32.64-32.64",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0,
+        "faces": {
+          "top": 0,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f0--5102029-0--5102029--6830382--6830382",
+        "thickness": -24,
+        "faceAnchor": {
+          "top": "tl",
+          "left": "tl",
+          "right": "tl"
+        },
+        "faceFit": {
+          "bottom": "stretch",
+          "front": "stretch",
+          "back": "stretch",
+          "left": "stretch",
+          "right": "stretch"
+        },
+        "chipStretch": {
+          "top": [
+            32,
+            60
+          ],
+          "front": [
+            32,
+            64
+          ],
+          "left": [
+            32,
+            64
+          ],
+          "right": [
+            32,
+            64
+          ]
+        }
+      },
+      {
+        "id": "p_chests_box_f8--5102029-0--5102029--6830382--6830382",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 8,
+        "faces": {
+          "top": 8,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        }
+      },
+      {
+        "id": "p_chests_box_f8--5102029-0--5102029--6830382--6830382_t-11",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 8,
+        "faces": {
+          "top": 8,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f8--5102029-0--5102029--6830382--6830382",
+        "thickness": -11
+      },
+      {
+        "id": "p_chests_box_f8--5102029-0--5102029--6830382--6830382_t-11_fpx2000223bzx32.66-32.32-32.64-32.32-32.64-32.64ox0.17-0.0-0.0-0.0-0.0-0.0",
+        "name": "chests box (面)",
+        "shape": "box",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 8,
+        "faces": {
+          "top": 8,
+          "bottom": -5102029,
+          "front": 0,
+          "back": -5102029,
+          "left": -6830382,
+          "right": -6830382
+        },
+        "base": "p_chests_box_f8--5102029-0--5102029--6830382--6830382",
+        "thickness": -11,
+        "faceAnchor": {
+          "top": "tl",
+          "left": "tl",
+          "right": "tl"
+        },
+        "faceFit": {
+          "top": "stretch",
+          "bottom": "stretch",
+          "back": "stretch",
+          "left": "stretch",
+          "right": "stretch"
+        },
+        "chipStretch": {
+          "top": [
+            32,
+            66
+          ],
+          "front": [
+            32,
+            64
+          ],
+          "left": [
+            32,
+            64
+          ],
+          "right": [
+            32,
+            64
+          ]
+        },
+        "chipOffset": {
+          "top": [
+            0,
+            17
+          ]
+        }
       }
     ]
   },
@@ -24708,24 +25053,24 @@
   "editor": {
     "camera": {
       "target": [
-        -23.76597977916771,
-        0.7349449867816412,
-        20.2850944110239
+        -24.088204228966923,
+        0.7801027333241938,
+        25.314190628038556
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 14.363667004247931,
+      "distance": 10,
       "orthographic": false
     },
     "height": 0,
     "activeLayer": "objects",
     "brush": {
-      "shape": "floor",
+      "shape": "box",
       "rotation": 0,
       "color": "#000000",
-      "tileset": "collision",
-      "tile": 0,
-      "paint": "chip",
+      "tileset": "chests",
+      "tile": 8,
+      "paint": "prefab",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
@@ -24740,10 +25085,12 @@
       ],
       "faceAnchor": "bl",
       "faceFit": "clip",
-      "prefabId": "森の城"
+      "prefabId": "宝箱(開)"
     },
     "prefabs": [
-      "森の城"
+      "森の城",
+      "宝箱(閉)",
+      "宝箱(開)"
     ]
   },
   "properties": [
@@ -55251,7 +55598,7 @@
             {
               "name": "MoveTo",
               "type": "string",
-              "value": "-22,0,1"
+              "value": "-21,0,1"
             }
           ],
           "space": "solid",
@@ -55260,11 +55607,11 @@
           "points": [
             [
               18,
-              20
+              15
             ],
             [
               19,
-              20
+              15
             ],
             [
               19,
@@ -55297,7 +55644,7 @@
             {
               "name": "MoveTo",
               "type": "string",
-              "value": "4,5,-3"
+              "value": "5,5,-3"
             }
           ],
           "space": "solid",
@@ -55305,19 +55652,19 @@
           "height": 1,
           "points": [
             [
-              -26.93422071641696,
-              26.24194717079684
+              -25,
+              25
             ],
             [
-              -26,
-              26.24194717079684
+              -24,
+              25
             ],
             [
-              -26,
+              -24,
               30
             ],
             [
-              -26.93422071641696,
+              -25,
               30
             ]
           ]
@@ -71627,7 +71974,7 @@
           "protos": [
             "p_collision_0_floor"
           ],
-          "count": 436,
+          "count": 429,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -71976,21 +72323,6 @@
               14,
               18,
               0,
-              15,
-              18,
-              0,
-              16,
-              18,
-              0,
-              18,
-              18,
-              0,
-              19,
-              18,
-              0,
-              20,
-              18,
-              0,
               21,
               18,
               0,
@@ -71998,9 +72330,6 @@
               18,
               0,
               23,
-              18,
-              0,
-              17,
               18,
               0,
               24,
@@ -72658,9 +72987,6 @@
               17,
               0,
               13,
-              -5,
-              0,
-              6,
               -2,
               0,
               1,
@@ -73370,23 +73696,9 @@
               0,
               0,
               0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
               0
             ],
             "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
               0,
               0,
               0,
@@ -77009,11 +77321,197 @@
           ]
         }
       ]
+    },
+    {
+      "id": "宝箱(閉)",
+      "name": "宝箱(閉)",
+      "kind": "prefab",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": []
+    },
+    {
+      "id": "宝箱(閉)_2",
+      "name": "宝箱(閉)",
+      "kind": "tile",
+      "parent": "宝箱(閉)",
+      "visible": true,
+      "opacity": 1,
+      "collision": true,
+      "properties": [
+        {
+          "name": "Collision",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Shade",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Id",
+          "type": "string",
+          "value": "Chest_Map0103"
+        }
+      ],
+      "batches": [
+        {
+          "id": "宝箱(閉)_2-box-0",
+          "shape": "box",
+          "mat": "mat_chests",
+          "ts": "chests",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_chests_box_f0--5102029-0--5102029--6830382--6830382_t-24_fpx2000223ezx32.60-32.32-32.64-32.32-32.64-32.64"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              0,
+              5
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              299
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "宝箱(開)",
+      "name": "宝箱(開)",
+      "kind": "prefab",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": []
+    },
+    {
+      "id": "宝箱(開)_2",
+      "name": "宝箱(開)",
+      "kind": "tile",
+      "parent": "宝箱(開)",
+      "visible": true,
+      "opacity": 1,
+      "collision": true,
+      "properties": [
+        {
+          "name": "Collision",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Shade",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Opened",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Id",
+          "type": "string",
+          "value": "Chest_Map0103"
+        }
+      ],
+      "batches": [
+        {
+          "id": "宝箱(開)_2-box-0",
+          "shape": "box",
+          "mat": "mat_chests",
+          "ts": "chests",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_chests_box_f8--5102029-0--5102029--6830382--6830382_t-11_fpx2000223bzx32.66-32.32-32.64-32.32-32.64-32.64ox0.17-0.0-0.0-0.0-0.0-0.0"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              0,
+              5
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              300
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "オブジェクトレイヤー_4",
+      "name": "CLICKEVENT",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": [],
+      "objects": [
+        {
+          "id": "obj_1",
+          "name": "click010301",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [],
+          "space": "solid",
+          "y": 1,
+          "height": 1,
+          "points": [
+            [
+              -2,
+              25
+            ],
+            [
+              0,
+              25
+            ],
+            [
+              0,
+              26
+            ],
+            [
+              -2,
+              26
+            ]
+          ]
+        }
+      ]
     }
   ],
   "stats": {
-    "tiles": 9184,
-    "batches": 61,
-    "drawCalls": 61
+    "tiles": 9179,
+    "batches": 63,
+    "drawCalls": 63
   }
 }

@@ -1,0 +1,16 @@
+{
+  "format": "mep3d-block",
+  "version": 2,
+  "id": "宝箱スプライト（閉）",
+  "name": "宝箱スプライト（閉）",
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "shape": "billboard_fixed",
+      "ts": "chests",
+      "tile": 0
+    }
+  ]
+}

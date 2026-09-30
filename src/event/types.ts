@@ -11,7 +11,12 @@
  * 誰も指さず、**黙って動かない**だけだった——画面では「命令を書いたのに何も起きない」
  * としか見えない。名指しなら取り違えようがない。
  */
-export type ActorRef = 'player' | `npc:${string}`;
+export type ActorRef = 'player' | `npc:${string}` | `party:${string}`;
+/*
+ * **`party:<id>` は隊列の仲間**（GS-184）。主人公の後ろを付いて歩いている人（`party.json` の `members`）。
+ * 受けるのは「置き直す」「向く」「ジャンプ」だけ。置いた仲間は**イベントが終わるまでその場に留まり**、
+ * 終わると隊列へ戻る。先頭（＝主人公）を指したときは `player` と同じ。
+ */
 
 /**
  * ブロックの面（GS-53）。**描画側の型は引かない**——イベントの型は
@@ -134,6 +139,34 @@ export type EventCommand =
    */
   | { type: 'place'; target: ActorRef; at: PlaceAt; face?: Step }
   /**
+   * その場でジャンプ（GS-184）。**進まない**——絵だけ跳ねて着地する。怒る・喜ぶ・驚く。
+   * `times` 回（省くと 3）、1 回 `ms`（省くと 200）、高さ `height` マス（省くと 0.5）。
+   * `wait` を false にすると跳ね終わるのを待たない（旧作の tween と同じく、話と重ねられる）。
+   */
+  | { type: 'jump'; target: ActorRef; times?: number; height?: number; ms?: number; wait?: boolean }
+  /**
+   * 漫画のようにめくるイベントイラスト（GS-188。旧作 EVENT020301）。絵は `assets/img/Event/`（拡張子まで）。
+   * 1 枚ずつ左から滑り込んで前の絵に重なり、最後の先へ進むと全部が右へ抜ける。
+   *
+   * - `read`（既定）…… **遊ぶ人がめくる**。→ / 決定 / 右の矢印で次、← / 取り消し / 左の矢印で戻る。
+   *   最後までめくると閉じる。`images` を省くと、`open` で出してある絵の続きから読ませる
+   * - `open` …… 絵を出して 1 枚目を滑り込ませる（イベントがめくる）
+   * - `next` / `prev` …… 1 枚めくる／戻す。最後の先の `next` は閉じる
+   * - `close` …… 全部を右へ抜いて片付ける
+   *
+   * どれも**めくり終わりを待つ**（`read` は読み終わるまで）。`wait: false` で待たずに次へ。
+   * `ms` は 1 枚が滑る時間（省くと 500）、`se` はめくる音（省くと `cardTurnOver`、空で鳴らさない）。
+   * 出したままイベントが終わると、片付けで消える。
+   */
+  | {
+      type: 'comic';
+      op?: 'read' | 'open' | 'next' | 'prev' | 'close';
+      images?: string[];
+      ms?: number;
+      se?: string;
+      wait?: boolean;
+    }
+  /**
    * カメラ追従（GS-166）。**主人公を追うかどうかを切り替える。** 既定は追う。
    *
    * 切ると画面はその場に止まり、`on: true` で戻すとその場で主人公へ寄る。
@@ -255,7 +288,20 @@ export type EventCommand =
    * `speed` は**総時間ではなく 1 行ぶんが流れる時間**（ミリ秒。GS-144）——
    * 総時間で決めると、行数の少ない読み物ほど速く流れて読めない。
    */
-  | { type: 'scroll'; lines: string[]; speed?: number; dim?: number }
+  | {
+      type: 'scroll';
+      lines: string[];
+      speed?: number;
+      dim?: number;
+      /**
+       * **頭の何行を「前置き」にするか**（GS-186。旧作のエンディング）。前置きは画面の真ん中に
+       * フェードインで出て、`hold` ミリ秒止まってから、残りの行（画面の下から入る）と一緒に上へ流れる。
+       * 省くか 0 なら今までどおり、全部が下から流れる。
+       */
+      lead?: number;
+      /** 前置きを止めておく時間（ミリ秒。GS-186）。省くと 3000。フェードインのぶんは含まない。 */
+      hold?: number;
+    }
   /**
    * テロップ（GS-171）。**画面を黒で覆って、真ん中に一言だけ**出す。
    * 旧作の「━ 翌朝 ━」——時間や場所が飛んだことを知らせるためのもの。
@@ -282,14 +328,19 @@ export type EventCommand =
    * `chip` は全部の面を同じ番号に。`faces` は面ごと（`top` / `bottom` / `front` / `back` / `left` / `right`）。
    * `layer` を書けばそのレイヤーだけ。省略すると一番上のレイヤー。
    *
-   * 差し替えられるのは**チップ番号だけ**——形も絵柄（タイルセット）も変わらないので、
+   * 差し替えられるのは**チップ番号と引き延ばし**だけ——形も絵柄（タイルセット）も変わらないので、
    * 当たりも影もそのまま。開けたら通れる宝箱のような物は、当たりのほうを別に用意する。
+   *
+   * `stretch` は面ごとの引き延ばし（1/32 刻み・**32 でマスいっぱい**。DEC-415）。
+   * 数値 1 つは横縦とも、`[横, 縦]` で別々。**ブロック（箱）だけ**効く。
+   * 開いた宝箱のように「絵の高さが違う」差し替えで使う。書かない面はそのまま。
    */
   | {
       type: 'block';
       at: { x: number; y: number; z: number };
       chip?: number;
       faces?: Partial<Record<BlockFace, number>>;
+      stretch?: Partial<Record<BlockFace, number | [number, number]>>;
       layer?: string;
     }
   /**
@@ -359,8 +410,8 @@ export type EventCommand =
    * 戦闘（GS-60）。`enemies` は `data/enemies.json` のキーを並べる
    * （同じ id を 2 つ書けば 2 体出る）。終わるまで次の命令へ進まない。
    *
-   * 枝は**書いたものだけ**動く。`lose` を書かなければ負け＝ゲームオーバー（タイトルへ）——
-   * 「負けても話が続く」戦いは、書いた人が `lose` を書いたときだけにする。
+   * 枝は**書いたものだけ**動く。`lose` が未指定または空なら負け＝ゲームオーバー（タイトルへ）。
+   * 「負けても話が続く」のは `lose` に命令があるときだけ。
    */
   | {
       type: 'battle';
@@ -376,7 +427,9 @@ export type EventCommand =
    * TS 側に登録した関数の**名前**。オープニングのスクロールのような
    * 一度きりの演出を、コマンド表を増やさずに置ける。
    */
-  | { type: 'script'; id: string; args?: Record<string, unknown> };
+  | { type: 'script'; id: string; args?: Record<string, unknown> }
+  /** イベントを終了し、セーブせずタイトルへ戻る。 */
+  | { type: 'returnToTitle' };
 
 /** イベント 1 本。 */
 export interface EventDef {

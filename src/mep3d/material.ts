@@ -303,9 +303,13 @@ attribute vec4 chip;        // top, front, bottom, 回転フラグ
 attribute vec4 chipSides;   // back, left, right, w = 隠す面（GC-36）
 attribute float chipEdge;   // 縁の色。0 はなし
 attribute float chipEmit;   // 6bit 発光。順は top..right
-attribute float boxThickY;  // 符号付き Y 厚み（セル）。0 はフル／箱以外
-attribute float boxThickZ;  // 符号付き Z 厚み（セル）。0 はフル／箱以外
-attribute float boxThickX;  // 符号付き X 厚み（セル）。0 はフル／箱以外
+// 符号付きの厚み（セル）。0 はフル／箱以外。**3 本を 1 枠に畳んである**——
+// 頂点属性は 16 個で上限（GC-36）で、面ごとの引き延ばし（chipStretch）を入れる枠が要った（DEC-415）。
+attribute vec3 boxThick;    // x = 幅、y = 高さ、z = 奥行
+attribute vec4 chipStretch; // 面ごとの引き延ばし。1 成分に 8bit × 3 面。0 はマスいっぱい（DEC-415）
+// 面ごとのずらし。並びは chipStretch と同じで、1 バイトは 2 の補数。0 はずらし無し（DEC-422）。
+// **これで属性は 16 個ちょうど**。次に要るときは faceAnchor と faceFit を 1 本に畳めば 1 つ空く。
+attribute vec4 chipOffset;
 attribute float faceAnchor; // 6 面 × 2bit（bl=0 br=1 tl=2 tr=3）。順は top..right
 attribute float faceFit;    // 6 面 × 1bit。stretch が 1。同じ順
 varying vec2 vChipUv;
@@ -421,19 +425,19 @@ void main() {
   // 属性は 16 個で上限なので新しく増やせない（GC-36）。捨てる判定は箱の clip と同じ仕組みを使う。
   float planeCrop = mod(floor(chipSides.w / 128.0 + 0.001), 2.0);
   if (planeCrop > 0.5) {
-    float cx = abs(boxThickX);
-    float cy = abs(boxThickY);
-    float cz = abs(boxThickZ);
+    float cx = abs(boxThick.x);
+    float cy = abs(boxThick.y);
+    float cz = abs(boxThick.z);
     if (cx > 0.001 || cy > 0.001 || cz > 0.001) {
       if (cx < 0.001) cx = 1.0;
       if (cy < 0.001) cy = 1.0;
       if (cz < 0.001) cz = 1.0;
-      float px0 = boxThickX >= 0.0 ? 0.5 - cx : -0.5;
-      float px1 = boxThickX >= 0.0 ? 0.5 : -0.5 + cx;
-      float py0 = boxThickY < 0.0 ? -0.5 : 0.5 - cy;
-      float py1 = boxThickY < 0.0 ? -0.5 + cy : 0.5;
-      float pz0 = boxThickZ >= 0.0 ? -0.5 : 0.5 - cz;
-      float pz1 = boxThickZ >= 0.0 ? -0.5 + cz : 0.5;
+      float px0 = boxThick.x >= 0.0 ? 0.5 - cx : -0.5;
+      float px1 = boxThick.x >= 0.0 ? 0.5 : -0.5 + cx;
+      float py0 = boxThick.y < 0.0 ? -0.5 : 0.5 - cy;
+      float py1 = boxThick.y < 0.0 ? -0.5 + cy : 0.5;
+      float pz0 = boxThick.z >= 0.0 ? -0.5 : 0.5 - cz;
+      float pz1 = boxThick.z >= 0.0 ? -0.5 + cz : 0.5;
       // 面に垂直な軸は切らない。坂は局所 Y が 0〜1 まで伸びるので、広く開けておく。
       bool flatFace = abs(normal.y) > 0.5;
       vClipPos = position;
@@ -517,9 +521,9 @@ void main() {
     // 薄い箱: clip は 1 マスを四隅基準で貼ってはみ出しを捨てる。stretch は面に合わせる。基準は面ごと。
     // 板（planeCrop）は捨てる判定だけなので、ここの箱の処理は通さない。
     vec3 pos = position;
-    float hx = planeCrop > 0.5 ? 0.0 : abs(boxThickX);
-    float hy = planeCrop > 0.5 ? 0.0 : abs(boxThickY);
-    float hz = planeCrop > 0.5 ? 0.0 : abs(boxThickZ);
+    float hx = planeCrop > 0.5 ? 0.0 : abs(boxThick.x);
+    float hy = planeCrop > 0.5 ? 0.0 : abs(boxThick.y);
+    float hz = planeCrop > 0.5 ? 0.0 : abs(boxThick.z);
     float x0 = -0.5;
     float x1 = 0.5;
     float y0 = -0.5;
@@ -553,17 +557,49 @@ void main() {
     float stretch = f > 0.5 ? 1.0 : 0.0;
     float isRight = (abs(a - 1.0) < 0.5 || abs(a - 3.0) < 0.5) ? 1.0 : 0.0;
     float isTop = a > 1.5 ? 1.0 : 0.0;
+    // チップの引き延ばし（DEC-415）。貼り付け基準の隅を動かさずに面 UV を写す。
+    // 32 でマスいっぱい。大きいと面から出たぶんを描かず、小さいと余りをチップで繰り返す。
+    // **繰り返しの印は値に畳む**——1 倍未満の軸へ 8.0 を足して合図にする（varying を増やせないため）。
+    // 単色は縁（vEdge）が面 UV を見るので触らない。
+    if (vSolid < 0.5) {
+      float byteAt = mod(slot, 3.0);
+      float divisor = exp2(8.0 * byteAt);
+      float packU = slot < 2.5 ? chipStretch.x : chipStretch.y;
+      float packV = slot < 2.5 ? chipStretch.z : chipStretch.w;
+      float spanU = mod(floor(packU / divisor + 0.001), 256.0);
+      float spanV = mod(floor(packV / divisor + 0.001), 256.0);
+      // ずらし（DEC-422）。貼り付け基準の隅をこのぶん動かす。+ は右・上。
+      float shiftU = mod(floor((slot < 2.5 ? chipOffset.x : chipOffset.y) / divisor + 0.001), 256.0);
+      float shiftV = mod(floor((slot < 2.5 ? chipOffset.z : chipOffset.w) / divisor + 0.001), 256.0);
+      if (spanU > 0.5 || spanV > 0.5 || shiftU > 0.5 || shiftV > 0.5) {
+        vec2 span = vec2(spanU < 0.5 ? 1.0 : spanU / 32.0, spanV < 0.5 ? 1.0 : spanV / 32.0);
+        // 箱の面 UV は**左上が 0 で下へ増える**（shapes.ts の boxGeometry）。縦は符号を返して + を見た目の上にする。
+        vec2 shift = vec2(shiftU > 127.5 ? shiftU - 256.0 : shiftU, shiftV > 127.5 ? 256.0 - shiftV : -shiftV) / 32.0;
+        // 面 UV は左上が 0 で下へ増えるので、**上の隅（tl / tr）は v = 0**。以前は isTop をそのまま
+        // 入れていて縦が逆（bl が見た目の左上を留める）だった（DEC-423）。
+        vec2 hold = vec2(isRight, 1.0 - isTop);
+        vec2 faceUv = (vFaceUv - hold - shift) / span + hold;
+        // 面の両端で写るチップの範囲。0..1 から出る軸は繰り返す（縮めた・ずらして空いた）。
+        // 整数ぶん寄せても繰り返しの絵は同じなので、**負へ出ないよう寄せてから**合図の 8.0 を足す。
+        // 寄せないと右・上基準で小さく縮めたとき、合図の閾値（4.0）を下回って絵が崩れる。
+        vec2 lo = (-hold - shift) / span + hold;
+        vec2 hi = (vec2(1.0) - hold - shift) / span + hold;
+        if (lo.x < -0.001 || hi.x > 1.001) faceUv.x += 8.0 - floor(lo.x);
+        if (lo.y < -0.001 || hi.y > 1.001) faceUv.y += 8.0 - floor(lo.y);
+        vFaceUv = faceUv;
+      }
+    }
     if (hx > 0.001 || hy > 0.001 || hz > 0.001) {
       if (hx < 0.001) hx = 1.0;
       if (hy < 0.001) hy = 1.0;
       if (hz < 0.001) hz = 1.0;
       float oversized = (hx > 1.001 || hy > 1.001 || hz > 1.001) ? 1.0 : 0.0;
-      x0 = boxThickX >= 0.0 ? 0.5 - hx : -0.5;
-      x1 = boxThickX >= 0.0 ? 0.5 : -0.5 + hx;
-      y0 = boxThickY < 0.0 ? -0.5 : 0.5 - hy;
-      y1 = boxThickY < 0.0 ? -0.5 + hy : 0.5;
-      z0 = boxThickZ >= 0.0 ? -0.5 : 0.5 - hz;
-      z1 = boxThickZ >= 0.0 ? -0.5 + hz : 0.5;
+      x0 = boxThick.x >= 0.0 ? 0.5 - hx : -0.5;
+      x1 = boxThick.x >= 0.0 ? 0.5 : -0.5 + hx;
+      y0 = boxThick.y < 0.0 ? -0.5 : 0.5 - hy;
+      y1 = boxThick.y < 0.0 ? -0.5 + hy : 0.5;
+      z0 = boxThick.z >= 0.0 ? -0.5 : 0.5 - hz;
+      z1 = boxThick.z >= 0.0 ? -0.5 + hz : 0.5;
       if (index < 0.0 || stretch > 0.5 || oversized > 0.5) {
         pos.x = mix(x0, x1, position.x + 0.5);
         pos.y = mix(y0, y1, position.y + 0.5);
@@ -591,7 +627,7 @@ void main() {
       vClipBound = vec4(y0, y1, z0, z1);
       vClipBoundX = vec2(x0, x1);
     }
-    if (planeCrop < 0.5) vClipOn = (index >= 0.0 && stretch < 0.5 && (abs(boxThickX) > 0.001 || abs(boxThickY) > 0.001 || abs(boxThickZ) > 0.001) && abs(boxThickX) < 1.001 && abs(boxThickY) < 1.001 && abs(boxThickZ) < 1.001) ? 1.0 : 0.0;
+    if (planeCrop < 0.5) vClipOn = (index >= 0.0 && stretch < 0.5 && (abs(boxThick.x) > 0.001 || abs(boxThick.y) > 0.001 || abs(boxThick.z) > 0.001) && abs(boxThick.x) < 1.001 && abs(boxThick.y) < 1.001 && abs(boxThick.z) < 1.001) ? 1.0 : 0.0;
     vec4 local = vec4(pos, 1.0);
     vec4 worldNormal = vec4(normal, 0.0);
     #ifdef USE_INSTANCING
@@ -617,6 +653,18 @@ void main() {
     vFogView = (modelViewMatrix * local).xyz;
     gl_Position = projectionMatrix * modelViewMatrix * local;
   #endif
+}
+`;
+
+/**
+ * 面 UV を読む（DEC-415）。チップがマスいっぱいより小さい軸には 8.0 の印が付いているので、
+ * 外してから繰り返す。印が無ければ今までどおり 0..1 に留める（DEC-141）。
+ */
+const CHIP_FACE_UV_GLSL = /* glsl */ `
+vec2 chipFaceUv(vec2 raw) {
+  vec2 tiled = step(4.0, raw);
+  vec2 faceUv = raw - tiled * 8.0;
+  return mix(clamp(faceUv, 0.0, 1.0), faceUv - floor(faceUv), tiled);
 }
 `;
 
@@ -711,6 +759,7 @@ uniform float mepSeeOn;   // 0..1 の抜け具合（DEC-281）。ゲームが隠
 #endif
 
 ${FOG_GLSL}
+${CHIP_FACE_UV_GLSL}
 
 void main() {
   if (vClipOn > 0.5) {
@@ -723,7 +772,7 @@ void main() {
   // MSAA だと、辺にかかった画素は「画素の中心」で補間値を出すため、
   // 中心が三角形の外にあると UV が chip の外へはみ出し、隣のチップの端を引いてしまう。
   // 面 UV を 0..1 に留めてから矩形へ写せば、はみ出しても隣へ入らない。
-  vec2 chipUv = vChipRect.xy + clamp(vFaceUv, 0.0, 1.0) * vChipRect.zw;
+  vec2 chipUv = vChipRect.xy + chipFaceUv(vFaceUv) * vChipRect.zw;
   vec3 albedo;
   // 透け具合（DEC-378）。**混ぜない材質では 1.0 のまま**なので、今までと同じ絵になる。
   float alpha = 1.0;
@@ -1081,9 +1130,9 @@ export function createTileMaterial(
 
 /** 属性を省いたバッチのための既定値。タイルと深度で同じ。 */
 function tileAttributeDefaults(material: ShaderMaterial): void {
-  material.defaultAttributeValues.boxThickY = [0];
-  material.defaultAttributeValues.boxThickZ = [0];
-  material.defaultAttributeValues.boxThickX = [0];
+  material.defaultAttributeValues.boxThick = [0, 0, 0];
+  material.defaultAttributeValues.chipStretch = [0, 0, 0, 0];
+  material.defaultAttributeValues.chipOffset = [0, 0, 0, 0];
   material.defaultAttributeValues.faceAnchor = [0];
   material.defaultAttributeValues.faceFit = [0];
   material.defaultAttributeValues.chipEmit = [0];
@@ -1100,6 +1149,7 @@ varying vec3 vClipPos;
 varying vec4 vClipBound;
 varying vec2 vClipBoundX;
 varying float vClipOn;
+${CHIP_FACE_UV_GLSL}
 
 void main() {
   if (vClipOn > 0.5) {
@@ -1109,7 +1159,7 @@ void main() {
     if (vClipPos.z < vClipBound.z - pad || vClipPos.z > vClipBound.w + pad) discard;
   }
   if (vSolid < 0.5) {
-    vec2 chipUv = vChipRect.xy + clamp(vFaceUv, 0.0, 1.0) * vChipRect.zw;
+    vec2 chipUv = vChipRect.xy + chipFaceUv(vFaceUv) * vChipRect.zw;
     if (texture2D(map, chipUv).a < alphaCutoff) discard;
   }
   gl_FragColor = vec4(1.0);

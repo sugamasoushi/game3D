@@ -174,6 +174,9 @@ export interface Player {
   cell(): { x: number; y: number; z: number };
   /** 床の上へ置き直す。 */
   placeAt(x: number, y: number, z: number): void;
+  /** 通過済みの道をたどる仲間用。物理移動を重ねず、位置・歩行コマ・影を更新する。 */
+  /** `facing` を渡すと、動いている間はその向き（GS-185。主人公がそこを通ったときの向き）。 */
+  followAt(at: { x: number; y: number; z: number }, dt: number, yaw: number, facing?: Facing): void;
   /**
    * いま居るマスの真ん中へ静かに戻す（GS-117）。**歩き終わりに呼ぶ。**
    *
@@ -204,6 +207,11 @@ export interface Player {
    * `null` で指名を外し、歩きと向きの絵に戻る。知らない名前なら何もせず false を返す。
    */
   pose(name: string | number | null): boolean;
+  /**
+   * 絵だけ浮かせる（GS-184。イベントの「ジャンプ」）。単位はマス、0 で地面。
+   * **立ち位置・影・当たりは動かさない**——跳ねて着地するだけの絵なので。
+   */
+  hop(lift: number): void;
   /** カメラの方位（ラジアン）へ向ける。 */
   /**
    * 影が歩く地形を渡す（DEC-159）。`Mep3DScene.shadowField()` の中身。
@@ -226,6 +234,8 @@ export interface Player {
   bodyMaterial: ShaderMaterial;
   /** 影のシルエットに使うシート。 */
   texture: Texture;
+  /** スプライトが読み込まれ、最初の描画に使える状態になるまで待つ。 */
+  ready: Promise<void>;
   /** 板の高さ（マス）。影の長さに使う。 */
   tallCells: number;
   /** 絵を下げている量（GS-52。ワールド）。頭の上に何かを置くときに引く。 */
@@ -266,7 +276,11 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
    */
   let posed: number | null = null;
 
-  const texture = new TextureLoader().load(sheet.url);
+  let markTextureReady!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    markTextureReady = resolve;
+  });
+  const texture = new TextureLoader().load(sheet.url, markTextureReady, undefined, markTextureReady);
   texture.colorSpace = SRGBColorSpace;
   texture.magFilter = NearestFilter;
   texture.minFilter = NearestFilter;
@@ -682,6 +696,50 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
    * 体が横へ滑って「押しているのに違う方へ動く」ことになる。
    * 返すのは寄せているあいだ向く方（ワールドの向き）。寄せないなら null。
    */
+  /**
+   * 通路へ寄せている最中（GS-185）。**寄せ始めたら真ん中に揃うまで寄せ切る。**
+   * 寄せを「前へ進めなかったフレームだけ」にしていると、壁の帯が段違いの入口（0101 の出口）では
+   * 寄せる → 少し進める → また当たる → 寄せる…を繰り返し、そのたびに横と前を向き直して見えた。
+   */
+  let aligning: { alongX: boolean; sign: number; lane: number } | null = null;
+
+  /** 寄せの続き。同じ向きへ押している間だけ続ける。揃ったか、押す向きが変わったら終わり。 */
+  const keepAligning = (
+    dx: number,
+    dz: number,
+    step: number,
+    collision: CollisionMap,
+  ): { x: number; z: number } | null => {
+    const hold = aligning;
+    if (!hold || (dx === 0 && dz === 0)) {
+      aligning = null;
+      return null;
+    }
+    const alongX = Math.abs(dx) >= Math.abs(dz);
+    const sign = Math.sign(alongX ? dx : dz);
+    if (alongX !== hold.alongX || sign !== hold.sign) {
+      aligning = null;
+      return null;
+    }
+    const here = alongX ? position.z : position.x;
+    const gap = hold.lane - here;
+    if (Math.abs(gap) <= LANE_SNAP * unit) {
+      aligning = null;
+      return null;
+    }
+    const next = Math.abs(gap) <= step ? hold.lane : here + Math.sign(gap) * step;
+    const nx = alongX ? position.x : next;
+    const nz = alongX ? next : position.z;
+    if (!fits(nx, position.y, nz, collision)) {
+      aligning = null;
+      return null;
+    }
+    position.x = nx;
+    position.z = nz;
+    if (next === hold.lane) aligning = null;
+    return alongX ? { x: 0, z: Math.sign(gap) } : { x: Math.sign(gap), z: 0 };
+  };
+
   const laneSlip = (
     dx: number,
     dz: number,
@@ -711,6 +769,8 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
     if (!fits(nx, position.y, nz, collision)) return null;
     position.x = nx;
     position.z = nz;
+    // 揃い切らなければ、次のフレームからも寄せ続ける（GS-185）。
+    aligning = next === lane ? null : { alongX, sign: Math.sign(forward), lane };
     return alongX ? { x: 0, z: Math.sign(gap) } : { x: Math.sign(gap), z: 0 };
   };
 
@@ -813,11 +873,35 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       z: cellOf(position.z, unit),
     }),
     placeAt(x, y, z) {
+      aligning = null;
       position.set(x, y, z);
       group.position.copy(position);
       fallSpeed = 0;
       onGround = false;
       onLadder = false;
+    },
+    followAt(at, dt, yaw, lead) {
+      const dx = at.x - position.x;
+      const dz = at.z - position.z;
+      const distance = Math.hypot(dx, at.y - position.y, dz);
+      if (distance > 0.0001 * unit && dt > 0) {
+        if (lead) facing = lead;
+        else if (Math.hypot(dx, dz) > 0.0001 * unit) facing = facingForWorld(dx, dz, yaw);
+        stepTime += dt;
+        const per = distance / dt > 6 * unit ? RUN_STEP_S : STEP_S;
+        while (stepTime >= per) {
+          stepTime -= per;
+          stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
+        }
+      } else {
+        stepTime = 0;
+        stepIndex = STAND;
+      }
+      position.set(at.x, at.y, at.z);
+      group.position.copy(position);
+      refreshFrame();
+      skin.setShadowBase(position.x, position.y, position.z);
+      layoutShadow();
     },
     settle(collision) {
       const cx = (Math.floor(position.x / unit) + 0.5) * unit;
@@ -975,16 +1059,21 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       const speed = (input.speed ?? (running ? RUN_SPEED : WALK_SPEED)) * unit * deltaSeconds;
       const heldX = position.x;
       const heldZ = position.z;
-      slide('x', move.x * speed, collision);
-      slide('z', move.z * speed, collision);
-      if (position.x === heldX && position.z === heldZ) {
-        deflect(move.x * speed, move.z * speed, collision);
-      }
-      // それでも 1 ミリも動けないなら、通路の縁に当たっている（GS-116）。
-      // 半分以上かかっているマスの真ん中へ、直角に歩いて揃える。
-      let slip: { x: number; z: number } | null = null;
-      if (position.x === heldX && position.z === heldZ) {
-        slip = laneSlip(move.x * speed, move.z * speed, speed, collision);
+      // 寄せている最中なら、揃うまで前へは進まない（GS-185）。
+      let slip: { x: number; z: number } | null = input.slide
+        ? null
+        : keepAligning(move.x * speed, move.z * speed, speed, collision);
+      if (!slip) {
+        slide('x', move.x * speed, collision);
+        slide('z', move.z * speed, collision);
+        if (position.x === heldX && position.z === heldZ) {
+          deflect(move.x * speed, move.z * speed, collision);
+        }
+        // それでも 1 ミリも動けないなら、通路の縁に当たっている（GS-116）。
+        // 半分以上かかっているマスの真ん中へ、直角に歩いて揃える。
+        if (position.x === heldX && position.z === heldZ) {
+          slip = laneSlip(move.x * speed, move.z * speed, speed, collision);
+        }
       }
       // 寄せる先も無いなら壁。**残った隙間ぶんだけ詰める**（GS-116）。
       // 1 フレームぶん丸ごと進めないと止まる作りなので、これが無いと壁との間に隙間が残る。
@@ -1069,8 +1158,12 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
     setTime(seconds) {
       skin.setTime(seconds);
     },
+    hop(lift) {
+      body.position.y = height / 2 - footLift + lift * unit;
+    },
     bodyMaterial: skin.material,
     texture,
+    ready,
     tallCells: height / unit,
     footLift,
     frame: () => frameUv,

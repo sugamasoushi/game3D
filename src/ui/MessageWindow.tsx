@@ -10,6 +10,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { playUi } from '../game/audio';
 import { options } from '../game/options';
 import { faceCount, portraitLook, scrollMs, useUi } from './store';
+import { ComicPager } from './ComicPager';
 
 /**
  * 流れる文字の出入り（ミリ秒。GS-23）。
@@ -17,6 +18,8 @@ import { faceCount, portraitLook, scrollMs, useUi } from './store';
  */
 const SCROLL_IN_MS = 600;
 const SCROLL_OUT_MS = 800;
+/** 前置きのフェードインと、背景が暗くなるまでの時間（GS-186）。旧作のエンディングと同じ 1 秒。 */
+const LEAD_IN_MS = 1000;
 
 /** 画面の外へ運ぶ距離。縦横で変える——縦は絵の丈ぶん、横は幅ぶん外へ出す。 */
 const OUT_SHIFT: Record<string, { x: string; y: string }> = {
@@ -55,12 +58,17 @@ export function MessageWindow({
    * 流れる文字の段（GS-23）。`in` は**画面が真っ黒**で、その裏で暗幕と文字を置く。
    * `run` で黒が明けると、**暗幕が最初からかかった画面**が現れる。
    */
-  const [scrollStep, setScrollStep] = useState<'in' | 'run' | 'out'>('in');
+  const [scrollStep, setScrollStep] = useState<'in' | 'show' | 'run' | 'out'>('in');
+  /**
+   * 前置きのある流れる文字で、**流し始めたか**（GS-186）。途中で飛ばしたとき、
+   * 流し始める前なら前置きはその場で薄れ、流している最中なら流れながら薄れる。
+   */
+  const [scrollMoved, setScrollMoved] = useState(false);
   /**
    * 流れる文字の**測った寸法**（GS-144）。`from` は下から出す距離（画面の高さ）、
    * `ms` は流れ切るまでの時間。行数で時間が変わるので、置いてから測って決める。
    */
-  const [scrollRun, setScrollRun] = useState<{ from: number; ms: number } | null>(null);
+  const [scrollRun, setScrollRun] = useState<{ from: number; ms: number; leadTop?: number; dist?: number } | null>(null);
   /**
    * テロップの段（GS-171）。出た瞬間は真っ黒（`run`）で、押されたら薄れる（`out`）。
    * **入りは滑らせない**——旧作も黒を一瞬で置いてから薄めていた（場面が切り替わった合図）。
@@ -68,6 +76,8 @@ export function MessageWindow({
   const [telopStep, setTelopStep] = useState<'run' | 'out'>('run');
   const scrollBackRef = useRef<HTMLDivElement | null>(null);
   const scrollTextRef = useRef<HTMLDivElement | null>(null);
+  /** 前置きの行（GS-186）。真ん中に置くために丈を測る。 */
+  const scrollLeadRef = useRef<HTMLDivElement | null>(null);
   const [shown, setShown] = useState(0);
   const [cursor, setCursor] = useState(0);
   const full = (talk?.lines ?? []).join('\n');
@@ -188,19 +198,40 @@ export function MessageWindow({
     const lineH = Number.parseFloat(window.getComputedStyle(text).lineHeight) || 40;
     // 遊ぶ人の好み（設定の「流れる文字」）を掛ける。**流し始めに 1 回だけ読む**——
     // 流している間は設定を開けないので、途中で速さが変わることはない。
-    setScrollRun({ from, ms: scrollMs(from, text.offsetHeight, lineH, scroll.speed * options.scrollScale) });
+    const ms = scrollMs(from, text.offsetHeight, lineH, scroll.speed * options.scrollScale);
+    // 前置き（GS-186）。前置きは真ん中、残りは画面の下の縁から。**運ぶ距離は残りが上へ抜け切るまで**——
+    // 速さの物差し（1 行ぶんの時間）は今までと同じ。
+    const lead = scrollLeadRef.current;
+    if (scroll.lead && lead) {
+      setScrollRun({ from, ms, leadTop: Math.max(0, (from - lead.offsetHeight) / 2), dist: from + text.offsetHeight });
+      return;
+    }
+    setScrollRun({ from, ms });
   }, [scroll]);
 
   // 流れる文字の段送り。**整える → 濃くする → 流す → 薄れる → 次へ**。
   useEffect(() => {
     if (!scroll) {
       setScrollStep('in');
+      setScrollMoved(false);
       return;
     }
+    setScrollMoved(false);
     // 1 フレーム置いてから黒を明ける。同じフレームで足すと遷移が効かない。
-    const id = window.requestAnimationFrame(() => setScrollStep('run'));
+    // 前置きがあれば、まず前置きを出す（`show`。GS-186）。
+    const id = window.requestAnimationFrame(() => setScrollStep(scroll.lead ? 'show' : 'run'));
     return () => window.cancelAnimationFrame(id);
   }, [scroll]);
+
+  // 前置き（GS-186）。**フェードインしてから `hold` だけ止め、それから流す。**
+  useEffect(() => {
+    if (!scroll || scrollStep !== 'show') return;
+    const id = window.setTimeout(() => {
+      setScrollMoved(true);
+      setScrollStep('run');
+    }, LEAD_IN_MS + (scroll.hold ?? 3000));
+    return () => window.clearTimeout(id);
+  }, [scroll, scrollStep]);
 
   useEffect(() => {
     if (!scroll || scrollStep !== 'run' || !scrollRun) return;
@@ -322,6 +353,9 @@ export function MessageWindow({
       })}
       </div>
 
+      {/* 漫画のようにめくる絵（GS-188）。立ち絵の上・会話の下。 */}
+      <ComicPager />
+
       {/* 暗転。会話の下に敷く。 */}
       <div className="fade" style={{ opacity: fade, transitionDuration: `${fadeMs}ms` }} />
 
@@ -355,8 +389,48 @@ export function MessageWindow({
         </div>
       ) : null}
 
+      {/*
+        前置きのある流れる文字（GS-186。旧作のエンディング）。背景がゆっくり暗くなり、前置きが真ん中に
+        フェードインで出る。止まってから、残り（画面の下の縁から入る）と一緒に上へ流れる。
+        押すといつでも薄れて終わる。
+      */}
+      {scroll && scroll.lead ? (
+        <div
+          ref={scrollBackRef}
+          className={`scroll-back scroll-lead-mode ${scrollStep}`}
+          style={{
+            background: `rgba(0, 0, 0, ${scrollStep === 'in' ? 0 : scroll.dim})`,
+            transitionDuration: `${scrollStep === 'out' ? SCROLL_OUT_MS : LEAD_IN_MS}ms`,
+          }}
+          onClick={() => setScrollStep('out')}
+        >
+          <div
+            className="scroll-stage"
+            style={{
+              transform: scrollMoved ? `translateY(${-(scrollRun?.dist ?? 0)}px)` : 'none',
+              transitionDuration: `${scrollRun?.ms ?? 0}ms`,
+            }}
+          >
+            <div
+              ref={scrollLeadRef}
+              className="scroll-lines scroll-lead"
+              style={{ top: `${scrollRun?.leadTop ?? 0}px`, transitionDuration: `${LEAD_IN_MS}ms` }}
+            >
+              {scroll.lines.slice(0, scroll.lead).map((line, index) => (
+                <p key={index}>{line || '\u00a0'}</p>
+              ))}
+            </div>
+            <div ref={scrollTextRef} className="scroll-lines" style={{ top: `${scrollRun?.from ?? 720}px` }}>
+              {scroll.lines.slice(scroll.lead).map((line, index) => (
+                <p key={index}>{line || '\u00a0'}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* 流れる文字（GS-23）。旧作のオープニングと同じで、背景を少し暗くして下から上へ。 */}
-      {scroll ? (
+      {scroll && !scroll.lead ? (
         <div
           ref={scrollBackRef}
           className={`scroll-back ${scrollStep}`}

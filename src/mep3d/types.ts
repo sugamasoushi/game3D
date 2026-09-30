@@ -485,6 +485,182 @@ export function packFaceFitAttr(raw: FaceFit | FaceFitByFace | undefined): numbe
   return packed;
 }
 
+/**
+ * チップの引き延ばし（DEC-415）。**厚みと同じ 1/32 刻みで、32 でマスいっぱい**（今までの大きさ）。
+ * 32 より大きいとチップが面からはみ出すまで伸び、**出たぶんは描かない**。
+ * 32 より小さいと縮んで、**余りはチップを繰り返す**。動かさない隅は貼り付け基準（`faceAnchor`）。
+ *
+ * **面ごとに持てる**（`faceAnchor` / `faceFit` と同じ形）。数値 1 つは横縦とも同じ。
+ * `faceFit: stretch`（面に合わせる）とは別物——あちらは薄くした箱の**面の形**に合わせるもの。
+ */
+export type ChipStretch = number | [number, number];
+/** 面ごと。欠けた面はマスいっぱい。 */
+export type ChipStretchByFace = Partial<Record<FaceName, ChipStretch>>;
+/** 6 面ぶんの [横, 縦]。 */
+export type ChipStretches = Record<FaceName, [number, number]>;
+/** マスいっぱい。厚みの 32 と同じ意味。 */
+export const CHIP_STRETCH_FULL = 32;
+export const CHIP_STRETCH_MIN = 1;
+/** 4 マスぶん。**8bit に収める**ため（面ごと 12 個を vec4 へ畳む）。 */
+export const CHIP_STRETCH_MAX = 128;
+
+function asChipStretchValue(raw: unknown): number {
+  const value = Math.round(Number(raw));
+  if (!Number.isFinite(value)) return CHIP_STRETCH_FULL;
+  return Math.max(CHIP_STRETCH_MIN, Math.min(CHIP_STRETCH_MAX, value));
+}
+
+/** 1 面ぶん。数値 1 つは横縦とも同じ。 */
+export function readChipStretch(raw: ChipStretch | undefined): [number, number] {
+  if (raw == null) return [CHIP_STRETCH_FULL, CHIP_STRETCH_FULL];
+  if (typeof raw === 'number') {
+    const value = asChipStretchValue(raw);
+    return [value, value];
+  }
+  return [asChipStretchValue(raw[0]), asChipStretchValue(raw[1])];
+}
+
+export function expandChipStretches(raw: ChipStretch | ChipStretchByFace | undefined): ChipStretches {
+  if (raw == null || typeof raw === 'number' || Array.isArray(raw)) {
+    const pair = readChipStretch(raw as ChipStretch | undefined);
+    return {
+      top: [...pair], bottom: [...pair], front: [...pair],
+      back: [...pair], left: [...pair], right: [...pair],
+    };
+  }
+  const out = {} as ChipStretches;
+  for (const name of FACE_PASTE_FACES) out[name] = readChipStretch(raw[name]);
+  return out;
+}
+
+export function chipStretchIsFull(pair: [number, number]): boolean {
+  return pair[0] === CHIP_STRETCH_FULL && pair[1] === CHIP_STRETCH_FULL;
+}
+
+export function chipStretchesAreFull(map: ChipStretches): boolean {
+  return FACE_PASTE_FACES.every((name) => chipStretchIsFull(map[name]));
+}
+
+/** JSON へ書く形。マスいっぱいは書かない。6 面同じなら 1 つにまとめる。 */
+export function packChipStretches(
+  raw: ChipStretch | ChipStretchByFace | undefined,
+): ChipStretch | ChipStretchByFace | undefined {
+  const map = expandChipStretches(raw);
+  if (chipStretchesAreFull(map)) return undefined;
+  const one = (pair: [number, number]): ChipStretch => (pair[0] === pair[1] ? pair[0] : [pair[0], pair[1]]);
+  const uniform = FACE_PASTE_FACES.every(
+    (name) => map[name][0] === map.top[0] && map[name][1] === map.top[1],
+  );
+  if (uniform) return one(map.top);
+  const out: ChipStretchByFace = {};
+  for (const name of FACE_PASTE_FACES) {
+    if (!chipStretchIsFull(map[name])) out[name] = one(map[name]);
+  }
+  return out;
+}
+
+/**
+ * 頂点属性（vec4）へ畳む。**1 成分に 8bit × 3 面**。
+ * x = 横（top / bottom / front）、y = 横（back / left / right）、z と w は縦。
+ * マスいっぱいは 0 で畳むので、**引き延ばしを持たない今までのデータは全部 0**。
+ */
+export function packChipStretchAttr(
+  raw: ChipStretch | ChipStretchByFace | undefined,
+): [number, number, number, number] {
+  const map = expandChipStretches(raw);
+  const byte = (value: number) => (value === CHIP_STRETCH_FULL ? 0 : value);
+  const fold = (axis: 0 | 1, from: number) =>
+    byte(map[FACE_PASTE_FACES[from]][axis]) +
+    byte(map[FACE_PASTE_FACES[from + 1]][axis]) * 256 +
+    byte(map[FACE_PASTE_FACES[from + 2]][axis]) * 65536;
+  return [fold(0, 0), fold(0, 3), fold(1, 0), fold(1, 3)];
+}
+
+/**
+ * チップのずらし（DEC-422）。**引き延ばしと同じ 1/32 刻み**で、+ は右・上（面を外から見て）。
+ * 貼り付け基準の隅をこのぶん動かす——引き延ばしの動かさない点をずらす、と読んでよい。
+ * 64 に引き延ばして -32 ずらすと、チップの右半分が出る（2 マスにまたがる絵の右側）。
+ * 面からはみ出して空いた所は**チップを繰り返して埋める**。
+ *
+ * 形は `chipStretch` と同じ（数値 1 つは横縦とも同じ・`[横, 縦]`・面ごとのオブジェクト）。
+ */
+export type ChipOffset = number | [number, number];
+export type ChipOffsetByFace = Partial<Record<FaceName, ChipOffset>>;
+export type ChipOffsets = Record<FaceName, [number, number]>;
+/** 8bit（2 の補数）に収める。4 マス弱。 */
+export const CHIP_OFFSET_MIN = -127;
+export const CHIP_OFFSET_MAX = 127;
+
+function asChipOffsetValue(raw: unknown): number {
+  const value = Math.round(Number(raw));
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(CHIP_OFFSET_MIN, Math.min(CHIP_OFFSET_MAX, value));
+}
+
+/** 1 面ぶん。数値 1 つは横縦とも同じ。 */
+export function readChipOffset(raw: ChipOffset | undefined): [number, number] {
+  if (raw == null) return [0, 0];
+  if (typeof raw === 'number') {
+    const value = asChipOffsetValue(raw);
+    return [value, value];
+  }
+  return [asChipOffsetValue(raw[0]), asChipOffsetValue(raw[1])];
+}
+
+export function expandChipOffsets(raw: ChipOffset | ChipOffsetByFace | undefined): ChipOffsets {
+  if (raw == null || typeof raw === 'number' || Array.isArray(raw)) {
+    const pair = readChipOffset(raw as ChipOffset | undefined);
+    return {
+      top: [...pair], bottom: [...pair], front: [...pair],
+      back: [...pair], left: [...pair], right: [...pair],
+    };
+  }
+  const out = {} as ChipOffsets;
+  for (const name of FACE_PASTE_FACES) out[name] = readChipOffset(raw[name]);
+  return out;
+}
+
+export function chipOffsetIsZero(pair: [number, number]): boolean {
+  return pair[0] === 0 && pair[1] === 0;
+}
+
+export function chipOffsetsAreZero(map: ChipOffsets): boolean {
+  return FACE_PASTE_FACES.every((name) => chipOffsetIsZero(map[name]));
+}
+
+/** JSON へ書く形。ずらし無しは書かない。6 面同じなら `[横, 縦]` 1 つにまとめる。 */
+export function packChipOffsets(
+  raw: ChipOffset | ChipOffsetByFace | undefined,
+): ChipOffset | ChipOffsetByFace | undefined {
+  const map = expandChipOffsets(raw);
+  if (chipOffsetsAreZero(map)) return undefined;
+  const uniform = FACE_PASTE_FACES.every(
+    (name) => map[name][0] === map.top[0] && map[name][1] === map.top[1],
+  );
+  if (uniform) return [map.top[0], map.top[1]];
+  const out: ChipOffsetByFace = {};
+  for (const name of FACE_PASTE_FACES) {
+    if (!chipOffsetIsZero(map[name])) out[name] = [map[name][0], map[name][1]];
+  }
+  return out;
+}
+
+/**
+ * 頂点属性（vec4）へ畳む。並びは `chipStretch` と同じ（1 成分に 8bit × 3 面）。
+ * 1 バイトは 2 の補数なので、**ずらし無しは 0**——今までのデータは属性値が全部 0。
+ */
+export function packChipOffsetAttr(
+  raw: ChipOffset | ChipOffsetByFace | undefined,
+): [number, number, number, number] {
+  const map = expandChipOffsets(raw);
+  const byte = (value: number) => (value + 256) % 256;
+  const fold = (axis: 0 | 1, from: number) =>
+    byte(map[FACE_PASTE_FACES[from]][axis]) +
+    byte(map[FACE_PASTE_FACES[from + 1]][axis]) * 256 +
+    byte(map[FACE_PASTE_FACES[from + 2]][axis]) * 65536;
+  return [fold(0, 0), fold(0, 3), fold(1, 0), fold(1, 3)];
+}
+
 /** 旧形式。面チップの 1/32 マスずれ。描画では使わない。 */
 export interface FaceOffset {
   top?: [number, number];
@@ -522,6 +698,10 @@ export interface ProtoDef {
   faceAnchor?: FaceAnchor | FaceAnchorByFace;
   /** `clip` ははみ出しを捨てる。`stretch` は面に合わせる。`box` のみ。 */
   faceFit?: FaceFit | FaceFitByFace;
+  /** 面チップの引き延ばし。厚みと同じ 1/32 刻みで 32 がマスいっぱい。面ごと。`box` のみ（DEC-415）。 */
+  chipStretch?: ChipStretch | ChipStretchByFace;
+  /** 面チップのずらし。1/32 刻みで + は右・上。面ごと。`box` のみ（DEC-422）。 */
+  chipOffset?: ChipOffset | ChipOffsetByFace;
   /** 旧形式の面ずれ。読み捨て。 */
   faceOffset?: FaceOffset;
   /** ずらし元の id。2 回目のずらしはここから。 */

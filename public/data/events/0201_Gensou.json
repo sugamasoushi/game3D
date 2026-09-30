@@ -6,8 +6,15 @@
       "trigger": "touch",
       "when": [{ "switch": "EVENT020301", "is": true }],
       "commands": [
-        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk", "id": "meina" },
+        {
+          "type": "portrait",
+          "slot": "right",
+          "who": "lamy",
+          "face": "normal",
+          "x": -15,
+          "id": "lamy"
+        },
         {
           "type": "message",
           "talk": [
@@ -16,7 +23,10 @@
             { "who": "meina", "lines": ["あんたそればっかりね", "", "ん？あれは・・・？"] }
           ]
         },
-        { "type": "shot", "kind": "flash", "ms": 500 },
+        { "type": "portrait", "slot": "right", "face": "normal", "id": "meina" },
+        { "type": "portrait", "slot": "right", "face": "normal", "id": "lamy" },
+        { "type": "comic", "images": ["EVENT020301_1.png", "EVENT020301_2.png", "EVENT020301_3.png"] },
+        { "type": "wait", "ms": 500 },
         {
           "type": "message",
           "talk": [
@@ -24,8 +34,6 @@
             { "who": "meina", "lines": ["入って大丈夫かな・・・"] }
           ]
         },
-        { "type": "portrait", "slot": "left", "hide": true },
-        { "type": "portrait", "slot": "right", "hide": true },
         { "type": "setSwitch", "key": "EVENT020301", "value": false }
       ],
       "kind": "scenario"

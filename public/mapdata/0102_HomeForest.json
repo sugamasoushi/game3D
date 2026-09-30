@@ -158,6 +158,13 @@
         "w": 1024,
         "h": 1024,
         "filter": "nearest"
+      },
+      {
+        "id": "tex_chests",
+        "src": "assets/tilesets/Chests.png",
+        "w": 128,
+        "h": 96,
+        "filter": "nearest"
       }
     ],
     "tilesets": [
@@ -338,6 +345,16 @@
         "tile": 32,
         "cols": 32,
         "rows": 32,
+        "margin": 0,
+        "spacing": 0
+      },
+      {
+        "id": "chests",
+        "tex": "tex_chests",
+        "mat": "mat_chests",
+        "tile": 32,
+        "cols": 4,
+        "rows": 3,
         "margin": 0,
         "spacing": 0
       }
@@ -526,6 +543,16 @@
       {
         "id": "mat_trees-green",
         "tex": "tex_trees-green",
+        "kind": "tiles",
+        "shading": "unlit",
+        "alphaTest": 0.5,
+        "transparent": false,
+        "side": "double",
+        "depthWrite": true
+      },
+      {
+        "id": "mat_chests",
+        "tex": "tex_chests",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -19778,6 +19805,22 @@
           -13,
           0
         ]
+      },
+      {
+        "id": "p_chests_0_billboard_fixed",
+        "name": "chests #0 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 0
+      },
+      {
+        "id": "p_chests_4_billboard_fixed",
+        "name": "chests #4 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_chests",
+        "ts": "chests",
+        "tile": 4
       }
     ]
   },
@@ -19837,29 +19880,29 @@
   "editor": {
     "camera": {
       "target": [
-        4.878553362624732,
-        7.272353521535045,
-        -7.2373996887231975
+        -4.975478193678578,
+        5.248530260027051,
+        12.913765209923564
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 21.009313926810016,
+      "distance": 15.16263195411806,
       "orthographic": false
     },
-    "activeLayer": "オブジェクトレイヤー_3",
+    "activeLayer": "オブジェクトレイヤー_5",
     "height": 0,
     "brush": {
       "shape": "billboard_fixed",
       "rotation": 0,
       "color": "#f2f2f2",
-      "tileset": "trees_generic",
-      "tile": 36,
+      "tileset": "chests",
+      "tile": 0,
       "paint": "prefab",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
         0,
-        -20,
+        0,
         0
       ],
       "thickness": [
@@ -19869,11 +19912,13 @@
       ],
       "faceAnchor": "bl",
       "faceFit": "clip",
-      "prefabId": ""
+      "prefabId": "宝箱スプライト（閉）"
     },
     "prefabs": [
       "block_5",
-      "house"
+      "house",
+      "宝箱スプライト（閉）",
+      "宝箱スプライト（開）"
     ]
   },
   "properties": [
@@ -46654,7 +46699,7 @@
             {
               "name": "MoveTo",
               "type": "string",
-              "value": "-17,0,-29"
+              "value": "-17,0,-28"
             }
           ],
           "space": "solid",
@@ -46751,11 +46796,139 @@
           ]
         }
       ]
+    },
+    {
+      "id": "宝箱スプライト（開）",
+      "name": "宝箱スプライト（開）",
+      "kind": "prefab",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": []
+    },
+    {
+      "id": "宝箱スプライト（開）_2",
+      "name": "宝箱スプライト（開）",
+      "kind": "tile",
+      "parent": "宝箱スプライト（開）",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [
+        {
+          "name": "Opened",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Id",
+          "type": "string",
+          "value": "Chest_Map0102"
+        }
+      ],
+      "batches": [
+        {
+          "id": "宝箱スプライト（開）_2-billboard_fixed-0",
+          "shape": "billboard_fixed",
+          "mat": "mat_chests",
+          "ts": "chests",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_chests_4_billboard_fixed"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              10,
+              -2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              423
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "宝箱スプライト（閉）",
+      "name": "宝箱スプライト（閉）",
+      "kind": "prefab",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": []
+    },
+    {
+      "id": "宝箱スプライト（閉）_2",
+      "name": "宝箱スプライト（閉）",
+      "kind": "tile",
+      "parent": "宝箱スプライト（閉）",
+      "visible": true,
+      "opacity": 1,
+      "collision": true,
+      "properties": [
+        {
+          "name": "Collision",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Id",
+          "type": "string",
+          "value": "Chest_Map0102"
+        }
+      ],
+      "batches": [
+        {
+          "id": "宝箱スプライト（閉）_2-billboard_fixed-0",
+          "shape": "billboard_fixed",
+          "mat": "mat_chests",
+          "ts": "chests",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_chests_0_billboard_fixed"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              10,
+              -2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              424
+            ]
+          }
+        }
+      ]
     }
   ],
   "stats": {
-    "tiles": 4122,
-    "batches": 68,
-    "drawCalls": 68
+    "tiles": 4124,
+    "batches": 70,
+    "drawCalls": 70
   }
 }

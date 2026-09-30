@@ -42,6 +42,10 @@ export interface ScrollText {
   speed: number;
   /** 背景をどれだけ暗くするか（0〜1）。 */
   dim: number;
+  /** 前置きの行数（GS-186）。真ん中にフェードインで出て、止まってから一緒に流れる。 */
+  lead?: number;
+  /** 前置きを止めておく時間（ミリ秒。GS-186）。 */
+  hold?: number;
 }
 
 /**

@@ -5,7 +5,7 @@
 
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseLanding, readEventSpots, spotUnder } from '../src/game/eventSpots';
+import { parseLanding, readEventSpots, spotAhead, spotUnder } from '../src/game/eventSpots';
 import type { MapDef } from '../src/mep3d/types';
 
 /** 四角のオブジェクト 1 つ。`points` はマップが持つのと同じ形（角の並び）。 */
@@ -30,6 +30,49 @@ function mapWith(layers: Array<{ name: string; objects: unknown[] }>): MapDef {
     layers: layers.map((layer, index) => ({ id: `layer${index}`, kind: 'object', ...layer })),
   } as unknown as MapDef;
 }
+
+/** ブロックを置いたタイルレイヤー 1 枚（GS-175）。マップが持つのと同じ形。 */
+function blockLayer(name: string, cells: number[], properties: Array<[string, string]>) {
+  return {
+    id: name,
+    name,
+    kind: 'tile',
+    properties: properties.map(([key, value]) => ({ name: key, type: 'string', value })),
+    batches: [{ id: `${name}-0`, enc: 'json', cellEnc: 'abs', attrs: { cell: cells } }],
+  };
+}
+
+test('レイヤーに Event を書くと、そのブロックのマスが調べる枠になる（GS-175）', () => {
+  const map = { layers: [blockLayer('宝箱(閉)', [1, 0, -1, 4, 2, 5], [['Event', '宝箱'], ['Id', '宝箱_家2']])] } as unknown as MapDef;
+  const spots = readEventSpots(map);
+  strictEqual(spots.length, 2, 'マスごとに 1 枠');
+  strictEqual(spots[0].event, '宝箱');
+  strictEqual(spots[0].owner, '宝箱_家2');
+  // **踏んでは起きない**。ブロックは当たりを持つので上に立てない。
+  strictEqual(spots[0].examine, true);
+  strictEqual(spotUnder(spots, { x: 1.5, z: -0.5 }), null);
+  // 高さまで分かる——宝箱の開け閉め（マスの絵の差し替え）に要る。
+  deepStrictEqual(spots[0].cell, { x: 1, y: 0, z: -1 });
+  deepStrictEqual(spots[1].cell, { x: 4, y: 2, z: 5 });
+  deepStrictEqual([spots[0].x0, spots[0].x1, spots[0].z0, spots[0].z1], [1, 2, -1, 0]);
+});
+
+test('Id だけのタイルレイヤーも枠になる（宝箱は台帳が動きを決める。GS-178）', () => {
+  const map = { layers: [blockLayer('宝箱(閉)', [0, 0, 0], [['Id', '宝箱_森1']])] } as unknown as MapDef;
+  const spots = readEventSpots(map);
+  strictEqual(spots.length, 1);
+  strictEqual(spots[0].owner, '宝箱_森1');
+  strictEqual(spots[0].event, '', 'イベント id は空（台帳が決める）');
+  strictEqual(spots[0].examine, true);
+  // 枠ができても**向いて調べたときに拾えなければ**開けられない（宝箱_家3 で実際に起きた）。
+  const look = spotAhead(spots, { x: 0.5, z: 1.5 }, { x: 0, z: -1 }, 1);
+  strictEqual(look?.owner, '宝箱_森1', '向いた先の Id だけの枠を拾う');
+});
+
+test('Event も Id も無いタイルレイヤーは枠にならない', () => {
+  const map = { layers: [blockLayer('壁', [0, 0, 0], [])] } as unknown as MapDef;
+  deepStrictEqual(readEventSpots(map), []);
+});
 
 test('MapMove のプロパティが起動場所になる', () => {
   const spots = readEventSpots(

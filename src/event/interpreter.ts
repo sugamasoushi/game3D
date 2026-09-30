@@ -11,18 +11,24 @@
 
 import type { ActorRef, BlockFace, EventCommand, EventDef, PlaceAt, Step, TalkStyle } from './types';
 
+/** 分岐・共通イベントの呼び出し元も含めて実行を終了する合図。 */
+export class ReturnToTitle extends Error {
+  constructor() { super('return to title'); this.name = 'ReturnToTitle'; }
+}
+
 /**
  * ランタイムが用意する道具（イベントから見える世界）。
  * **ここに無いことはイベントにはできない**——コマンド表を増やすときは、まずここへ足す。
  */
 export interface EventContext {
+  returnToTitle(): Promise<void>;
   /**
    * 会話を出して、読み終わるまで待つ。`style` で吹き出しにできる（GS-23）。
    * `hold`（ミリ秒）を渡すと、**文字が出そろってからその時間で勝手に送る**（GS-172）。
    */
   message(talk: { who?: string; lines: string[] }[], face?: string, style?: TalkStyle, hold?: number): Promise<void>;
   /** 流れる文字。読み終わる（か飛ばされる）まで待つ。`speed` は 1 行ぶんの時間（GS-144）。 */
-  scroll(lines: string[], speed: number, dim: number): Promise<void>;
+  scroll(lines: string[], speed: number, dim: number, lead?: { lines: number; hold: number }): Promise<void>;
   /**
    * テロップ（GS-171）。**画面を黒で覆って真ん中に一言**出し、薄れて消えるまで待つ。
    * `click` が偽なら押しても消えず、`hold`（ミリ秒）が経つと消え始める（GS-172）。
@@ -52,6 +58,13 @@ export interface EventContext {
    * ——プレイヤー自身を置くときは「その軸は動かさない」の意味になる。解くのは実行機側。
    */
   place(target: ActorRef, at: PlaceAt, face?: Step): void;
+  /**
+   * 漫画のようにめくる絵（GS-188）。`read` は読み終わるまで、ほかはめくり終わるまで待って返る。
+   * `images` は `assets/img/Event/` の名前（拡張子まで）。
+   */
+  comic(op: 'read' | 'open' | 'next' | 'prev' | 'close', images: string[], ms: number, se: string): Promise<void>;
+  /** その場でジャンプ（GS-184）。跳ね終わったら返る。居ない相手なら何もしない。 */
+  jump(target: ActorRef, times: number, height: number, ms: number): Promise<void>;
   /**
    * カメラが主人公を追うかどうか（GS-166）。**その時点から効く。**
    * 戻すのは `on: true` の書き直しか、イベントの終わり（マップの読み直しでも戻る）。
@@ -127,6 +140,7 @@ export interface EventContext {
     at: { x: number; y: number; z: number },
     faces: Partial<Record<BlockFace, number>>,
     layer?: string,
+    stretch?: Partial<Record<BlockFace, number | [number, number]>>,
   ): boolean;
   /** 静止コマを指名する（GS-47）。知らない名前なら false。 */
   pose(target: ActorRef, name: string | null): boolean;
@@ -212,7 +226,14 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   },
 
   scroll: async (ctx, cmd) => {
-    await ctx.scroll(cmd.lines, cmd.speed ?? SCROLL_SPEED, cmd.dim ?? 0.5);
+    // 前置き（GS-186）。書いたときだけ渡す——無ければ今までどおり全部が下から流れる。
+    const lead = Math.max(0, Math.trunc(cmd.lead ?? 0));
+    await ctx.scroll(
+      cmd.lines,
+      cmd.speed ?? SCROLL_SPEED,
+      cmd.dim ?? 0.5,
+      lead > 0 ? { lines: lead, hold: Math.max(0, cmd.hold ?? 3000) } : undefined,
+    );
   },
 
   // テロップ（GS-171）。**押されるまで出したまま**、薄れ切ってから次へ。
@@ -288,6 +309,25 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
 
   place: async (ctx, cmd) => {
     ctx.place(cmd.target, cmd.at, cmd.face);
+  },
+
+  // 漫画のようにめくる絵（GS-188）。既定は「読ませる」・1 枚 500ms・めくる音あり。
+  comic: async (ctx, cmd) => {
+    const run = ctx.comic(cmd.op ?? 'read', cmd.images ?? [], Math.max(0, cmd.ms ?? 500), cmd.se ?? 'cardTurnOver');
+    if (cmd.wait === false) void run;
+    else await run;
+  },
+
+  // その場でジャンプ（GS-184）。既定は 3 回・1 回 200ms・高さ 0.5 マス。
+  jump: async (ctx, cmd) => {
+    const hops = ctx.jump(
+      cmd.target,
+      Math.max(1, Math.trunc(cmd.times ?? 3)),
+      Math.max(0, cmd.height ?? 0.5),
+      Math.max(20, cmd.ms ?? 200),
+    );
+    if (cmd.wait === false) void hops;
+    else await hops;
   },
 
   // カメラ追従（GS-166）。**書いた所だけが効く**——切ったら戻すまで画面は止まったまま。
@@ -374,7 +414,7 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
       cmd.chip === undefined
         ? {}
         : { top: cmd.chip, bottom: cmd.chip, front: cmd.chip, back: cmd.chip, left: cmd.chip, right: cmd.chip };
-    ctx.block(cmd.at, { ...all, ...(cmd.faces ?? {}) }, cmd.layer);
+    ctx.block(cmd.at, { ...all, ...(cmd.faces ?? {}) }, cmd.layer, cmd.stretch);
   },
 
   pose: async (ctx, cmd) => {
@@ -392,7 +432,7 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   // 戦闘（GS-60）。**終わるまで待つ**ので、続きは勝ってから動く。
   battle: async (ctx, cmd) => {
     // 戦闘中のカメラ演出はイベントでは指定しない（GS-98）。戦闘演出の割り当てが決める。
-    const outcome = await ctx.battle(cmd.enemies, Boolean(cmd.lose), cmd.formation);
+    const outcome = await ctx.battle(cmd.enemies, Boolean(cmd.lose?.length), cmd.formation);
     const branch = outcome === 'win' ? cmd.win : outcome === 'lose' ? cmd.lose : cmd.escape;
     if (branch) await runCommands(branch, ctx);
   },
@@ -433,6 +473,10 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
 
   script: async (ctx, cmd) => {
     await ctx.script(cmd.id, cmd.args);
+  },
+  returnToTitle: async (ctx) => {
+    await ctx.returnToTitle();
+    throw new ReturnToTitle();
   },
 };
 

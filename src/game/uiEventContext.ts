@@ -14,6 +14,7 @@ import { itemName, knownItem } from './items';
 import { joinParty, leaveParty, memberStats } from './battle/party';
 import { applyUse } from './battle/heal';
 import { assetUrl } from './assets';
+import { closeComic, openComic, readComic, turnComic } from '../ui/comic';
 import { playBgm, playSe, stopBgm } from './audio';
 import { PORTRAIT_MS, useUi } from '../ui/store';
 import { PLAYER_CHARACTER, type CharacterBook } from './characters';
@@ -63,7 +64,7 @@ export interface EventBridgeOptions {
   /** 遊んだ記録（GS-27）。スイッチ・変数・セルフスイッチはここに入る。 */
   state: GameState;
   /** マップ移動。マップの読み直しと着地の解き方は画面側が持つ（GS-14 / GS-17）。 */
-  transfer(map: string, at: { x: number; y: number; z: number } | null, face?: WalkDir): Promise<void>;
+  transfer(map: string, at: { x: number; y: number; z: number } | null, face?: WalkDir, fade?: boolean): Promise<void>;
   /**
    * 戦闘を始めて、決着が付くまで待つ（GS-60）。画面（`BattleView`）を出すのは
    * 呼ぶ側の仕事——ここは「始めてくれ」と言うだけ。
@@ -71,6 +72,7 @@ export interface EventBridgeOptions {
   battle(enemies: string[], canLose: boolean, formation?: string): Promise<'win' | 'lose' | 'escape'>;
   /** 店を開いて、閉じるまで待つ（GS-66）。画面を出すのは呼ぶ側。 */
   shop(items: string[], sell: boolean): Promise<void>;
+  returnToTitle(): Promise<void>;
   /** まだ無い機能を踏んだときの知らせ先。 */
   onTodo?(what: string): void;
   /**
@@ -173,6 +175,17 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     return target.slice('npc:'.length) || null;
   };
 
+  /**
+   * 隊列の仲間（`party:<id>`。GS-184）を解く。先頭（主人公）なら `player`、付いて歩く仲間なら
+   * `follower`。`party:` でなければ null——呼んだ側はいつもの `player` / `npc:` の道へ進む。
+   */
+  const partyOf = (target: ActorRef): { role: 'leader' | 'follower' | 'absent'; id: string } | null => {
+    if (!String(target).startsWith('party:')) return null;
+    const id = target.slice('party:'.length);
+    const role = options.getView()?.partyRole(id) ?? null;
+    return { role: role ?? 'absent', id };
+  };
+
   /** 話者キー → 名前。`characterdata.json` を引く（無ければキーをそのまま出す）。 */
   const nameOf = (who?: string): string => {
     if (!who) return '';
@@ -239,9 +252,9 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       ui().setTalk(null);
     },
 
-    scroll(lines, speed, dim) {
+    scroll(lines, speed, dim, lead) {
       return new Promise<void>((resolve) => {
-        ui().setScroll({ lines, speed, dim });
+        ui().setScroll({ lines, speed, dim, ...(lead ? { lead: lead.lines, hold: lead.hold } : {}) });
         waiter = {
           advance() {
             waiter = null;
@@ -304,6 +317,13 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     turn(target, dir) {
       const view = options.getView();
       if (!view) return;
+      const party = partyOf(target);
+      if (party) {
+        if (party.role === 'leader') view.face(DIR[dir]);
+        else if (party.role === 'follower') view.faceFollower(party.id, DIR[dir]);
+        else todo(`向く（${target}）——隊列に居ない`);
+        return;
+      }
       const id = actorId(target);
       if (id === null) {
         if (target === 'player') view.face(DIR[dir]);
@@ -322,6 +342,19 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     place(target, at, face) {
       const view = options.getView();
       if (!view) return;
+      const party = partyOf(target);
+      if (party?.role === 'follower') {
+        // 仲間はイベントが終わるまでその場に留まる（GS-184）。軸の `"player"` は主人公と同じ座標。
+        const spot = solveAt(at, view.playerAt());
+        view.placeFollower(party.id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined);
+        return;
+      }
+      if (party?.role === 'absent') {
+        todo(`置き直す（${target}）——隊列に居ない`);
+        return;
+      }
+      // 先頭の仲間は主人公そのもの。
+      if (party?.role === 'leader') target = 'player';
       const id = actorId(target);
       if (id === null) {
         if (target !== 'player') {
@@ -342,6 +375,45 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       const came = !view.hasNpc(id);
       view.placeNpc(id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined);
       if (came && view.hasNpc(id)) rememberNpc(id, false);
+    },
+
+    /**
+     * 漫画のようにめくる絵（GS-188）。動きは `ui/comic.ts`。絵はイベントイラストと同じ置き場所。
+     */
+    async comic(op, images, ms, se) {
+      const pages = images.map((file) => assetUrl(`${EVENT_ART_DIR}/${file}`));
+      if (op === 'read') return readComic(pages, ms, se);
+      if (op === 'open') return openComic(pages, ms, se, false);
+      if (op === 'next') return turnComic(1);
+      if (op === 'prev') return turnComic(-1);
+      return closeComic();
+    },
+
+    /**
+     * その場でジャンプ（GS-184）。絵だけ跳ねる。`party:` の先頭は主人公、ほかは付いて歩く仲間。
+     */
+    async jump(target, times, height, ms) {
+      const view = options.getView();
+      if (!view) return;
+      const party = partyOf(target);
+      if (party) {
+        if (party.role === 'absent') {
+          todo(`ジャンプ（${target}）——隊列に居ない`);
+          return;
+        }
+        await view.jump(party.role === 'leader' ? 'player' : `follower:${party.id}`, times, height, ms);
+        return;
+      }
+      if (target === 'player') {
+        await view.jump('player', times, height, ms);
+        return;
+      }
+      const id = actorId(target);
+      if (id === null) {
+        todo(`ジャンプ（${target}）——誰を指すか決まらない`);
+        return;
+      }
+      await view.jump(`npc:${id}`, times, height, ms);
     },
 
     /**
@@ -519,9 +591,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
 
     wait: (ms) => sleep(ms),
 
-    async transfer(map, at, face) {
-      // 暗転は入れない。入れるならイベント側に `fade` を書く（見え方を data で決める）。
-      await options.transfer(map, at, face && DIR[face]);
+    async transfer(map, at, face, fade) {
+      await options.transfer(map, at, face && DIR[face], fade);
     },
 
     // 音は台帳（`sounds.json`）を引く（GS-21）。知らない名前は `audio.ts` が印を出す。
@@ -555,10 +626,10 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
      * マスの絵（GS-53）。**空振りは黙って通さない**——座標を 1 つ間違えただけで
      * 「変わらない」だけの結果になり、原因を探せなくなる。
      */
-    block: (at, faces, layer) => {
+    block: (at, faces, layer, stretch) => {
       const view = options.getView();
       if (!view) return false;
-      const ok = view.setCellChip(at, faces, layer);
+      const ok = view.setCellChip(at, faces, layer, stretch);
       if (!ok) console.warn('[event] そのマスに差し替えられるブロックがありません: ' + JSON.stringify(at));
       return ok;
     },
@@ -642,6 +713,7 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
 
     /** 戦闘（GS-60）。決着が付くまで返らない。 */
     battle: (enemies, canLose, formation) => options.battle(enemies, canLose ?? false, formation),
+    returnToTitle: () => options.returnToTitle(),
 
     /**
      * 共通イベント（GS-44）。台帳（`data/commonEvents.json`）から名前で引く。

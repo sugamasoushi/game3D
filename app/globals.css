@@ -62,6 +62,8 @@ body {
   width: 1280px;
   height: 720px;
   background: #000;
+  /* 立ち絵の入退場アニメーションなど、画面内の要素が論理画面の外へ描かれるのを防ぐ。 */
+  overflow: hidden;
   transform: translate(-50%, -50%) scale(var(--game-scale, 1));
   transform-origin: center;
 }
@@ -766,6 +768,60 @@ body {
   opacity: 0;
 }
 
+/* ── 漫画のようにめくる絵（GS-188）─────────────────────────── */
+
+/*
+ * 旧作 EVENT020301 の見せ方。1 枚ずつ左の外から滑り込み、前の絵の上へ重なる。
+ * 閉じるときは全部が右へ抜ける。滑る時間は JS が入れる（命令の `ms`）。
+ */
+.comic {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.comic-page {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition-property: transform;
+  /* 旧作の Power2（出だし速く、終わりゆっくり）。 */
+  transition-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  user-select: none;
+}
+
+.comic-arrow {
+  position: absolute;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  margin-top: -30px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #f2f5ff;
+  font-size: 28px;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 1000;
+}
+
+.comic-arrow.left {
+  left: 12px;
+}
+
+.comic-arrow.right {
+  right: 12px;
+}
+
+.comic-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* ── テロップ（GS-171）───────────────────────────────────── */
 
 /*
@@ -839,6 +895,47 @@ body {
 
 .scroll-text p {
   margin: 0;
+}
+
+/*
+ * 前置きのある流れる文字（GS-186。旧作のエンディング）。背景は**透明からゆっくり暗く**なる
+ * （黒の覆いは使わない——画面が見えたまま沈んでいく）。前置きは真ん中にフェードイン、
+ * 止まってから残りと一緒に `scroll-stage` ごと上へ運ぶ。時間と距離は JS が入れる。
+ */
+.scroll-back.scroll-lead-mode {
+  transition-property: opacity, background-color;
+}
+
+.scroll-stage {
+  position: absolute;
+  inset: 0;
+  transition-property: transform;
+  transition-timing-function: linear;
+}
+
+.scroll-lines {
+  position: absolute;
+  left: 50%;
+  width: 900px;
+  margin-left: -450px;
+  text-align: center;
+  font-size: 20px;
+  line-height: 2;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.scroll-lines p {
+  margin: 0;
+}
+
+.scroll-lead {
+  opacity: 1;
+  transition-property: opacity;
+  transition-timing-function: ease-out;
+}
+
+.scroll-back.in .scroll-lead {
+  opacity: 0;
 }
 
 @keyframes scroll-up {
@@ -1242,14 +1339,14 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
+  padding-bottom: 100px;
   background: rgba(0, 0, 0, 0.55);
 }
 
 .gmenu {
   display: flex;
-  gap: 20px;
-  width: 1080px;
-  height: 600px;
+  width: 1030px;
+  height: 550px;
   padding: 18px 22px;
   border: 2px solid #8ea6c8;
   border-radius: 10px;
@@ -1265,54 +1362,8 @@ body {
   }
 }
 
-/* 左の柱。絵の高さが中身を押し広げないよう、幅を決め打ちする。 */
-.gmenu-who {
-  flex: none;
-  width: 260px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding-right: 20px;
-  border-right: 2px solid rgba(142, 166, 200, 0.4);
-}
-
-.gmenu-face {
-  width: 100%;
-  /* 縦に伸ばさない。素材の縦横比はそのまま。 */
-  height: auto;
-  max-height: 380px;
-  object-fit: contain;
-  image-rendering: auto;
-}
-
-.gmenu-name {
-  margin: 0;
-  font-size: 24px;
-}
-
-.gmenu-facts {
-  width: 100%;
-  margin: 0;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 10px;
-  font-size: 16px;
-}
-
-.gmenu-facts dt {
-  opacity: 0.6;
-}
-
-.gmenu-facts dd {
-  margin: 0;
-  text-align: right;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .gmenu-main {
+  position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
@@ -1393,16 +1444,7 @@ body {
 .gmenu-foot {
   flex: none;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-top: 12px;
-  border-top: 2px solid rgba(142, 166, 200, 0.4);
-}
-
-.gmenu-hint {
-  flex: 1;
-  font-size: 15px;
-  opacity: 0.55;
+  min-height: 8px;
 }
 
 .gmenu-foot button {
@@ -1415,6 +1457,124 @@ body {
   font-size: 20px;
   cursor: pointer;
 }
+
+.gmenu-body:has(.save-page),
+.gmenu-body:has(.settings-actions) { display: flex; flex-direction: column; }
+.save-page { display: flex; flex: 1; flex-direction: column; }
+.save-page .menu-slots { margin: 0 0 12px; }
+.gmenu-foot { justify-content: center; }
+.gmenu-foot button { margin-inline: auto; }
+.gmenu-body:has(.settings-actions) .settings-actions { justify-content: center; margin-top: auto; padding: 14px 0 8px; }
+
+.gmenu-close {
+  top: -16px;
+  right: -14px;
+  z-index: 2;
+}
+
+.condition-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.condition-member {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(142, 166, 200, 0.38);
+  border-radius: 8px;
+  background: rgba(10, 18, 32, 0.28);
+}
+
+.condition-member > img,
+.condition-face-empty {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.condition-member-info { flex: 1; min-width: 0; }
+.condition-member h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 20px; }
+.condition-member dl {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.condition-member dd { margin: 0; text-align: right; }
+.condition-member dl > dt,
+.condition-member dl > dd { font-size: 20px; }
+.condition-gauge {
+  position: relative;
+  display: block;
+  width: min(100%, 300px);
+  height: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 4px;
+  background: rgba(0,0,0,.5);
+}
+.condition-gauge > span { display: block; height: 100%; background: #3cb371; transition: width 200ms linear; }
+.condition-gauge.low > span { background: #dc143c; }
+.condition-gauge.mp > span { background: #4169e1; }
+.condition-gauge b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 20px; font-weight: normal; text-shadow: 1px 1px #222, -1px -1px #222; }
+.condition-state { font-size: 17px; font-weight: normal; color: #ffd479; }
+.condition-gold { width: fit-content; margin: 0 0 16px; padding: 8px 28px; border: 1px solid rgba(142,166,200,.55); border-radius: 8px; background: rgba(10,18,32,.35); font-size: 20px; }
+
+.gmenu-body:has(.equip) .equip-head,
+.gmenu-body:has(.equip) .equip-list button { font-size: 24px; }
+.gmenu-body:has(.equip) .equip-head button,
+.gmenu-body:has(.equip) .equip-list button { padding: 8px 12px; }
+.gmenu-body .equip-name { min-width: 170px; }
+.gmenu-body:has(.status) .status-facts { font-size: 20px; }
+.gmenu-body:has(.status) .status-name { font-size: 29px; }
+.gmenu-body:has(.status) .status-facts dd { font-size: 24px; }
+
+.gmenu-body:has(.status) { overflow: hidden; }
+.status { display: flex; align-items: flex-start; gap: 24px; }
+.status-character-icon { flex: none; width: 220px; max-height: 320px; object-fit: contain; }
+.status-content { flex: 1; min-width: 0; }
+.status-columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.status-content .status-facts { grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; line-height: 1.25; margin: 0; }
+.status-content .status-facts dt { align-self: center; }
+.status-content .status-facts dd { overflow-wrap: anywhere; }
+.status-content .status-equipment { grid-template-columns: 2em minmax(0, 1fr); }
+
+.equip-current { display: flex; align-items: center; justify-content: flex-start; gap: 28px; }
+.equip-current > div { flex: 1; min-width: 0; }
+.equip-current .equip-head { align-items: center; margin: 0 0 20px; }
+.equip-current .equip-kind { min-width: 3em; }
+.equip-current .equip-now { flex: 1; }
+.equip-character-icon,
+.skill-character-icon { flex: none; width: 72px; height: 72px; object-fit: contain; }
+.equip-current .equip-character-icon { order: -1; }
+.equip-modal-backdrop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(0,0,0,.65); }
+.equip-chooser { position: relative; width: min(760px, 92%); max-height: 84%; overflow: auto; padding: 24px; border: 2px solid #8ea6c8; border-radius: 10px; background: rgba(25,25,112,.98); box-shadow: 0 12px 40px rgba(0,0,0,.55); }
+.equip-chooser h2 { margin: 0 0 18px; font-size: 24px; }
+.equip-chooser .equip-list { max-height: 420px; overflow-y: auto; }
+.equip-chooser .equip-list button { text-align: left; }
+.equip-chooser .equip-character-icon { position: absolute; top: 18px; right: 70px; }
+
+.skill-page { display: flex; align-items: flex-start; gap: 24px; }
+.skill-items { flex: 1; min-width: 0; }
+.gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(150px, 1.1fr) 90px minmax(180px, 2fr); gap: 14px; align-items: baseline; padding: 10px 0; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
+.skill-items .item-name { min-width: 0; }
+.skill-items .item-count { width: auto; text-align: center; }
+.skill-items .item-text { white-space: normal; }
+.skill-character-icon { order: -1; }
+
+.menu-member-icon { display: none; }
+.menu-pick { gap: 12px; }
+.menu-pick button[aria-label] { min-width: 44px; padding: 4px 10px; font-size: 24px; }
 
 /*
  * ── 戦闘（GS-60）──────────────────────────────────────────
@@ -2600,11 +2760,34 @@ body {
  * ── デバッグの道具（GS-91）─────────────────────────────────
  * 開発モードのときだけ出る。**遊ぶ画面の見た目に混ざらない**よう、窓の色ではなく素の黒で。
  */
-.debug-battle {
+.debug-tools {
   position: absolute;
   left: 16px;
   top: 16px;
   z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.debug-party {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 20px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.debug-party button[aria-pressed="true"] {
+  color: #ffd479;
+  border-color: #ffd479;
+  background: rgba(80, 60, 20, 0.85);
+}
+
+.debug-battle {
   padding: 6px 14px;
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 6px;

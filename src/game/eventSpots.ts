@@ -6,6 +6,7 @@
 //
 // `MapMove` は行き先マップ名だけの近道。イベントを書かずにマップをつなげる。
 
+import { decodeCells } from '../mep3d/decode';
 import type { MapDef, MapObjectDef, PropertyDef } from '../mep3d/types';
 import type { WalkDir } from './GameView';
 
@@ -63,6 +64,12 @@ export interface EventSpot {
    * 同じイベントを何か所に置いても、`setSelfSwitch` が混ざらない。
    */
   owner: string;
+  /**
+   * ブロックそのものを調べる枠にしたとき（GS-175）の**そのマス**。
+   * オブジェクトの枠は床に描くので高さを持たないが、ブロックは高さまで決まっている——
+   * 宝箱の開け閉め（マスの絵の差し替え）は、この `y` が無いと当てる先が分からない。
+   */
+  cell?: { x: number; y: number; z: number };
   x0: number;
   x1: number;
   z0: number;
@@ -147,6 +154,50 @@ function numberOf(properties: PropertyDef[] | undefined, name: string): number |
   return Number.isFinite(value) ? value : undefined;
 }
 
+/**
+ * タイルレイヤーのマスを調べる枠にする（GS-175）。`Event` が無ければ何もしない。
+ *
+ * **1 マスにつき 1 枠**にする。まとめて外接四角にすると、離れて置いた同じレイヤーの
+ * ブロックの**あいだの空きマス**まで枠になってしまう。
+ * **踏む起動にはしない**（`examine`）——ブロックは当たりを持つので、そもそも上に立てない。
+ */
+function pushCellSpots(spots: EventSpot[], layer: MapDef['layers'][number], index: number): void {
+  const event = textOf(layer.properties, EVENT_PROPERTY);
+  const owner = textOf(layer.properties, ID_PROPERTY);
+  // **`Id` だけでも枠になる**（GS-178）。宝箱は台帳が動きを決めるので、
+  // マップに `Event` を書かなくてよい——書かせると「台帳とマップのどちらが正か」が毎回問題になる。
+  // 宝箱でない物に `Id` だけ付けたときは、空の枠ができて**何も起きない**（動くイベントが無い）。
+  if (!event && !owner) return;
+  const item = textOf(layer.properties, ITEM_PROPERTY);
+  const num = numberOf(layer.properties, NUM_PROPERTY);
+  const name = (layer.name ?? '').trim();
+  for (const batch of layer.batches ?? []) {
+    const cells = decodeCells(batch);
+    for (let i = 0; i + 2 < cells.length; i += 3) {
+      const x = cells[i];
+      const y = cells[i + 1];
+      const z = cells[i + 2];
+      spots.push({
+        objectId: `${index}/cell:${x},${y},${z}`,
+        name,
+        event,
+        mapMove: '',
+        landing: { marker: '', at: null },
+        face: '',
+        examine: true,
+        item,
+        owner,
+        ...(num !== undefined ? { num: Math.max(0, Math.trunc(num)) } : {}),
+        cell: { x, y, z },
+        x0: x,
+        x1: x + 1,
+        z0: z,
+        z1: z + 1,
+      });
+    }
+  }
+}
+
 /** 平面オブジェクトの外接四角（マス）。ブロックは占有セルから。 */
 function footprint(object: MapObjectDef): { x0: number; x1: number; z0: number; z1: number } | null {
   if (object.cells?.length) {
@@ -186,6 +237,13 @@ function footprint(object: MapObjectDef): { x0: number; x1: number; z0: number; 
 export function readEventSpots(map: MapDef): EventSpot[] {
   const spots: EventSpot[] = [];
   for (const [index, layer] of map.layers.entries()) {
+    // ブロックそのものを調べる枠にする（GS-175）。**レイヤーに `Event` を書く。**
+    // マスには名前が持てないので、どの宝箱かは**レイヤーが持つ**——プレハブを置いた
+    // レイヤーへ `Event` と `Id` を足せば、起動用のオブジェクトを別に置かなくてよい。
+    if (layer.kind === 'tile') {
+      pushCellSpots(spots, layer, index);
+      continue;
+    }
     if (layer.kind !== 'object') continue;
     const layerName = (layer.name ?? '').trim().toLowerCase();
     const eventLayer = layerName === EVENT_LAYER;
@@ -268,7 +326,8 @@ export function spotAhead(
   let found: EventSpot | null = null;
   let near = Infinity;
   for (const spot of spots) {
-    if (!spot.examine || !spot.event) continue;
+    // `Id` だけの枠も拾う（GS-178）。宝箱は台帳が動きを決めるので、マップに `Event` が無い。
+    if (!spot.examine || (!spot.event && !spot.owner)) continue;
     if (!crosses(spot, at, aim, reach)) continue;
     // 重なって置いてあれば近いほうを調べる。
     const span = Math.hypot((spot.x0 + spot.x1) / 2 - at.x, (spot.z0 + spot.z1) / 2 - at.z);

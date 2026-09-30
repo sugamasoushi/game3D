@@ -466,6 +466,8 @@ interface Instance {
 
 export interface MapModels {
   group: Group;
+  /** 現在配置されている GLB モデルの読み込み完了を待つ。 */
+  waitUntilReady(): Promise<void>;
   /**
    * 点滅・ゆらめきを進める（DEC-294）。毎フレーム、`Mep3DScene.time` を渡す。
    * 振る光が無ければ何もしない。
@@ -625,6 +627,7 @@ export function createMapModels(options: MapModelsOptions = {}): MapModels {
   };
 
   const shown = new Map<string, Instance>();
+  const pendingLoads = new Set<Promise<void>>();
   let generation = 0;
   /** 置く前の仮表示（DEC-296）。透かして出すだけで、置いた物とは別。 */
   const ghost = new Group();
@@ -660,7 +663,7 @@ export function createMapModels(options: MapModelsOptions = {}): MapModels {
       generation: ++generation,
     };
     const mine = instance.generation;
-    void loadModel(model.file)
+    const task = loadModel(model.file)
       .then((source) => {
         if (instance.generation !== mine) return;
         const { body, uniforms, bounds } = dressModel(
@@ -683,6 +686,8 @@ export function createMapModels(options: MapModelsOptions = {}): MapModels {
         if (instance.generation !== mine) return;
         instance.file = '';
       });
+    pendingLoads.add(task);
+    void task.then(() => pendingLoads.delete(task));
     return instance;
   };
 
@@ -694,6 +699,9 @@ export function createMapModels(options: MapModelsOptions = {}): MapModels {
 
   return {
     group,
+    async waitUntilReady() {
+      while (pendingLoads.size) await Promise.all([...pendingLoads]);
+    },
     apply(models, unit, lighting, fx, lights) {
       lastFx = fx;
       const settings = resolveLighting(lighting);

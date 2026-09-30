@@ -6,6 +6,10 @@
       "trigger": "touch",
       "when": [{ "switch": "EVENT010401", "is": false }, { "switch": "EVENT020101", "is": true }],
       "commands": [
+        { "type": "fade", "to": "out", "ms": 300 },
+        { "type": "place", "target": "player", "at": { "x": 1, "y": "player", "z": -6 }, "face": "up" },
+        { "type": "place", "target": "party:lamy", "at": { "x": -1, "y": "player", "z": -6 }, "face": "up" },
+        { "type": "fade", "to": "in", "ms": 300 },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
         {
@@ -27,7 +31,9 @@
             { "who": "lamy", "lines": ["ら、楽勝だったわぁ・・・。"] }
           ]
         },
-        { "type": "shot", "kind": "shake", "ms": 400, "power": 0.2 },
+        { "type": "turn", "target": "player", "to": "left" },
+        { "type": "turn", "target": "party:lamy", "to": "right" },
+        { "type": "jump", "target": "player", "times": 3, "height": 0.5, "ms": 200, "wait": false },
         {
           "type": "message",
           "talk": [

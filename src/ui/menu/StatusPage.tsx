@@ -6,55 +6,39 @@
 // 攻撃・守り・速さ・経験・装備はここで見る。**素の値と装備ぶんを分けて出す**——
 // 装備を替えたときに何がどれだけ変わったのか、これが無いと分からない。
 
-import { itemName } from '../../game/items';
+import { characterMenuImage, characterName } from '../../game/characters';
 import { equipBonus, memberStats } from '../../game/battle/party';
+import { itemName } from '../../game/items';
 import { levelUpRule } from '../../game/battle/book';
 import { expToNext } from '../../game/battle/growth';
-import { characterName } from '../../game/characters';
 import type { MemberState } from '../../game/state';
 import { AilTags } from '../AilTags';
-
-const SLOT_LABEL: Record<string, string> = { weapon: 'ぶき', armor: 'よろい' };
 
 export function StatusPage({
   who,
   member,
-  gold,
 }: {
   who: string;
   member: MemberState | null;
-  gold: number;
 }) {
   if (!member) return <p className="menu-empty">まだ 仲間が いない</p>;
 
   const base = memberStats(who, member.level);
-  const gear = equipBonus(member.equip);
   const toNext = expToNext(member.exp, member.level, levelUpRule());
-
-  /** 素の値と装備ぶん。装備が 0 なら括弧は出さない。 */
-  const row = (label: string, value: number, plus: number) => (
-    <>
-      <dt>{label}</dt>
-      <dd>
-        {value + plus}
-        {plus ? (
-          <span className="equip-plus">
-            （{value} {plus > 0 ? '+' : '-'} {Math.abs(plus)}）
-          </span>
-        ) : null}
-      </dd>
-    </>
-  );
-
-  const slots = Object.keys(member.equip);
+  const image = characterMenuImage(who);
+  const gear = equipBonus(member.equip);
 
   return (
     <div className="status">
+      {image ? <img className="status-character-icon" src={image} alt="" /> : null}
+      <div className="status-content">
       <p className="status-name">
-        {characterName(who)}　<span className="status-level">Lv {member.level}</span>
+        {characterName(who)}
         <AilTags ids={member.ailments} />
       </p>
+      <div className="status-columns">
       <dl className="status-facts">
+        <dt>レベル</dt><dd>{member.level}</dd>
         <dt>HP</dt>
         <dd>
           {member.hp} / {base.hp}
@@ -63,31 +47,23 @@ export function StatusPage({
         <dd>
           {member.mp} / {base.mp}
         </dd>
-        {row('こうげき', base.attack, gear.attack)}
-        {row('まもり', base.guard, gear.guard)}
-        {row('すばやさ', base.speed, gear.speed)}
-        <dt>けいけんち</dt>
+        <dt>攻撃</dt><dd>{base.attack + gear.attack}</dd>
+        <dt>守り</dt><dd>{base.guard + gear.guard}</dd>
+        <dt>素早さ</dt><dd>{Math.max(1, base.speed + gear.speed)}</dd>
+        <dt>経験値</dt>
         <dd>{member.exp}</dd>
-        <dt>つぎまで</dt>
+        <dt>次のレベルまで</dt>
         <dd>{toNext > 0 ? toNext : '—'}</dd>
-        <dt>おかね</dt>
-        <dd>{gold} G</dd>
       </dl>
-      <dl className="status-facts">
-        {slots.length === 0 ? (
-          <>
-            <dt>そうび</dt>
-            <dd>なし</dd>
-          </>
-        ) : (
-          slots.map((slot) => (
-            <span key={slot} className="status-pair">
-              <dt>{SLOT_LABEL[slot] ?? slot}</dt>
-              <dd>{itemName(member.equip[slot])}</dd>
-            </span>
-          ))
-        )}
+      <dl className="status-facts status-equipment">
+        <dt>武器</dt><dd>{member.equip.weapon ? itemName(member.equip.weapon) : 'なし'}</dd>
+        <dt>鎧</dt><dd>{member.equip.armor ? itemName(member.equip.armor) : 'なし'}</dd>
+        {Object.entries(member.equip).filter(([slot]) => !['weapon', 'armor'].includes(slot)).map(([slot, id]) => (
+          <span key={slot} className="status-pair"><dt>{slot}</dt><dd>{itemName(id)}</dd></span>
+        ))}
       </dl>
+      </div>
+      </div>
     </div>
   );
 }

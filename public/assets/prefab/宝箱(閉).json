@@ -1,0 +1,72 @@
+{
+  "format": "mep3d-block",
+  "version": 2,
+  "id": "宝箱(閉)",
+  "name": "宝箱(閉)",
+  "layers": [
+    {
+      "name": "宝箱(閉)",
+      "properties": [
+        {
+          "name": "Collision",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Shade",
+          "type": "boolean",
+          "value": true
+        }
+      ]
+    }
+  ],
+  "cells": [
+    {
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "shape": "box",
+      "ts": "chests",
+      "tile": 0,
+      "faces": {
+        "top": 0,
+        "bottom": -5102029,
+        "front": 0,
+        "back": -5102029,
+        "left": -6830382,
+        "right": -6830382
+      },
+      "thickness": -25,
+      "faceAnchor": {
+        "front": "tl",
+        "left": "tl",
+        "right": "tl"
+      },
+      "faceFit": {
+        "top": "stretch",
+        "bottom": "stretch",
+        "back": "stretch",
+        "left": "stretch",
+        "right": "stretch"
+      },
+      "chipStretch": {
+        "top": [
+          32,
+          63
+        ],
+        "front": [
+          32,
+          65
+        ],
+        "left": [
+          32,
+          64
+        ],
+        "right": [
+          32,
+          64
+        ]
+      }
+    }
+  ]
+}

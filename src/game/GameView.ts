@@ -2,18 +2,23 @@
 // エディタ固有のもの（作業格子・配置ゴースト・透明ブロックのプレビュー）は載せない。
 
 import {
+  AlwaysStencilFunc,
   BufferGeometry,
   CircleGeometry,
   DoubleSide,
   Float32BufferAttribute,
+  Group,
+  KeepStencilOp,
   LineBasicMaterial,
   LineDashedMaterial,
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  NotEqualStencilFunc,
   Plane,
   PlaneGeometry,
   Raycaster,
+  ReplaceStencilOp,
   SRGBColorSpace,
   Scene,
   TextureLoader,
@@ -31,7 +36,7 @@ import { createFieldEffects, readFieldVolumes } from '../view/fieldEffects';
 import { CAMERA_SHOT_DEFAULTS, applyCameraShot, createCameraShots, type CameraShot } from '../view/cameraShots';
 import { createScreenEffects } from '../view/screenEffects';
 import { createEditorGrid } from '../view/editorGrid';
-import type { AssetsDef, FaceName, MapDef } from '../mep3d/types';
+import type { AssetsDef, ChipStretch, FaceName, MapDef } from '../mep3d/types';
 import { buildCollision, type CollisionMap, type LayerVerdict } from '../mep3d/collision';
 import { createCollisionWires, type CollisionWires } from '../mep3d/collisionWires';
 import { createCameraRig, HD2D_PITCH, HD2D_YAW } from './cameraRig';
@@ -48,6 +53,7 @@ import {
 } from '../mep3d/mapCamera';
 import { createInput } from './input';
 import { createPlayer, type Facing, type Player } from './player';
+import { PartyTrail } from './partyTrail';
 import { loadActorBook, sheetOf, wanderOf, WANDER_DEFAULT, type WanderDef } from './actors';
 import { canWalk, useUi } from '../ui/store';
 import { heavyOn } from './quality';
@@ -55,6 +61,7 @@ import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { withoutHiddenLayers } from './hiddenLayers';
+import { openedLayerShown, readOpenedLayers, withOpenedLayersBuilt } from './openedLayers';
 import {
   cameraCue,
   createCuePlayer,
@@ -166,6 +173,8 @@ export interface FigurePose {
 
 export interface GameView {
   load(name: string): Promise<void>;
+  /** 着地点を設定した後、実際に 1 フレーム描画されるまで待つ。 */
+  waitForRenderedFrame(): Promise<void>;
   setMode(mode: GameMode): void;
   /**
    * イベントからプレイヤーを**1 マス歩かせる**（GS-13）。着いたら `true`。
@@ -234,6 +243,25 @@ export interface GameView {
   /** NPC の居る所と向き（マス。小数）。居なければ null。 */
   npcAt(id: string): { x: number; y: number; z: number; facing: WalkDir } | null;
   /**
+   * 隊列の中での役（GS-184）。`leader` は先頭＝主人公、`follower` は後ろを付いて歩く仲間。
+   * 隊列に居なければ null。イベントの `party:<id>` をどちらへ回すかに使う。
+   */
+  partyRole(id: string): 'leader' | 'follower' | null;
+  /**
+   * 仲間をマスへ置く（GS-184）。置いた仲間は**イベントが終わるまで（`releaseFollowers`）その場に留まる**
+   * ——付いて歩かせたままだと、主人公の後ろへすぐ戻ってしまう。居なければ false。
+   */
+  placeFollower(id: string, x: number, y: number, z: number, face?: WalkDir): boolean;
+  /** 仲間の向きを変える（GS-184）。付いて歩いている最中なら、次に歩いた時にまた進む方を向く。 */
+  faceFollower(id: string, dir: WalkDir): boolean;
+  /** 置いた仲間を隊列へ戻す（GS-184）。**イベントの終わりに呼ぶ。** */
+  releaseFollowers(): void;
+  /**
+   * その場でジャンプ（GS-184）。絵だけが跳ねて着地する。跳ね終わったら true。
+   * 相手は `player` / `npc:<id>` / `follower:<id>`。居なければ false。
+   */
+  jump(who: string, times: number, height: number, ms: number): Promise<boolean>;
+  /**
    * いまの場所から行き先のマスまでの**道順**（GS-138 / GS-139）。返すのは画面基準の向きの並び。
    *
    * 歩く向きは**カメラの方位で回る**（`moveVector`）ので、「x が 3 増える」が
@@ -262,7 +290,13 @@ export interface GameView {
     at: { x: number; y: number; z: number },
     faces: Partial<Record<FaceName, number>>,
     layer?: string,
+    stretch?: Partial<Record<FaceName, ChipStretch>>,
   ): boolean;
+  /**
+   * レイヤーを出す／隠す（GS-179）。宝箱のように**同じマスに重ねて置いた 2 つの見た目**を
+   * 入れ替える。描かないだけで、当たりは組んだときのまま。`id` はレイヤーの id。
+   */
+  setLayerShown(id: string, shown: boolean): boolean;
   /** 静止コマを指名する（GS-47）。台帳の `poses` に無い名前なら false。 */
   posePlayer(name: string | null): boolean;
   /** 名前でもコマ番号でもよい（GS-135）。 */
@@ -381,6 +415,10 @@ const STAGE_BREATH_S = 2.6;
 export const STAGE_COMMAND_FIGURE = { x: 0.10, depth: 2, scale: 1, moveS: 0.25, offsetX: 0, offsetY: 0, offsetZ: 0 };
 /** 左端の板を描く順番。地形・ほかの板（0）より後に描いて手前に見せる。 */
 const STAGE_COMMAND_RENDER_ORDER = 10;
+/** 隊列を描く順の始まり（GS-185）。地形・NPC・ブロック影（2〜）より後。 */
+const PARTY_RENDER_ORDER = 50;
+/** 隊列の重なりに使うステンシルのビット（GS-185）。ブロック影は 1・2 を使う。 */
+const PARTY_STENCIL_BIT = 0x80;
 
 /**
  * 画面に入る範囲の外でも、この距離（マス）までは太陽の影を落とす人に数える（GS-96）。
@@ -390,6 +428,8 @@ const SUN_ACTOR_REACH_CELLS = 8;
 
 /** 外から渡す物（GS-130）。**いまは「スイッチが入っているか」だけ**。 */
 export interface GameViewOptions {
+  /** 現在の編成。2人目以降をフィールドで主人公に追従させる。 */
+  party?: () => readonly string[];
   /**
    * マップの `ShowIf` / `HideIf` / `PoseIf` を見るための問い合わせ先。
    * **記録は React 側が持つ**ので、3D 側は聞きに行くだけにする（構想 §5.3）。
@@ -399,10 +439,11 @@ export interface GameViewOptions {
    */
   switchOn?: (key: string, owner?: string) => boolean;
   /**
-   * 宝箱の見た目（GS-135）。その名前の宝箱の「閉じている／開いた」コマ番号を返す。
-   * **台帳は React 側が持つ**ので、3D 側は聞きに行くだけ（`switchOn` と同じ考え）。
+   * **組む前に**マップを整える口（GS-180）。マップに入るたびに 1 回呼ぶ。
+   * 入るたびに出る場所・出るかどうかが変わる宝箱を、ここで抜いておく——
+   * 組んだ後に隠すと、当たりが見えない壁として残る。返したマップを描画にも当たりにも使う。
    */
-  chestOf?: (id: string) => { closed?: number; opened?: number } | null;
+  prepareMap?: (name: string, map: MapDef) => MapDef;
 }
 
 export function createGameView(
@@ -456,6 +497,106 @@ export function createGameView(
   let playerCollision: CollisionMap | null = null;
   let wires: CollisionWires | null = null;
   let player: Player | null = null;
+  let followerBook: Awaited<ReturnType<typeof loadActorBook>> = {};
+  const followers = new Map<string, Player>();
+  const followerGroup = new Group();
+  followerGroup.name = 'party-followers';
+  scene.add(followerGroup);
+  const partyTrail = new PartyTrail();
+  let followerOrder = '';
+  /**
+   * イベントが置いた仲間（GS-184）。ここに居る間は**付いて歩かせない**。
+   * 解くのはイベントの終わり（`releaseFollowers`）と、隊列を作り直すとき。
+   */
+  const pinnedFollowers = new Set<string>();
+  const clearFollowers = () => {
+    for (const actor of followers.values()) { actor.group.removeFromParent(); actor.dispose(); }
+    followers.clear();
+    followerOrder = '';
+    pinnedFollowers.clear();
+  };
+  /** 主人公の今の場所と向き。道（`PartyTrail`）に残す 1 点（GS-185）。 */
+  const leaderPoint = (unit: number) => ({
+    x: player!.position.x / unit,
+    y: player!.position.y / unit,
+    z: player!.position.z / unit,
+    facing: player!.facingNow(),
+  });
+  /**
+   * 重なったときの描く順（GS-185）。**1 人目（主人公）→ 2 人目 → 3 人目が上**。
+   * 奥行きのままだと、上へ歩くと後ろの仲間が手前に来て主人公に被さる。
+   * 地形との前後は深度のまま——**仲間どうしだけ**をステンシルの 1 ビットで決める。
+   * 先に描いた人が印を付け、後の人は印の上には描かない。ブロック影のステンシル（1・2）とは別のビット。
+   */
+  const layerParty = () => {
+    const members = [player, ...(options.party?.() ?? []).slice(1).map((id) => followers.get(id))];
+    members.forEach((actor, index) => {
+      if (!actor) return;
+      // 地形・NPC を描き終えてから、1 人目から順に描く。
+      actor.group.renderOrder = PARTY_RENDER_ORDER + index;
+      const material = actor.bodyMaterial;
+      material.stencilWrite = true;
+      material.stencilRef = PARTY_STENCIL_BIT;
+      material.stencilWriteMask = PARTY_STENCIL_BIT;
+      material.stencilFuncMask = PARTY_STENCIL_BIT;
+      material.stencilFunc = index === 0 ? AlwaysStencilFunc : NotEqualStencilFunc;
+      material.stencilFail = KeepStencilOp;
+      material.stencilZFail = KeepStencilOp;
+      material.stencilZPass = ReplaceStencilOp;
+    });
+  };
+  const resetFollowers = () => {
+    if (!player) return;
+    pinnedFollowers.clear();
+    const unit = collision?.unit ?? 1;
+    partyTrail.reset(leaderPoint(unit));
+    for (const actor of followers.values()) {
+      actor.followAt(player.position, 0, rig.yaw);
+      actor.face(player.facingNow());
+    }
+  };
+  const updateFollowers = (dt: number) => {
+    if (!player || !built || !mapDef || status.loading) return;
+    const ids = (options.party?.() ?? []).slice(1);
+    const order = JSON.stringify(ids);
+    if (order !== followerOrder) {
+      resetFollowers();
+      followerOrder = order;
+    }
+    const unit = collision?.unit ?? 1;
+    for (const [id, actor] of followers) if (!ids.includes(id)) {
+      actor.group.removeFromParent(); actor.dispose(); followers.delete(id);
+    }
+    for (const id of ids) if (!followers.has(id) && followerBook[id]) {
+      const actor = createPlayer(unit, mapDef.grid?.tilePx ?? 32, followerBook[id]);
+      actor.group.name = `follower:${id}`;
+      actor.followAt(player.position, 0, rig.yaw);
+      actor.face(player.facingNow());
+      actor.setLighting(mapDef.lighting ?? {}, litLights(mapDef), unit, built.cameraFx);
+      built.attachShadowMask(actor.bodyMaterial);
+      built.bindLightWalls(actor.bodyMaterial);
+      const field = built.shadowField();
+      actor.setShadowField(field.solid, field.surface, field.top, field.selfSolid);
+      followers.set(id, actor);
+      followerGroup.add(actor.group);
+    }
+    partyTrail.advance(leaderPoint(unit), Math.max(1, ids.length) * 1.1);
+    layerParty();
+    ids.forEach((id, index) => {
+      const actor = followers.get(id);
+      if (!actor) return;
+      // イベントが置いた仲間はその場に留める（GS-184）。
+      if (!pinnedFollowers.has(id)) {
+        const at = partyTrail.behind((index + 1) * 1.1);
+        // 向きは**主人公がそこを通ったときの向き**（GS-185）。歩いた向きから出すと、
+        // 斜めに歩いたとき縦と横を行ったり来たりした。
+        actor.followAt({ x: at.x * unit, y: at.y * unit, z: at.z * unit }, dt, rig.yaw, at.facing as Facing | undefined);
+      }
+      actor.group.visible = player!.group.visible && !useUi.getState().battle;
+      actor.faceCamera(rig.yaw * Math.PI / 180);
+      actor.setTime(elapsed);
+    });
+  };
   /** マップに立っている NPC（GS-16）。作りはプレイヤーと同じで、入力の代わりにイベントが動かす。 */
   interface NpcActor {
     def: NpcDef;
@@ -560,6 +701,17 @@ export function createGameView(
    */
   const litLights = (map: MapDef | null) => (map && heavyOn('pointLights') ? (map.pointLights ?? []) : []);
   let buildGen = 0;
+  let renderedFrames = 0;
+  let disposed = false;
+  const renderWaiters = new Set<{ target: number; resolve: () => void }>();
+  const waitForRenderedFrame = () => {
+    if (disposed) return Promise.resolve();
+    const waiter: { target: number; resolve: () => void } = { target: renderedFrames + 1, resolve: () => {} };
+    return new Promise<void>((resolve) => {
+      waiter.resolve = resolve;
+      renderWaiters.add(waiter);
+    });
+  };
   /** 奈落に落ちたときに戻す位置。 */
   const spawnPoint = new Vector3();
   /**
@@ -684,7 +836,9 @@ export function createGameView(
     try {
       const response = await fetch(`/mapdata/${encodeURIComponent(name)}`, { cache: 'no-store' });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-      const map = (await response.json()) as MapDef;
+      const raw = (await response.json()) as MapDef;
+      // 入るたびに変わる宝箱（GS-180）を先に決める。描画にも当たりにもこのマップを使う。
+      const map = options.prepareMap ? options.prepareMap(name, raw) : raw;
       await loadCameraCues();
       battleSetup = (await entryForFile(name))?.battleStage;
       watch.lap('json');
@@ -692,13 +846,15 @@ export function createGameView(
       // キャラの絵の台帳（GS-16）と法線マップの台帳（GS-26）。
       // どちらも 1 回読んだら使い回すので、マップごとの待ちは無い。
       const [book, files] = await Promise.all([loadActorBook(), loadFileIndex()]);
+      followerBook = book;
       if (typeof map.assets === 'string') {
         throw new Error('assets が外部ファイル参照。エディタが書いた 1 ファイル形式のみ読める（DEC-04）');
       }
       // `Hidden` のレイヤーは**描く前に外す**（GS-57）。当たりには元のマップを渡すので、
       // 見えないまま通れなくできる。描画側を書き換えないのは、面の隠し合いや影が
       // レイヤーをまたいで絡んでいるため——居ないことにするのが一番安全。
-      const shown = withoutHiddenLayers(map);
+      // 開けたら入れ替わる見た目（GS-179）は、エディタで目を閉じていても組む。出し入れは組んだあと。
+      const shown = withoutHiddenLayers(withOpenedLayersBuilt(map));
       // 目を閉じたレイヤーは形を作らない（DEC-270）。ゲームは目を戻さないので素直に省ける。
       // 法線マップは**台帳で決める**（DEC-374）。無い絵を取りに行かせない——
       // 開発サーバの 404 が高くつく（実測 32 秒 → 0.5 秒）。
@@ -717,6 +873,9 @@ export function createGameView(
       }
       mapDef = map;
       built = next;
+      // 開けた宝箱は**開いた形で置く**（GS-179）。最初の 1 枚から正しい形で描く——
+      // 画面側の見張り（100ms）を待つと、入った瞬間だけ 2 つが重なって見える。
+      for (const layer of readOpenedLayers(map)) built.setLayerShown(layer.id, openedLayerShown(layer, switchOn));
       scene.add(built.group);
       // 置いた 3D（DEC-288）。見た目だけ。当たりにも影にも出ないのですり抜ける。
       mapModels?.dispose();
@@ -754,7 +913,10 @@ export function createGameView(
       watch.lap('wires');
 
       const unit = map.grid?.unit ?? 1;
+      // 跳ねている途中の人は着地させて約束を解く（GS-184）。絵ごと作り直すので待たせたままにしない。
+      landHops();
       player?.dispose();
+      clearFollowers();
       player?.group.removeFromParent();
       const tilePx = map.grid?.tilePx ?? 32;
       // **前のマップの歩きは打ち切る**（GS-17）。イベントの `move` の途中で入口を踏むと、
@@ -785,6 +947,7 @@ export function createGameView(
       // カメラモードでも出しておく。見えないと「置けていない」のか区別がつかない（GC-16）。
       player.faceCamera((rig.yaw * Math.PI) / 180);
       scene.add(player.group);
+      resetFollowers();
 
       // --- NPC（GS-16）--------------------------------------------------
       // マップのオブジェクトが「誰がどこに居るか」を持つ。作りはプレイヤーと同じ板で、
@@ -833,12 +996,6 @@ export function createGameView(
         scene.add(actor.group);
         // 見た目をスイッチから導く（GS-133）。**マップを読み直しても開いたまま**になる。
         if (def.pose && def.poseIf && switchOn(def.poseIf, def.id)) actor.pose(def.pose);
-        // 宝箱は台帳のコマで出す（GS-135）。**取得済みなら開いた絵**で置く。
-        const chest = options.chestOf?.(def.id);
-        if (chest) {
-          const frame = switchOn('self:開けた', def.id) ? chest.opened : chest.closed;
-          if (frame !== undefined) actor.pose(frame);
-        }
         // うろつき方（GS-48）。**台帳が既定、マップの `Wander` が上書き**。
         // **物（`SPRITE` レイヤー）は動かない**——宝箱が歩き回ると困る（GS-133）。
         const base = def.thing ? null : wanderOf(book, def.actor, def.sprite);
@@ -878,7 +1035,7 @@ export function createGameView(
 
       // キャラもエフェクトも水面に映す（DEC-303 / DEC-344）。
       {
-        const cast = [built.group, player.group, fieldEffects.group];
+        const cast = [built.group, player.group, followerGroup, fieldEffects.group];
         if (mapModels) cast.push(mapModels.group);
         for (const npc of npcs.values()) cast.push(npc.actor.group);
         fieldEffects.setReflectSources(cast);
@@ -919,6 +1076,14 @@ export function createGameView(
       status.tiles = built.stats.tiles;
       status.drawCalls = built.stats.drawCalls;
       status.hiddenFaces = built.stats.hiddenFaces;
+      // 地形画像は buildMep3DScene 内で待機済み。表示物の GLB と人物絵もそろえてから
+      // 読み込み完了にし、低速端末で未完成の画面を見せない。
+      await Promise.all([
+        ...(player ? [player.ready] : []),
+        ...[...npcs.values()].map(({ actor }) => actor.ready),
+        ...(mapModels ? [mapModels.waitUntilReady()] : []),
+      ]);
+      if (gen !== buildGen) return;
       status.loading = false;
       watch.lap('finish');
       watch.report(name);
@@ -1231,6 +1396,7 @@ export function createGameView(
       if (far <= reach) sunActorPicks.push({ actor, far });
     };
     if (player) consider(player);
+    for (const actor of followers.values()) consider(actor);
     for (const npc of npcs.values()) consider(npc.actor);
     sunActorPicks.sort((a, b) => a.far - b.far);
     sunActorList.length = 0;
@@ -1329,6 +1495,32 @@ export function createGameView(
   }
   /** プレイヤーの歩き。ここに入っているあいだはキー入力より優先する。 */
   const hero: Walker = { walk: null };
+  /**
+   * 跳ねている最中の人（GS-184。イベントの「ジャンプ」）。1 回ぶんは半周の正弦——
+   * 旧作の `yoyo` ＋ `sine.inout` とほぼ同じ弧になる。立ち位置は動かさず絵だけ浮かせる。
+   */
+  const hops = new Map<Player, { t: number; total: number; per: number; height: number; done: (ok: boolean) => void }>();
+  const advanceHops = (dt: number) => {
+    for (const [actor, hop] of hops) {
+      hop.t += dt;
+      if (hop.t >= hop.total) {
+        actor.hop(0);
+        hops.delete(actor);
+        hop.done(true);
+        continue;
+      }
+      const phase = (hop.t % hop.per) / hop.per;
+      actor.hop(hop.height * Math.sin(Math.PI * phase));
+    }
+  };
+  /** マップを読み直すときなど、跳ねている人を全員その場で着地させる。 */
+  const landHops = () => {
+    for (const [actor, hop] of hops) {
+      actor.hop(0);
+      hop.done(false);
+    }
+    hops.clear();
+  };
 
   /**
    * 足踏みを 1 フレーム進める（GS-168）。時間で止める——歩数は始めるときに時間へ直してある。
@@ -1693,6 +1885,7 @@ export function createGameView(
       // 奈落まで落ちたら出発点へ戻す。マップの外へ出ても操作不能にならないため（GC-10）。
       if (player.position.y <= VOID_DEPTH * unit) {
         player.placeAt(spawnPoint.x, spawnPoint.y, spawnPoint.z);
+        resetFollowers();
         rig.target.copy(player.position);
       }
       lookAt.copy(player.position);
@@ -1757,7 +1950,9 @@ export function createGameView(
     });
     // ビルボードなのでどちらのモードでもカメラを向く。
     player?.faceCamera((rig.yaw * Math.PI) / 180);
+    updateFollowers(dt);
     for (const npc of npcs.values()) npc.actor.faceCamera((rig.yaw * Math.PI) / 180);
+    advanceHops(dt);
 
     // キャラが動くたびに遮光の位置とコマを渡し直す（GC-39）。
     applyActorOccluder();
@@ -1794,6 +1989,12 @@ export function createGameView(
     tilt.render(renderer, scene, rig.active());
     // 画面エフェクト（DEC-389）。**一番上**に重ねる（絵ができてから貼る 1 枚）。
     screenEffects.render(renderer, dt);
+    renderedFrames += 1;
+    for (const waiter of renderWaiters) {
+      if (waiter.target > renderedFrames) continue;
+      renderWaiters.delete(waiter);
+      waiter.resolve();
+    }
     rig.yaw = baseCamera.yaw;
     rig.pitch = baseCamera.pitch;
     rig.distance = baseCamera.distance;
@@ -1836,6 +2037,7 @@ export function createGameView(
 
   return {
     load,
+    waitForRenderedFrame,
     setMode,
     step,
     walk(dir, run = false, slide = false) {
@@ -1961,7 +2163,8 @@ export function createGameView(
       npc.actor.face(DIR_FACE[screenDirOf(dx, dz)]);
       return true;
     },
-    setCellChip: (at, faces, layer) => built?.setCellChip(at, faces, layer) ?? false,
+    setCellChip: (at, faces, layer, stretch) => built?.setCellChip(at, faces, layer, stretch) ?? false,
+    setLayerShown: (id, shown) => built?.setLayerShown(id, shown) ?? false,
     posePlayer: (name) => player?.pose(name) ?? false,
     poseNpc(id, name) {
       return npcs.get(id)?.actor.pose(name) ?? false;
@@ -2012,6 +2215,75 @@ export function createGameView(
       return true;
     },
 
+    partyRole(id) {
+      const ids = options.party?.() ?? [];
+      const at = ids.indexOf(id);
+      if (at < 0) return null;
+      return at === 0 ? 'leader' : 'follower';
+    },
+    placeFollower(id, x, y, z, face) {
+      // 隊列が変わったばかりだと仲間の絵がまだ無い。**その場で作る**（次のフレームを待たない）。
+      updateFollowers(0);
+      const actor = followers.get(id);
+      if (!actor || !collision) {
+        console.warn(`[party] 付いて歩いていない: ${id}`);
+        return false;
+      }
+      const unit = collision.unit || 1;
+      const spot = standOn(x, y, z, unit);
+      actor.placeAt(spot.x, spot.y, spot.z);
+      if (face) actor.face(DIR_FACE[face]);
+      pinnedFollowers.add(id);
+      return true;
+    },
+    faceFollower(id, dir) {
+      updateFollowers(0);
+      const actor = followers.get(id);
+      if (!actor) {
+        console.warn(`[party] 付いて歩いていない: ${id}`);
+        return false;
+      }
+      actor.face(DIR_FACE[dir]);
+      return true;
+    },
+    releaseFollowers() {
+      if (!pinnedFollowers.size || !player || !collision) {
+        pinnedFollowers.clear();
+        return;
+      }
+      const unit = collision.unit || 1;
+      // 道を**仲間の今の場所から主人公まで**引き直す。こうすると仲間は主人公の後ろ（道の上）へ寄る。
+      // 道を消して主人公の位置から始めると、全員が主人公の足元へ重なってしまう。
+      const ids = (options.party?.() ?? []).slice(1);
+      const last = [...ids].reverse().map((id) => followers.get(id)).find(Boolean);
+      const from = last ?? player;
+      partyTrail.reset({ x: from.position.x / unit, y: from.position.y / unit, z: from.position.z / unit });
+      partyTrail.extend(leaderPoint(unit));
+      pinnedFollowers.clear();
+    },
+    jump(who, times, height, ms) {
+      const actor =
+        who === 'player'
+          ? player
+          : who.startsWith('npc:')
+            ? npcs.get(who.slice(4))?.actor ?? null
+            : who.startsWith('follower:')
+              ? (updateFollowers(0), followers.get(who.slice(9)) ?? null)
+              : null;
+      if (!actor) {
+        console.warn(`[jump] 居ない: ${who}`);
+        return Promise.resolve(false);
+      }
+      return new Promise<boolean>((resolve) => {
+        // 同じ人が跳ねている最中なら、前の分はそこで着地させてから始める。
+        const before = hops.get(actor);
+        if (before) {
+          actor.hop(0);
+          before.done(true);
+        }
+        hops.set(actor, { t: 0, total: (times * ms) / 1000, per: ms / 1000, height, done: resolve });
+      });
+    },
     hasNpc: (id) => npcs.has(id),
     npcAt(id) {
       const npc = npcs.get(id);
@@ -2099,6 +2371,7 @@ export function createGameView(
       const spot = standOn(x, y, z, unit);
       player.placeAt(spot.x, spot.y, spot.z);
       // 追従を切っているあいだは画面を動かさない（GS-166）。
+      resetFollowers();
       // 暗転の裏で並べ直すような使い方のため。ふだん（マップ移動・復帰）は今までどおり寄せる。
       if (cameraFollow) rig.target.copy(player.position);
     },
@@ -2129,6 +2402,7 @@ export function createGameView(
       const look = FACINGS[marker.face.toLowerCase()];
       if (look) player.face(DIR_FACE[look]);
       rig.target.copy(player.position);
+      resetFollowers();
       return true;
     },
     battleStage(formation) {
@@ -2300,6 +2574,9 @@ export function createGameView(
       figure.pose = { ...pose };
     },
     dispose() {
+      disposed = true;
+      for (const waiter of renderWaiters) waiter.resolve();
+      renderWaiters.clear();
       canvas.removeEventListener('pointerdown', pickCellFromEvent);
       editorGrid.dispose();
       unstage();
@@ -2312,6 +2589,7 @@ export function createGameView(
       input.dispose();
       stopOptionWatch();
       player?.dispose();
+      clearFollowers();
       for (const npc of npcs.values()) npc.actor.dispose();
       npcs.clear();
       wires?.dispose();

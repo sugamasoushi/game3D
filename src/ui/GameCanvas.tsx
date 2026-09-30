@@ -33,7 +33,7 @@ import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
 import { GameOver, type BattleOutcome } from '../game/battle/flow';
 import { createWalkAilments } from '../game/battle/walkAilment';
 import { ailmentDef } from '../game/battle/book';
-import { equipItem, memberStats, moveMember, unequipItem } from '../game/battle/party';
+import { equipItem, memberStats, unequipItem } from '../game/battle/party';
 import { applyUse, healLine, wouldHelp } from '../game/battle/heal';
 import { itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
 import { ShopScreen } from './shop/ShopScreen';
@@ -44,8 +44,10 @@ import { applyMapSound, loadSoundBook, unlockAudio } from '../game/audio';
 import { createEventBridge, type EventBridge } from '../game/uiEventContext';
 import { readEventSpots, spotAhead, spotUnder, type EventSpot, type Landing } from '../game/eventSpots';
 import { readNpcs, npcShown, type NpcDef } from '../game/npcs';
-import { CHEST_OPENED, chestOf, drawChest, loadChestBook } from '../game/chests';
-import { canRun, runCommands } from '../event/interpreter';
+import { chestEventDef, chestEventOf, chestOf, drawChest, loadChestBook } from '../game/chests';
+import { openedLayerShown, readOpenedLayers, type OpenedLayer } from '../game/openedLayers';
+import { applyChestVisit, forgetRespawnChests, rollChestVisit, type ChestVisit } from '../game/chestVisit';
+import { canRun, runCommands, ReturnToTitle } from '../event/interpreter';
 import type { EventCommand, EventDef, EventFile } from '../event/types';
 import type { MapDef } from '../mep3d/types';
 import { MessageWindow } from './MessageWindow';
@@ -59,6 +61,7 @@ import { PwaInstall } from './PwaInstall';
 import { fromSave, newState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
 import { canWalk, useUi } from './store';
+import { clearComic, useComic } from './comic';
 
 /** 決定キー。会話ウィンドウと同じ割り当て。 */
 const DECIDE = ['Enter', 'Space', 'KeyZ'];
@@ -93,7 +96,7 @@ const SYMBOL_REACH = 0.9;
 const WALK_NOTE_MS = 2200;
 /** 戦いの曲（GS-62）。`data/sounds.json` のキー。 */
 // 戦闘の曲は戦闘共通の台帳（`battleSettings.json`。GS-106）が持つ。
-/** デバッグの戦闘（GS-91）。味方はこの順に足して 3 人、敵は 3 体。 */
+/** デバッグの戦闘（GS-91）。味方が選択人数に足りなければこの順に足す。敵は 3 体。 */
 const DEBUG_PARTY = ['meina', 'lamy', 'grandpa'];
 const DEBUG_ENEMIES = ['enemy02', 'enemy00', 'enemy01'];
 /** ゲームオーバーで黒くなるまで（ミリ秒）。**ゆっくり**——負けたことを飲み込む間を置く。 */
@@ -112,9 +115,12 @@ export default function GameCanvas() {
   const cameraPreviewRef = useRef(false);
   const bridgeRef = useRef<EventBridge | null>(null);
   const [notice, setNotice] = useState('');
+  const [, refreshParty] = useState(0);
   /** 遊んだ記録（GS-27）。セーブに入るものはこの 1 つに集める。 */
   const stateRef = useRef<GameState>(newState());
   const phase = useUi((s) => s.phase);
+  /** めくる絵を読ませている最中（GS-188）。仮想パッドを隠す。 */
+  const comicReading = useComic((s) => Boolean(s.comic?.reading && !s.comic.closing));
   const menu = useUi((s) => s.menu);
   /** イベントの最中か。デバッグの戦闘ボタンはこのあいだ出さない（GS-91）。 */
   const uiBusy = useUi((s) => s.busy);
@@ -254,8 +260,7 @@ export default function GameCanvas() {
         audio.stopBgs(400);
         battleEndRef.current = (outcome) => {
           if (outcome === 'lose' && !canLose) {
-            gameOverRef.current();
-            reject(new GameOver());
+            void gameOverRef.current().then(() => reject(new GameOver()), reject);
             return;
           }
           // 負けても話が続くとき（`lose` の枝）は**倒れた人を起こす**——
@@ -272,7 +277,7 @@ export default function GameCanvas() {
   startBattleRef.current = startBattle;
 
   /**
-   * デバッグ用の戦闘（GS-91）。開発モードのときだけ。**敵も味方も 3 人**で戦い、負けても続く。
+   * デバッグ用の戦闘（GS-91）。現在の編成で戦い、負けても続く。
    * 終わったら**記録を戦う前へ戻す**——試しの戦いで仲間・経験・持ち物・お金が変わると、
    * 遊びの確認がずれる。**入れ物は差し替えず中身を戻す**（イベントの道具立てが同じ入れ物を握っている）。
    */
@@ -284,11 +289,6 @@ export default function GameCanvas() {
       items: new Map(state.items),
       gold: state.gold,
     };
-    // 今の仲間の後ろへ足して 3 人にそろえる（もう居る人は `joinParty` が飛ばす）。
-    for (const who of DEBUG_PARTY) {
-      if (state.party.length >= 3) break;
-      joinParty(state, who);
-    }
     try {
       await startBattleRef.current(enemies, true);
     } finally {
@@ -380,16 +380,39 @@ export default function GameCanvas() {
    * ゲームオーバー（GS-60）。**ゆっくり黒くしてタイトルへ。**
    * 記録は書き換えない——最後にセーブしたところから、もう一度遊べる。
    */
-  const gameOverRef = useRef(() => {
-    useUi.getState().setFade(1, GAME_OVER_FADE_MS);
-    audio.stopBgm(GAME_OVER_FADE_MS);
-    window.setTimeout(() => {
-      useUi.getState().setMenu(false);
-      useUi.getState().setPhase('title');
-      // タイトルは黒の上に出す（`onTitle` と同じ）。次に始めたとき前の画面が見えない。
-      useUi.getState().setFade(1, 0);
-    }, GAME_OVER_FADE_MS + 200);
-  });
+  const titleTransitionRef = useRef<Promise<void> | null>(null);
+  const returnToTitle = useCallback((ms = 0): Promise<void> => {
+    if (titleTransitionRef.current) return titleTransitionRef.current;
+    const transition = async () => {
+      const ui = useUi.getState();
+      ui.setBusy(true);
+      ui.setMenu(false);
+      ui.setFade(1, ms);
+      audio.stopBgm(ms);
+      audio.stopBgs(ms);
+      autoPendingRef.current = false;
+      if (ms > 0) await new Promise<void>((resolve) => window.setTimeout(resolve, ms + 200));
+      viewRef.current?.stopCameraCue();
+      battleAbortRef.current?.abort();
+      battleAbortRef.current = null;
+      battleEndRef.current = null;
+      battleFormationRef.current = undefined;
+      ui.setBattle(null);
+      ui.setShop(null);
+      ui.setSettings(false);
+      ui.setTalk(null);
+      ui.setScroll(null);
+      ui.setTelop(null);
+      ui.setChoices(null);
+      ui.clearPortraits();
+      ui.setFade(1, 0);
+      ui.setPhase('title');
+      ui.setBusy(false);
+    };
+    titleTransitionRef.current = transition().finally(() => { titleTransitionRef.current = null; });
+    return titleTransitionRef.current;
+  }, []);
+  const gameOverRef = useRef(() => returnToTitle(GAME_OVER_FADE_MS));
 
   /**
    * 敵シンボル（GS-76）。**NPC の id → 敵の台帳のキー**。
@@ -410,6 +433,11 @@ export default function GameCanvas() {
   const npcHiddenRef = useRef<Set<string>>(new Set());
   /** いま当てている見た目（GS-133）。同じものを毎回指し直さないための覚え。 */
   const npcPoseRef = useRef<Map<string, string>>(new Map());
+  /**
+   * 入ったときに決めた宝箱（GS-180）。`GameView` がマップを組む前に決め、
+   * 起動場所を読むとき（`adopt`）にも同じ結果を使う——2 回引くと、見えている宝箱と調べられる宝箱がずれる。
+   */
+  const chestVisitRef = useRef<{ name: string; visit: ChestVisit }>({ name: '', visit: { removed: new Set(), absent: new Set() } });
   /**
    * スイッチを聞く口。3D 側（`GameView`）にも同じ物を渡す。
    * **`self:` で始めると「その物自身の覚え」**（GS-134）——同じイベントを何個の宝箱で使っても、
@@ -468,7 +496,7 @@ export default function GameCanvas() {
    * プレイヤーの操作と取り合いになる。並行イベントの持ち場は
    * スイッチ・変数・音・NPC の歩き・`script` で、**話は手前のイベントの仕事**。
    */
-  const BLOCKING = new Set(['message', 'choice', 'scroll']);
+  const BLOCKING = new Set(['message', 'choice', 'scroll', 'returnToTitle']);
 
   /** 止まる命令を落とす。`if` の枝の中も見る。落としたら 1 度だけ知らせる。 */
   const quietCommands = (list: EventCommand[], dropped: string[]): EventCommand[] => {
@@ -496,6 +524,7 @@ export default function GameCanvas() {
    * 条件が満たされたら 1 回動かし、崩れるまでは動かし直さない。
    */
   const checkParallel = useCallback(() => {
+    if (useUi.getState().phase !== 'play' || titleTransitionRef.current) return;
     const bridge = parallelBridgeRef.current;
     if (!bridge) return;
     for (const event of eventsRef.current.values()) {
@@ -520,7 +549,7 @@ export default function GameCanvas() {
           bridge.setScene({ map: mapKey(mapRef.current), event: event.id });
           await runCommands(commands, bridge.ctx);
         } catch (error) {
-          console.error('[event] 並行 ' + event.id + ' が止まりました', error);
+          if (!(error instanceof ReturnToTitle)) console.error('[event] 並行 ' + event.id + ' が止まりました', error);
         } finally {
           parallelBusyRef.current.delete(event.id);
         }
@@ -533,34 +562,43 @@ export default function GameCanvas() {
    * マップを移る（GS-17）。**行き先の書き方と着地の解き方はここ 1 か所**に置く——
    * イベントの `transfer` も、マップに置いた `MapMove` も同じ道を通る。
    */
-  const goTo = useCallback(async (map: string, landing: Landing, face: WalkDir | '', fade = false) => {
+  const goTo = useCallback(async (map: string, landing: Landing, face: WalkDir | '', fade = true) => {
     const view = viewRef.current;
     if (!view) return;
     // 入口をくぐるときは暗転を挟む（GS-21）。旧作と同じ間の取り方で、読み込みの間も隠せる。
     if (fade) {
       useUi.getState().setBusy(true);
-      // **黒は一瞬で出す**（GS-28）。かけて出すと、その間だけ素の画面が見えてしまう。
-      useUi.getState().setFade(1, 0);
+      // 読み込みを隠せるよう、暗転の完了を待ってからマップを差し替える。
+      useUi.getState().setFade(1, DOOR_FADE_MS);
       await new Promise((done) => window.setTimeout(done, DOOR_FADE_MS));
     }
-    // 行き先は番号（`0102`）でもファイル名でも書ける。台帳で引き当てる。
-    const entry = await mapEntryOf(map);
-    const file = entry.file;
-    await view.load(file);
-    // そのマップの曲と環境音（GS-21）。同じ曲なら切れずに続く。
-    applyMapSound(entry);
-    // 着地。座標が書いてあればそこ、目印の名前ならその点、どちらも無ければマップの `default`。
-    if (landing.at) view.placePlayer(landing.at.x, landing.at.y, landing.at.z);
-    else if (landing.marker) view.placeAtMarker(landing.marker);
-    if (face) view.face(face);
-    await adoptRef.current(file);
-    if (fade) {
-      // **黒いうちに、踏んでいる場所のイベントを起こす**（GS-28）。
-      // 先に明けると、イベントが出るまでの一瞬だけ素の画面が見えてしまう。
-      useUi.getState().setBusy(false);
-      checkSpotsRef.current();
-      await painted();
-      useUi.getState().setFade(0, DOOR_FADE_MS);
+    try {
+      // 行き先は番号（`0102`）でもファイル名でも書ける。台帳で引き当てる。
+      const entry = await mapEntryOf(map);
+      const file = entry.file;
+      await view.load(file);
+      // そのマップの曲と環境音（GS-21）。同じ曲なら切れずに続く。
+      applyMapSound(entry);
+      // 着地。座標が書いてあればそこ、目印の名前ならその点、どちらも無ければマップの `default`。
+      if (landing.at) view.placePlayer(landing.at.x, landing.at.y, landing.at.z);
+      else if (landing.marker) view.placeAtMarker(landing.marker);
+      if (face) view.face(face);
+      await adoptRef.current(file);
+      if (fade) await view.waitForRenderedFrame();
+      if (fade) {
+        // 黒いうちに、踏んでいる場所のイベントを起こす。
+        useUi.getState().setBusy(false);
+        checkSpotsRef.current();
+        await painted();
+        useUi.getState().setFade(0, DOOR_FADE_MS);
+      }
+      setNotice('');
+    } catch (error) {
+      setNotice(`マップ移動に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+      if (fade) {
+        useUi.getState().setBusy(false);
+        useUi.getState().setFade(0, DOOR_FADE_MS);
+      }
     }
   }, []);
 
@@ -583,7 +621,7 @@ export default function GameCanvas() {
 
   const play = useCallback(async (event: EventDef, npc = '', carry: { item?: string; num?: number; owner?: string } = {}) => {
     const bridge = bridgeRef.current;
-    if (!bridge || useUi.getState().busy) return;
+    if (!bridge || useUi.getState().busy || useUi.getState().phase !== 'play') return;
     useUi.getState().setBusy(true);
     // どのイベントを動かしているかを先に伝える（GS-27）。セルフスイッチの宛先になる。
     // `carry` は起こした物が持っていた中身（GS-132。宝箱の `Item` / `Num`）。
@@ -593,16 +631,20 @@ export default function GameCanvas() {
     } catch (error) {
       // **ゲームオーバーはエラーではない**（GS-60）。ここで話が終わっただけなので、
       // 赤い印を出さずに片付けへ進む。
-      if (!(error instanceof GameOver)) throw error;
+      if (!(error instanceof GameOver) && !(error instanceof ReturnToTitle)) throw error;
     } finally {
       viewRef.current?.stopCameraCue();
       // カメラ追従は既定へ戻す（GS-166）。切ったまま歩き出すと、画面が付いてこない。
       viewRef.current?.setCameraFollow(true);
+      // 置いた仲間は隊列へ戻す（GS-184）。留めたままだと、歩き出しても付いて来ない。
+      viewRef.current?.releaseFollowers();
       bridge.setScene({});
       useUi.getState().setTalk(null);
       useUi.getState().setChoices(null);
       // 立ち絵は**イベントと一緒に片付ける**（GS-20）。出しっぱなしで歩き出すと直せない。
       useUi.getState().clearPortraits();
+      // めくる絵も同じ（GS-188）。閉じ忘れても次のイベントに残らない。
+      clearComic();
       useUi.getState().setBusy(false);
       canvasRef.current?.focus();
     }
@@ -619,7 +661,7 @@ export default function GameCanvas() {
       battleFieldRef.current = (await entryForFile(file))?.battleField ?? 'hill';
       // イベントの有無は**台帳で決める**（DEC-374）。無いマップを取りに行かない。
       const index = await loadFileIndex();
-      const [map, events] = await Promise.all([
+      const [rawMap, events] = await Promise.all([
         fetch(mapUrl(file)).then((response) => response.json() as Promise<MapDef>),
         index.hasEvents(name)
           ? fetch(assetUrl(`data/events/${name}.json`))
@@ -627,6 +669,9 @@ export default function GameCanvas() {
               .catch(() => null)
           : null,
       ]);
+      // 入ったときに決めた宝箱（GS-180）と同じマップを見る。出なかった宝箱の調べる枠を作らない。
+      const visit = chestVisitRef.current;
+      const map = visit.name === file ? applyChestVisit(rawMap, visit.visit) : rawMap;
       spotsRef.current = readEventSpots(map);
       // **着いた先が入口の上でも、そこからは動かさない**（DEC-247）。
       // 行き先の `MoveTo` が入口の枠に重なっていると、着いた瞬間にまた飛んで
@@ -645,6 +690,11 @@ export default function GameCanvas() {
       npcHiddenRef.current = new Set();
       // 見た目の覚えはマップごと（GS-133）。作り直した板には当て直す。
       npcPoseRef.current = new Map();
+      // 宝箱の閉じた形・開いた形（GS-179）。**読み込み時の形は 3D 側が決めている**ので、
+      // ここではどちらを出しているかを控え直すだけ。控えが無いと、次の見張りで全部当て直す。
+      openedLayersRef.current = readOpenedLayers(map);
+      openedShownRef.current = new Map();
+      checkOpenedLayersRef.current();
       const npcList = npcDefsRef.current.filter((npc) => npcShown(npc, (key) => switchOnRef.current(key, npc.id)));
       npcTalkRef.current = new Map(npcList.map((npc) => [npc.id, npc.event]));
       npcThingRef.current = new Set(npcList.filter((npc) => npc.thing).map((npc) => npc.id));
@@ -696,8 +746,15 @@ export default function GameCanvas() {
     };
 
     const view = createGameView(canvas, onStatus, {
+      party: () => stateRef.current.party,
       switchOn: (key, owner) => switchOnRef.current(key, owner),
-      chestOf: (id) => chestOf(id),
+      // マップに入るたびに戻る宝箱（GS-180）。**組む前に**覚えを消し、出る場所・出るかを決める。
+      prepareMap: (name, map) => {
+        forgetRespawnChests(stateRef.current.self, chestOf);
+        const visit = rollChestVisit(map, chestOf);
+        chestVisitRef.current = { name, visit };
+        return applyChestVisit(map, visit);
+      },
     });
     viewRef.current = view;
     canvas.focus();
@@ -711,7 +768,7 @@ export default function GameCanvas() {
     void loadCommonBook();
     // 持ち物の台帳（GS-46）。名前と説明だけ。持っている数はセーブが持つ。
     void loadItemBook();
-    // 宝箱の台帳（GS-135）。中身と見た目のコマ。無くても遊べるので、読めなければ空のまま。
+    // 宝箱の台帳（GS-135）。中身と開け方。無くても遊べるので、読めなければ空のまま。
     void loadChestBook();
     // 敵・技・はじめの仲間の台帳（GS-60）。数値だけで、いまの HP はセーブが持つ。
     void loadBattleBook();
@@ -857,17 +914,19 @@ export default function GameCanvas() {
         characters,
         getView: () => viewRef.current,
         state: stateRef.current,
-        transfer: (map: string, at: { x: number; y: number; z: number } | null, face?: WalkDir) =>
-          goTo(map, { marker: '', at }, face ?? ''),
+        transfer: (map: string, at: { x: number; y: number; z: number } | null, face?: WalkDir, fade?: boolean) =>
+          goTo(map, { marker: '', at }, face ?? '', fade),
         battle: (enemies: string[], canLose: boolean, formation?: string) =>
           startBattleRef.current(enemies, canLose, formation),
         shop: (goods: string[], sell: boolean) => startShopRef.current(goods, sell),
+        returnToTitle: () => returnToTitle(400),
         // スイッチが動いたら、見た目をその場で合わせる（GS-136）。見張り（100ms ごと）でも
         // 同じことをしているが、**宝箱は押したその瞬間に開いていてほしい**——
         // 待つと、開いた絵よりメッセージのほうが先に出る。
         onSwitch: () => {
           checkNpcShownRef.current();
           checkNpcPoseRef.current();
+          checkOpenedLayersRef.current();
         },
       };
       bridgeRef.current = createEventBridge(options);
@@ -902,7 +961,7 @@ export default function GameCanvas() {
   const checkSpots = useCallback(() => {
     const view = viewRef.current;
     const bridge = bridgeRef.current;
-    if (!view || !bridge || useUi.getState().busy) return;
+    if (!view || !bridge || useUi.getState().busy || useUi.getState().phase !== 'play') return;
     const at = view.playerAt();
     if (!at) return;
     const spot = spotUnder(spotsRef.current, at, view.playerRadius());
@@ -922,7 +981,7 @@ export default function GameCanvas() {
       });
       return;
     }
-    const event = eventsRef.current.get(spot.event);
+    const event = eventForRef.current(spot.owner, spot.event);
     if (event && event.trigger === 'touch' && runnableRef.current(event, spot.owner))
       void play(event, '', { item: spot.item, num: spot.num, owner: spot.owner });
   }, [play, goTo]);
@@ -1015,6 +1074,51 @@ export default function GameCanvas() {
   checkNpcShownRef.current = checkNpcShown;
 
   /**
+   * その物を起こすイベント（GS-178）。**宝箱は台帳が決める**——
+   * 台帳が `event` を指していればそのイベント、指していなければ**台帳の文で組み立てた手順**。
+   * 宝箱でなければ今までどおりマップの `Event`。
+   *
+   * **決める所を 1 つにする**：起こし方は 4 通り（踏む・調べる・話しかける・立っている）あり、
+   * 散らすと「調べると開くのに、踏むと何も起きない」のような食い違いが静かに入る。
+   */
+  const eventFor = useCallback((owner: string, mapEvent: string) => {
+    if (owner) {
+      const built = chestEventDef(owner);
+      if (built) return built;
+      const named = chestEventOf(owner, '');
+      if (named) return eventsRef.current.get(named);
+    }
+    return eventsRef.current.get(mapEvent);
+  }, []);
+  const eventForRef = useRef(eventFor);
+  eventForRef.current = eventFor;
+
+  /**
+   * 開けたら入れ替わる見た目（GS-179）。このマップの出し入れするレイヤーと、
+   * いま出しているか。**マップごと**——組み直したら読み込み時の形から始まる。
+   */
+  const openedLayersRef = useRef<OpenedLayer[]>([]);
+  const openedShownRef = useRef(new Map<string, boolean>());
+
+  /**
+   * 宝箱の閉じた形・開いた形を出し入れする（GS-179）。**スイッチから毎回決める**ので、
+   * イベントに「絵を変える」を書かなくてよく、マップを読み直しても開いたまま。
+   * 形は両方マップに置いてある（マップエディタで同じマスに重ねる）。
+   */
+  const checkOpenedLayers = useCallback(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    for (const layer of openedLayersRef.current) {
+      const shown = openedLayerShown(layer, (key, owner) => switchOnRef.current(key, owner));
+      if (openedShownRef.current.get(layer.id) === shown) continue;
+      openedShownRef.current.set(layer.id, shown);
+      view.setLayerShown(layer.id, shown);
+    }
+  }, []);
+  const checkOpenedLayersRef = useRef(checkOpenedLayers);
+  checkOpenedLayersRef.current = checkOpenedLayers;
+
+  /**
    * スイッチで変わる見た目を合わせる（GS-133。マップの `Pose` / `PoseIf`）。
    * **イベントに「絵を変える」を書かなくてよくする**ためのもの——開けた覚え（スイッチ）を
    * 記録が持っているので、そこから毎回導く。マップを読み直しても同じ絵に戻る。
@@ -1024,16 +1128,6 @@ export default function GameCanvas() {
     if (!view) return;
     for (const def of npcDefsRef.current) {
       if (npcHiddenRef.current.has(def.id)) continue;
-      // 宝箱は台帳のコマ（GS-135）。**開けたその場で絵が変わる。**
-      const chest = chestOf(def.id);
-      if (chest) {
-        const frame = switchOnRef.current(`self:${CHEST_OPENED}`, def.id) ? chest.opened : chest.closed;
-        const key = frame === undefined ? '' : String(frame);
-        if (npcPoseRef.current.get(def.id) === key) continue;
-        npcPoseRef.current.set(def.id, key);
-        view.poseNpc(def.id, frame ?? null);
-        continue;
-      }
       if (!def.pose || !def.poseIf) continue;
       const want = switchOnRef.current(def.poseIf, def.id) ? def.pose : '';
       if (npcPoseRef.current.get(def.id) === want) continue;
@@ -1057,6 +1151,8 @@ export default function GameCanvas() {
       checkNpcShownRef.current();
       // スイッチで変わる見た目（GS-133）。**`busy` でも見る**——開けたその場で絵が変わる。
       checkNpcPoseRef.current();
+      // 宝箱の閉じた形・開いた形も同じ（GS-179）。
+      checkOpenedLayersRef.current();
       // 並行イベント（GS-43）。**`busy` でも見る**——止めないのが持ち場なので、
       // 会話の裏でスイッチが入るのは正しい動き。
       checkParallelRef.current();
@@ -1082,7 +1178,7 @@ export default function GameCanvas() {
       if (!view || !bridge) return;
       // まず**目の前の相手**（GS-16）。話しかけるのは足元ではなく向いた先。
       const who = view.npcInFront();
-      const talk = who ? eventsRef.current.get(npcTalkRef.current.get(who) ?? '') : undefined;
+      const talk = who ? eventFor(who, npcTalkRef.current.get(who) ?? '') : undefined;
       if (who && talk && talk.trigger === 'action' && runnableRef.current(talk, who)) {
         const def = npcDefsRef.current.find((npc) => npc.id === who);
         // 話しかけられた人はこちらを向く（GS-118）。イベントが `turn` で向きを指すなら、
@@ -1097,7 +1193,7 @@ export default function GameCanvas() {
       const aim = view.facingVector();
       const look = aim ? spotAhead(spotsRef.current, at, aim, EXAMINE_REACH) : null;
       if (look) {
-        const found = eventsRef.current.get(look.event);
+        const found = eventFor(look.owner, look.event);
         if (found && found.trigger === 'action' && runnableRef.current(found, look.owner)) {
           // 名前を**話し相手として**渡す（GS-55）。吹き出しがこの物の上に出る。
           // 人ではないので `walk` や `pose` の相手にはならない——やれば警告が出る。
@@ -1107,7 +1203,7 @@ export default function GameCanvas() {
       }
       const spot = spotUnder(spotsRef.current, at, view.playerRadius());
       if (!spot?.event) return;
-      const event = eventsRef.current.get(spot.event);
+      const event = eventFor(spot.owner, spot.event);
       if (event && event.trigger === 'action' && runnableRef.current(event, spot.owner))
         void play(event, '', { item: spot.item, num: spot.num, owner: spot.owner });
     };
@@ -1252,19 +1348,47 @@ export default function GameCanvas() {
          * **マウスの左クリックだけ**——焦点を取らせない（Enter やパッドで押されると、歩いている最中に始まる）。
          */}
         {DEV_MODE && phase === 'play' && !battle && !menu && !shop && !uiBusy ? (
-          <button
-            type="button"
-            className="debug-battle"
-            tabIndex={-1}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (event.button !== 0) return;
-              void debugBattle();
-            }}
-          >
-            Battle Start
-          </button>
+          <div className="debug-tools">
+            <button
+              type="button"
+              className="debug-battle"
+              tabIndex={-1}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (event.button !== 0) return;
+                void debugBattle();
+              }}
+            >
+              Battle Start
+            </button>
+            <div className="debug-party" role="group" aria-label="パーティ人数">
+              <span>パーティ</span>
+              {[1, 2, 3].map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  className="debug-battle"
+                  tabIndex={-1}
+                  aria-pressed={stateRef.current.party.length === size}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (event.button !== 0) return;
+                    const state = stateRef.current;
+                    state.party.splice(size);
+                    for (const who of DEBUG_PARTY) {
+                      if (state.party.length >= size) break;
+                      joinParty(state, who);
+                    }
+                    refreshParty((value) => value + 1);
+                  }}
+                >
+                  {size}人
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
         <canvas ref={canvasRef} className="viewport" tabIndex={0} />
         <CameraIllustrationLayer probe={cameraIllustrations} />
@@ -1274,7 +1398,8 @@ export default function GameCanvas() {
           headAt={(who) => viewRef.current?.headAt(who) ?? null}
         />
         {/* 旧作の仮想パッド。会話窓が空けている左右の領域へ収める（GS-155）。 */}
-        {phase === 'play' ? <VirtualPad /> : null}
+        {/* めくる絵を読ませている間は隠す（GS-188。旧作も隠した）。絵の左右の矢印でめくる。 */}
+        {phase === 'play' && !comicReading ? <VirtualPad /> : null}
         {/* 話せる合図（GS-49）。会話の裏では出さない。 */}
         <TalkMarks probe={talkMarks} />
         {notice ? <div className="notice">{notice}</div> : null}
@@ -1291,24 +1416,15 @@ export default function GameCanvas() {
         {phase === 'play' && menu ? (
           <Menu
             items={stateRef.current.items}
-            map={mapKey(mapRef.current)}
-            playSeconds={stateRef.current.playSeconds}
             party={stateRef.current.party}
             members={stateRef.current.members}
             gold={stateRef.current.gold}
             onUseItem={useItem}
             onEquip={(who, id) => equipItem(stateRef.current, who, id)}
             onUnequip={(who, slot) => unequipItem(stateRef.current, who, slot)}
-            onMove={(who, delta) => moveMember(stateRef.current, who, delta)}
             onSave={saveTo}
             onLoad={continueFrom}
-            onTitle={() => {
-              useUi.getState().setMenu(false);
-              // タイトルへ戻るときも黒くしておく（GS-28）。次に「はじめから」を押した瞬間、
-              // 前のマップが見えないようにする。
-              useUi.getState().setFade(1, 0);
-              useUi.getState().setPhase('title');
-            }}
+            onTitle={() => { void returnToTitle(); }}
             onClose={() => useUi.getState().setMenu(false)}
           />
         ) : null}

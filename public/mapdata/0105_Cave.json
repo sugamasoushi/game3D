@@ -1558,9 +1558,9 @@
   "editor": {
     "camera": {
       "target": [
-        -1.1050909069633796,
-        0.27972668741106005,
-        -4.344211098676439
+        -0.5209703810769386,
+        0.27972668741106893,
+        13.528449231953335
       ],
       "yaw": 358,
       "pitch": -38.29999999999997,
@@ -1613,12 +1613,22 @@
     {
       "name": "ScrollMaxZ",
       "type": "float",
-      "value": 20
+      "value": 26
     },
     {
       "name": "ScrollWhole",
       "type": "float",
       "value": 0
+    },
+    {
+      "name": "CameraPitch",
+      "type": "float",
+      "value": -19
+    },
+    {
+      "name": "CameraDistance",
+      "type": "float",
+      "value": 9
     }
   ],
   "layers": [
