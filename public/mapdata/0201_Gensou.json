@@ -15755,7 +15755,20 @@
               1
             ]
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "MAPMOVE",
+      "name": "MAPMOVE",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": [],
+      "objects": [
         {
           "id": "obj_6",
           "name": "0103",
@@ -15768,16 +15781,6 @@
               "name": "MapMove",
               "type": "string",
               "value": "0103"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Right"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "-23,2,28"
             }
           ],
           "space": "solid",
@@ -15814,16 +15817,6 @@
               "name": "MapMove",
               "type": "string",
               "value": "0106"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Left"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "17,11,3"
             }
           ],
           "space": "solid",

@@ -81,7 +81,13 @@
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "setSwitch", "key": "EVENT010302", "value": false },
         { "type": "fade", "to": "out", "ms": 400 },
-        { "type": "transfer", "map": "0101", "at": { "x": 5, "y": 0, "z": 2 }, "face": "up" },
+        {
+          "type": "transfer",
+          "map": "0101",
+          "at": { "x": 5, "y": 0, "z": 3 },
+          "face": "up",
+          "px": { "x": 0, "z": -6 }
+        },
         { "type": "fade", "to": "in", "ms": 400 }
       ],
       "kind": "scenario"
@@ -170,6 +176,28 @@
           ],
           "style": "bubble"
         }
+      ]
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_2",
+      "to": [{ "map": "0102", "at": { "x": -5, "y": 3, "z": 14 }, "face": "up" }]
+    },
+    {
+      "object": "obj_3",
+      "to": [{ "map": "0104", "at": { "x": -21, "y": 0, "z": 1 }, "face": "right" }]
+    },
+    {
+      "object": "obj_4",
+      "to": [
+        {
+          "map": "0201",
+          "when": [{ "switch": "EVENT010401", "is": false }, { "switch": "EVENT020301", "is": true }],
+          "at": { "x": 5, "y": 5, "z": -3 },
+          "face": "left"
+        },
+        { "map": "0106", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }
       ]
     }
   ]

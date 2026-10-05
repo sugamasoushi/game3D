@@ -192,6 +192,16 @@ body {
   transition: none;
 }
 
+/* 窓が埋まる所を測るための見えない写し（GS-199）。窓と同じ幅・同じ字で並べる。 */
+.message-measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .message-next {
   margin-left: 6px;
   font-size: 14px;
@@ -677,36 +687,43 @@ body {
 /* ── 吹き出し（GS-23）。フィールドの立ち話 ─────────────────── */
 
 /*
- * 喋っている人の**頭の上**に出す。位置は 3D から測った画面座標で、
- * 下辺の真ん中がその点に来るように置く（`translate(-50%, -100%)`）。
+ * 吹き出し（GS-23）。旧作の `BubbleTalk` と同じ出し方（GS-200）。
+ * 置き所（`left` / `top`）と角（`.bubble-tail`）は JS が測って入れる。
+ * **大きさは全文で決める**——幅は一番長い行（`width: max-content`。560px で折り返す）、
+ * 丈は窓の行数（`--rows`。2 行まで）。打つにつれて伸びたり、置き所で幅が変わったりしない。
  */
 .bubble {
   position: absolute;
-  /* 頭のすぐ上だと**キャラの顔まで覆う**ので、少し浮かせる（GS-23）。角はそのぶん伸ばす。 */
-  transform: translate(-50%, calc(-100% - 22px));
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  width: max-content;
   max-width: 560px;
-  padding: 10px 14px;
+  padding: 10px 24px 10px 14px;
   border: 2px solid #8ea6c8;
   border-radius: 10px;
   background: rgba(25, 25, 112, 0.86);
   cursor: pointer;
 }
 
-/* 下向きの角。吹き出しの持ち主を指す。 */
-.bubble::after {
-  content: '';
+/*
+ * 角（GS-201 / GS-202）。点は JS が入れる（下の辺の真ん中 → 基準点）。
+ * 枠の外へはみ出して描くので `overflow: visible`。線は斜めの 2 辺だけ（`polyline` は閉じない）、
+ * 塗りは下の辺の線を付け根のあいだだけ覆う。
+ */
+.bubble-tail {
   position: absolute;
-  left: 50%;
-  bottom: -22px;
-  width: 0;
-  height: 0;
-  margin-left: -9px;
-  border-left: 9px solid transparent;
-  border-right: 9px solid transparent;
-  border-top: 22px solid #8ea6c8;
+  left: -2px;
+  top: -2px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.bubble-tail polyline {
+  fill: rgba(25, 25, 112, 0.86);
+  stroke: #8ea6c8;
+  stroke-width: 2;
+  stroke-linejoin: round;
 }
 
 .bubble-icon {
@@ -726,10 +743,37 @@ body {
 .bubble-text {
   margin: 0;
   font-size: 20px;
-  line-height: 1.6;
+  line-height: 32px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   line-break: strict;
+  transition: transform .2s ease-out;
+}
+
+.bubble-text.at-top {
+  transition: none;
+}
+
+/* 幅を決める見えない写し（GS-200）。幅にだけ効かせ、丈は取らない。 */
+.bubble-sizer {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+/* 2 行の窓（GS-200）。あふれたら中身を上へ巻き上げる。 */
+.bubble-view {
+  position: relative;
+  height: calc(var(--rows, 1) * 32px);
+  overflow: hidden;
+}
+
+/* 送りの印は右下の隅（GS-200）。文の中に置くと一番長い行の後ろで折り返す。 */
+.bubble-next {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  margin: 0;
 }
 
 /* ── 流れる文字（GS-23）。オープニングの読み物 ───────────────── */
@@ -1085,6 +1129,85 @@ body {
   cursor: default;
 }
 
+/* おまけ（GS-212）。旧作のボタンと同じ青い字。 */
+.title-menu button.title-omake {
+  color: #00a6ed;
+  font-weight: bold;
+}
+
+/*
+ * マニュアルのアイコン（GS-213）。旧作は 1280×720 の (1000, 500) を真ん中に、左右へ 5° 揺れていた。
+ * 置き場所は題名とボタンの並び（`.title-in`）を基準にする。
+ */
+.title-menu button.title-manual {
+  position: absolute;
+  left: 78.125%;
+  top: 69.444%;
+  padding: 0;
+  border: none;
+  background: none;
+  transform: translate(-50%, -50%);
+  animation: title-manual 1s ease-in-out infinite;
+}
+
+.title-menu button.title-manual:hover:not(:disabled) {
+  background: none;
+}
+
+.title-menu button.title-manual img {
+  display: block;
+  user-select: none;
+}
+
+/* キーで選んだのが分かるように、アイコンの形に沿って光らせる。 */
+.title-menu button.title-manual:focus-visible,
+.title-menu button.title-manual:focus {
+  outline: none;
+  filter: drop-shadow(0 0 6px #ffd84a);
+}
+
+@keyframes title-manual {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(5deg);
+  }
+}
+
+/* おまけで見ている物。タイトルの上を黒で覆い、真ん中に出す。 */
+.omake-view {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.85);
+  overflow: hidden;
+  cursor: pointer;
+  animation: title-in 300ms ease-out both;
+}
+
+.omake-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+/* 動画は**縦だけ画面に合わせる**（横は比を保ち、はみ出たら左右を切る）。 */
+.omake-video {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%);
+  user-select: none;
+}
+
 .title-note {
   margin: 0;
   font-size: 14px;
@@ -1261,51 +1384,66 @@ body {
   font-variant-numeric: tabular-nums;
 }
 /*
- * 使える物（GS-64）。**行の名前がそのままボタン**——右に「つかう」を並べると、
- * 押す場所が名前から離れて、どの行を触っているのか見失う。
+ * 持ち物の行（GS-64 / GS-206）。**行全体が 1 つのボタン**で、どの行にもカーソルが止まる。
+ * 使えない物・効かない物は薄くするだけ（`aria-disabled`）——選んで説明を読めるように。
  */
-.item-use {
+.gmenu-body .item-row {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  width: 100%;
+  padding: 6px 12px;
   border: 2px solid transparent;
-  border-radius: 6px;
-  padding: 1px 8px;
-  margin: -1px -8px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
   text-align: left;
-  cursor: pointer;
 }
+.gmenu-body .item-row:hover,
+.gmenu-body .item-row.on { border-color: rgba(255, 212, 121, 0.6); }
+.gmenu-body .item-row[aria-disabled='true'] > .item-name,
+.gmenu-body .item-row[aria-disabled='true'] > .item-count { opacity: 0.45; }
+.item-list .item-name { min-width: 180px; }
+.item-list .item-text { font-size: 17px; }
 
-.item-use:hover:not(:disabled),
-.item-use:focus-visible {
-  border-color: #ffd479;
-  outline: none;
-}
-
-/* 効かない物（満タンのときの やくそう など）。**消さずに押せなくする。** */
-.item-use:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-/* 使い先を選ぶ列（仲間が 2 人以上のとき）。 */
-.menu-pick {
+/*
+ * 使い先を選ぶ小窓（GS-208）。枠は武具の小窓（`.equip-chooser`）と同じ。
+ * 仲間ごとに顔・Lv・状態・HP/MP の棒を 1 枚のボタンに入れる。効き目の無い人は薄く、選べない。
+ */
+.item-target h2 { display: flex; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+.equip-chooser.item-target { padding: 18px 24px; }
+.item-target-count { font-size: 18px; opacity: 0.7; }
+.item-target-ask { margin-left: auto; font-size: 18px; color: #ffd479; }
+.item-target-list { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.gmenu-body .item-target-member {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  font-size: 16px;
+  gap: 16px;
+  width: 100%;
+  padding: 4px 14px;
+  text-align: left;
 }
+.gmenu-body .item-target-member:disabled { opacity: 0.4; }
+.item-target-member > img,
+.item-target-member > .condition-face-empty { flex: none; width: 64px; height: 64px; object-fit: contain; }
+.item-target-info { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.item-target-name { display: flex; align-items: baseline; gap: 14px; font-size: 22px; }
+.item-target-level { font-size: 18px; opacity: 0.8; }
+.item-target-gauges { display: grid; grid-template-columns: auto 1fr auto 1fr; align-items: center; gap: 6px 10px; font-size: 18px; }
+.item-target .menu-note { margin: 0 0 12px; }
 
-.menu-pick button {
-  padding: 2px 12px;
-  border: 2px solid #8ea6c8;
-  border-radius: 6px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
+/* 誰を見るか（GS-70 / GS-206）。カーソルを置いて ←→ で替える。◀▶ はマウス用。 */
+.menu-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  margin-bottom: 10px;
+  padding: 4px 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  font-size: 22px;
 }
+.menu-who-name { min-width: 6em; text-align: center; }
+.menu-who-count { font-size: 16px; opacity: 0.6; }
+.gmenu-body .menu-who button { min-width: 44px; padding: 2px 10px; font-size: 20px; }
 
 /* 使った結果の一言。**消さずに残す**——次に何かするまで読み返せる。 */
 .menu-note {
@@ -1436,7 +1574,38 @@ body {
 }
 
 /* キーで選んでいる所を見せる。マウスだけだと当たり前に見えるが、↑↓ では要る。 */
-.gmenu-body [data-pick]:focus-visible {
+/*
+ * `:focus-visible` ではなく `:focus`（GS-206）——ゲームパッドの合成キーは
+ * 「キーで操作した」と数えられず、カーソルが見えなくなる。
+ */
+.gmenu-body [data-pick]:focus,
+.gmenu-foot [data-pick]:focus {
+  outline: none;
+}
+
+/*
+ * カーソルは**枠の内側**に描く（GS-207）。外側の `outline` は、一覧や小窓の
+ * スクロールする枠（`overflow: auto`）に端を切られていた。
+ * ボタンは自分の枠を金にして、内側に薄い金を敷く——行全体が選ばれているのが一目で分かる。
+ */
+.gmenu-body button[data-pick]:focus,
+.gmenu-foot button[data-pick]:focus,
+.gmenu-body .menu-who:focus {
+  border-color: #ffd479;
+  background: rgba(255, 212, 121, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 212, 121, 0.55);
+}
+.gmenu-body .item-row[aria-disabled='true']:focus { background: rgba(255, 212, 121, 0.08); }
+
+/* つまみ・選ぶ箱・チェックは形を変えにくいので、外側に細く。行の中ほどにあるので切れない。 */
+.gmenu-body input[data-pick]:focus,
+.gmenu-body select[data-pick]:focus {
+  outline: 2px solid #ffd479;
+  outline-offset: 2px;
+}
+
+/* タブに居るときのカーソル。中身へ入ると開いているタブの枠だけが残る。 */
+.gmenu-tabs button:focus {
   outline: 2px solid #ffd479;
   outline-offset: 2px;
 }
@@ -1540,41 +1709,30 @@ body {
 .gmenu-body:has(.status) .status-facts dd { font-size: 24px; }
 
 .gmenu-body:has(.status) { overflow: hidden; }
-.status { display: flex; align-items: flex-start; gap: 24px; }
-.status-character-icon { flex: none; width: 220px; max-height: 320px; object-fit: contain; }
-.status-content { flex: 1; min-width: 0; }
+/* 絵を左に置くページ（ステータス・装備・スキル。GS-206）。絵の大きさと置き方はここ 1 か所。 */
+.menu-figured { display: flex; align-items: flex-start; gap: 24px; }
+.menu-figure { flex: none; width: 220px; max-height: 320px; object-fit: contain; }
+.menu-figured-body { flex: 1; min-width: 0; }
 .status-columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .status-content .status-facts { grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; line-height: 1.25; margin: 0; }
 .status-content .status-facts dt { align-self: center; }
 .status-content .status-facts dd { overflow-wrap: anywhere; }
 .status-content .status-equipment { grid-template-columns: 2em minmax(0, 1fr); }
 
-.equip-current { display: flex; align-items: center; justify-content: flex-start; gap: 28px; }
-.equip-current > div { flex: 1; min-width: 0; }
 .equip-current .equip-head { align-items: center; margin: 0 0 20px; }
 .equip-current .equip-kind { min-width: 3em; }
 .equip-current .equip-now { flex: 1; }
-.equip-character-icon,
-.skill-character-icon { flex: none; width: 72px; height: 72px; object-fit: contain; }
-.equip-current .equip-character-icon { order: -1; }
 .equip-modal-backdrop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(0,0,0,.65); }
 .equip-chooser { position: relative; width: min(760px, 92%); max-height: 84%; overflow: auto; padding: 24px; border: 2px solid #8ea6c8; border-radius: 10px; background: rgba(25,25,112,.98); box-shadow: 0 12px 40px rgba(0,0,0,.55); }
 .equip-chooser h2 { margin: 0 0 18px; font-size: 24px; }
 .equip-chooser .equip-list { max-height: 420px; overflow-y: auto; }
 .equip-chooser .equip-list button { text-align: left; }
-.equip-chooser .equip-character-icon { position: absolute; top: 18px; right: 70px; }
 
-.skill-page { display: flex; align-items: flex-start; gap: 24px; }
-.skill-items { flex: 1; min-width: 0; }
 .gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(150px, 1.1fr) 90px minmax(180px, 2fr); gap: 14px; align-items: baseline; padding: 10px 0; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
 .skill-items .item-name { min-width: 0; }
 .skill-items .item-count { width: auto; text-align: center; }
 .skill-items .item-text { white-space: normal; }
-.skill-character-icon { order: -1; }
 
-.menu-member-icon { display: none; }
-.menu-pick { gap: 12px; }
-.menu-pick button[aria-label] { min-width: 44px; padding: 4px 10px; font-size: 24px; }
 
 /*
  * ── 戦闘（GS-60）──────────────────────────────────────────
@@ -2392,11 +2550,6 @@ body {
 
 .gmenu-party-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gmenu-party-num { flex: none; font-variant-numeric: tabular-nums; }
-
-/* 誰を見るかの列。開いている人は枠で示す（タブと同じ見せ方）。 */
-.menu-pick button.on {
-  border-color: #ffd479;
-}
 
 /*
  * 歩いているあいだの毒（GS-71）。**会話ウィンドウは使わない**——

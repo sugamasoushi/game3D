@@ -1,0 +1,14 @@
+{
+  "map": "0104_ForestCave",
+  "events": [],
+  "mapMoves": [
+    {
+      "object": "obj_3",
+      "to": [{ "map": "0103", "at": { "x": 16, "y": 0, "z": 19 }, "face": "left" }]
+    },
+    {
+      "object": "obj_5",
+      "to": [{ "map": "0105", "at": { "x": -1, "y": 0, "z": 14 }, "face": "up" }]
+    }
+  ]
+}

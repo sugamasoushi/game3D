@@ -7,8 +7,18 @@
       "when": [{ "switch": "EVENT010401", "is": false }, { "switch": "EVENT020101", "is": true }],
       "commands": [
         { "type": "fade", "to": "out", "ms": 300 },
-        { "type": "place", "target": "player", "at": { "x": 1, "y": "player", "z": -6 }, "face": "up" },
-        { "type": "place", "target": "party:lamy", "at": { "x": -1, "y": "player", "z": -6 }, "face": "up" },
+        {
+          "type": "place",
+          "target": "player",
+          "at": { "x": 1, "y": "player", "z": -6 },
+          "face": "up"
+        },
+        {
+          "type": "place",
+          "target": "party:lamy",
+          "at": { "x": -1, "y": "player", "z": -6 },
+          "face": "up"
+        },
         { "type": "fade", "to": "in", "ms": 300 },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
@@ -22,6 +32,7 @@
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "battle", "enemies": ["enemy03"] },
+        { "type": "hide", "target": "npc:boss" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
         {
@@ -56,13 +67,18 @@
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
-        { "type": "hide", "target": "npc:boss" },
         { "type": "setSwitch", "key": "EVENT020101", "value": false },
         { "type": "fade", "to": "out", "ms": 400 },
         { "type": "transfer", "map": "0101", "at": { "x": 5, "y": 0, "z": 2 }, "face": "up" },
         { "type": "fade", "to": "in", "ms": 400 }
       ],
       "kind": "scenario"
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_4",
+      "to": [{ "map": "0104", "at": { "x": 16, "y": 0, "z": -10 }, "face": "down" }]
     }
   ]
 }

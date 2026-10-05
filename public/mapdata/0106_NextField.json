@@ -6014,7 +6014,7 @@
     "ambient": 2.0000000000000013,
     "intensity": 0.45,
     "wrap": 0,
-    "billboard": 0.95,
+    "billboard": 1,
     "blockShadow": true,
     "blockShadowStrength": 1,
     "cloudShadow": true,
@@ -6063,17 +6063,17 @@
   "editor": {
     "camera": {
       "target": [
-        8.411882135094803,
-        2.42408537876116,
-        2.458001838987249
+        6.404009694468574,
+        4.5835533637005055,
+        -4.231331105468797
       ],
-      "yaw": 342.80000000000007,
-      "pitch": -33.49999999999999,
-      "distance": 27.048479978344776,
+      "yaw": 0,
+      "pitch": -23,
+      "distance": 28.36257380119352,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "objects",
+    "activeLayer": "崖",
     "brush": {
       "shape": "floor",
       "rotation": 3,
@@ -24077,52 +24077,6 @@
           ]
         },
         {
-          "id": "obj_2",
-          "name": "0201",
-          "kind": "rect",
-          "visible": true,
-          "guides": true,
-          "collision": false,
-          "properties": [
-            {
-              "name": "MapMove",
-              "type": "string",
-              "value": "0201"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Right"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "-10,5,-4"
-            }
-          ],
-          "space": "solid",
-          "y": 11,
-          "height": 1,
-          "points": [
-            [
-              19,
-              1
-            ],
-            [
-              20,
-              1
-            ],
-            [
-              20,
-              5
-            ],
-            [
-              19,
-              5
-            ]
-          ]
-        },
-        {
           "id": "obj_3",
           "name": "四角",
           "kind": "rect",
@@ -24156,6 +24110,55 @@
             [
               -22.823640816434455,
               20.014617440579354
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MAPMOVE",
+      "name": "MAPMOVE",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": [],
+      "objects": [
+        {
+          "id": "obj_2",
+          "name": "0103",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "MapMove",
+              "type": "string",
+              "value": "0103"
+            }
+          ],
+          "space": "solid",
+          "y": 11,
+          "height": 1,
+          "points": [
+            [
+              19,
+              1
+            ],
+            [
+              20,
+              1
+            ],
+            [
+              20,
+              5
+            ],
+            [
+              19,
+              5
             ]
           ]
         }

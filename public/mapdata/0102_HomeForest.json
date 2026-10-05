@@ -19880,13 +19880,13 @@
   "editor": {
     "camera": {
       "target": [
-        -4.975478193678578,
-        5.248530260027051,
-        12.913765209923564
+        6.7567207571773835,
+        6.985793776096011,
+        -10.795394951446525
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 15.16263195411806,
+      "distance": 20.181463130931146,
       "orthographic": false
     },
     "activeLayer": "オブジェクトレイヤー_5",
@@ -46623,7 +46623,7 @@
     },
     {
       "id": "オブジェクトレイヤー_5",
-      "name": "マップ移動",
+      "name": "MAPMOVE",
       "kind": "object",
       "parent": "",
       "visible": true,
@@ -46644,16 +46644,6 @@
               "name": "MapMove",
               "type": "string",
               "value": "0101"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Up"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "5,0,2"
             }
           ],
           "space": "solid",
@@ -46690,16 +46680,6 @@
               "name": "MapMove",
               "type": "string",
               "value": "0103"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Down"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "-17,0,-28"
             }
           ],
           "space": "solid",

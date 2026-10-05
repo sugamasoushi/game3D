@@ -65,6 +65,7 @@ test('イベントの `scroll` は `speed` で書く。`ms` は残っていな�
         }
         for (const branch of (one.branches as unknown[][]) ?? []) walk(branch, where);
         for (const key of ['then', 'else']) if (Array.isArray(one[key])) walk(one[key] as unknown[], where);
+        for (const arm of (one.elif as Array<{ then: unknown[] }>) ?? []) walk(arm.then, where);
       }
     };
     for (const event of book.events) walk(event.commands, `${name}:${event.id}`);

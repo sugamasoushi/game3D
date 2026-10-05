@@ -9,7 +9,7 @@
 // 読み込んだデータが勝手なことをできない（`eval` を使わない）。
 // 逃げ道の `script` も、動かすのは**先に TS 側で登録した関数**だけ。
 
-import type { ActorRef, BlockFace, EventCommand, EventDef, PlaceAt, Step, TalkStyle } from './types';
+import type { ActorRef, BlockFace, EventCommand, EventDef, IfCondition, IfWhen, PixelOffset, PlaceAt, Step, TalkStyle } from './types';
 
 /** 分岐・共通イベントの呼び出し元も含めて実行を終了する合図。 */
 export class ReturnToTitle extends Error {
@@ -26,6 +26,8 @@ export interface EventContext {
    * 会話を出して、読み終わるまで待つ。`style` で吹き出しにできる（GS-23）。
    * `hold`（ミリ秒）を渡すと、**文字が出そろってからその時間で勝手に送る**（GS-172）。
    */
+  /** イベントの頭で、使う絵などを裏で読み始める（GS-198）。待たない。無くてもよい。 */
+  prepare?(commands: EventCommand[]): void;
   message(talk: { who?: string; lines: string[] }[], face?: string, style?: TalkStyle, hold?: number): Promise<void>;
   /** 流れる文字。読み終わる（か飛ばされる）まで待つ。`speed` は 1 行ぶんの時間（GS-144）。 */
   scroll(lines: string[], speed: number, dim: number, lead?: { lines: number; hold: number }): Promise<void>;
@@ -57,7 +59,7 @@ export interface EventContext {
    * **プレイヤーも受ける。** 軸に `"player"` と書けば**主人公と同じ座標**（GS-154）
    * ——プレイヤー自身を置くときは「その軸は動かさない」の意味になる。解くのは実行機側。
    */
-  place(target: ActorRef, at: PlaceAt, face?: Step): void;
+  place(target: ActorRef, at: PlaceAt, face?: Step, px?: PixelOffset): void;
   /**
    * 漫画のようにめくる絵（GS-188）。`read` は読み終わるまで、ほかはめくり終わるまで待って返る。
    * `images` は `assets/img/Event/` の名前（拡張子まで）。
@@ -103,6 +105,8 @@ export interface EventContext {
     /** 置き場所からのずれ（GS-170）。画面の幅・高さに対する％。 */
     x?: number;
     y?: number;
+    /** 入りのアニメが終わるまで待つか（GS-198）。既定は待つ。 */
+    wait?: boolean;
   }): Promise<void>;
   /** 出ているキャライラストに効果をかける（GS-143）。知らない `id` なら何もしない。 */
   imageFx(
@@ -123,7 +127,13 @@ export interface EventContext {
    * マップ移動。`at` が null なら行き先マップの `default` へ置く
    * （オブジェクトのプロパティ `MapMove` だけを書いた近道。GS-14）。
    */
-  transfer(map: string, at: { x: number; y: number; z: number } | null, face?: Step, fade?: boolean): Promise<void>;
+  transfer(
+    map: string,
+    at: { x: number; y: number; z: number } | null,
+    face?: Step,
+    fade?: boolean,
+    px?: PixelOffset,
+  ): Promise<void>;
   playSe(key: string, volume?: number): void;
   playBgm(key: string, volume?: number): void;
   stopBgm(fade?: number): void;
@@ -308,7 +318,7 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   },
 
   place: async (ctx, cmd) => {
-    ctx.place(cmd.target, cmd.at, cmd.face);
+    ctx.place(cmd.target, cmd.at, cmd.face, cmd.px);
   },
 
   // 漫画のようにめくる絵（GS-188）。既定は「読ませる」・1 枚 500ms・めくる音あり。
@@ -355,6 +365,7 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
       instant: cmd.instant,
       x: cmd.x,
       y: cmd.y,
+      wait: cmd.wait,
     });
   },
 
@@ -377,23 +388,15 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   },
 
   if: async (ctx, cmd) => {
-    const hit =
-      // フラグは `is` と突き合わせる（GS-147）。省けば「立っているとき」＝今までどおり。
-      'switch' in cmd.when
-        ? ctx.getSwitch(cmd.when.switch) === (cmd.when.is ?? true)
-        : 'self' in cmd.when
-          ? ctx.getSelfSwitch(cmd.when.self) === (cmd.when.is ?? true)
-          : 'item' in cmd.when
-            ? ctx.countItem(cmd.when.item) >= (cmd.when.count ?? 1)
-            : 'gold' in cmd.when
-              ? ctx.getGold() >= cmd.when.gold
-              : compare(ctx.getVariable(cmd.when.variable), cmd.when.op, cmd.when.value);
-    const branch = hit ? cmd.then : cmd.else;
+    // `if` → `else if`（`elif`）を上から順に。最初に当たった枝だけ動く（GS-196）。
+    const arms = [{ when: cmd.when, then: cmd.then }, ...(cmd.elif ?? [])];
+    const arm = arms.find((one) => meets(ctx, one.when));
+    const branch = arm ? arm.then : cmd.else;
     if (branch) await runCommands(branch, ctx);
   },
 
   transfer: async (ctx, cmd) => {
-    await ctx.transfer(cmd.map, cmd.at, cmd.face, cmd.fade);
+    await ctx.transfer(cmd.map, cmd.at, cmd.face, cmd.fade, cmd.px);
   },
 
   playSe: async (ctx, cmd) => {
@@ -468,7 +471,10 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
 
   callCommon: async (ctx, cmd) => {
     const list = ctx.common(cmd.id);
-    if (list) await runCommands(list, ctx);
+    if (!list) return;
+    // コモンイベントの絵も先に読み始める（GS-198）。
+    ctx.prepare?.(list);
+    await runCommands(list, ctx);
   },
 
   script: async (ctx, cmd) => {
@@ -504,6 +510,22 @@ export async function runCommands(list: EventCommand[], ctx: EventContext): Prom
  * **セルフスイッチを見るときは、そのイベントを動かす前提**——
  * 呼ぶ側が「どのイベントの話か」を `ctx` に伝えてから聞く。
  */
+/** 条件命令の 1 つの枝の条件を見る（GS-196）。並びなら**全部満たしたら当たり**（`&&`。GS-197）。 */
+export function meets(ctx: EventContext, when: IfWhen): boolean {
+  if (Array.isArray(when)) return when.every((one) => meetsOne(ctx, one));
+  return meetsOne(ctx, when);
+}
+
+/** 条件 1 つ。 */
+function meetsOne(ctx: EventContext, when: IfCondition): boolean {
+  // フラグは `is` と突き合わせる（GS-147）。省けば「立っているとき」＝今までどおり。
+  if ('switch' in when) return ctx.getSwitch(when.switch) === (when.is ?? true);
+  if ('self' in when) return ctx.getSelfSwitch(when.self) === (when.is ?? true);
+  if ('item' in when) return ctx.countItem(when.item) >= (when.count ?? 1);
+  if ('gold' in when) return ctx.getGold() >= when.gold;
+  return compare(ctx.getVariable(when.variable), when.op, when.value);
+}
+
 export function canRun(event: EventDef, ctx: EventContext): boolean {
   if (!event.when) return true;
   return event.when.every((cond) => {
@@ -515,6 +537,8 @@ export function canRun(event: EventDef, ctx: EventContext): boolean {
 /** イベント 1 本を動かす。条件を満たさなければ何もしない。 */
 export async function runEvent(event: EventDef, ctx: EventContext): Promise<boolean> {
   if (!canRun(event, ctx)) return false;
+  // 使う絵を先に読み始める（GS-198）。待たない。
+  ctx.prepare?.(event.commands);
   await runCommands(event.commands, ctx);
   return true;
 }

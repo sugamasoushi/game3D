@@ -22,6 +22,7 @@
 // **見せるだけ**にする（登録の窓口を 1 つに保つ。DEC-394 と同じ考え）。
 
 import { options } from './options';
+import { looksLikePhone } from './device';
 
 /** 解いたあとの描画モード。**判断に使うのはこの 2 つだけ。** */
 export type DrawMode = 'high' | 'light';
@@ -63,20 +64,8 @@ export type HeavyDraw = keyof typeof HEAVY_DRAWS;
  * 設定で必ず上書きできるようにしてある（自動だけに任せない）。
  */
 export function guessDrawMode(): DrawMode {
-  if (typeof window === 'undefined') return 'high';
-  try {
-    const pwa = window.matchMedia?.('(display-mode: standalone)').matches
-      || (window.navigator as { standalone?: boolean }).standalone === true;
-    if (pwa) return 'light';
-    // 触れる画面 ＋ 細い画面を「スマホ」と見る。触れる画面だけだと
-    // タッチ対応のノート PC まで低負荷になる。
-    const touch = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-    const narrow = Math.min(window.screen?.width ?? 9999, window.screen?.height ?? 9999) <= 820;
-    return touch && narrow ? 'light' : 'high';
-  } catch {
-    // 見当が付かないなら重いほうで出す。**絵が出ないより重いほうがまし。**
-    return 'high';
-  }
+  // 判断は `device.ts`（仮想パッドの「自動」と同じ物差し）。見当が付かなければ重いほうで出す。
+  return looksLikePhone() ? 'light' : 'high';
 }
 
 /**

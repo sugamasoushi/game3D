@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import type { EventCommand, EventDef, EventFile } from '../src/event/types';
 import type { MapDef } from '../src/mep3d/types';
 import { readNpcs } from '../src/game/npcs';
+import { readEventSpots } from '../src/game/eventSpots';
 
 const ROOT = join(import.meta.dirname, '..');
 const read = (path: string) => JSON.parse(readFileSync(join(ROOT, 'public', 'data', path), 'utf8'));
@@ -42,6 +43,7 @@ function each(list: EventCommand[], visit: (command: EventCommand) => void): voi
     if (command.type === 'choice') for (const branch of command.branches) each(branch, visit);
     if (command.type === 'if') {
       each(command.then, visit);
+      for (const arm of command.elif ?? []) each(arm.then, visit);
       if (command.else) each(command.else, visit);
     }
     if (command.type === 'battle') for (const branch of [command.win, command.lose, command.escape]) if (branch) each(branch, visit);
@@ -373,6 +375,7 @@ test('宝箱は「開けた」を**メッセージより先**に立てる（読�
           }
           if (command.type === 'if') {
             walk(command.then);
+            for (const arm of command.elif ?? []) walk(arm.then);
             if (command.else) walk(command.else);
           }
           if (command.type === 'choice') for (const branch of command.branches) walk(branch);
@@ -425,7 +428,14 @@ test('イベント id の形をしたスイッチは、本当にそのイベン�
       for (const one of event.when ?? []) if (one.switch) check(one.switch, `${file} ${event.id} の条件`);
       each(event.commands, (command) => {
         if (command.type === 'setSwitch') check(command.key, `${file} ${event.id}`);
-        if (command.type === 'if' && 'switch' in command.when) check(command.when.switch, `${file} ${event.id} の分岐`);
+        if (command.type === 'if') {
+          // 条件は並び（`&&`。GS-197）でも書ける。`elif` の枝も見る（GS-196）。
+          for (const when of [command.when, ...(command.elif ?? []).map((arm) => arm.when)]) {
+            for (const one of Array.isArray(when) ? when : [when]) {
+              if ('switch' in one) check(one.switch, `${file} ${event.id} の分岐`);
+            }
+          }
+        }
       });
     }
   }
@@ -482,4 +492,70 @@ test('マップの ShowIf / HideIf は、どこかのイベントが立てるフ
     }
   }
   deepStrictEqual(gone, []);
+});
+
+// マップ移動（GS-211）。行き先の候補はマップの `MapMove`、条件・立ち位置・向きはイベント JSON の `mapMoves`。
+// 片方だけ直すと黙って `default` に立つ（候補が増えた・物が消えた）ので、ここで突き合わせる。
+test('マップ移動の決まり（mapMoves）は、MAPMOVE レイヤーの入口と行き先に合っている', () => {
+  const problems: string[] = [];
+  const steps = new Set(['up', 'down', 'left', 'right']);
+  for (const { file, book } of books) {
+    const mapFile = join(ROOT, 'public', 'mapdata', file);
+    let entrances = new Map<string, string[]>();
+    try {
+      const map = JSON.parse(readFileSync(mapFile, 'utf8')) as MapDef;
+      entrances = new Map(
+        readEventSpots(map)
+          .filter((spot) => spot.mapMoves.length)
+          .map((spot) => [spot.moveObject, spot.mapMoves]),
+      );
+    } catch {
+      if (book.mapMoves?.length) problems.push(`${file}: マップが読めない`);
+      continue;
+    }
+    const seen = new Set<string>();
+    for (const def of book.mapMoves ?? []) {
+      const where = `${file} の ${def.object}`;
+      if (seen.has(def.object)) problems.push(`${where}: 2 回書いてある`);
+      seen.add(def.object);
+      const destinations = entrances.get(def.object);
+      if (!destinations) {
+        problems.push(`${where}: MAPMOVE レイヤーに入口が無い`);
+        continue;
+      }
+      for (const to of def.to) {
+        // MapMove から外した行き先の決まりは問わない（ゲームは引かない。イベントエディタが開いたときに落とす）。
+        if (!destinations.includes(to.map)) continue;
+        if (!maps.has(to.map)) problems.push(`${where}: ${to.map} は台帳（maps.json）に無い`);
+        if (to.at && to.marker) problems.push(`${where} → ${to.map}: 立ち位置がマスと目印の両方`);
+        if (to.at && ![to.at.x, to.at.y, to.at.z].every(Number.isInteger)) problems.push(`${where} → ${to.map}: マスが整数でない`);
+        if (to.face && !steps.has(to.face)) problems.push(`${where} → ${to.map}: 向き ${to.face}`);
+      }
+    }
+    for (const [object, destinations] of entrances) {
+      for (const map of destinations) if (!maps.has(map)) problems.push(`${file} の ${object}: MapMove の ${map} は台帳に無い`);
+    }
+  }
+  deepStrictEqual(problems, []);
+});
+
+// GS-211 で行き先の決まりをイベント側へ移した。マップに残っていると、効いているつもりで効かない。
+test('マップに旧形式の MoveTo / MoveToPx が残っていない。MapMove は MAPMOVE レイヤーの中だけ', () => {
+  const maps = join(ROOT, 'public', 'mapdata');
+  const left: string[] = [];
+  for (const file of readdirSync(maps).filter((name) => name.endsWith('.json'))) {
+    const map = JSON.parse(readFileSync(join(maps, file), 'utf8')) as MapDef;
+    const entrances = new Set(readEventSpots(map).filter((spot) => spot.mapMoves.length).map((spot) => spot.objectId));
+    for (const [index, layer] of map.layers.entries()) {
+      for (const object of layer.objects ?? []) {
+        for (const property of object.properties ?? []) {
+          if (property.name === 'MoveTo' || property.name === 'MoveToPx') left.push(`${file} の「${object.name}」: ${property.name}`);
+          if (property.name === 'Direction' && object.kind !== 'point') left.push(`${file} の「${object.name}」: Direction（点の目印だけ）`);
+          if (property.name === 'MapMove' && !entrances.has(`${index}/${object.id}`))
+            left.push(`${file} の「${object.name}」: MapMove が MAPMOVE レイヤーの外`);
+        }
+      }
+    }
+  }
+  deepStrictEqual(left, []);
 });

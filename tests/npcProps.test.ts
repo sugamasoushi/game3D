@@ -96,6 +96,18 @@ test('ShowIf / HideIf。**両方書いたら両方満たすときだけ**出す'
   strictEqual(npcShown({ showIf: 'EVENT010401', hideIf: 'EVENT020101' }, on('EVENT010401', 'EVENT020101')), false);
 });
 
+// そのイベントが動けるときだけ出す（GS-195）。**条件はイベントの `when` を見る**ので、
+// ボスの出る条件を 2 つにしてもマップは直さなくてよい（0105 の enemy03 / EVENT020101）。
+test('ShowWhile は `event:<id>` を聞き、動けるときだけ出す。覚え（出た・消えた）のほうが強い', () => {
+  const on = (...keys: string[]) => (key: string) => keys.includes(key);
+  const read = readNpcs(mapOf('NPC', [{ name: 'boss', properties: [prop('Sprite', 'x.png'), prop('ShowWhile', 'EVENT020101')] }]))[0];
+  strictEqual(read.showWhile, 'EVENT020101');
+  strictEqual(npcShown(read, on()), false);
+  strictEqual(npcShown(read, on('event:EVENT020101')), true);
+  strictEqual(npcShown(read, on('event:EVENT020101', 'self:消えた')), false);
+  strictEqual(npcShown(read, on('self:出た')), true);
+});
+
 // 出入りはイベントが決める（GS-157）。**マップに `HideIf` とイベント名を書くのをやめた**ので、
 // 「キャラ自身の覚えのほうが強い」が崩れると、消したはずの人が入り直すと戻ってくる。
 test('Standby は最初から出さない。イベントの覚え（自分の `消えた` / `出た`）が一番強い（GS-157）', () => {
@@ -168,5 +180,19 @@ test('StepInPlace を付けた物は常時足踏みになる（GS-169）', () =>
   strictEqual(
     readNpcs(mapOf('SPRITE', [{ name: 'a', properties: [prop('Sprite', 'x.png'), prop('StepInPlace', true)] }]))[0].stepping,
     true,
+  );
+});
+
+// GS-191: `PixelPlace` を付けた人だけ、置いた点の位置そのままに立つ（付けない人はマスの真ん中）。
+test('`PixelPlace` を付けた人だけ pixel が立つ', () => {
+  const npcs = readNpcs(
+    mapOf('NPC', [
+      { name: 'a', properties: [prop('Npc', 'grandpa')] },
+      { name: 'b', properties: [prop('Npc', 'lamy'), { name: 'PixelPlace', type: 'boolean', value: true } as PropertyDef] },
+    ]),
+  );
+  deepStrictEqual(
+    npcs.map((npc) => Boolean(npc.pixel)),
+    [false, true],
   );
 });

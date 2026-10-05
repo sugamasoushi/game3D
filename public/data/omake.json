@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "label": "設定とか",
+      "kind": "image",
+      "files": [
+        "assets/img/Event/omake1.png"
+      ]
+    },
+    {
+      "label": "ラミィアタック",
+      "kind": "video",
+      "files": [
+        "assets/video/vidu-video-3213668993097372.mp4"
+      ]
+    },
+    {
+      "label": "イベント01",
+      "kind": "image",
+      "files": [
+        "assets/img/Event/20250603.jpg"
+      ]
+    },
+    {
+      "label": "イベント02",
+      "kind": "pages",
+      "files": [
+        "assets/img/Event/EVENT020301_1.png",
+        "assets/img/Event/EVENT020301_2.png",
+        "assets/img/Event/EVENT020301_3.png"
+      ]
+    }
+  ],
+  "manual": {
+    "icon": "assets/img/manual/manualIcon.png",
+    "pages": [
+      "assets/img/manual/manual1.png",
+      "assets/img/manual/manual2.png",
+      "assets/img/manual/manual3.png"
+    ]
+  }
+}

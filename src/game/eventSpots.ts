@@ -4,21 +4,24 @@
 // **どう始まるか**はイベント JSON が持つ（`trigger`）。役割を分けておくと、
 // マップを触らずにイベントの起動条件を変えられる。
 //
-// `MapMove` は行き先マップ名だけの近道。イベントを書かずにマップをつなげる。
+// マップ移動の入口は **MAPMOVE レイヤーの物の `MapMove`**（行き先をカンマ区切り。GS-211）。
+// 条件・立ち位置・向きはイベント JSON の `mapMoves`（`mapMoves.ts`）。
 
 import { decodeCells } from '../mep3d/decode';
 import type { MapDef, MapObjectDef, PropertyDef } from '../mep3d/types';
-import type { WalkDir } from './GameView';
+import { parseMapMoves } from './mapMoves';
 
 /**
- * 行き先での立ち位置（GS-17）。`MoveTo` の書き方 2 通りを解いたもの。
- * どちらも無ければ行き先マップの `default` に立つ。
+ * 行き先での立ち位置（GS-17）。マス（`at`）か目印の名前（`marker`）。
+ * どちらも無ければ行き先マップの `default` に立つ。決めるのはイベント JSON の `mapMoves`（GS-211）。
  */
 export interface Landing {
   /** 行き先マップに置いた点オブジェクトの名前。 */
   marker: string;
   /** 直接書いた座標（**マス。整数**）。そのマスの中央に立つ。 */
   at: { x: number; y: number; z: number } | null;
+  /** マス内のずれ（ピクセル。GS-191）。`at` のマスの真ん中から。 */
+  px?: { x: number; y?: number; z: number };
 }
 
 /** 触れたと見なす余裕（マス）。チップ 32px なら 3 画素ほど。 */
@@ -39,14 +42,15 @@ export interface EventSpot {
    * `Event` プロパティで書いたときは名前とイベント id が別になるので、別に持つ。
    */
   name: string;
-  /** 動かすイベントの id。`MapMove` の近道なら空。 */
+  /** 動かすイベントの id。マップ移動の入口なら空。 */
   event: string;
-  /** 行き先マップ（`MapMove` の近道）。 */
-  mapMove: string;
-  /** 行き先での立ち位置（`MoveTo`）。 */
-  landing: Landing;
-  /** 着いたときの向き（`Direction`）。空なら向きはそのまま。 */
-  face: WalkDir | '';
+  /**
+   * 行き先マップの並び（GS-211。MAPMOVE レイヤーの `MapMove`）。空ならマップ移動の入口ではない。
+   * どれへ行くかはイベント JSON の `mapMoves` で `moveObject` を引いて決める。
+   */
+  mapMoves: string[];
+  /** MAPMOVE レイヤーの中の物の id（`mapMoves[].object` と突き合わせる）。入口でなければ空。 */
+  moveObject: string;
   /**
    * 調べ物か（GS-55。旧作の `CLICKEVENT`）。**踏んでも起きない**——
    * 本棚や暖炉のように「そこに立てない物」なので、
@@ -100,44 +104,23 @@ const CLICK_LAYER = 'clickevent';
  * NPC の `Event` は「話しかけたとき」に動くもので、床の起動場所ではない。
  */
 const NPC_PROPERTY = 'Npc';
-/** 行き先マップを書くプロパティ名（既にマップで使われている）。 */
+/** 行き先マップを書くプロパティ名。値は `0201,0106` のようにカンマ区切り（GS-211）。 */
 const MAP_MOVE_PROPERTY = 'MapMove';
-/** 行き先での立ち位置を書くプロパティ名（GS-17）。目印の名前か `x,y,z`。 */
-const MOVE_TO_PROPERTY = 'MoveTo';
-/** 着いたときの向きを書くプロパティ名。 */
-const DIRECTION_PROPERTY = 'Direction';
-
-/** 向きの書き方はどちらでも受ける。画面基準（up…）でも、絵の行の名前（north…）でも。 */
-const FACINGS: Record<string, WalkDir> = {
-  up: 'up',
-  down: 'down',
-  left: 'left',
-  right: 'right',
-  north: 'up',
-  south: 'down',
-  west: 'left',
-  east: 'right',
-};
-
 /**
- * `MoveTo` を解く（GS-17）。
- *
- * - `入口` のような**名前**なら、行き先マップのその点オブジェクトへ
- * - `21,10,37` のような**数 3 つ**なら、そのマス（x,y,z）の**中央**へ
- * - 空なら行き先マップの `default` へ
- *
- * 数はマスの番号。**小数は書かない**（書いてもマスに丸める）——
- * 半端な位置を書けるようにすると、書く側が小数を気にすることになる。
- * 名前で書くほうを勧める。座標はマップを描き直すとずれる。
+ * マップ移動の入口を置くレイヤー名（GS-211）。**ここ（と、その下のレイヤー）の物だけが入口**。
+ * イベントエディタも同じ決まりで入口を並べる。外に `MapMove` を書いても動かない。
  */
-export function parseLanding(text: string): Landing {
-  const trimmed = text.trim();
-  if (!trimmed) return { marker: '', at: null };
-  const parts = trimmed.split(',').map((part) => part.trim());
-  if (parts.length === 3 && parts.every((part) => part !== '' && Number.isFinite(Number(part)))) {
-    return { marker: '', at: { x: Number(parts[0]), y: Number(parts[1]), z: Number(parts[2]) } };
+export const MAP_MOVE_LAYER = 'mapmove';
+
+/** そのレイヤーが MAPMOVE か、MAPMOVE グループの下にあるか。 */
+function inMapMoveLayer(map: MapDef, layer: MapDef['layers'][number]): boolean {
+  const byId = new Map(map.layers.map((one) => [one.id, one]));
+  const seen = new Set<string>();
+  for (let at: MapDef['layers'][number] | undefined = layer; at && !seen.has(at.id); at = byId.get(at.parent ?? '')) {
+    seen.add(at.id);
+    if ((at.name ?? '').trim().toLowerCase() === MAP_MOVE_LAYER) return true;
   }
-  return { marker: trimmed, at: null };
+  return false;
 }
 
 function textOf(properties: PropertyDef[] | undefined, name: string): string {
@@ -181,9 +164,8 @@ function pushCellSpots(spots: EventSpot[], layer: MapDef['layers'][number], inde
         objectId: `${index}/cell:${x},${y},${z}`,
         name,
         event,
-        mapMove: '',
-        landing: { marker: '', at: null },
-        face: '',
+        mapMoves: [],
+        moveObject: '',
         examine: true,
         item,
         owner,
@@ -248,14 +230,17 @@ export function readEventSpots(map: MapDef): EventSpot[] {
     const layerName = (layer.name ?? '').trim().toLowerCase();
     const eventLayer = layerName === EVENT_LAYER;
     const clickLayer = layerName === CLICK_LAYER;
+    const moveLayer = inMapMoveLayer(map, layer);
     for (const object of layer.objects ?? []) {
       if ((object.plane ?? 'xz') !== 'xz') continue;
       if (textOf(object.properties, NPC_PROPERTY)) continue;
       // `Event` が在ればそれ。無ければ **EVENT レイヤーの名前**（GS-19）。
       const event =
         textOf(object.properties, EVENT_PROPERTY) || (eventLayer || clickLayer ? object.name.trim() : '');
-      const mapMove = textOf(object.properties, MAP_MOVE_PROPERTY);
-      if (!event && !mapMove) continue;
+      // 点は入口にしない（着地の目印。`default` も MAPMOVE に置く）。
+      const mapMoves =
+        moveLayer && object.kind !== 'point' ? parseMapMoves(textOf(object.properties, MAP_MOVE_PROPERTY)) : [];
+      if (!event && !mapMoves.length) continue;
       const box = footprint(object);
       if (!box) continue;
       spots.push({
@@ -265,9 +250,8 @@ export function readEventSpots(map: MapDef): EventSpot[] {
         objectId: `${index}/${object.id}`,
         name: object.name.trim(),
         event,
-        mapMove,
-        landing: parseLanding(textOf(object.properties, MOVE_TO_PROPERTY)),
-        face: FACINGS[textOf(object.properties, DIRECTION_PROPERTY).toLowerCase()] ?? '',
+        mapMoves,
+        moveObject: mapMoves.length ? object.id : '',
         examine: clickLayer,
         item: textOf(object.properties, ITEM_PROPERTY),
         owner: textOf(object.properties, ID_PROPERTY),

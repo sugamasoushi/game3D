@@ -5,7 +5,7 @@
 
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseLanding, readEventSpots, spotAhead, spotUnder } from '../src/game/eventSpots';
+import { readEventSpots, spotAhead, spotUnder } from '../src/game/eventSpots';
 import type { MapDef } from '../src/mep3d/types';
 
 /** 四角のオブジェクト 1 つ。`points` はマップが持つのと同じ形（角の並び）。 */
@@ -74,14 +74,31 @@ test('Event も Id も無いタイルレイヤーは枠にならない', () => {
   deepStrictEqual(readEventSpots(map), []);
 });
 
-test('MapMove のプロパティが起動場所になる', () => {
+test('MAPMOVE レイヤーの MapMove が起動場所になる。行き先はカンマ区切り（GS-211）', () => {
   const spots = readEventSpots(
-    mapWith([{ name: 'MAPMOVE', objects: [rect('obj_1', '0102', [5, 3, 6, 4], [['MapMove', '0102'], ['Direction', 'Down']])] }]),
+    mapWith([{ name: 'MAPMOVE', objects: [rect('obj_4', '0201', [5, 3, 6, 4], [['MapMove', '0201, 0106']])] }]),
   );
   strictEqual(spots.length, 1);
-  strictEqual(spots[0].mapMove, '0102');
-  strictEqual(spots[0].face, 'down');
+  deepStrictEqual(spots[0].mapMoves, ['0201', '0106']);
+  strictEqual(spots[0].moveObject, 'obj_4');
   deepStrictEqual([spots[0].x0, spots[0].x1, spots[0].z0, spots[0].z1], [5, 6, 3, 4]);
+});
+
+test('MAPMOVE の外の MapMove は入口にしない（GS-211）', () => {
+  const spots = readEventSpots(
+    mapWith([{ name: 'オブジェクト', objects: [rect('obj_1', '0102', [5, 3, 6, 4], [['MapMove', '0102']])] }]),
+  );
+  deepStrictEqual(spots, []);
+});
+
+test('MAPMOVE グループの下のレイヤーも入口になる（GS-211）', () => {
+  const map = {
+    layers: [
+      { id: 'g', name: 'MAPMOVE', kind: 'group', parent: '' },
+      { id: 'l', name: '森側', kind: 'object', parent: 'g', objects: [rect('obj_1', '0102', [5, 3, 6, 4], [['MapMove', '0102']])] },
+    ],
+  } as unknown as MapDef;
+  deepStrictEqual(readEventSpots(map)[0]?.mapMoves, ['0102']);
 });
 
 test('EVENT レイヤーではオブジェクトの名前がそのままイベント id（GS-19）', () => {
@@ -115,15 +132,7 @@ test('体が触れたら踏んだと見なす。中心だけでは見ない（DE
   );
   // 枠の外 0.2 マス。中心だけなら外れるが、体の太さ 0.28 なら届く。
   strictEqual(spotUnder(spots, { x: 5.5, z: 2.8 }, 0), null);
-  strictEqual(spotUnder(spots, { x: 5.5, z: 2.8 }, 0.28)?.mapMove, '0102');
+  deepStrictEqual(spotUnder(spots, { x: 5.5, z: 2.8 }, 0.28)?.mapMoves, ['0102']);
   // 遠すぎるところでは拾わない。
   strictEqual(spotUnder(spots, { x: 5.5, z: 1 }, 0.28), null);
-});
-
-test('MoveTo は「数 3 つ」ならマス、それ以外は目印の名前（GS-17）', () => {
-  deepStrictEqual(parseLanding('6,10,-2'), { marker: '', at: { x: 6, y: 10, z: -2 } });
-  deepStrictEqual(parseLanding(' 入口 '), { marker: '入口', at: null });
-  deepStrictEqual(parseLanding(''), { marker: '', at: null });
-  // 数が足りなければ名前として扱う。半端な指定で黙って原点へ飛ばさない。
-  deepStrictEqual(parseLanding('6,10'), { marker: '6,10', at: null });
 });

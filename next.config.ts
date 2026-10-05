@@ -1,5 +1,5 @@
 // Next の設定。**静的書き出し**（`out/`）にしておく——これで Vercel も Electron も同じ物を配れる。
-// PWA（`@ducanh2912/next-pwa`）と Electron はここへ後から足す（GS-08）。
+// Electron は electron/main.mjs から同じ out/ を配信する。
 
 import type { NextConfig } from 'next';
 

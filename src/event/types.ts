@@ -43,6 +43,21 @@ export interface TalkLine {
  */
 export type TalkStyle = 'window' | 'bubble';
 
+/** 条件命令（`if`）の条件 1 つ。フラグ／セルフフラグ／変数／持ち物／所持金のどれか。 */
+export type IfCondition =
+  // フラグは**実行可能かどうか**（GS-147）。`is` を省くと「立っている（まだ動ける）とき」。
+  // 済んだかどうかで分けたいときは `is: false` と書く。
+  | { switch: string; is?: boolean }
+  | { self: string; is?: boolean }
+  | { variable: string; op: '==' | '!=' | '>=' | '<=' | '>' | '<'; value: number }
+  /** 持ち物（GS-46）。`count` 個**以上**持っているか。省略は 1。 */
+  | { item: string; count?: number }
+  /** 所持金（GS-65）。その額**以上**持っているか。 */
+  | { gold: number };
+
+/** 条件命令の 1 つの枝の条件（GS-197）。1 つか、並び（**全部満たしたら当たり**＝`&&`）。 */
+export type IfWhen = IfCondition | IfCondition[];
+
 export type EventCommand =
   /**
    * 会話。`face` は表情キー（`characterdata` の `normal` / `smile` …）。
@@ -137,7 +152,7 @@ export type EventCommand =
    * 軸ごとに **`"player"`** と書くと**主人公と同じ座標**に合わせる（GS-154）。
    * 旧作の `setPosition(player.x, 902)`（横は主人公に合わせ、奥行きは決め打ち）がこれに当たる。
    */
-  | { type: 'place'; target: ActorRef; at: PlaceAt; face?: Step }
+  | { type: 'place'; target: ActorRef; at: PlaceAt; face?: Step; px?: PixelOffset }
   /**
    * その場でジャンプ（GS-184）。**進まない**——絵だけ跳ねて着地する。怒る・喜ぶ・驚く。
    * `times` 回（省くと 3）、1 回 `ms`（省くと 200）、高さ `height` マス（省くと 0.5）。
@@ -228,6 +243,11 @@ export type EventCommand =
       x?: number;
       /** 高さのずれ（画面の高さに対する％。上が＋。GS-170）。 */
       y?: number;
+      /**
+       * 入りのアニメ（滑り込み・場面絵の現れ）が終わるまで待つか（GS-198）。既定は待つ。
+       * 絵は読み込みが済んでから出す。同じ名前の差し替え（表情替え）は動かないので待たない。
+       */
+      wait?: boolean;
     }
   /**
    * 出ているキャライラストに効果をかける（GS-143）。**`id` で 1 枚を指す**。
@@ -263,24 +283,30 @@ export type EventCommand =
    * 「この宝箱は開けた」をマップごとの通しスイッチにすると、置くたびに名前を考えることになる。
    */
   | { type: 'setSelfSwitch'; key: string; value: boolean }
-  /** 条件分岐。`switch` か `variable` のどちらかを見る。 */
+  /**
+   * 条件分岐。プログラムの `if` / `else if` / `else` と同じ（GS-196）。
+   * `when` → `then` を見て、外れたら `elif` を上から順に、どれにも当たらなければ `else`。
+   * `when` は条件 1 つか、**並び（全部満たしたら当たり＝`&&`。GS-197）**。
+   */
   | {
       type: 'if';
-      when:
-        // フラグは**実行可能かどうか**（GS-147）。`is` を省くと「立っている（まだ動ける）とき」。
-        // 済んだかどうかで分けたいときは `is: false` と書く。
-        | { switch: string; is?: boolean }
-        | { self: string; is?: boolean }
-        | { variable: string; op: '==' | '!=' | '>=' | '<=' | '>' | '<'; value: number }
-        /** 持ち物（GS-46）。`count` 個**以上**持っているか。省略は 1。 */
-        | { item: string; count?: number }
-        /** 所持金（GS-65）。その額**以上**持っているか。 */
-        | { gold: number };
+      when: IfWhen;
       then: EventCommand[];
+      /** 2 つ目以降の条件（GS-196。`else if`）。上から順に見て、最初に当たった枝だけ動く。 */
+      elif?: Array<{ when: IfWhen; then: EventCommand[] }>;
+      /** どれにも当たらなかったとき（上記以外）。 */
       else?: EventCommand[];
     }
   /** マップ移動。`at` はマス（整数）。そのマスの中央に立つ。 */
-  | { type: 'transfer'; map: string; at: { x: number; y: number; z: number }; face?: Step; fade?: boolean }
+  | {
+      type: 'transfer';
+      map: string;
+      at: { x: number; y: number; z: number };
+      face?: Step;
+      fade?: boolean;
+      /** マス内のずれ（ピクセル。GS-191）。そのマスの真ん中から。`x` は右（東）、`z` は下（南）が＋。 */
+      px?: PixelOffset;
+    }
   /**
    * 流れる文字（GS-23）。画面を暗くして、下から上へ流す。旧作のオープニングと同じ。
    * 決定キーかクリックで飛ばせる。
@@ -467,14 +493,51 @@ export type PlaceAxis = number | 'player';
  * 置き直す先（GS-154）。数はマス、**`"player"` は主人公と同じ**。
  * 「主人公の目の前」は `{ x: 'player', y: 'player', z: 7 }` のように軸ごとに混ぜて書く。
  */
+/**
+ * マス内のずれ（ピクセル。GS-191）。**そのマスの真ん中から**数える。`x` は右（東）、`z` は下（南）が＋。
+ * 1 ピクセルは 1/タイルの大きさ マス（32px のチップなら 1/32）。書かなければ今までどおりマスの真ん中。
+ *
+ * `y`（GS-192）は**立つ床を探す高さ**のずれ。＋にすると、そのぶん高い所にある床（段差・台の上）にも
+ * 立てる。床の上に浮かせる物ではない（立つのは探した高さ以下で一番高い床）。
+ */
+export interface PixelOffset {
+  x: number;
+  y?: number;
+  z: number;
+}
+
 export interface PlaceAt {
   x: PlaceAxis;
   y: PlaceAxis;
   z: PlaceAxis;
 }
 
+/**
+ * マップ移動の行き先 1 つの決まり（GS-211）。行き先は `MapMove` のどれか。
+ * 立ち位置は `at`（マス）か `marker`（行き先マップの点の名前）。どちらも無ければ `default`。
+ */
+export interface MapMoveTo {
+  map: string;
+  /** この行き先へ行く条件。`MapMove` の最後の行き先では見ない（上記以外）。 */
+  when?: IfWhen;
+  at?: { x: number; y: number; z: number };
+  marker?: string;
+  /** マス内のずれ（ピクセル。GS-191）。 */
+  px?: PixelOffset;
+  face?: Step;
+}
+
+/** 入口 1 つ（MAPMOVE レイヤーの物）の行き先の決まり（GS-211）。 */
+export interface MapMoveDef {
+  /** MAPMOVE レイヤーの中の物の id（`obj_4` など）。 */
+  object: string;
+  to: MapMoveTo[];
+}
+
 /** マップ 1 枚ぶんのイベント（`data/events/<マップ名>.json`）。 */
 export interface EventFile {
   map: string;
   events: EventDef[];
+  /** マップ移動の行き先の決まり（GS-211）。 */
+  mapMoves?: MapMoveDef[];
 }

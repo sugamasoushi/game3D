@@ -49962,16 +49962,6 @@
           "collision": false,
           "properties": [
             {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "6,10,-1"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Down"
-            },
-            {
               "name": "MapMove",
               "type": "string",
               "value": "0102"

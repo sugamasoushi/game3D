@@ -2,31 +2,60 @@
   "name": "samplegame",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.mjs",
   "description": "旧作の作り直し。マップは 3D Map Editor が書いた JSON、描画は src/mep3d/（手写し）。",
   "scripts": {
     "dev": "next dev --turbopack -p 5928",
     "build": "next build --turbopack",
+    "build:production": "node tools/buildProduction.mjs",
     "start": "next start -p 5928",
     "typecheck": "tsc --noEmit",
     "sync:maps": "node tools/syncMaps.mjs",
     "check:assets": "node tools/checkAssets.mjs",
     "index:files": "node tools/fileIndex.mjs",
-    "test": "node tests/run.mjs"
+    "test": "node tests/run.mjs",
+    "electron:dev": "electron .",
+    "electron:build": "npm run build:production && electron-builder --win portable --x64",
+    "electron:pack": "npm run build:production && electron-builder --win --x64 --dir"
+  },
+  "build": {
+    "appId": "com.mapeditor3d.samplegame",
+    "productName": "SampleGame",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "electron/**/*",
+      "package.json",
+      "!node_modules/**/*",
+      "node_modules/electron-serve/**/*"
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    }
   },
   "dependencies": {
-    "@fontsource/noto-sans-jp": "^5.3.0",
-    "next": "^15.5.20",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "three": "^0.169.0",
-    "zustand": "^5.0.15"
+    "electron-serve": "^3.0.1"
   },
   "devDependencies": {
+    "@fontsource/noto-sans-jp": "^5.3.0",
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@types/three": "^0.169.0",
+    "electron": "^40.10.2",
+    "electron-builder": "26.0.12",
+    "next": "^15.5.20",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.169.0",
     "tsx": "^4.23.12",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "zustand": "^5.0.15"
   }
 }

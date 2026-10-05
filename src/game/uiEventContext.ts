@@ -4,7 +4,7 @@
 // 黙って無視せず、印を出して分かるようにしておく（`todo()`）。
 
 import type { EventContext } from '../event/interpreter';
-import type { ActorRef, PlaceAt, PlaceAxis, Step } from '../event/types';
+import type { ActorRef, EventCommand, PixelOffset, PlaceAt, PlaceAxis, Step } from '../event/types';
 import type { GameView, WalkDir } from './GameView';
 import { selfKey, switchOn, type GameState } from './state';
 import { NPC_CAME, NPC_GONE } from './npcs';
@@ -14,10 +14,12 @@ import { itemName, knownItem } from './items';
 import { joinParty, leaveParty, memberStats } from './battle/party';
 import { applyUse } from './battle/heal';
 import { assetUrl } from './assets';
+import { nextPaint, preloadImages, readyImages } from './preload';
 import { closeComic, openComic, readComic, turnComic } from '../ui/comic';
 import { playBgm, playSe, stopBgm } from './audio';
 import { PORTRAIT_MS, useUi } from '../ui/store';
 import { PLAYER_CHARACTER, type CharacterBook } from './characters';
+import { CLEAR_SWITCH, markCleared } from './omake';
 
 /** 立ち絵の置き場所（GS-20）。絵は `assets/img/CharaStand/<名前>.png`。 */
 const STAND_DIR = 'assets/img/CharaStand';
@@ -64,7 +66,13 @@ export interface EventBridgeOptions {
   /** 遊んだ記録（GS-27）。スイッチ・変数・セルフスイッチはここに入る。 */
   state: GameState;
   /** マップ移動。マップの読み直しと着地の解き方は画面側が持つ（GS-14 / GS-17）。 */
-  transfer(map: string, at: { x: number; y: number; z: number } | null, face?: WalkDir, fade?: boolean): Promise<void>;
+  transfer(
+    map: string,
+    at: { x: number; y: number; z: number } | null,
+    face?: WalkDir,
+    fade?: boolean,
+    px?: PixelOffset,
+  ): Promise<void>;
   /**
    * 戦闘を始めて、決着が付くまで待つ（GS-60）。画面（`BattleView`）を出すのは
    * 呼ぶ側の仕事——ここは「始めてくれ」と言うだけ。
@@ -97,6 +105,14 @@ const RUN_SPEED = 6;
  */
 function solveAxis(value: PlaceAxis, from: number | undefined): number {
   return value === 'player' ? (from ?? 0) : value;
+}
+
+/**
+ * 「プレイヤーと同じ」と書いた軸（GS-193）。置き直しでは**その軸をマスの真ん中へ寄せない**——
+ * プレイヤーの位置そのままに置く（旧作と同じ。寄せると半マスずれて見える）。
+ */
+function keptAxes(at: PlaceAt): { x: boolean; z: boolean } {
+  return { x: at.x === 'player', z: at.z === 'player' };
 }
 
 /** 行き先 3 軸ぶん。`place` と `move`（`routeTo`）で同じ解き方を通す。 */
@@ -208,6 +224,29 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
   };
 
   /**
+   * キャライラストの絵の URL と持ち主（GS-198 で `portrait` から切り出した）。
+   * 出すときと、イベントの頭で先に読んでおくとき（`prepare`）で同じ引き方を通す。
+   * 絵が決まらなければ null。
+   */
+  const portraitArt = (spec: { slot: string; who?: string; face?: string; image?: string }): { url: string; owner?: string } | null => {
+    // イベントイラスト（GS-161）は別の置き場から、**名前そのまま**（拡張子つき）で出す。
+    const src = (file: string) =>
+      spec.slot === 'scene' ? assetUrl(`${EVENT_ART_DIR}/${file}`) : assetUrl(`${STAND_DIR}/${file}.png`);
+    // フリーイラスト（GS-142）。**台帳を引かない**——人に結び付かない一枚絵を名前で直に出す。
+    // 名前を間違えても絵が出ないだけなので、届かなかったことは画面側（`img` の読み込み）に任せる。
+    if (spec.image) return { url: src(spec.image) };
+    if (!spec.who) return null;
+    const book = bookOf(spec.who);
+    // 表情は `characterdata.json` のキー（normal / smile / unger）。
+    // **空欄は「その表情は無い」**ので、既定の顔へ落とす——絵が消えるより分かりやすい。
+    const picked = spec.face ? book?.[spec.face] : undefined;
+    // 表情を書かなければ会話用（`talk`）→ 立ち絵（`normal`）の順に落とす。
+    const fallback = DEFAULT_FACES.map((key) => book?.[key]).find((value) => typeof value === 'string' && value);
+    const name = typeof picked === 'string' && picked ? picked : ((fallback as string) ?? '');
+    return name ? { url: src(name), owner: spec.who } : null;
+  };
+
+  /**
    * 吹き出しを誰の頭の上に出すか（GS-23）。
    * 主人公が喋っていればプレイヤー、それ以外は**話しかけた相手**。
    * 話し相手が分からない場面（踏む・入ったら動くイベント）は吹き出しにできないので、
@@ -215,15 +254,30 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
    */
   const bubbleAnchor = (who?: string): string => {
     if (who === PLAYER_CHARACTER) return 'player';
+    // 隊列の仲間（GS-201）。先頭ならプレイヤー、付いて歩いていればその仲間の上。
+    // 以前は仲間の声も**話しかけた相手の上**に出ていた（0103 の woman0001 で lamy）。
+    if (who) {
+      const role = options.getView()?.partyRole(who);
+      if (role === 'leader') return 'player';
+      if (role === 'follower') return `follower:${who}`;
+    }
     return self || '';
   };
 
   /** 1 メッセージ出して、読み終わるまで待つ。 */
-  const showTalk = (name: string, lines: string[], bubble?: string, icon?: string, who?: string, hold?: number) =>
+  const showTalk = (
+    name: string,
+    lines: string[],
+    bubble?: string,
+    icon?: string,
+    who?: string,
+    hold?: number,
+    pair?: string,
+  ) =>
     new Promise<void>((resolve) => {
       // **誰の声かも渡す**（GS-170）。画面側が、その人の立ち絵を手前に出して明るく保つ。
       // `hold` は押さずに送る時間（GS-172）。数えるのは画面側——**文字が出そろってから**。
-      ui().setTalk({ name, lines, bubble, icon, who, hold });
+      ui().setTalk({ name, lines, bubble, icon, who, hold, pair });
       waiter = {
         advance() {
           waiter = null;
@@ -236,17 +290,55 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     });
 
   const ctx: EventContext = {
+    /**
+     * イベントの頭で、使う絵を**裏で**読み始める（GS-198）。待たない——
+     * 出す命令（`portrait` / `comic` / 吹き出し）がそれぞれ待つので、ここは先回りするだけ。
+     * 分岐の中まで拾うため、命令の形を問わず中を全部たどる。
+     */
+    prepare(commands: EventCommand[]) {
+      const urls: string[] = [];
+      const visit = (value: unknown): void => {
+        if (Array.isArray(value)) {
+          value.forEach(visit);
+          return;
+        }
+        if (!value || typeof value !== 'object') return;
+        const cmd = value as Record<string, unknown>;
+        if (cmd.type === 'portrait' && cmd.hide !== true) {
+          const art = portraitArt(cmd as { slot: string; who?: string; face?: string; image?: string });
+          if (art) urls.push(art.url);
+        }
+        if (cmd.type === 'comic' && Array.isArray(cmd.images)) {
+          for (const file of cmd.images) if (typeof file === 'string') urls.push(assetUrl(`${EVENT_ART_DIR}/${file}`));
+        }
+        if (cmd.type === 'message' && cmd.style === 'bubble' && Array.isArray(cmd.talk)) {
+          for (const line of cmd.talk as { who?: string }[]) {
+            const icon = iconOf(line?.who);
+            if (icon) urls.push(icon);
+          }
+        }
+        Object.values(cmd).forEach(visit);
+      };
+      visit(commands);
+      if (urls.length) void preloadImages(urls).catch((error) => console.warn('[preload]', error));
+    },
+
     async message(talk, _face, style, hold) {
       for (const line of talk) {
         // 吹き出しは喋る人の頭の上（GS-23）。相手が分からなければウィンドウで出す。
         const anchor = style === 'bubble' ? bubbleAnchor(line.who) : '';
+        const icon = anchor ? iconOf(line.who) : undefined;
+        // 顔アイコンが描ける状態になってから吹き出しを出す（GS-198）。
+        if (icon) await readyImages([icon]);
         await showTalk(
           nameOf(line.who),
           line.lines.map(fill),
           anchor || undefined,
-          anchor ? iconOf(line.who) : undefined,
+          icon,
           line.who,
           hold,
+          // 話し相手（GS-200）。こちら側（主人公・仲間）なら話しかけた相手、相手なら主人公。
+          anchor ? (anchor === self ? 'player' : self || undefined) : undefined,
         );
       }
       ui().setTalk(null);
@@ -339,14 +431,14 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
      * カメラの追い先も一緒に移すので（`placePlayer`）、置いた先から滑ってこない。
      * 別のマップへ移すのは今までどおり `transfer` の仕事。
      */
-    place(target, at, face) {
+    place(target, at, face, px) {
       const view = options.getView();
       if (!view) return;
       const party = partyOf(target);
       if (party?.role === 'follower') {
         // 仲間はイベントが終わるまでその場に留まる（GS-184）。軸の `"player"` は主人公と同じ座標。
         const spot = solveAt(at, view.playerAt());
-        view.placeFollower(party.id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined);
+        view.placeFollower(party.id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined, px, keptAxes(at));
         return;
       }
       if (party?.role === 'absent') {
@@ -364,7 +456,7 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
         // 軸の `"player"` は**その軸は動かさない**（GS-154。`move` と同じ読み方）。
         const to = solveAt(at, view.playerAt());
         // 画面を止めたまま置きたいときは、手前で「カメラ追従」を切っておく（GS-166）。
-        view.placePlayer(to.x, to.y, to.z);
+        view.placePlayer(to.x, to.y, to.z, px, keptAxes(at));
         if (face) view.face(DIR[face]);
         return;
       }
@@ -373,7 +465,7 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       // ただの置き直し（出番前に道の奥へ寄せる、など）では何も覚えない——
       // 覚えてしまうと、条件で隠しているはずの人がその先ずっと立ち続ける。
       const came = !view.hasNpc(id);
-      view.placeNpc(id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined);
+      view.placeNpc(id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined, px, keptAxes(at));
       if (came && view.hasNpc(id)) rememberNpc(id, false);
     },
 
@@ -382,6 +474,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
      */
     async comic(op, images, ms, se) {
       const pages = images.map((file) => assetUrl(`${EVENT_ART_DIR}/${file}`));
+      // 開く前に絵を読んでおく（GS-198）。滑り込む途中で絵が付くのを防ぐ。
+      if (op === 'read' || op === 'open') await readyImages(pages);
       if (op === 'read') return readComic(pages, ms, se);
       if (op === 'open') return openComic(pages, ms, se, false);
       if (op === 'next') return turnComic(1);
@@ -520,44 +614,38 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     },
 
     async portrait(spec) {
-      const { slot, who, face, image, from, flip, ms, x, y } = spec;
+      const { slot, who, image, from, flip, ms, x, y } = spec;
       // このイベントの中での名前（GS-143）。付けなければ**画面位置がそのまま名前**になるので、
       // 今までの書き方（左の絵・右の絵）はそのまま通る。
       const id = spec.id || slot;
+      // 名前が無ければその絵を引っ込める（`hide` もここへ来る）。
+      if (!image && !who) {
+        ui().hidePortrait(id, spec.instant ? 'none' : undefined);
+        return;
+      }
+      const art = portraitArt(spec);
+      if (!art) {
+        todo(`キャライラスト（${who} / ${spec.face ?? '既定'}）——${who} の絵が characterdata.json に無い`);
+        return;
+      }
       // 入り方。書かなければ**置いた側から**滑り込む（左の絵は左から）。
       // `instant` は昔の書き方——滑らせない、と同じ意味。
       // イベントイラストは滑り込ませない（GS-161）。画面いっぱいの絵が横から入ると落ち着かない。
       const side = spec.instant || slot === 'scene' ? 'none' : (from ?? (slot === 'right' ? 'right' : 'left'));
-      // イベントイラスト（GS-161）は別の置き場から、**名前そのまま**（拡張子つき）で出す。
-      const src = (file: string) =>
-        slot === 'scene' ? assetUrl(`${EVENT_ART_DIR}/${file}`) : assetUrl(`${STAND_DIR}/${file}.png`);
+      // 入りのアニメが走るのは**新しく出す絵だけ**（GS-198）。同じ名前の差し替え（表情替え）は
+      // 走り直さない（`store.ts`）。出ていく途中の絵を差し替えたときは入り直す。
+      const entering = !ui().portraits.some((entry) => entry.id === id && !entry.out);
+      // **絵が描ける状態になってから出す**（GS-198）。読み込み途中で出すと、
+      // 空の枠が滑り込んで後から絵が付く・せりふが先に流れる。
+      await readyImages([art.url]);
       // `who` も渡す（GS-170）。**誰の絵か**が分かると、喋っている人を手前に出して
       // ほかの人を少し暗くできる。フリーイラスト（`image`）には付けない——喋らないので。
-      const show = (file: string, owner?: string) =>
-        ui().showPortrait({ id, slot, who: owner, src: src(file), from: side, flip, ms, x, y });
-      // フリーイラスト（GS-142）。**台帳を引かない**——人に結び付かない一枚絵を名前で直に出す。
-      // 名前を間違えても絵が出ないだけなので、届かなかったことは画面側（`img` の読み込み）に任せる。
-      if (image) {
-        show(image);
-        return;
-      }
-      // 名前が無ければその絵を引っ込める（`hide` もここへ来る）。
-      if (!who) {
-        ui().hidePortrait(id, spec.instant ? 'none' : undefined);
-        return;
-      }
-      const book = bookOf(who);
-      // 表情は `characterdata.json` のキー（normal / smile / unger）。
-      // **空欄は「その表情は無い」**ので、既定の顔へ落とす——絵が消えるより分かりやすい。
-      const picked = face ? book?.[face] : undefined;
-      // 表情を書かなければ会話用（`talk`）→ 立ち絵（`normal`）の順に落とす。
-      const fallback = DEFAULT_FACES.map((key) => book?.[key]).find((value) => typeof value === 'string' && value);
-      const name = typeof picked === 'string' && picked ? picked : ((fallback as string) ?? '');
-      if (!name) {
-        todo(`キャライラスト（${who} / ${face ?? '既定'}）——${who} の絵が characterdata.json に無い`);
-        return;
-      }
-      show(name, who);
+      ui().showPortrait({ id, slot, who: art.owner, src: art.url, from: side, flip, ms, x, y });
+      await nextPaint();
+      // 入りのアニメが終わるまで待つ（GS-198）。待たないと、滑り込む途中でせりふが出る。
+      // 場面絵は滑らせないが淡く現れる（CSS の `scene-art-in`）ので、そちらも待つ。
+      const moves = side !== 'none' || slot === 'scene';
+      if (entering && moves && spec.wait !== false) await sleep(ms ?? PORTRAIT_MS);
     },
 
     /**
@@ -591,8 +679,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
 
     wait: (ms) => sleep(ms),
 
-    async transfer(map, at, face, fade) {
-      await options.transfer(map, at, face && DIR[face], fade);
+    async transfer(map, at, face, fade, px) {
+      await options.transfer(map, at, face && DIR[face], fade, px);
     },
 
     // 音は台帳（`sounds.json`）を引く（GS-21）。知らない名前は `audio.ts` が印を出す。
@@ -604,6 +692,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     getSwitch: (key) => switchOn(options.state, key),
     setSwitch: (key, value) => {
       options.state.switches.set(key, value);
+      // クリアは端末に覚える（GS-212）。クリアのイベントはこの後すぐタイトルへ戻り、枠には書かれない。
+      if (key === CLEAR_SWITCH && value) markCleared();
       options.onSwitch?.();
     },
     // セルフスイッチは**そのイベントの覚え**（GS-27）。宛先が無いときは false のまま。

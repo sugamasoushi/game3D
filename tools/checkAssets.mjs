@@ -21,6 +21,8 @@ const CHARACTERS = join(PUBLIC, 'data', 'characterdata.json');
 const SOUNDS = join(PUBLIC, 'data', 'sounds.json');
 /** オープニングの絵（GS-126）。**抜けても黙って何も出ないだけ**なので、ここで見る。 */
 const OPENING = join(PUBLIC, 'data', 'opening.json');
+/** おまけの絵・動画（GS-212）。 */
+const OMAKE = join(PUBLIC, 'data', 'omake.json');
 /** 敵の立ち絵（GS-60）。人と同じ棚（CharaStand）に居る。 */
 const ENEMIES = join(PUBLIC, 'data', 'enemies.json');
 /** 文字（GS-20）。無いと黙って別のフォントで出る。 */
@@ -198,6 +200,28 @@ if (existsSync(OPENING)) {
     for (const line of gone) console.log(`    ${line}`);
   } else {
     console.log(`✓ data/opening.json  (${cuts.length} 場面・絵 ${shown} 枚)`);
+  }
+}
+
+if (existsSync(OMAKE)) {
+  const omake = JSON.parse(readFileSync(OMAKE, 'utf8'));
+  // マニュアル（GS-213）も同じ台帳に居る。
+  const items = [...(omake.items ?? []), ...(omake.manual ? [{ label: 'マニュアル', files: [omake.manual.icon, ...(omake.manual.pages ?? [])] }] : [])];
+  const gone = [];
+  let shown = 0;
+  for (const item of items) {
+    for (const src of item.files ?? []) {
+      shown += 1;
+      if (!existsSync(publicPath(src))) gone.push(`${item.label}: ${src}`);
+    }
+  }
+  checked += shown;
+  if (gone.length) {
+    missing += gone.length;
+    console.log('✗ data/omake.json');
+    for (const line of gone) console.log(`    ${line}`);
+  } else {
+    console.log(`✓ data/omake.json  (${items.length} 項目・${shown} 個)`);
   }
 }
 

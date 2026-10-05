@@ -35,7 +35,7 @@ import { createWalkAilments } from '../game/battle/walkAilment';
 import { ailmentDef } from '../game/battle/book';
 import { equipItem, memberStats, unequipItem } from '../game/battle/party';
 import { applyUse, healLine, wouldHelp } from '../game/battle/heal';
-import { itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
+import { itemList, itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
 import { ShopScreen } from './shop/ShopScreen';
 import { BattleView, type BattleStage } from './battle/BattleView';
 import * as audio from '../game/audio';
@@ -43,12 +43,13 @@ import * as gameOptions from '../game/options';
 import { applyMapSound, loadSoundBook, unlockAudio } from '../game/audio';
 import { createEventBridge, type EventBridge } from '../game/uiEventContext';
 import { readEventSpots, spotAhead, spotUnder, type EventSpot, type Landing } from '../game/eventSpots';
-import { readNpcs, npcShown, type NpcDef } from '../game/npcs';
+import { pickMapMove } from '../game/mapMoves';
+import { EVENT_READY_PREFIX, readNpcs, npcShown, type NpcDef } from '../game/npcs';
 import { chestEventDef, chestEventOf, chestOf, drawChest, loadChestBook } from '../game/chests';
 import { openedLayerShown, readOpenedLayers, type OpenedLayer } from '../game/openedLayers';
 import { applyChestVisit, forgetRespawnChests, rollChestVisit, type ChestVisit } from '../game/chestVisit';
-import { canRun, runCommands, ReturnToTitle } from '../event/interpreter';
-import type { EventCommand, EventDef, EventFile } from '../event/types';
+import { canRun, meets, runCommands, ReturnToTitle } from '../event/interpreter';
+import type { EventCommand, EventDef, EventFile, MapMoveDef } from '../event/types';
 import type { MapDef } from '../mep3d/types';
 import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
@@ -87,17 +88,14 @@ const painted = () =>
   new Promise<void>((done) => {
     window.requestAnimationFrame(() => window.requestAnimationFrame(() => done()));
   });
-/**
- * 敵シンボルに触ったと見なす距離（マス。GS-76）。
- * 話しかけの届く範囲（1.4）より**少し短く**——すれ違いで戦闘が始まらないように。
- */
-const SYMBOL_REACH = 0.9;
 /** 歩いているあいだの毒の札を出しておく時間（ミリ秒。GS-71）。 */
 const WALK_NOTE_MS = 2200;
 /** 戦いの曲（GS-62）。`data/sounds.json` のキー。 */
 // 戦闘の曲は戦闘共通の台帳（`battleSettings.json`。GS-106）が持つ。
 /** デバッグの戦闘（GS-91）。味方が選択人数に足りなければこの順に足す。敵は 3 体。 */
 const DEBUG_PARTY = ['meina', 'lamy', 'grandpa'];
+/** デバッグの「アイテム」（GS-210）で 1 回に足す数。台帳の持ち物それぞれに。 */
+const DEBUG_ITEM_COUNT = 2;
 const DEBUG_ENEMIES = ['enemy02', 'enemy00', 'enemy01'];
 /** ゲームオーバーで黒くなるまで（ミリ秒）。**ゆっくり**——負けたことを飲み込む間を置く。 */
 const GAME_OVER_FADE_MS = 1600;
@@ -121,6 +119,12 @@ export default function GameCanvas() {
   const phase = useUi((s) => s.phase);
   /** めくる絵を読ませている最中（GS-188）。仮想パッドを隠す。 */
   const comicReading = useComic((s) => Boolean(s.comic?.reading && !s.comic.closing));
+  /** 仮想パッドを出すか（GS-214）。設定を変えたその場で効かせる。 */
+  const [padShown, setPadShown] = useState(false);
+  useEffect(() => {
+    setPadShown(gameOptions.virtualPadShown());
+    return gameOptions.onOptionsChanged(() => setPadShown(gameOptions.virtualPadShown()));
+  }, []);
   const menu = useUi((s) => s.menu);
   /** イベントの最中か。デバッグの戦闘ボタンはこのあいだ出さない（GS-91）。 */
   const uiBusy = useUi((s) => s.busy);
@@ -439,11 +443,51 @@ export default function GameCanvas() {
    */
   const chestVisitRef = useRef<{ name: string; visit: ChestVisit }>({ name: '', visit: { removed: new Set(), absent: new Set() } });
   /**
+   * いま組んでいる（組み終えた）マップのイベント（GS-195）。**3D 側がマップを組む前に読んでおく**——
+   * `ShowWhile` の NPC を出すかは組むときに聞かれるが、`adopt`（`eventsRef`）はその後に動く。
+   */
+  const eventBookRef = useRef<{ file: string; events: EventFile | null }>({ file: '', events: null });
+  /** そのマップのイベントを読む。無いマップは台帳で分かるので取りに行かない（DEC-374）。 */
+  const fetchEvents = async (file: string): Promise<EventFile | null> => {
+    const name = mapKey(file);
+    const index = await loadFileIndex();
+    if (!index.hasEvents(name)) return null;
+    return fetch(assetUrl(`data/events/${name}.json`))
+      .then((response) => (response.ok ? (response.json() as Promise<EventFile>) : null))
+      .catch(() => null);
+  };
+  /** マップを組む前に呼ぶ（GS-195）。 */
+  const readEventsAhead = async (file: string) => {
+    eventBookRef.current = { file, events: await fetchEvents(file) };
+  };
+  /**
+   * そのイベントが動けるか（GS-195）。`canRun` と同じ読み方だが、**いま動いているイベントの宛先を変えない**
+   * ——`runnableRef` は `setScene` を書き換えるので、イベントの途中（スイッチが変わった直後の見直し）で呼べない。
+   * セルフスイッチはそのイベント自身の覚え。イベントが見つからなければ出さない。
+   */
+  const eventReady = (id: string): boolean => {
+    const book = eventBookRef.current;
+    const event = book.events?.events.find((entry) => entry.id === id);
+    if (!event) {
+      console.warn(`[npc] ShowWhile のイベントが無い: ${id}（${book.file || 'マップ未読込'}）`);
+      return false;
+    }
+    return (event.when ?? []).every((cond) => {
+      const now =
+        cond.self !== undefined
+          ? (stateRef.current.self.get(selfKey(mapKey(book.file), event.id, cond.self)) ?? false)
+          : switchOn(stateRef.current, cond.switch ?? '');
+      return now === (cond.is ?? true);
+    });
+  };
+  /**
    * スイッチを聞く口。3D 側（`GameView`）にも同じ物を渡す。
    * **`self:` で始めると「その物自身の覚え」**（GS-134）——同じイベントを何個の宝箱で使っても、
    * 開けた覚えは物ごとに分かれる。頭が無ければ今までどおり通しのスイッチ。
    */
   const switchOnRef = useRef((key: string, owner?: string) => {
+    // `event:<id>` は**そのイベントが動けるか**（GS-195。NPC の `ShowWhile`）。
+    if (key.startsWith(EVENT_READY_PREFIX)) return eventReady(key.slice(EVENT_READY_PREFIX.length));
     // 通しのフラグは**書いていなければ「まだ動ける」**（GS-147）。
     if (!key.startsWith('self:')) return switchOn(stateRef.current, key);
     if (!owner) return false;
@@ -510,6 +554,9 @@ export default function GameCanvas() {
         out.push({
           ...command,
           then: quietCommands(command.then, dropped),
+          ...(command.elif
+            ? { elif: command.elif.map((arm) => ({ ...arm, then: quietCommands(arm.then, dropped) })) }
+            : {}),
           ...(command.else ? { else: quietCommands(command.else, dropped) } : {}),
         });
         continue;
@@ -576,12 +623,13 @@ export default function GameCanvas() {
       // 行き先は番号（`0102`）でもファイル名でも書ける。台帳で引き当てる。
       const entry = await mapEntryOf(map);
       const file = entry.file;
+      await readEventsAhead(file);
       await view.load(file);
       // そのマップの曲と環境音（GS-21）。同じ曲なら切れずに続く。
       applyMapSound(entry);
       // 着地。座標が書いてあればそこ、目印の名前ならその点、どちらも無ければマップの `default`。
-      if (landing.at) view.placePlayer(landing.at.x, landing.at.y, landing.at.z);
-      else if (landing.marker) view.placeAtMarker(landing.marker);
+      if (landing.at) view.placePlayer(landing.at.x, landing.at.y, landing.at.z, landing.px);
+      else if (landing.marker) view.placeAtMarker(landing.marker, landing.px);
       if (face) view.face(face);
       await adoptRef.current(file);
       if (fade) await view.waitForRenderedFrame();
@@ -656,25 +704,22 @@ export default function GameCanvas() {
   const adopt = useCallback(
     async (file: string) => {
       mapRef.current = file;
-      const name = mapKey(file);
       // 戦闘の背景は台帳から（GS-79）。台帳は 1 回読んで使い回すので、ここは待っても速い。
       battleFieldRef.current = (await entryForFile(file))?.battleField ?? 'hill';
       // イベントの有無は**台帳で決める**（DEC-374）。無いマップを取りに行かない。
-      const index = await loadFileIndex();
+      // 組む前に読んであればそれを使う（GS-195）。読み直すと、組んだ時と条件の元がずれる。
+      const ahead = eventBookRef.current.file === file ? eventBookRef.current.events : undefined;
       const [rawMap, events] = await Promise.all([
         fetch(mapUrl(file)).then((response) => response.json() as Promise<MapDef>),
-        index.hasEvents(name)
-          ? fetch(assetUrl(`data/events/${name}.json`))
-              .then((response) => (response.ok ? (response.json() as Promise<EventFile>) : null))
-              .catch(() => null)
-          : null,
+        ahead !== undefined ? ahead : fetchEvents(file),
       ]);
+      eventBookRef.current = { file, events };
       // 入ったときに決めた宝箱（GS-180）と同じマップを見る。出なかった宝箱の調べる枠を作らない。
       const visit = chestVisitRef.current;
       const map = visit.name === file ? applyChestVisit(rawMap, visit.visit) : rawMap;
       spotsRef.current = readEventSpots(map);
       // **着いた先が入口の上でも、そこからは動かさない**（DEC-247）。
-      // 行き先の `MoveTo` が入口の枠に重なっていると、着いた瞬間にまた飛んで
+      // 着いた立ち位置（イベント JSON の `mapMoves`。GS-211）が入口の枠に重なっていると、着いた瞬間にまた飛んで
       // 2 枚のマップを往復し続ける（実測: 家 ⇔ 森が止まらなくなった）。
       // いったんその枠から**出るまで**次の移動を受け付けない。踏んで動くイベントはこの限りではない
       // ——出発点がイベントの枠の中にあるマップ（家のオープニング）が動かなくなる。
@@ -682,7 +727,7 @@ export default function GameCanvas() {
         const view = viewRef.current;
         const at = view?.playerAt();
         const here = view && at ? spotUnder(spotsRef.current, at, view.playerRadius()) : null;
-        steppingRef.current = here?.mapMove ? here.objectId : '';
+        steppingRef.current = here?.mapMoves.length ? here.objectId : '';
       }
       // 出す条件（GS-130）を満たす人だけを相手にする。**3D 側も同じ条件で作らない**ので、
       // 話しかけ先も敵シンボルもここで揃えておかないと「居ないのに触れる」が起きる。
@@ -709,6 +754,8 @@ export default function GameCanvas() {
       for (const entry of eventsRef.current.values()) {
         if (entry.npc) npcTalkRef.current.set(entry.npc, entry.id);
       }
+      // 組む前にイベントを読めなかった道（GS-195）でも、`ShowWhile` の食い違いをここで片付ける。
+      checkNpcShownRef.current();
 
       // マップが変われば並行イベントの覚えも捨てる（GS-43）。前のマップの話。
       parallelDoneRef.current.clear();
@@ -799,12 +846,37 @@ export default function GameCanvas() {
        */
       (
         window as unknown as {
-          __preview?: { play(event: EventDef, npc?: string, carry?: { item?: string; num?: number }): Promise<void> };
+          __preview?: {
+            play(event: EventDef, npc?: string, carry?: { item?: string; num?: number }): Promise<void>;
+            flags(): Record<string, boolean>;
+            setFlag(key: string, value: boolean | null): void;
+            mapMove(destinations: string[], def?: MapMoveDef): Promise<string>;
+          };
         }
       ).__preview = {
         // `carry` は宝箱の中身（GS-132）。ふだんはマップのオブジェクトが持つ物を、
         // 下書きを試すときは手で渡せるようにしておく。
         play: (event, npc = '', carry = {}) => playRef.current(event, npc, carry),
+        // フラグを確認のために書き換える（GS-206。イベントエディタの「フラグ（確認用）」）。
+        // 書いてあるフラグだけ返す——書いていなければ true（`switchOn`）。`null` で書いていない状態へ戻す。
+        // **ゲームの記録（遊んでいる間の状態）だけ**を変える。イベント JSON は触らない。
+        flags: () => Object.fromEntries(stateRef.current.switches),
+        setFlag: (key, value) => {
+          if (value === null) stateRef.current.switches.delete(key);
+          else stateRef.current.switches.set(key, value);
+          // フラグで出る人（`ShowWhile`。GS-195）を見直す。
+          checkNpcShownRef.current();
+        },
+        // マップ移動を試す（GS-211。イベントエディタの「マップ移動」）。**踏んだときと同じ決め方・同じ道**で移る。
+        // 保存していない下書き（`def`）をそのまま受ける。行き先のマップ番号を返す（動かなければ空）。
+        mapMove: async (destinations, def) => {
+          const bridge = bridgeRef.current;
+          if (!bridge) return '';
+          const choice = pickMapMove(destinations, def, (when) => meets(bridge.ctx, when));
+          if (!choice) return '';
+          await goTo(choice.map, choice.landing, choice.face, true);
+          return choice.map;
+        },
       };
       const idle = () => {
         const ui = useUi.getState();
@@ -821,6 +893,7 @@ export default function GameCanvas() {
           resetParty(stateRef.current);
           useUi.getState().setPhase('play');
           useUi.getState().setFade(0, 0);
+          await readEventsAhead(file);
           await view.load(file);
           if (previewLoadError) throw new Error(`マップを読み込めません: ${previewLoadError}`);
           await adoptRef.current(file);
@@ -914,8 +987,13 @@ export default function GameCanvas() {
         characters,
         getView: () => viewRef.current,
         state: stateRef.current,
-        transfer: (map: string, at: { x: number; y: number; z: number } | null, face?: WalkDir, fade?: boolean) =>
-          goTo(map, { marker: '', at }, face ?? '', fade),
+        transfer: (
+          map: string,
+          at: { x: number; y: number; z: number } | null,
+          face?: WalkDir,
+          fade?: boolean,
+          px?: { x: number; y?: number; z: number },
+        ) => goTo(map, { marker: '', at, ...(px ? { px } : {}) }, face ?? '', fade),
         battle: (enemies: string[], canLose: boolean, formation?: string) =>
           startBattleRef.current(enemies, canLose, formation),
         shop: (goods: string[], sell: boolean) => startShopRef.current(goods, sell),
@@ -972,11 +1050,15 @@ export default function GameCanvas() {
     // 立ちっぱなしで何度も起こさない。いったん出るまで黙る。
     if (steppingRef.current === spot.objectId) return;
     steppingRef.current = spot.objectId;
-    if (spot.mapMove) {
-      // 行き先・立ち位置・向きはすべてオブジェクトのプロパティが持つ（GS-17）。
+    if (spot.mapMoves.length) {
+      // 行き先の候補はマップ（`MapMove`）、条件・立ち位置・向きはイベント JSON の `mapMoves`（GS-211）。
+      const book = eventBookRef.current;
+      const def = book.file === mapRef.current ? book.events?.mapMoves?.find((one) => one.object === spot.moveObject) : undefined;
+      const choice = pickMapMove(spot.mapMoves, def, (when) => meets(bridge.ctx, when));
+      if (!choice) return;
       // **着いてから**覚える（GS-33）。移る前に書くと、戻したとき入口の上に立っていて、
       // またそのまま向こうへ吸い込まれてしまう。
-      void goTo(spot.mapMove, spot.landing, spot.face, true).then(() => {
+      void goTo(choice.map, choice.landing, choice.face, true).then(() => {
         autoPendingRef.current = true;
       });
       return;
@@ -992,8 +1074,9 @@ export default function GameCanvas() {
    * 敵シンボルに触ったら戦う（GS-76）。**歩けるときだけ見る**——
    * 会話や戦闘の最中に見ると、話し終わった瞬間に始まってしまう。
    *
-   * 触った判定は**距離**（`SYMBOL_REACH`）。踏ませる形にすると、
-   * うろつく相手（GS-48）の足元へ乗り込まないと当たらない。
+   * 触った判定は**マスで数える**（`npcTouching`。GS-209）。体がマスの四角になり（GS-116）、
+   * 相手のマスの手前で止まるので、中心どうしの距離（旧 0.9 マス）には届かなかった。
+   * 踏ませる形にすると、うろつく相手（GS-48）の足元へ乗り込まないと当たらない。
    */
   const checkSymbols = useCallback(() => {
     const view = viewRef.current;
@@ -1003,9 +1086,7 @@ export default function GameCanvas() {
 
     let near = '';
     for (const [id] of symbolsRef.current) {
-      const spot = view.npcAt(id);
-      if (!spot) continue;
-      if (Math.hypot(spot.x - at.x, spot.z - at.z) <= SYMBOL_REACH) {
+      if (view.npcTouching(id)) {
         near = id;
         break;
       }
@@ -1061,8 +1142,22 @@ export default function GameCanvas() {
     const view = viewRef.current;
     if (!view) return;
     for (const def of npcDefsRef.current) {
-      if (npcHiddenRef.current.has(def.id)) continue;
-      if (npcShown(def, (key) => switchOnRef.current(key, def.id))) continue;
+      const shown = npcShown(def, (key) => switchOnRef.current(key, def.id));
+      if (npcHiddenRef.current.has(def.id)) {
+        // **イベントが置き直して出した人**（`place`）は、話しかけ先も戻す（GS-193）。
+        // 戻さないと、見えているのに吹き出しが出ず、話しかけても何も起きない。
+        if (shown && view.hasNpc(def.id)) {
+          npcHiddenRef.current.delete(def.id);
+          // 読み込み時と同じ決め方——イベント側の結び付け（後に書いたもの）が勝つ。
+          const bound = [...eventsRef.current.values()].filter((entry) => entry.npc === def.id).pop();
+          const eventId = bound?.id ?? def.event;
+          if (eventId) npcTalkRef.current.set(def.id, eventId);
+          if (def.thing) npcThingRef.current.add(def.id);
+          if (def.enemy) symbolsRef.current.set(def.id, def.enemy);
+        }
+        continue;
+      }
+      if (shown) continue;
       npcHiddenRef.current.add(def.id);
       view.removeNpc(def.id);
       npcTalkRef.current.delete(def.id);
@@ -1254,6 +1349,7 @@ export default function GameCanvas() {
     useUi.getState().setFade(1, 0);
     const entry = await entryForFile(START_MAP);
     if (entry) applyMapSound(entry);
+    await readEventsAhead(START_MAP);
     await viewRef.current?.load(START_MAP);
     await adoptRef.current(START_MAP);
     checkSpotsRef.current();
@@ -1388,6 +1484,21 @@ export default function GameCanvas() {
                 </button>
               ))}
             </div>
+            {/* 台帳（`items.json`）の持ち物を全部 2 個ずつ足す（GS-210）。 */}
+            <button
+              type="button"
+              className="debug-battle"
+              tabIndex={-1}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (event.button !== 0) return;
+                const state = stateRef.current;
+                for (const { id } of itemList()) state.items.set(id, (state.items.get(id) ?? 0) + DEBUG_ITEM_COUNT);
+              }}
+            >
+              アイテム
+            </button>
           </div>
         ) : null}
         <canvas ref={canvasRef} className="viewport" tabIndex={0} />
@@ -1395,11 +1506,12 @@ export default function GameCanvas() {
         <MessageWindow
           onAdvance={() => bridgeRef.current?.advance()}
           onPick={(index) => bridgeRef.current?.pick(index)}
-          headAt={(who) => viewRef.current?.headAt(who) ?? null}
+          bubbleAt={(who) => viewRef.current?.bubbleAt(who) ?? null}
         />
         {/* 旧作の仮想パッド。会話窓が空けている左右の領域へ収める（GS-155）。 */}
         {/* めくる絵を読ませている間は隠す（GS-188。旧作も隠した）。絵の左右の矢印でめくる。 */}
-        {phase === 'play' && !comicReading ? <VirtualPad /> : null}
+        {/* 出すかは設定（GS-214。既定はスマホだけ）。 */}
+        {phase === 'play' && !comicReading && padShown ? <VirtualPad /> : null}
         {/* 話せる合図（GS-49）。会話の裏では出さない。 */}
         <TalkMarks probe={talkMarks} />
         {notice ? <div className="notice">{notice}</div> : null}

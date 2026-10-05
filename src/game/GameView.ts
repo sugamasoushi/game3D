@@ -2,23 +2,19 @@
 // エディタ固有のもの（作業格子・配置ゴースト・透明ブロックのプレビュー）は載せない。
 
 import {
-  AlwaysStencilFunc,
   BufferGeometry,
   CircleGeometry,
   DoubleSide,
   Float32BufferAttribute,
   Group,
-  KeepStencilOp,
   LineBasicMaterial,
   LineDashedMaterial,
   LineSegments,
   Mesh,
   MeshBasicMaterial,
-  NotEqualStencilFunc,
   Plane,
   PlaneGeometry,
   Raycaster,
-  ReplaceStencilOp,
   SRGBColorSpace,
   Scene,
   TextureLoader,
@@ -87,6 +83,11 @@ const PLAYER_ACTOR = 'meina';
  */
 /** 話しかけられる高さの差（マス）。上の階に居る相手には届かせない。 */
 const TALK_RISE = 1.5;
+/**
+ * 敵シンボルに触れたと見なす、体の端と相手のマスとの隙間（マス。GS-209）。
+ * 当たりで止まると隙間はほぼ 0。浮動小数のずれと、うろつく相手が離れかけた瞬間のぶんだけ見る。
+ */
+const SYMBOL_TOUCH = 0.1;
 /** これより下へ落ちたら出発点へ戻す（マス）。 */
 const VOID_DEPTH = -30;
 /** 遮りを調べる体の高さ（背丈に対する割合。DEC-252）。足元寄り・胸・頭。 */
@@ -127,6 +128,12 @@ export interface GameStatus {
 
 /** イベントから見た向き。画面基準（構想 §4.1 の `move`）。 */
 export type WalkDir = 'up' | 'down' | 'left' | 'right';
+
+/** 置き直しでマスの真ん中へ寄せない軸（GS-193）。 */
+export interface KeepAxes {
+  x?: boolean;
+  z?: boolean;
+}
 
 /**
  * 戦闘の舞台（GS-92）。ゲーム台帳がマップの目印を参照する。カメラ演出は別の共通台帳。
@@ -207,7 +214,7 @@ export interface GameView {
    * 置いた場所（`home`）も移すので、そのあとうろついても元の場所へは帰らない。
    * 居ない相手なら false。
    */
-  placeNpc(id: string, x: number, y: number, z: number, face?: WalkDir): boolean;
+  placeNpc(id: string, x: number, y: number, z: number, face?: WalkDir, px?: { x: number; y?: number; z: number }, keep?: KeepAxes): boolean;
   /**
    * その人をプレイヤーの方へ向ける（GS-118）。**話しかけたときに呼ぶ。**
    * 重なって立っていて向きが決まらないときと、居ないときは false。
@@ -251,7 +258,7 @@ export interface GameView {
    * 仲間をマスへ置く（GS-184）。置いた仲間は**イベントが終わるまで（`releaseFollowers`）その場に留まる**
    * ——付いて歩かせたままだと、主人公の後ろへすぐ戻ってしまう。居なければ false。
    */
-  placeFollower(id: string, x: number, y: number, z: number, face?: WalkDir): boolean;
+  placeFollower(id: string, x: number, y: number, z: number, face?: WalkDir, px?: { x: number; y?: number; z: number }, keep?: KeepAxes): boolean;
   /** 仲間の向きを変える（GS-184）。付いて歩いている最中なら、次に歩いた時にまた進む方を向く。 */
   faceFollower(id: string, dir: WalkDir): boolean;
   /** 置いた仲間を隊列へ戻す（GS-184）。**イベントの終わりに呼ぶ。** */
@@ -281,6 +288,13 @@ export interface GameView {
    * 向きと距離で選ぶ——足元の四角を踏ませる作りだと、相手の上に乗る必要が出てしまう。
    */
   npcInFront(): string | null;
+  /**
+   * その NPC に触れているか（GS-209。敵シンボル用）。**マスで数える**——体が四角になって（GS-116）
+   * 相手のマスの手前で止まるので、中心どうしの距離では届かない。
+   * 同じマスに居るか、どちらかが相手の方を向いて体の端が相手のマスに接しているとき true。
+   * 隣の列をすれ違うだけ（向いていない）では触れない。
+   */
+  npcTouching(id: string): boolean;
   /**
    * マス 1 つの絵を差し替える（GS-53）。宝箱の開閉のように**見た目だけ**変える。
    * 形も絵柄（タイルセット）も変わらないので、当たりも影もそのまま。
@@ -323,11 +337,20 @@ export interface GameView {
    */
   headAt(who: 'player' | string): { x: number; y: number } | null;
   /**
+   * 吹き出しの基準点（GS-200 / GS-201）。**足元から一定の画素だけ上**が画面のどこに来るか。
+   * 背丈や立ち位置で高さが人ごとにずれないよう、旧作と同じく「立っている所から一定の高さ」に揃える。
+   * `who` は `player`・NPC の名前・`follower:<id>`（付いて歩く仲間）。
+   * 人が居なければマップに置いた物の上（`headAt` と同じ）。
+   */
+  bubbleAt(who: 'player' | string): { x: number; y: number; top: number } | null;
+  /**
    * プレイヤーを置き直す（マップ移動の着地。GS-17）。
    * **マスで指定し、必ずそのマスの中央・床の上に立つ。** 小数を渡してもマスに丸める——
    * 半端な位置を書けるようにすると、書く側が小数を気にすることになる。
    */
-  placePlayer(x: number, y: number, z: number): void;
+  /** `px` はマス内のずれ（ピクセル。GS-191）。そのマスの真ん中から。省くと真ん中。 */
+  /** `keep` の軸はマスに寄せず、渡した位置そのまま（GS-193。「プレイヤーと同じ」を書いた軸）。 */
+  placePlayer(x: number, y: number, z: number, px?: { x: number; y?: number; z: number }, keep?: KeepAxes): void;
   /**
    * カメラが主人公を追うかどうか（GS-166）。**既定は追う。**
    * 切ると画面はその場に止まり、戻すとその場で主人公へ戻る。
@@ -347,7 +370,8 @@ export interface GameView {
    * マップに置いた**点オブジェクトの名前**でプレイヤーを置き直す（GS-17）。
    * 高さは出発点と同じで、その柱の足場に乗せる。見つからなければ false。
    */
-  placeAtMarker(name: string): boolean;
+  /** `px` はマス内のずれ（ピクセル。GS-192）。目印のマスの真ん中から。 */
+  placeAtMarker(name: string, px?: { x: number; y?: number; z: number }): boolean;
   /**
    * マップに書いた戦闘の舞台（GS-89）。点オブジェクトの `BattleStage=true` を検出し、
    * その点の位置を舞台の真ん中にする。表示名には依存せず、無ければ null。
@@ -415,10 +439,8 @@ const STAGE_BREATH_S = 2.6;
 export const STAGE_COMMAND_FIGURE = { x: 0.10, depth: 2, scale: 1, moveS: 0.25, offsetX: 0, offsetY: 0, offsetZ: 0 };
 /** 左端の板を描く順番。地形・ほかの板（0）より後に描いて手前に見せる。 */
 const STAGE_COMMAND_RENDER_ORDER = 10;
-/** 隊列を描く順の始まり（GS-185）。地形・NPC・ブロック影（2〜）より後。 */
+/** 隊列を描く順の始まり（GS-190）。同じ場所に重なったときだけ効く（深度が同じなら後に描いた方が上）。 */
 const PARTY_RENDER_ORDER = 50;
-/** 隊列の重なりに使うステンシルのビット（GS-185）。ブロック影は 1・2 を使う。 */
-const PARTY_STENCIL_BIT = 0x80;
 
 /**
  * 画面に入る範囲の外でも、この距離（マス）までは太陽の影を落とす人に数える（GS-96）。
@@ -523,26 +545,17 @@ export function createGameView(
     facing: player!.facingNow(),
   });
   /**
-   * 重なったときの描く順（GS-185）。**1 人目（主人公）→ 2 人目 → 3 人目が上**。
-   * 奥行きのままだと、上へ歩くと後ろの仲間が手前に来て主人公に被さる。
-   * 地形との前後は深度のまま——**仲間どうしだけ**をステンシルの 1 ビットで決める。
-   * 先に描いた人が印を付け、後の人は印の上には描かない。ブロック影のステンシル（1・2）とは別のビット。
+   * 重なったときの描く順（GS-185 → GS-190）。**前後はふつうの 3D（深度）のまま**——手前の人が上に出る。
+   * 決めるのは**同じ場所に重なったとき（深度が同じ）だけ**で、そのときは 1 人目（主人公）が上。
+   * 深度が同じなら後に描いた方が勝つので、3 人目 → 2 人目 → 1 人目の順に描く。
+   * （GS-185 / GS-189 ではステンシルで「常に 1 人目が上」にしていたが、利用者の意図と違ったので戻した。）
    */
   const layerParty = () => {
-    const members = [player, ...(options.party?.() ?? []).slice(1).map((id) => followers.get(id))];
+    const members = [player, ...(options.party?.() ?? []).slice(1).map((id) => followers.get(id))].filter(
+      (actor): actor is Player => Boolean(actor),
+    );
     members.forEach((actor, index) => {
-      if (!actor) return;
-      // 地形・NPC を描き終えてから、1 人目から順に描く。
-      actor.group.renderOrder = PARTY_RENDER_ORDER + index;
-      const material = actor.bodyMaterial;
-      material.stencilWrite = true;
-      material.stencilRef = PARTY_STENCIL_BIT;
-      material.stencilWriteMask = PARTY_STENCIL_BIT;
-      material.stencilFuncMask = PARTY_STENCIL_BIT;
-      material.stencilFunc = index === 0 ? AlwaysStencilFunc : NotEqualStencilFunc;
-      material.stencilFail = KeepStencilOp;
-      material.stencilZFail = KeepStencilOp;
-      material.stencilZPass = ReplaceStencilOp;
+      actor.group.renderOrder = PARTY_RENDER_ORDER + (members.length - 1 - index);
     });
   };
   const resetFollowers = () => {
@@ -762,6 +775,45 @@ export function createGameView(
     const cz = Math.floor(z);
     const top = collision?.surfaceUnder(cx, cz, (cy + 1) * unit) ?? null;
     return { x: (cx + 0.5) * unit, y: top ?? cy * unit, z: (cz + 0.5) * unit };
+  };
+  /**
+   * **その位置そのまま**に立たせる（GS-191。ピクセル単位の配置）。`standOn` はマスの真ん中へ寄せるが、
+   * こちらは寄せない。高さは立つ所の床（坂ならその位置の高さ）。
+   */
+  const standExact = (
+    x: number,
+    y: number,
+    z: number,
+    unit: number,
+    /** 床を探し始める高さの上乗せ（マス。GS-192）。＋で、その分高い所の床にも立てる。 */
+    lift = 0,
+  ): { x: number; y: number; z: number } => {
+    const cx = Math.floor(x);
+    const cy = Math.floor(y);
+    const cz = Math.floor(z);
+    const top = collision?.surfaceUnder(cx, cz, (cy + 1 + lift) * unit, x - cx, z - cz) ?? null;
+    return { x: x * unit, y: top ?? cy * unit, z: z * unit };
+  };
+  /** 1 ピクセルが何マスか（GS-191）。チップの大きさで決まる。 */
+  const pixelCells = () => 1 / (mapDef?.grid?.tilePx ?? 32);
+  /**
+   * マス（整数）とマス内のずれ（ピクセル）から立つ所を出す（GS-191）。ずれが無ければ今までどおり真ん中。
+   */
+  const standWith = (
+    x: number,
+    y: number,
+    z: number,
+    unit: number,
+    px: { x: number; y?: number; z: number } | undefined,
+    /** マスに寄せない軸（GS-193）。その軸は渡した位置そのまま。 */
+    keep?: KeepAxes,
+  ): { x: number; y: number; z: number } => {
+    const moved = px && (px.x || px.z || px.y);
+    if (!moved && !keep?.x && !keep?.z) return standOn(x, y, z, unit);
+    const per = pixelCells();
+    const bx = keep?.x ? x : Math.floor(x) + 0.5;
+    const bz = keep?.z ? z : Math.floor(z) + 0.5;
+    return standExact(bx + (px?.x ?? 0) * per, y, bz + (px?.z ?? 0) * per, unit, (px?.y ?? 0) * per);
   };
 
   let sizedW = 0;
@@ -985,7 +1037,8 @@ export function createGameView(
             : plain;
         const actor = createPlayer(unit, tilePx, sheet);
         // 立つのはそのマスの中央（GS-18）。足場はプレイヤーの出発点と同じ取り方（GC-14）。
-        const spot = standOn(def.x, def.y, def.z, unit);
+        // ピクセル単位で置いた人（GS-191。マップの `PixelPlace`）は、置いた位置そのままに立つ。
+        const spot = def.pixel ? standExact(def.x, def.y, def.z, unit) : standOn(def.x, def.y, def.z, unit);
         actor.placeAt(spot.x, spot.y, spot.z);
         actor.face(DIR_FACE[def.facing]);
         actor.setLighting(map.lighting ?? {}, litLights(map), unit, scenery.cameraFx);
@@ -1098,6 +1151,71 @@ export function createGameView(
 
   /** 吹き出しの置き所を測る受け皿（GS-23）。毎回作らない。 */
   const headSpot = new Vector3();
+
+  /** 吹き出しの高さを測る受け皿（GS-201）。 */
+  const riseSpot = new Vector3();
+  /** ワールドの点を 1280×720 の画素へ。奥（z > 1）なら null。`spot` は書き換える。 */
+  const toScreen = (spot: Vector3): { x: number; y: number } | null => {
+    spot.project(rig.active());
+    if (spot.z > 1) return null;
+    return {
+      x: ((spot.x + 1) / 2) * GAME_SCREEN_WIDTH,
+      y: ((1 - spot.y) / 2) * GAME_SCREEN_HEIGHT,
+    };
+  };
+
+  /**
+   * 人（か物）の上が画面のどこか（GS-23）。`who` は `player`・NPC の名前・`follower:<id>`（付いて歩く仲間。GS-201）。
+   *
+   * `even`（吹き出し。GS-200 / GS-201）なら**足元から一定の画素だけ上**。一定の画素は
+   * 主人公の背丈を**画面の真ん中（カメラの注視点）で**測った長さ——人ごとの背丈でも、
+   * 立っている所（遠近で左右・奥行きによって見かけの丈が変わる）でもずれないように。
+   * 旧作の「立ち位置から 150px 上」と同じ考え方。
+   */
+  const spotOver = (who: string, even: boolean): { x: number; y: number; top: number } | null => {
+    const actor =
+      who === 'player'
+        ? player
+        : who.startsWith('follower:')
+          ? // 隊列が変わったばかりだと仲間の絵がまだ無い。その場で作る（`jump` と同じ）。
+            (updateFollowers(0), followers.get(who.slice('follower:'.length)) ?? null)
+          : (npcs.get(who)?.actor ?? null);
+    const unit = collision?.unit || 1;
+    if (actor && even) {
+      const tall = player ?? actor;
+      const rise = (tall.size.height - tall.footLift) * 1.05;
+      riseSpot.copy(rig.target);
+      const low = toScreen(riseSpot);
+      riseSpot.copy(rig.target);
+      riseSpot.y += rise;
+      const high = toScreen(riseSpot);
+      headSpot.copy(actor.position);
+      const foot = toScreen(headSpot);
+      // 見えている絵の上端（髪の上など。GS-204 / GS-205）。角の先はここを指す。
+      // 絵を下げているぶん（GS-52）と、コマの上の透明なすき間を引く。
+      headSpot.copy(actor.position);
+      headSpot.y += actor.size.height - actor.footLift - actor.headPad();
+      const chip = toScreen(headSpot);
+      if (!foot || !low || !high || !chip) return null;
+      return { x: foot.x, y: foot.y - (low.y - high.y), top: chip.y };
+    }
+    if (actor) {
+      // 頭のすこし上。板の高さは人によって違う（鶏は 1 マス、メイナは 1.25 マス）。
+      // 絵を下げているぶんは引く（GS-52）——見えている頭の上に置きたいので。
+      headSpot.copy(actor.position);
+      headSpot.y += (actor.size.height - actor.footLift) * 1.05;
+    } else {
+      // 人が居なければ**マップに置いた物**を探す（GS-55）。調べ物の吹き出しはこの上に出る。
+      const box = mapDef ? objectHeadSpot(mapDef, who) : null;
+      if (!box) return null;
+      // 四角の中心はマスの座標そのまま（`+0.5` は要らない）——
+      // 1 マスの四角 `-5..-4` の中心は `-4.5` で、これはマス `-5` の中央と同じ。
+      headSpot.set(box.x * unit, box.y * unit, box.z * unit);
+    }
+    // −1〜1 を画素へ。奥（z > 1）なら画面の外。
+    const spot = toScreen(headSpot);
+    return spot && { ...spot, top: spot.y };
+  };
   /** 遮り調べの使い回し（DEC-252）。毎フレーム作らない。 */
   const seeFrom = new Vector3();
   const seeStep = new Vector3();
@@ -1676,8 +1794,8 @@ export function createGameView(
     if (going) {
       const moved = Math.hypot(npc.actor.position.x - going.from.x, npc.actor.position.z - going.from.z);
       if (moved >= going.goal - 0.001 * unit) {
-        // 着いたらマスの真ん中へ（GS-117）。端に立たれると話しかけられない。
-        if (collision) npc.actor.settle(collision);
+        // 着いたらずれを直す（GS-117）。マスの中の位置は歩き出した時のまま（GS-194）。
+        if (collision) npc.actor.settle(collision, going.from);
         npc.wandering = null;
         npc.wanderIn = nextWanderAt(def);
         return;
@@ -1733,9 +1851,10 @@ export function createGameView(
     if (!walk) return;
     const moved = Math.hypot(actor.position.x - walk.from.x, actor.position.z - walk.from.z);
     if (moved >= walk.goal - 0.02 * unit) {
-      // 着いたらマスの真ん中へ戻す（GS-117）。歩く向きはカメラ基準なのでマスの軸と少しずれ、
-      // 積もると絵の立ち位置と塞ぐマスが食い違う。
-      if (collision) actor.settle(collision);
+      // 着いたらずれを直す（GS-117）。歩く向きはカメラ基準なのでマスの軸と少しずれ、
+      // 積もると絵の立ち位置と塞ぐマスが食い違う。**マスの真ん中へは寄せない**（GS-194）——
+      // 歩き出した所からちょうど 1 マス先。寄せると、主人公が歩かされるたびに位置が跳ぶ。
+      if (collision) actor.settle(collision, walk.from);
       endWalk(who, true);
     } else if (moved > walk.best + 0.001 * unit) {
       walk.best = moved;
@@ -2126,7 +2245,7 @@ export function createGameView(
       }
       return steps;
     },
-    placeNpc(id, x, y, z, face) {
+    placeNpc(id, x, y, z, face, px, keep) {
       let npc = npcs.get(id);
       // 隠していた人は、**名指しで置かれたときだけ**その場に出す（GS-153。旧作の `setVisible(true)`）。
       if (!npc && hiddenNpcs.has(id) && makeNpc) {
@@ -2146,7 +2265,7 @@ export function createGameView(
       endWalk(npc, false);
       npc.wandering = null;
       // 立つのはそのマスの中央（GS-18）。足場の取り方はプレイヤーの置き直しと同じ。
-      const spot = standOn(x, y, z, unit);
+      const spot = standWith(x, y, z, unit, px, keep);
       npc.actor.placeAt(spot.x, spot.y, spot.z);
       // うろつきの起点も移す（GS-48）。移さないと、置いたそばから元の場所へ帰ろうとする。
       npc.home.copy(npc.actor.position);
@@ -2221,7 +2340,7 @@ export function createGameView(
       if (at < 0) return null;
       return at === 0 ? 'leader' : 'follower';
     },
-    placeFollower(id, x, y, z, face) {
+    placeFollower(id, x, y, z, face, px, keep) {
       // 隊列が変わったばかりだと仲間の絵がまだ無い。**その場で作る**（次のフレームを待たない）。
       updateFollowers(0);
       const actor = followers.get(id);
@@ -2230,7 +2349,7 @@ export function createGameView(
         return false;
       }
       const unit = collision.unit || 1;
-      const spot = standOn(x, y, z, unit);
+      const spot = standWith(x, y, z, unit, px, keep);
       actor.placeAt(spot.x, spot.y, spot.z);
       if (face) actor.face(DIR_FACE[face]);
       pinnedFollowers.add(id);
@@ -2331,6 +2450,38 @@ export function createGameView(
       }
       return found;
     },
+    npcTouching(id) {
+      const npc = npcs.get(id);
+      if (!npc || !player || !collision) return false;
+      const unit = collision.unit || 1;
+      if (Math.abs(npc.actor.position.y - player.position.y) / unit > TALK_RISE) return false;
+      const me = { x: player.position.x / unit, z: player.position.z / unit };
+      const it = { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit };
+      const cell = (at: { x: number; z: number }) => ({ x: Math.floor(at.x), z: Math.floor(at.z) });
+      const mine = cell(me);
+      const its = cell(it);
+      if (mine.x === its.x && mine.z === its.z) return true;
+      /**
+       * `from` の体（半幅 `half` の四角。GS-116）が、向いている先で `to` のマスに接しているか。
+       * 横は中心がそのマスの幅に入っていること（角をかすめるだけでは触れない）。
+       */
+      const touches = (from: { x: number; z: number }, half: number, facing: WalkDir, to: { x: number; z: number }) => {
+        const aim = moveVector(DIR_AXIS[facing]);
+        const alongX = Math.abs(aim.x) >= Math.abs(aim.z);
+        const sign = Math.sign(alongX ? aim.x : aim.z);
+        const pos = alongX ? from.x : from.z;
+        const side = alongX ? from.z : from.x;
+        const lo = alongX ? to.x : to.z;
+        const lane = alongX ? to.z : to.x;
+        if (Math.floor(side) !== lane) return false;
+        const gap = sign > 0 ? lo - (pos + half) : pos - half - (lo + 1);
+        return gap <= SYMBOL_TOUCH && gap > -1;
+      };
+      return (
+        touches(me, player.radius, FACE_DIR[player.facingNow()], its) ||
+        touches(it, npc.actor.radius, FACE_DIR[npc.actor.facingNow()], mine)
+      );
+    },
     playerAt() {
       if (!player || !collision) return null;
       const unit = collision.unit || 1;
@@ -2340,35 +2491,17 @@ export function createGameView(
     playerFacing: () => (player ? FACE_DIR[player.facingNow()] : null),
     facingVector: () => (player ? moveVector(DIR_AXIS[FACE_DIR[player.facingNow()]]) : null),
     headAt(who) {
-      const actor = who === 'player' ? player : (npcs.get(who)?.actor ?? null);
-      const unit = collision?.unit || 1;
-      if (actor) {
-        // 頭のすこし上。板の高さは人によって違う（鶏は 1 マス、メイナは 1.25 マス）。
-        // 絵を下げているぶんは引く（GS-52）——見えている頭の上に置きたいので。
-        headSpot.copy(actor.position);
-        headSpot.y += (actor.size.height - actor.footLift) * 1.05;
-      } else {
-        // 人が居なければ**マップに置いた物**を探す（GS-55）。調べ物の吹き出しはこの上に出る。
-        const box = mapDef ? objectHeadSpot(mapDef, who) : null;
-        if (!box) return null;
-        // 四角の中心はマスの座標そのまま（`+0.5` は要らない）——
-        // 1 マスの四角 `-5..-4` の中心は `-4.5` で、これはマス `-5` の中央と同じ。
-        headSpot.set(box.x * unit, box.y * unit, box.z * unit);
-      }
-      headSpot.project(rig.active());
-      // −1〜1 を画素へ。奥（z > 1）なら画面の外。
-      if (headSpot.z > 1) return null;
-      return {
-        x: ((headSpot.x + 1) / 2) * GAME_SCREEN_WIDTH,
-        y: ((1 - headSpot.y) / 2) * GAME_SCREEN_HEIGHT,
-      };
+      return spotOver(who, false);
     },
-    placePlayer(x, y, z) {
+    bubbleAt(who) {
+      return spotOver(who, true);
+    },
+    placePlayer(x, y, z, px, keep) {
       if (!player || !collision) return;
       const unit = collision.unit || 1;
       endWalk(hero, false);
       // マスの真ん中へ。高さは出発点や目印と同じ取り方で、そのマスの床に乗せる。
-      const spot = standOn(x, y, z, unit);
+      const spot = standWith(x, y, z, unit, px, keep);
       player.placeAt(spot.x, spot.y, spot.z);
       // 追従を切っているあいだは画面を動かさない（GS-166）。
       resetFollowers();
@@ -2386,7 +2519,7 @@ export function createGameView(
       // 追い直すときは**その場で**主人公へ戻す（`follow` は遅らせない作り。DEC-268）。
       if (on && player) rig.target.copy(player.position);
     },
-    placeAtMarker(name) {
+    placeAtMarker(name, px) {
       if (!player || !collision || !mapDef) return false;
       const marker = markerObject(mapDef, name);
       if (!marker) {
@@ -2395,8 +2528,8 @@ export function createGameView(
         return false;
       }
       const unit = collision.unit || 1;
-      // 出発点と同じ置き方（GC-14）。そのマスの中央・床の上。
-      const spot = standOn(marker.x, marker.y, marker.z, unit);
+      // 出発点と同じ置き方（GC-14）。そのマスの中央・床の上。ずれ（px）があればそのぶん動かす（GS-192）。
+      const spot = standWith(marker.x, marker.y, marker.z, unit, px);
       endWalk(hero, false);
       player.placeAt(spot.x, spot.y, spot.z);
       const look = FACINGS[marker.face.toLowerCase()];

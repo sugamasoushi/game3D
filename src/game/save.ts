@@ -12,6 +12,7 @@
 // 設定（`options.ts`）はここに入れない——**端末の好み**であって遊んだ記録ではない。
 
 import type { WalkDir } from './GameView';
+import { CLEAR_SWITCH } from './omake';
 
 /** セーブの形の版（GS-27）。形を変えたらここを上げ、読む側で古い版を判別する。 */
 export const SAVE_VERSION = 5;
@@ -109,6 +110,8 @@ export interface SaveSummary {
   map: string;
   /** 読めない版（未来のセーブなど）。 */
   stale: boolean;
+  /** クリアのフラグ（`ゲーム_クリア`）が立っている記録か（GS-212。タイトルの「おまけ」）。 */
+  cleared: boolean;
 }
 
 const DB_NAME = 'samplegame';
@@ -170,6 +173,7 @@ export async function listSaves(): Promise<SaveSummary[]> {
       playSeconds: data.playSeconds ?? 0,
       map: data.map ?? '',
       stale: !readableSave(data.version),
+      cleared: data.switches?.[CLEAR_SWITCH] === true,
     });
   }
   return out;

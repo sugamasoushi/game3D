@@ -6,7 +6,15 @@
 // 設定はセーブとは別物で、端末に覚える（`options.ts`）。枠を読み替えても好みは変わらない。
 
 import { useState } from 'react';
-import { DEFAULT_OPTIONS, options, setOptions, type Options } from '../../game/options';
+import {
+  DEFAULT_OPTIONS,
+  VIRTUAL_PAD_LABELS,
+  options,
+  setOptions,
+  virtualPadShown,
+  type Options,
+  type VirtualPadSetting,
+} from '../../game/options';
 import { DRAW_MODE_LABELS, drawMode, guessDrawMode, type DrawModeSetting } from '../../game/quality';
 import { DEV_MODE, devOptions, setDevOptions, type DevOptions } from '../../game/devMode';
 import { stopBgm, stopBgs } from '../../game/audio';
@@ -134,6 +142,25 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
               : drawMode() === 'light'
                 ? '光源と水面の映り込みを出しません'
                 : '全部出します'}
+          </span>
+        </li>
+        <li>
+          {/* 仮想パッド（GS-214）。「自動」はスマホなら出す。描画モードと同じく**いまどちらか**を必ず出す。 */}
+          <span className="menu-label">仮想パッド</span>
+          <select
+            className="menu-pick"
+            value={now.virtualPad}
+            data-pick
+            onChange={(event) => change({ virtualPad: event.currentTarget.value as VirtualPadSetting })}
+          >
+            {(['auto', 'on', 'off'] as VirtualPadSetting[]).map((key) => (
+              <option key={key} value={key}>
+                {VIRTUAL_PAD_LABELS[key]}
+              </option>
+            ))}
+          </select>
+          <span className="menu-hint">
+            {now.virtualPad === 'auto' ? `いまは ${virtualPadShown('auto') ? '表示' : '非表示'}` : ''}
           </span>
         </li>
         {volume('全体', 'masterVolume')}

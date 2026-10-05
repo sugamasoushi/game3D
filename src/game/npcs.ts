@@ -32,6 +32,8 @@
 //   Hidden … **ゲームには出さない**（GS-160）。エディタでは見える。置き場所の目印用
 //   Standby … **最初は出さない**（GS-157）。イベントの「置き直す」で出すまで居ない。
 //             出入りはイベントが決めるので、**ここにイベント名は書かない**
+//   ShowWhile … そのイベントが**動ける（条件を満たす）ときだけ**出す（GS-195）。値はイベント id。
+//            イベントの条件を変えてもマップは直さなくてよい（ボスをイベントと一緒に出し入れする）
 //   ShowIf … このスイッチが**入っているときだけ**出す（古い書き方。GS-157 を見よ）
 //   HideIf … このスイッチが**入っていると出さない**（古い書き方。GS-157 を見よ）
 //
@@ -81,6 +83,11 @@ export interface NpcDef {
    * 「イベントで初めて現れる人」はこれ 1 つで足りる——**イベント名は要らない。**
    */
   standby?: boolean;
+  /**
+   * このイベントが動ける（`when` を満たす）ときだけ出す（GS-195。マップの `ShowWhile`）。
+   * 問い合わせは `switchOn('event:<id>')`——条件を読むのは呼ぶ側（イベントを持っている方）。
+   */
+  showWhile?: string;
   /** 中身（GS-132。マップの `Item` / `Num`）。話しかけたイベントの `getItem` が使う。 */
   item?: string;
   num?: number;
@@ -107,6 +114,12 @@ export interface NpcDef {
    * 踏んでいるあいだ**うろつきは入らない**（動かずに足だけ動く物・人のためのもの）。
    */
   stepping?: boolean;
+  /**
+   * **ピクセル単位で置いた**（GS-191。マップの `PixelPlace`）。置いた点の位置そのままに立つ。
+   * 無ければ今までどおりマスの真ん中へ寄せる（今あるマップの NPC は点が小数でも真ん中に立っている）。
+   * 歩かせたりうろつかせたりすると、歩き終わりにマスの真ん中へ戻る。
+   */
+  pixel?: boolean;
   x: number;
   y: number;
   z: number;
@@ -129,11 +142,17 @@ const ENEMY_PROPERTY = 'EnemyData';
 const SCALE_PROPERTY = 'Scale';
 /** 出す・出さないの条件（GS-130）。値はスイッチの名前。**古い書き方**（GS-157）。 */
 const SHOW_IF_PROPERTY = 'ShowIf';
+/** そのイベントが動けるときだけ出す（GS-195）。値はイベント id。 */
+const SHOW_WHILE_PROPERTY = 'ShowWhile';
+/** `switchOn` に渡す「そのイベントは動けるか」の頭（GS-195）。 */
+export const EVENT_READY_PREFIX = 'event:';
 const HIDE_IF_PROPERTY = 'HideIf';
 /** 最初は出さない（GS-157）。値は真偽（`true` / `"true"`）。 */
 const STANDBY_PROPERTY = 'Standby';
 /** 常時その場で足踏みする（GS-169）。値は真偽。 */
 const STEP_IN_PLACE_PROPERTY = 'StepInPlace';
+/** ピクセル単位で置く（GS-191）。値は真偽。 */
+const PIXEL_PLACE_PROPERTY = 'PixelPlace';
 /** 中身（GS-132）。宝箱の「何が」「いくつ」。 */
 const ITEM_PROPERTY = 'Item';
 const NUM_PROPERTY = 'Num';
@@ -201,12 +220,13 @@ export const NPC_CAME = '出た';
  *
  *   1. **キャラ自身の覚え**（`self:消えた` / `self:出た`）。イベントが書いたもの——一番強い
  *   2. マップの `Standby`（最初は出さない）
- *   3. マップの `ShowIf` / `HideIf`（古い書き方）。**両方書いたら両方満たすときだけ**出す
+ *   3. マップの `ShowWhile`（そのイベントが動けるときだけ。GS-195）
+ *   4. マップの `ShowIf` / `HideIf`（古い書き方）。**書いたものを全部満たすときだけ**出す
  *
  * どれも無ければいつでも出す。
  */
 export function npcShown(
-  def: Pick<NpcDef, 'showIf' | 'hideIf' | 'standby'>,
+  def: Pick<NpcDef, 'showIf' | 'hideIf' | 'standby' | 'showWhile'>,
   switchOn: (key: string) => boolean,
 ): boolean {
   // イベントが消した人は、マップを読み直しても出さない（旧作の `setVisible(false)` が残る）。
@@ -214,6 +234,7 @@ export function npcShown(
   // イベントが出した人は、`Standby` でも `ShowIf` でも出す。**命令のほうが後の話**。
   if (switchOn(`self:${NPC_CAME}`)) return true;
   if (def.standby) return false;
+  if (def.showWhile && !switchOn(`${EVENT_READY_PREFIX}${def.showWhile}`)) return false;
   if (def.showIf && !switchOn(def.showIf)) return false;
   if (def.hideIf && switchOn(def.hideIf)) return false;
   return true;
@@ -295,10 +316,14 @@ export function readNpcs(map: MapDef): NpcDef[] {
         ...(numberOf(object.properties, SCALE_PROPERTY) !== undefined
           ? { scale: Math.min(16, Math.max(0.1, numberOf(object.properties, SCALE_PROPERTY) ?? 1)) }
           : {}),
+        ...(textOf(object.properties, SHOW_WHILE_PROPERTY)
+          ? { showWhile: textOf(object.properties, SHOW_WHILE_PROPERTY) }
+          : {}),
         ...(textOf(object.properties, SHOW_IF_PROPERTY) ? { showIf: textOf(object.properties, SHOW_IF_PROPERTY) } : {}),
         ...(textOf(object.properties, HIDE_IF_PROPERTY) ? { hideIf: textOf(object.properties, HIDE_IF_PROPERTY) } : {}),
         // 最初は出さない（GS-157）。イベントの「置き直す」で出す。
         ...(truthOf(object.properties, STANDBY_PROPERTY) ? { standby: true } : {}),
+        ...(truthOf(object.properties, PIXEL_PLACE_PROPERTY) ? { pixel: true } : {}),
         // 常時その場で足踏み（GS-169）。イベントを書かなくても動いて見える。
         ...(truthOf(object.properties, STEP_IN_PLACE_PROPERTY) ? { stepping: true } : {}),
         ...(textOf(object.properties, ITEM_PROPERTY) ? { item: textOf(object.properties, ITEM_PROPERTY) } : {}),

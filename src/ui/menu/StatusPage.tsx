@@ -29,9 +29,9 @@ export function StatusPage({
   const gear = equipBonus(member.equip);
 
   return (
-    <div className="status">
-      {image ? <img className="status-character-icon" src={image} alt="" /> : null}
-      <div className="status-content">
+    <div className="menu-figured status">
+      {image ? <img className="menu-figure" src={image} alt="" /> : null}
+      <div className="menu-figured-body status-content">
       <p className="status-name">
         {characterName(who)}
         <AilTags ids={member.ailments} />

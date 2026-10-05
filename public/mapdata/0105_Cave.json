@@ -1558,13 +1558,13 @@
   "editor": {
     "camera": {
       "target": [
-        -0.5209703810769386,
-        0.27972668741106893,
-        13.528449231953335
+        -1.2555362948044662,
+        0.25175401866996205,
+        -6.982496650304996
       ],
       "yaw": 358,
       "pitch": -38.29999999999997,
-      "distance": 17.201167092825802,
+      "distance": 15.481050383543222,
       "orthographic": false
     },
     "height": 0,
@@ -6626,52 +6626,6 @@
           ]
         },
         {
-          "id": "obj_4",
-          "name": "0104",
-          "kind": "rect",
-          "visible": true,
-          "guides": true,
-          "collision": false,
-          "properties": [
-            {
-              "name": "MapMove",
-              "type": "string",
-              "value": "0104"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Down"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "16,0,-10"
-            }
-          ],
-          "space": "solid",
-          "y": 0,
-          "height": 1,
-          "points": [
-            [
-              -4,
-              17.97292260687626
-            ],
-            [
-              2,
-              17.97292260687626
-            ],
-            [
-              2,
-              19
-            ],
-            [
-              -4,
-              19
-            ]
-          ]
-        },
-        {
           "id": "obj_5",
           "name": "EVENT020101",
           "kind": "rect",
@@ -6703,6 +6657,55 @@
             [
               -7.9203518971864435,
               -4.0477672808185865
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MAPMOVE",
+      "name": "MAPMOVE",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": [],
+      "objects": [
+        {
+          "id": "obj_4",
+          "name": "0104",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "MapMove",
+              "type": "string",
+              "value": "0104"
+            }
+          ],
+          "space": "solid",
+          "y": 0,
+          "height": 1,
+          "points": [
+            [
+              -4,
+              17.97292260687626
+            ],
+            [
+              2,
+              17.97292260687626
+            ],
+            [
+              2,
+              19
+            ],
+            [
+              -4,
+              19
             ]
           ]
         }
@@ -18737,7 +18740,7 @@
               "value": "boss"
             },
             {
-              "name": "ShowIf",
+              "name": "ShowWhile",
               "type": "string",
               "value": "EVENT020101"
             }

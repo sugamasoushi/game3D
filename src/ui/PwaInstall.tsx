@@ -11,6 +11,8 @@ export function PwaInstall({ visible }: { visible: boolean }) {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
 
   useEffect(() => {
+    // Electron は同梱ファイルを直接読む。SW に旧版をキャッシュさせない。
+    if (window.location.protocol === 'app:') return;
     // エディタの /game/ プレビューでは SW を登録しない。エディタ全体のキャッシュを避ける。
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production' && window.location.pathname === '/') {
       void navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('[pwa]', error));

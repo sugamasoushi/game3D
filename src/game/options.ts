@@ -7,6 +7,17 @@
 // 開発中は `window.__options`（`GameCanvas` が入れる）から触って試せる。
 
 import type { DrawModeSetting } from './quality';
+import { looksLikePhone } from './device';
+
+/** 仮想パッドを出すか（GS-214）。`auto` はスマホなら出す。 */
+export type VirtualPadSetting = 'auto' | 'on' | 'off';
+
+/** 画面に出す名前。 */
+export const VIRTUAL_PAD_LABELS: Record<VirtualPadSetting, string> = {
+  auto: '自動',
+  on: '表示',
+  off: '非表示',
+};
 
 export interface Options {
   /**
@@ -25,6 +36,11 @@ export interface Options {
    * **重い絵を出すかどうかの入口はここ 1 つ**——判断そのものは `quality.ts`。
    */
   drawMode: DrawModeSetting;
+  /**
+   * 仮想パッド（GS-214）。**既定は自動**——スマホ（`looksLikePhone`）なら出し、PC では出さない。
+   * 旧作も設定で切り替えられた（`GameStateManager.virtualPad`）。
+   */
+  virtualPad: VirtualPadSetting;
   /** 音量（0〜1）。全体・BGM と環境音・効果音。 */
   masterVolume: number;
   bgmVolume: number;
@@ -37,6 +53,7 @@ export const DEFAULT_OPTIONS: Options = {
   scrollScale: 1,
   // 既定は自動（GS-173）。**端末を見て決める**ので、スマホは初めから低負荷で始まる。
   drawMode: 'auto',
+  virtualPad: 'auto',
   masterVolume: 1,
   bgmVolume: 1,
   seVolume: 1,
@@ -53,6 +70,18 @@ const STORE_KEY = 'samplegame.options';
 /** 知っている描画モードだけ受ける（GS-173）。読めない値は自動に落とす。 */
 function saneDrawMode(value: unknown): DrawModeSetting {
   return value === 'high' || value === 'light' || value === 'auto' ? value : DEFAULT_OPTIONS.drawMode;
+}
+
+/** 知っている値だけ受ける（GS-214）。読めない値は自動に落とす。 */
+function saneVirtualPad(value: unknown): VirtualPadSetting {
+  return value === 'on' || value === 'off' || value === 'auto' ? value : DEFAULT_OPTIONS.virtualPad;
+}
+
+/** 仮想パッドをいま出すか（GS-214）。`auto` はそのつど端末から解く。 */
+export function virtualPadShown(set: VirtualPadSetting = options.virtualPad): boolean {
+  if (set === 'on') return true;
+  if (set === 'off') return false;
+  return looksLikePhone();
 }
 
 /** 数として読めるものだけ受ける。壊れた値で画面が固まらないように。 */
@@ -72,6 +101,7 @@ export function loadOptions(): void {
       charMs: sane(saved.charMs, DEFAULT_OPTIONS.charMs, 5, 200),
       scrollScale: sane(saved.scrollScale, DEFAULT_OPTIONS.scrollScale, 0.5, 4),
       drawMode: saneDrawMode(saved.drawMode),
+      virtualPad: saneVirtualPad(saved.virtualPad),
       masterVolume: sane(saved.masterVolume, DEFAULT_OPTIONS.masterVolume, 0, 1),
       bgmVolume: sane(saved.bgmVolume, DEFAULT_OPTIONS.bgmVolume, 0, 1),
       seVolume: sane(saved.seVolume, DEFAULT_OPTIONS.seVolume, 0, 1),

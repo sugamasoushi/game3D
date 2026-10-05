@@ -25,7 +25,10 @@
         },
         { "type": "portrait", "slot": "right", "face": "normal", "id": "meina" },
         { "type": "portrait", "slot": "right", "face": "normal", "id": "lamy" },
-        { "type": "comic", "images": ["EVENT020301_1.png", "EVENT020301_2.png", "EVENT020301_3.png"] },
+        {
+          "type": "comic",
+          "images": ["EVENT020301_1.png", "EVENT020301_2.png", "EVENT020301_3.png"]
+        },
         { "type": "wait", "ms": 500 },
         {
           "type": "message",
@@ -37,6 +40,16 @@
         { "type": "setSwitch", "key": "EVENT020301", "value": false }
       ],
       "kind": "scenario"
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_6",
+      "to": [{ "map": "0103", "at": { "x": -23, "y": 2, "z": 28 }, "face": "right" }]
+    },
+    {
+      "object": "obj_7",
+      "to": [{ "map": "0106", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }]
     }
   ]
 }

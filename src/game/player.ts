@@ -178,14 +178,17 @@ export interface Player {
   /** `facing` を渡すと、動いている間はその向き（GS-185。主人公がそこを通ったときの向き）。 */
   followAt(at: { x: number; y: number; z: number }, dt: number, yaw: number, facing?: Facing): void;
   /**
-   * いま居るマスの真ん中へ静かに戻す（GS-117）。**歩き終わりに呼ぶ。**
+   * 歩いた後のずれを直す（GS-117 / GS-194）。**歩き終わりに呼ぶ。**
    *
    * 歩く向きはカメラ基準（画面の上下左右）なので、マスの軸とはわずかにずれる。
    * 1 歩ずつのずれが積もると、**絵の立ち位置と塞ぐマスが食い違う**——
    * 人はマス 1 つを塞ぐ（GS-35）ので、端に寄った人には話しかけられなくなる。
+   * `from`（歩き出した所）を渡すと、そこから**ちょうどマス何個ぶん**の所へ揃える——
+   * マスの中のどこに立っていたかはそのまま（真ん中へ寄せない。GS-194）。
+   * 渡さなければ今居るマスの真ん中。
    * **収まらない場所へは動かさない**（壁ぎわで止まったときに壁へ押し込まないため）。
    */
-  settle(collision: CollisionMap): void;
+  settle(collision: CollisionMap, from?: { x: number; z: number }): void;
   /** 立てるマスを探して置く。見つからなければ false。 */
   spawn(collision: CollisionMap, bounds: { min: number[]; max: number[]; empty: boolean }): boolean;
   update(deltaSeconds: number, input: PlayerInput, collision: CollisionMap): void;
@@ -245,11 +248,46 @@ export interface Player {
   /** 板の大きさ（ワールド）。 */
   size: { width: number; height: number };
   /**
+   * 板の上の辺から**見えている絵の上端**（髪の上など）までの透明なすき間（ワールド。GS-205）。
+   * 全部のコマのうち一番上まで描いてあるコマで測る（歩きで上下しないように）。読み込む前は 0。
+   */
+  headPad(): number;
+  /**
    * 体の半分（マス）。踏んだ判定の範囲に使う（DEC-247）。
    * **当たりと同じマス 1 つぶんの四角**（GS-116）——踏む所に体が重なったら踏んだことにする。
    */
   radius: number;
   dispose(): void;
+}
+
+/** シートごとの「コマの上の透明な行数」（GS-205）。同じ絵を何人が使っても 1 度だけ数える。 */
+const headPadPx = new Map<string, number>();
+
+/** コマの上の透明な行数（画素）。全部のコマのうち一番少ないもの。読めなければ 0。 */
+function measureHeadPad(image: CanvasImageSource & { width: number; height: number }, sheet: ActorSheet): number {
+  const [fw, fh] = sheet.framePx;
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) return 0;
+  context.drawImage(image, 0, 0);
+  const data = context.getImageData(0, 0, image.width, image.height).data;
+  let pad = fh;
+  for (let row = 0; row < sheet.rows; row += 1) {
+    for (let col = 0; col < sheet.cols; col += 1) {
+      for (let y = 0; y < Math.min(pad, fh); y += 1) {
+        const py = row * fh + y;
+        let seen = false;
+        for (let x = col * fw; x < (col + 1) * fw && !seen; x += 1) seen = data[(py * image.width + x) * 4 + 3] > 0;
+        if (seen) {
+          pad = y;
+          break;
+        }
+      }
+    }
+  }
+  return pad >= fh ? 0 : pad;
 }
 
 export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = ACTOR_SHEET): Player {
@@ -280,7 +318,22 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
   const ready = new Promise<void>((resolve) => {
     markTextureReady = resolve;
   });
-  const texture = new TextureLoader().load(sheet.url, markTextureReady, undefined, markTextureReady);
+  const texture = new TextureLoader().load(
+    sheet.url,
+    (loaded) => {
+      // 見えている絵の上端（GS-205）。吹き出しの角がここを指す。
+      if (!headPadPx.has(sheet.url)) {
+        try {
+          headPadPx.set(sheet.url, measureHeadPad(loaded.image as HTMLImageElement, sheet));
+        } catch {
+          headPadPx.set(sheet.url, 0);
+        }
+      }
+      markTextureReady();
+    },
+    undefined,
+    markTextureReady,
+  );
   texture.colorSpace = SRGBColorSpace;
   texture.magFilter = NearestFilter;
   texture.minFilter = NearestFilter;
@@ -903,9 +956,13 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       skin.setShadowBase(position.x, position.y, position.z);
       layoutShadow();
     },
-    settle(collision) {
-      const cx = (Math.floor(position.x / unit) + 0.5) * unit;
-      const cz = (Math.floor(position.z / unit) + 0.5) * unit;
+    settle(collision, from) {
+      const cx = from
+        ? from.x + Math.round((position.x - from.x) / unit) * unit
+        : (Math.floor(position.x / unit) + 0.5) * unit;
+      const cz = from
+        ? from.z + Math.round((position.z - from.z) / unit) * unit
+        : (Math.floor(position.z / unit) + 0.5) * unit;
       if (cx === position.x && cz === position.z) return;
       if (!fits(cx, position.y, cz, collision)) return;
       position.x = cx;
@@ -1168,6 +1225,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
     footLift,
     frame: () => frameUv,
     size: { width, height },
+    headPad: () => ((headPadPx.get(sheet.url) ?? 0) / tilePx) * unit,
     // 踏んだ判定も四角に合わせる（GS-116）。細いままだと、四角で壁の手前に止まったとき
     // 壁のマスに描いた起動場所（扉など）に届かなくなる。
     radius: BODY_HALF,

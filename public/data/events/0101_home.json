@@ -37,14 +37,27 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "style": "bubble",
-          "talk": [
-            { "who": "meina", "lines": ["今日は何食べようかな～♪"] },
-            { "who": "grandpa", "lines": ["ちゃんと野菜を食べやさい"] },
-            { "who": "meina", "lines": ["アツアツのから揚げ・・・"] },
-            { "who": "grandpa", "lines": ["若鳥じゃないからまずいじゃろうて"] },
-            { "who": "meina", "lines": ["冗談だってば！"] }
+          "type": "if",
+          "when": { "switch": "EVENT010401", "is": true },
+          "then": [
+            {
+              "type": "message",
+              "talk": [
+                { "who": "meina", "lines": ["今日は何食べようかな～♪"] },
+                { "who": "grandpa", "lines": ["ちゃんと野菜を食べやさい"] },
+                { "who": "meina", "lines": ["アツアツのから揚げ・・・"] },
+                { "who": "grandpa", "lines": ["若鳥じゃないからまずいじゃろうて"] },
+                { "who": "meina", "lines": ["冗談だってば！"] }
+              ],
+              "style": "bubble"
+            }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [{ "who": "grandpa", "lines": ["気を付けるんじゃぞ"] }],
+              "style": "bubble"
+            }
           ]
         }
       ],
@@ -340,6 +353,12 @@
         { "type": "returnToTitle" }
       ],
       "kind": "scenario"
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_3",
+      "to": [{ "map": "0102", "at": { "x": 6, "y": 10, "z": -1 }, "face": "down" }]
     }
   ]
 }

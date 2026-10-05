@@ -37,7 +37,8 @@ export function ConditionPage({ party, members, gold }: { party: string[]; membe
   );
 }
 
-function Gauge({ value, max, mp = false }: { value: number; max: number; mp?: boolean }) {
+/** HP・MP の棒（コンディションと使い先の小窓で共用。GS-208）。 */
+export function Gauge({ value, max, mp = false }: { value: number; max: number; mp?: boolean }) {
   const ratio = max > 0 ? Math.max(0, Math.min(1, value / max)) : 0;
   return <span className={`condition-gauge${mp ? ' mp' : ''}${!mp && ratio <= 0.4 ? ' low' : ''}`}>
     <span style={{ width: `${ratio * 100}%` }} />

@@ -24985,6 +24985,20 @@
             17
           ]
         }
+      },
+      {
+        "id": "wall_000000",
+        "shape": "wall",
+        "mat": "solid",
+        "tile": 0,
+        "faces": {
+          "top": -1,
+          "bottom": -1,
+          "front": -1,
+          "back": -1,
+          "left": -1,
+          "right": -1
+        }
       }
     ]
   },
@@ -25053,9 +25067,9 @@
   "editor": {
     "camera": {
       "target": [
-        -24.088204228966923,
-        0.7801027333241938,
-        25.314190628038556
+        -4.400480385658298,
+        3.8258948611034325,
+        27.70339696139792
       ],
       "yaw": 0,
       "pitch": -20,
@@ -25065,12 +25079,12 @@
     "height": 0,
     "activeLayer": "objects",
     "brush": {
-      "shape": "box",
+      "shape": "wall",
       "rotation": 0,
       "color": "#000000",
       "tileset": "chests",
       "tile": 8,
-      "paint": "prefab",
+      "paint": "color",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
@@ -25112,7 +25126,7 @@
     {
       "name": "ScrollMaxZ",
       "type": "float",
-      "value": 36
+      "value": 35
     },
     {
       "name": "ScrollWhole",
@@ -48559,6 +48573,188 @@
               0
             ]
           }
+        },
+        {
+          "id": "タイルマップレイヤー_7-wall-2",
+          "shape": "wall",
+          "mat": "solid",
+          "ts": "",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "wall_000000"
+          ],
+          "count": 32,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              9,
+              0,
+              1,
+              9,
+              1,
+              1,
+              9,
+              2,
+              1,
+              9,
+              3,
+              1,
+              10,
+              0,
+              1,
+              10,
+              1,
+              1,
+              10,
+              2,
+              1,
+              10,
+              3,
+              1,
+              11,
+              0,
+              1,
+              11,
+              1,
+              1,
+              11,
+              2,
+              1,
+              11,
+              3,
+              1,
+              12,
+              0,
+              1,
+              12,
+              1,
+              1,
+              12,
+              2,
+              1,
+              12,
+              3,
+              1,
+              13,
+              0,
+              1,
+              13,
+              1,
+              1,
+              13,
+              2,
+              1,
+              13,
+              3,
+              1,
+              14,
+              0,
+              1,
+              14,
+              1,
+              1,
+              14,
+              2,
+              1,
+              14,
+              3,
+              1,
+              15,
+              0,
+              1,
+              15,
+              1,
+              1,
+              15,
+              2,
+              1,
+              15,
+              3,
+              1,
+              16,
+              0,
+              1,
+              16,
+              1,
+              1,
+              16,
+              2,
+              1,
+              16,
+              3,
+              1
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
         }
       ]
     },
@@ -55543,16 +55739,6 @@
               "name": "MapMove",
               "type": "string",
               "value": "0102"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Up"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "-5,3,14"
             }
           ],
           "space": "solid",
@@ -55589,16 +55775,6 @@
               "name": "MapMove",
               "type": "string",
               "value": "0104"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Right"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "-21,0,1"
             }
           ],
           "space": "solid",
@@ -55634,17 +55810,7 @@
             {
               "name": "MapMove",
               "type": "string",
-              "value": "0201"
-            },
-            {
-              "name": "Direction",
-              "type": "string",
-              "value": "Left"
-            },
-            {
-              "name": "MoveTo",
-              "type": "string",
-              "value": "5,5,-3"
+              "value": "0201,0106"
             }
           ],
           "space": "solid",
@@ -55652,19 +55818,19 @@
           "height": 1,
           "points": [
             [
-              -25,
+              -23,
               25
             ],
             [
-              -24,
+              -22,
               25
             ],
             [
-              -24,
+              -22,
               30
             ],
             [
-              -25,
+              -23,
               30
             ]
           ]
@@ -77309,6 +77475,11 @@
               "name": "HideIf",
               "type": "string",
               "value": "EVENT010301"
+            },
+            {
+              "name": "Standby",
+              "type": "boolean",
+              "value": true
             }
           ],
           "space": "plane",
@@ -77510,8 +77681,8 @@
     }
   ],
   "stats": {
-    "tiles": 9179,
-    "batches": 63,
-    "drawCalls": 63
+    "tiles": 9211,
+    "batches": 64,
+    "drawCalls": 64
   }
 }

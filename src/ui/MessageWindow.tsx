@@ -11,6 +11,7 @@ import { playUi } from '../game/audio';
 import { options } from '../game/options';
 import { faceCount, portraitLook, scrollMs, useUi } from './store';
 import { ComicPager } from './ComicPager';
+import { GAME_SCREEN_WIDTH } from '../mep3d/mapCamera';
 
 /**
  * 流れる文字の出入り（ミリ秒。GS-23）。
@@ -34,15 +35,36 @@ const DECIDE = ['Enter', 'Space', 'KeyZ'];
 const UP = ['ArrowUp', 'KeyW'];
 const DOWN = ['ArrowDown', 'KeyS'];
 
+/**
+ * 吹き出しの寸法（GS-200 / GS-201。旧作の `BubbleTalk` と `MessageWindow.createBubbleWindow` に合わせた）。
+ * 窓は **2 行**——1 行で済む会話は 1 行の丈。あふれたら 2 行ごとに止めて送る。
+ *
+ * 置き所は基準点（`bubbleAt`。足元から一定の画素だけ上）から決める。
+ * - **上の辺は会話の 2 人で揃える**（GS-202）。喋る人と話し相手の基準点のうち**高い方**から `BUBBLE_RISE` 上。
+ *   どちらが喋っても吹き出しの上の辺は同じ高さで、丈が違っても上の辺は揃う
+ * - 相手と反対の側へ広げる。右へ広げるなら左の縁が基準点の `BUBBLE_SIDE` 左、左へなら右の縁が `BUBBLE_SIDE` 右
+ * - 角は下の辺の**広げた側と逆へ少し寄せた所**（幅 `BUBBLE_TAIL_W`）を付け根に、基準点を指す（GS-203）。
+ *   右へ広げたら左寄り（付け根の真ん中が幅の `BUBBLE_TAIL_AT`）、左へ広げたら右寄り（その反対）
+ */
+const BUBBLE_ROWS = 2;
+const BUBBLE_RISE = 134;
+const BUBBLE_SIDE = 16;
+const BUBBLE_TAIL_W = 48;
+const BUBBLE_TAIL_AT = 1 / 3;
+/** 角の先とキャラチップの上の辺のすき間（GS-204）。 */
+const BUBBLE_TIP_GAP = 2;
+/** 画面の縁から離す幅。 */
+const BUBBLE_MARGIN = 8;
+
 export function MessageWindow({
   onAdvance,
   onPick,
-  headAt,
+  bubbleAt,
 }: {
   onAdvance(): void;
   onPick(index: number): void;
-  /** 吹き出しを出す相手の頭が画面のどこか（GS-23）。3D 側に聞く。 */
-  headAt(who: string): { x: number; y: number } | null;
+  /** 吹き出しの角が指す所が画面のどこか（GS-23 / GS-200）。3D 側に聞く。 */
+  bubbleAt(who: string): { x: number; y: number; top: number } | null;
 }) {
   const talk = useUi((s) => s.talk);
   const scroll = useUi((s) => s.scroll);
@@ -52,8 +74,22 @@ export function MessageWindow({
   const fadeMs = useUi((s) => s.fadeMs);
   const portraits = useUi((s) => s.portraits);
   const dropPortrait = useUi((s) => s.dropPortrait);
-  /** 吹き出しの置き所。カメラが動くので少しずつ追う。 */
-  const [head, setHead] = useState<{ x: number; y: number } | null>(null);
+  /**
+   * 吹き出しの角が指す所と、広げる側（GS-200）。カメラが動くので少しずつ追う。
+   * `side` は吹き出しを角から**どちらへ**広げるか。
+   */
+  const [head, setHead] = useState<{ x: number; y: number; top: number; side: 'left' | 'right'; level: number } | null>(null);
+  /** 吹き出しを置いた所（GS-200）。大きさを測ってから画面に収めて決める。 */
+  const [bubbleBox, setBubbleBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    /** 角の三点（枠の左上からの画素）。付け根の左・右と先。 */
+    tail: string;
+  } | null>(null);
+  /** 吹き出しの窓の行数（GS-200）。1 行で済む会話は 1 行の丈。 */
+  const [bubbleRows, setBubbleRows] = useState(1);
   /**
    * 流れる文字の段（GS-23）。`in` は**画面が真っ黒**で、その裏で暗幕と文字を置く。
    * `run` で黒が明けると、**暗幕が最初からかかった画面**が現れる。
@@ -90,11 +126,24 @@ export function MessageWindow({
    * **次の人の会話は必ず空から**始める。
    */
   const [source, setSource] = useState(full);
+  /**
+   * ここまで打ったら止まる文字数（GS-199）。**3 行で窓が埋まったら押されるまで待つ**——
+   * 巻き上げだけだと、読み終わる前に上の行が流れていってしまう。
+   * -1 は「まだ測っていない」（測るまでは打たない）。
+   */
+  const [limit, setLimit] = useState(-1);
+  /** 窓が埋まる所（文字数。GS-199）。全文を窓と同じ幅で並べて測る。 */
+  const pausesRef = useRef<number[]>([]);
   if (source !== full) {
     setSource(full);
     setShown(0);
+    setLimit(-1);
   }
   const done = shown >= full.length;
+  /** 窓が埋まって押されるのを待っている（GS-199）。 */
+  const paused = !done && limit >= 0 && shown >= limit;
+  /** 次に止まる所。無ければ終わりまで。 */
+  const nextLimit = (from: number) => pausesRef.current.find((at) => at > from) ?? full.length;
 
   /**
    * 文字の巻き上げ（GS-146）。窓は 3 行ぶんしか見せず、**あふれたぶんだけ上へ寄せる**。
@@ -118,11 +167,63 @@ export function MessageWindow({
     setLift(over > 0 ? Math.round(over / line) * line : 0);
   }, [shown, full]);
 
+  /**
+   * 窓が埋まる所を測る（GS-199）。見えない写し（`measureRef`）に**頭から何文字か**を窓と同じ幅で並べ、
+   * **▼ の印も付けて**丈が 4・7・10… 行になる最初の文字数を探す（二分探し）。その文字の手前で止める。
+   * 印を付けて測るのは、行末ぴったりで止めると ▼ だけが次の行へ落ち、窓が 1 行ずれるから。
+   * 改行の直後で止まったときは、▼ が空の行に出る。
+   * 打ちながら測らないのは、押して「窓が埋まる所まで出す」ときに止まる所が先に要るから。
+   * 文字の画面上の位置（`getClientRects`）では測らない——画面ごと縮めて映しているので
+   * 縮尺がかかり、隠れたタブでは 0 になる。丈（`offsetHeight`）なら縮尺に左右されない。
+   */
+  const measureRef = useRef<HTMLParagraphElement | null>(null);
+  const bubbled = Boolean(talk?.bubble);
+  useLayoutEffect(() => {
+    const pauses: number[] = [];
+    const mirror = measureRef.current;
+    if (mirror) {
+      const lineH = Number.parseFloat(window.getComputedStyle(mirror).lineHeight) || 35;
+      const mark = document.createElement('span');
+      mark.className = 'message-next';
+      mark.textContent = '▼';
+      // 吹き出しは 2 行の窓（GS-200）。▼ は文の外（右下の隅）に出すので、印なしで測る。
+      const page = bubbled ? BUBBLE_ROWS : 3;
+      const rowsOf = (count: number, marked = !bubbled) => {
+        mirror.textContent = full.slice(0, count);
+        if (marked) mirror.append(mark);
+        return Math.round(mirror.offsetHeight / lineH);
+      };
+      if (bubbled) setBubbleRows(Math.min(BUBBLE_ROWS, Math.max(1, rowsOf(full.length, false))));
+      // 行数がこれを超えたら止まる。
+      let edge = page;
+      let low = 0;
+      while (low < full.length && rowsOf(full.length) > edge) {
+        // low 文字では edge 行に収まり、high 文字ではあふれる。
+        let high = full.length;
+        while (high - low > 1) {
+          const mid = (low + high) >> 1;
+          if (rowsOf(mid) > edge) high = mid;
+          else low = mid;
+        }
+        if (low > (pauses[pauses.length - 1] ?? 0)) pauses.push(low);
+        // 次の窓は 1 枚ぶん先。空行が続いて窓 2 枚ぶん飛んでも、境目は窓の行数ごとに数える
+        // （ここは印なしの丈。末尾の改行は行を増やさない）。
+        edge += page;
+        const rows = rowsOf(high, false);
+        while (rows > edge) edge += page;
+        low = high;
+      }
+      mirror.textContent = '';
+    }
+    pausesRef.current = pauses;
+    setLimit(pauses[0] ?? full.length);
+  }, [full, bubbled]);
+
   // 1 文字ずつ。**タイマーは 1 本だけ**にして、文字数ぶんの setTimeout を積まない。
   // 音も**1 文字ごと**（GS-24）。空白と改行では鳴らさない——間が空くところで
   // 音だけ続くと、何も出ていないのに喋っているように聞こえる。
   useEffect(() => {
-    if (!talk || done) return;
+    if (!talk || done || shown >= limit) return;
     const id = window.setTimeout(() => {
       const letter = full[shown];
       if (letter && letter.trim()) playUi('message');
@@ -130,7 +231,7 @@ export function MessageWindow({
       // 速さは設定から毎回読む（GS-25）。設定画面で変えたら**次の 1 文字から**効く。
     }, options.charMs);
     return () => window.clearTimeout(id);
-  }, [talk, shown, done, full]);
+  }, [talk, shown, done, full, limit]);
 
   useEffect(() => {
     setCursor(0);
@@ -142,10 +243,11 @@ export function MessageWindow({
    * 押せば今までどおり早く送れる（こちらは上のキー・クリックの道）。
    */
   useEffect(() => {
-    if (!talk || talk.hold === undefined || !done) return;
-    const id = window.setTimeout(onAdvance, Math.max(0, talk.hold));
+    if (!talk || talk.hold === undefined || !(done || paused)) return;
+    // 窓が埋まって止まったときも、同じ間を置いて続きを打つ（GS-199）。
+    const id = window.setTimeout(done ? onAdvance : () => setLimit((at) => nextLimit(at)), Math.max(0, talk.hold));
     return () => window.clearTimeout(id);
-  }, [talk, done, onAdvance]);
+  }, [talk, done, paused, onAdvance]);
 
   // 押さずに消えるテロップ（GS-172）。出しておく時間が来たら薄れ始める。
   useEffect(() => {
@@ -171,16 +273,68 @@ export function MessageWindow({
    * 逃げ場の「画面の真ん中」に**最初の吹き出しだけ**出てから飛んでいた。
    */
   const anchor = talk?.bubble ?? '';
+  const pair = talk?.pair ?? '';
+  const bubbleAtRef = useRef(bubbleAt);
+  bubbleAtRef.current = bubbleAt;
   useLayoutEffect(() => {
     if (!anchor) {
       setHead(null);
       return;
     }
-    const look = () => setHead(headAt(anchor));
+    const look = () => {
+      const at = bubbleAtRef.current(anchor);
+      if (!at) {
+        setHead(null);
+        return;
+      }
+      // 相手と反対の側へ広げる（GS-200。旧作の `FieldObjectCheck`）。
+      // 相手が分からなければ、主人公は右・相手は左。
+      const other = pair ? bubbleAtRef.current(pair) : null;
+      const side: 'left' | 'right' =
+        other && Math.abs(other.x - at.x) > 1 ? (other.x > at.x ? 'left' : 'right') : anchor === 'player' ? 'right' : 'left';
+      // 上の辺を揃える高さ（GS-202）。2 人のうち高い方（画面の上の方）の基準点。
+      const level = other ? Math.min(at.y, other.y) : at.y;
+      setHead((now) =>
+        now && now.x === at.x && now.y === at.y && now.top === at.top && now.side === side && now.level === level ? now : { ...at, side, level },
+      );
+    };
     look();
     const timer = window.setInterval(look, 100);
     return () => window.clearInterval(timer);
-  }, [anchor, headAt]);
+  }, [anchor, pair]);
+
+  /**
+   * 吹き出しを置く（GS-200）。大きさは**全文で先に決まっている**ので、出し始めから動かない。
+   * 置き方と角は上の `BUBBLE_*` の説明（GS-201 / GS-202）。画面からはみ出すなら内へ寄せ、
+   * 角の先は基準点を指したまま。
+   */
+  const bubbleRef = useRef<HTMLDivElement | null>(null);
+  useLayoutEffect(() => {
+    const box = bubbleRef.current;
+    if (!box || !head) {
+      setBubbleBox(null);
+      return;
+    }
+    const width = box.offsetWidth;
+    const height = box.offsetHeight;
+    const want = head.side === 'right' ? head.x - BUBBLE_SIDE : head.x + BUBBLE_SIDE - width;
+    const left = Math.round(Math.min(Math.max(BUBBLE_MARGIN, want), GAME_SCREEN_WIDTH - BUBBLE_MARGIN - width));
+    const top = Math.round(Math.max(BUBBLE_MARGIN, head.level - BUBBLE_RISE));
+    // 角（GS-203）。付け根は持ち主の側へ少し寄せる（右へ広げたら左寄り）。先は基準点。
+    // 細い吹き出しでも付け根が角の丸みへ掛からないよう、縁から 12px 内に収める。
+    const at = head.side === 'right' ? width * BUBBLE_TAIL_AT : width * (1 - BUBBLE_TAIL_AT);
+    const baseA = Math.round(Math.min(Math.max(12, at - BUBBLE_TAIL_W / 2), Math.max(12, width - 12 - BUBBLE_TAIL_W)));
+    const baseB = baseA + BUBBLE_TAIL_W;
+    const tipX = Math.round(head.x - left);
+    // 先はキャラチップの上の辺から `BUBBLE_TIP_GAP` 上（GS-204）。人ごとの背丈に合う。
+    const tipY = Math.round(head.top - BUBBLE_TIP_GAP - top);
+    const tail = `${baseA},${height - 2} ${tipX},${tipY} ${baseB},${height - 2}`;
+    setBubbleBox((now) =>
+      now && now.left === left && now.top === top && now.tail === tail && now.width === width && now.height === height
+        ? now
+        : { left, top, width, height, tail },
+    );
+  }, [head, full, bubbleRows]);
 
   /**
    * 流す前に**寸法を測る**（GS-144）。速さは 1 行ぶんの時間で決めるので、
@@ -257,8 +411,19 @@ export function MessageWindow({
     return () => window.clearTimeout(id);
   }, [telop, telopStep, onAdvance]);
 
-  const stateRef = useRef({ done, choices, onAdvance, onPick, cursor });
-  stateRef.current = { done, choices, onAdvance, onPick, cursor };
+  /**
+   * 会話を押したとき（GS-199）。打っている途中なら**窓が埋まる所まで**出す、
+   * 止まっていたら続きを打つ、出そろっていたら次へ。
+   */
+  const press = () => {
+    if (limit < 0) return;
+    if (paused) setLimit(nextLimit(limit));
+    else if (!done) setShown(limit);
+    else onAdvance();
+  };
+
+  const stateRef = useRef({ choices, onPick, cursor, press });
+  stateRef.current = { choices, onPick, cursor, press };
 
   useEffect(() => {
     if (!talk && !choices && !scroll && !telop) return;
@@ -288,13 +453,12 @@ export function MessageWindow({
         return;
       }
       if (!DECIDE.includes(event.code)) return;
-      // 1 回目は全部出す、2 回目で次へ。
-      if (!now.done) setShown(full.length);
-      else now.onAdvance();
+      // 1 回目は窓が埋まる所まで出す、2 回目で続き（または次へ）。
+      now.press();
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [talk, choices, scroll, telop, full.length]);
+  }, [talk, choices, scroll, telop]);
 
   /**
    * 喋っている人（GS-170）。**その人の絵を手前に出し、ほかの人の絵は少し暗くする。**
@@ -483,34 +647,57 @@ export function MessageWindow({
         </div>
       ) : null}
 
-      {/* 吹き出し（GS-23）。フィールドの立ち話はこちら。頭の上に出す。 */}
+      {/*
+        吹き出し（GS-23）。フィールドの立ち話はこちら。旧作の `BubbleTalk` と同じ出し方（GS-200）——
+        **大きさは全文で先に決める**（打つにつれて伸びない）。幅は一番長い行、丈は 2 行まで。
+        位置が決まるまでは見せない（1 フレームだけ左上に出ないように）。
+      */}
       {talk && talk.bubble ? (
         <div
+          ref={bubbleRef}
           className="bubble"
-          style={head ? { left: head.x, top: head.y } : { left: '50%', top: '55%' }}
-          onClick={() => {
-            if (!done) setShown(full.length);
-            else onAdvance();
-          }}
+          style={
+            {
+              left: bubbleBox?.left ?? 0,
+              top: bubbleBox?.top ?? 0,
+              visibility: bubbleBox ? 'visible' : 'hidden',
+            } as CSSProperties
+          }
+          onClick={press}
         >
+          {/* 角（GS-201）。枠の下の辺から基準点へ。下の辺の線は付け根のあいだだけ角の色で消す。 */}
+          {bubbleBox ? (
+            <svg className="bubble-tail" width={bubbleBox.width} height={bubbleBox.height} aria-hidden="true">
+              <polyline points={bubbleBox.tail} />
+            </svg>
+          ) : null}
           {talk.icon ? <img className="bubble-icon" src={talk.icon} alt="" /> : null}
           <div className="bubble-body">
-            {/* 名前は出さない（GS-119）。吹き出しは角が喋っている人を指しているので要らない。 */}
-            <p className="bubble-text">
-              {full.slice(0, shown)}
-              {done ? <span className="message-next">▼</span> : null}
+            {/* 幅を決める見えない写し。全文を置くので、一番長い行の幅になる。 */}
+            <p className="bubble-text bubble-sizer" aria-hidden="true">
+              {full}
             </p>
+            {/* 名前は出さない（GS-119）。吹き出しは角が喋っている人を指しているので要らない。 */}
+            <div ref={viewRef} className="bubble-view" style={{ '--rows': bubbleRows } as CSSProperties}>
+              <p
+                ref={bodyRef}
+                className={`bubble-text${shown === 0 ? ' at-top' : ''}`}
+                style={{ transform: `translateY(${-lift}px)` }}
+              >
+                {full.slice(0, shown)}
+              </p>
+              <p ref={measureRef} className="bubble-text message-measure" aria-hidden="true" />
+            </div>
           </div>
+          {/* 送りの印は文の外（右下の隅）。文の中に置くと、一番長い行の後ろで折り返してしまう。 */}
+          {done || paused ? <span className="message-next bubble-next">▼</span> : null}
         </div>
       ) : null}
 
       {talk && !talk.bubble ? (
         <div
           className="message"
-          onClick={() => {
-            if (!done) setShown(full.length);
-            else onAdvance();
-          }}
+          onClick={press}
         >
           {talk.name ? <div className="message-name">{talk.name}</div> : null}
           {/* 3 行の窓（GS-146）。あふれたら中身を上へ巻き上げる——窓の丈は変えない。 */}
@@ -523,8 +710,10 @@ export function MessageWindow({
               style={{ transform: `translateY(${-lift}px)` }}
             >
               {full.slice(0, shown)}
-              {done ? <span className="message-next">▼</span> : null}
+              {done || paused ? <span className="message-next">▼</span> : null}
             </p>
+            {/* 窓が埋まる所を測るための見えない写し（GS-199）。 */}
+            <p ref={measureRef} className="message-body message-measure" aria-hidden="true" />
           </div>
         </div>
       ) : null}
