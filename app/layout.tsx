@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'SampleGame', statusBarStyle: 'black-translucent' },
 };
 
-// ゲームビュー（5926）の index.html と同じ（GS-09）。
+// もとはゲームビュー（2026-10-06 に削除）の index.html と同じ（GS-09）。
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
