@@ -431,7 +431,7 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
      * カメラの追い先も一緒に移すので（`placePlayer`）、置いた先から滑ってこない。
      * 別のマップへ移すのは今までどおり `transfer` の仕事。
      */
-    place(target, at, face, px) {
+    async place(target, at, face, px, look) {
       const view = options.getView();
       if (!view) return;
       const party = partyOf(target);
@@ -467,6 +467,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       const came = !view.hasNpc(id);
       view.placeNpc(id, spot.x, spot.y, spot.z, face ? DIR[face] : undefined, px, keptAxes(at));
       if (came && view.hasNpc(id)) rememberNpc(id, false);
+      // 現れ方・不透明度（GS-207）。人（NPC）だけ。
+      if (look && view.hasNpc(id)) await view.lookNpc(id, look.opacity ?? 1, look.appear, look.ms);
     },
 
     /**
@@ -514,13 +516,19 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
      * 消す（GS-157）。**その場ですぐ居なくなる。** 覚えるのが既定なので、
      * マップに入り直しても戻ってこない（旧作の `setVisible(false)` が残るのと同じ）。
      */
-    hide(target, remember) {
+    async hide(target, remember, vanish) {
       const view = options.getView();
       if (!view) return;
       const id = actorId(target);
       if (id === null) {
         todo(`消す（${target}）——${target === 'player' ? 'プレイヤーは消せない' : '誰を指すか決まらない'}`);
         return;
+      }
+      // フェードアウト（GS-208）。薄くなり切ってから消す。途中で別の指示（置き直す など）が来たら消さない。
+      // **覚えるのは消え終わってから**（GS-209）。先に覚えると、覚えの知らせ（`onSwitch`）で
+      // 出入りの見直しが走り、薄くなる前に片付けられてすぐ消えていた。
+      if (vanish && view.hasNpc(id)) {
+        if (!(await view.vanishNpc(id, vanish.ms))) return;
       }
       if (remember) rememberNpc(id, true);
       view.removeNpc(id);

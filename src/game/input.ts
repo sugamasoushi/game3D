@@ -32,7 +32,6 @@ const SWALLOW = new Set([
   'KeyF',
   'KeyC',
   'KeyN',
-  'KeyR',
   'KeyB',
   'KeyH',
   'Slash',

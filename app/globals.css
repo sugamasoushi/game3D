@@ -2951,6 +2951,22 @@ body {
   cursor: pointer;
 }
 
+.debug-map {
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.debug-map option {
+  background: #1a1d2b;
+  color: #fff;
+}
+
 .debug-battle:hover {
   background: rgba(0, 0, 0, 0.75);
   border-color: #ffd479;

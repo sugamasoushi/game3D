@@ -18,7 +18,7 @@ export interface CommonEvent {
   commands: EventCommand[];
 }
 
-interface CommonBook {
+export interface CommonBook {
   commons: Record<string, CommonEvent>;
 }
 

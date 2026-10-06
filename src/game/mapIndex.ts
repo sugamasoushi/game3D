@@ -28,7 +28,7 @@ export interface MapEntry {
   battleStage?: { formations?: string[] };
 }
 
-interface MapFile {
+export interface MapFile {
   maps: Record<string, MapEntry>;
 }
 

@@ -69,6 +69,17 @@ import { createBattleCameraPlayer, type BattleCamera } from './battle/battleCame
 import { entryForFile, type MapEntry } from './mapIndex';
 import { battleFormationSlots, chooseBattleFormation } from './battle/book';
 
+/** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
+const APPEAR_MS = 1200;
+/** 白く光って現れるとき、白い姿が出そろうまでの割合（GS-207）。そのあと白が引く。 */
+const APPEAR_GLOW_PEAK = 0.4;
+/** 消えるのにかかる時間の既定（GS-208。ミリ秒）。 */
+const VANISH_MS = 1000;
+/** 終わりをゆっくり。 */
+const easeOut = (t: number) => 1 - (1 - t) * (1 - t);
+/** 始まりをゆっくり（消えるとき。初めはまだ居て、すっと抜ける）。 */
+const easeIn = (t: number) => t * t;
+
 /** カメラモードの平行移動（マス毎秒）。 */
 const PAN_SPEED = 8;
 /** プレイのカメラ距離（マス）。編集時の寄りをそのまま使うと近すぎる。 */
@@ -215,6 +226,17 @@ export interface GameView {
    * 居ない相手なら false。
    */
   placeNpc(id: string, x: number, y: number, z: number, face?: WalkDir, px?: { x: number; y?: number; z: number }, keep?: KeepAxes): boolean;
+  /**
+   * NPC の見た目を変える（GS-207）。`opacity` は不透明度（0〜1）。
+   * `appear` を付けると**透明から現れる**——`glow` は白く光ってから色が戻る（幽霊・魔法）、
+   * `fade` はふわっと浮かぶ。`ms` はその長さ。現れ終わったら解ける（居ない相手なら false ですぐ解ける）。
+   */
+  lookNpc(id: string, opacity: number, appear?: 'glow' | 'fade', ms?: number): Promise<boolean>;
+  /**
+   * NPC を**いまの濃さから透明へ**薄くする（GS-208。消える演出）。消しはしない——
+   * 薄くなり切ったら true（途中で別の指示が来た・居ない相手なら false）。消すのは呼んだ側（`removeNpc`）。
+   */
+  vanishNpc(id: string, ms?: number): Promise<boolean>;
   /**
    * その人をプレイヤーの方へ向ける（GS-118）。**話しかけたときに呼ぶ。**
    * 重なって立っていて向きが決まらないときと、居ないときは false。
@@ -397,7 +419,8 @@ export interface GameView {
 /**
  * 戦闘の舞台（GS-94 / GS-95）。場所は床向きの点の `BattleStage=true`、並びは `battleFormations.json`。
  * カメラの既定はフィールドのまま（水平角 0・仰角そのまま・寄せ 1）で、角度や寄せは
- * 戦闘演出の割り当て（`battlePresentation.json`）が指すカメラ演出が決める（イベントの `battle.camera` は GS-98 で廃止）。
+ * 戦闘開始のカメラ（`battle/battleCamera.ts` の `BATTLE_START_CAMERA`。GS-104）が決める。
+ * 戦闘演出の割り当て（`battlePresentation.json`）は 2026-10-06 に消した。イベントの `battle.camera` は GS-98 で廃止。
  * マップ台帳の基準カメラ（`battleStage.camera`）は GS-97 で廃止した。
  * マップの点のプロパティ（旧 `StageYaw` など。GS-89）は廃止した。
  */
@@ -639,8 +662,40 @@ export function createGameView(
     wanderIn: number;
     /** 置いた場所。奈落へ落ちたときはここへ戻す。 */
     home: Vector3;
+    /** いまの不透明度（GS-207）。無ければ 1。 */
+    opacity?: number;
   }
   const npcs = new Map<string, NpcActor>();
+  /** 見た目を変えた回数（GS-207）。走っている現れ方が、後から来た指示に負けるように。 */
+  const lookTurns = new Map<string, number>();
+  /** 見た目を塗る（GS-207）。いまの濃さを覚えておく——消えるときはそこから薄くする。 */
+  const paintLook = (npc: NpcActor, opacity: number, glow: number) => {
+    npc.opacity = opacity;
+    npc.actor.setLook(opacity, glow);
+  };
+  /**
+   * 見た目を時間で動かす（GS-207 / GS-208）。`paint` に 0〜1 の進み具合を渡す。
+   * 隠れたタブでは requestAnimationFrame が止まるので、50ms ごとにも進める。
+   * 同じ人へ後から別の指示が来たら打ち切って false（人が消えたときも false）。
+   */
+  const lookFrames = async (id: string, npc: NpcActor, ms: number, paint: (t: number) => void): Promise<boolean> => {
+    const turn = (lookTurns.get(id) ?? 0) + 1;
+    lookTurns.set(id, turn);
+    const start = performance.now();
+    for (;;) {
+      await new Promise<void>((done) => {
+        const timer = window.setTimeout(done, 50);
+        window.requestAnimationFrame(() => {
+          window.clearTimeout(timer);
+          done();
+        });
+      });
+      if (lookTurns.get(id) !== turn || npcs.get(id) !== npc) return false;
+      const t = Math.min(1, (performance.now() - start) / ms);
+      paint(t);
+      if (t >= 1) return true;
+    }
+  };
   /**
    * 出す条件（GS-130）で**作らなかった**人（GS-153）。
    * イベントが `place` で名指ししたときだけ、その場で作って出す——旧作の `setVisible(true)`。
@@ -1046,6 +1101,8 @@ export function createGameView(
         scenery.bindLightWalls(actor.bodyMaterial);
         actor.setShadowField(field.solid, field.surface, field.top, field.selfSolid);
         actor.faceCamera((rig.yaw * Math.PI) / 180);
+        // 不透明度（GS-207。マップの `Opacity`）。幽霊のような人。
+        if (def.opacity !== undefined) actor.setLook(def.opacity, 0);
         scene.add(actor.group);
         // 見た目をスイッチから導く（GS-133）。**マップを読み直しても開いたまま**になる。
         if (def.pose && def.poseIf && switchOn(def.poseIf, def.id)) actor.pose(def.pose);
@@ -1072,6 +1129,7 @@ export function createGameView(
           // 最初の 1 歩をばらけさせる。全員が同じ拍子で動き出すと機械じみて見える。
           wanderIn: wander ? Math.random() * (wander.ms[1] / 1000) : 0,
           home: actor.position.clone(),
+          ...(def.opacity !== undefined ? { opacity: def.opacity } : {}),
         });
         return true;
       };
@@ -1560,11 +1618,6 @@ export function createGameView(
     if (input.pressed('KeyC')) {
       status.showCollision = !status.showCollision;
       wires?.setVisible(status.showCollision);
-      changed = true;
-    }
-    if (input.pressed('KeyR') && player) {
-      player.placeAt(spawnPoint.x, spawnPoint.y, spawnPoint.z);
-      rig.target.copy(player.position);
       changed = true;
     }
     if (changed) {
@@ -2271,6 +2324,49 @@ export function createGameView(
       npc.home.copy(npc.actor.position);
       if (face) npc.actor.face(DIR_FACE[face]);
       return true;
+    },
+    async lookNpc(id, opacity, appear, ms = APPEAR_MS) {
+      const npc = npcs.get(id);
+      if (!npc) {
+        console.warn(`[npc] 居ない: ${id}`);
+        return false;
+      }
+      const target = Math.min(1, Math.max(0, opacity));
+      if (!appear || ms <= 0) {
+        // 走っている現れ方・消え方があれば打ち切る。
+        lookTurns.set(id, (lookTurns.get(id) ?? 0) + 1);
+        paintLook(npc, target, 0);
+        return true;
+      }
+      // 透明から。描く前に 0 にする——置いた瞬間に 1 フレームだけ見えないように。
+      paintLook(npc, 0, appear === 'glow' ? 1 : 0);
+      const done = await lookFrames(id, npc, ms, (t) => {
+        if (appear === 'glow') {
+          // 前半: 白い姿が透明から浮かぶ。後半: 白が引いて、決めた濃さへ。
+          if (t < APPEAR_GLOW_PEAK) {
+            paintLook(npc, easeOut(t / APPEAR_GLOW_PEAK), 1);
+          } else {
+            const k = easeOut((t - APPEAR_GLOW_PEAK) / (1 - APPEAR_GLOW_PEAK));
+            paintLook(npc, 1 + (target - 1) * k, 1 - k);
+          }
+        } else {
+          paintLook(npc, target * easeOut(t), 0);
+        }
+      });
+      if (done) paintLook(npc, target, 0);
+      return true;
+    },
+    async vanishNpc(id, ms = VANISH_MS) {
+      const npc = npcs.get(id);
+      if (!npc) return false;
+      // いまの濃さ（半透明の人なら 70% など）から透明へ。
+      const from = npc.opacity ?? 1;
+      if (ms <= 0) {
+        lookTurns.set(id, (lookTurns.get(id) ?? 0) + 1);
+        paintLook(npc, 0, 0);
+        return true;
+      }
+      return lookFrames(id, npc, ms, (t) => paintLook(npc, from * (1 - easeIn(t)), 0));
     },
     faceNpcToPlayer(id) {
       const npc = npcs.get(id);

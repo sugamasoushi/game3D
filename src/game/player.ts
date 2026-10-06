@@ -252,6 +252,8 @@ export interface Player {
    * 全部のコマのうち一番上まで描いてあるコマで測る（歩きで上下しないように）。読み込む前は 0。
    */
   headPad(): number;
+  /** 見た目（GS-207）。不透明度と白く光らせる量（どちらも 0〜1）。 */
+  setLook(opacity: number, glow: number): void;
   /**
    * 体の半分（マス）。踏んだ判定の範囲に使う（DEC-247）。
    * **当たりと同じマス 1 つぶんの四角**（GS-116）——踏む所に体が重なったら踏んだことにする。
@@ -1211,6 +1213,9 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       // 「濃さ 0」でマップの影が消えてもキャラの影だけ残っていた。
       // 塗りの影は出さない（DEC-393）。出す・出さないは受ける側の太陽の影が決める。
       layoutShadow();
+    },
+    setLook(opacity, glow) {
+      skin.setLook(opacity, glow);
     },
     setTime(seconds) {
       skin.setTime(seconds);

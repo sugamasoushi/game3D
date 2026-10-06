@@ -1,11 +1,11 @@
 {
   "infomation": "スプライトシート（コマに区切って使う画像）の台帳（GS-121）。キーは assets/spritesheet/ の中のファイル名。frameWidth / frameHeight は 1 コマの大きさ（px）、columns は横のコマ数（これで折り返す）、rows は縦の行数。キャラの立ち姿（actors.json）も攻撃の絵（effects.json）も同じこの台帳を見る。台帳エディタの「スプライトシート」で編集する。",
   "sheets": {
-    "Chests.png": {
+    "bat.png": {
       "frameWidth": 32,
       "frameHeight": 32,
-      "columns": 4,
-      "rows": 3
+      "columns": 3,
+      "rows": 4
     },
     "blackCat.png": {
       "frameWidth": 32,
@@ -18,6 +18,12 @@
       "frameHeight": 32,
       "columns": 3,
       "rows": 1
+    },
+    "Chests.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": 3
     },
     "chicken_walk.png": {
       "frameWidth": 32,
@@ -60,6 +66,12 @@
       "frameHeight": 192,
       "columns": 5,
       "rows": 2
+    },
+    "pipo-charachip003a.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 4
     },
     "pipo-charachip029.png": {
       "frameWidth": 32,

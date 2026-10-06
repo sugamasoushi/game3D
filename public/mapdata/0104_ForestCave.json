@@ -5441,9 +5441,9 @@
   "editor": {
     "camera": {
       "target": [
-        -19.150210983725522,
-        1.916560722062211,
-        1.9277684205779524
+        -14.104113360239047,
+        1.91656072206221,
+        3.7205341817840543
       ],
       "yaw": 0.39999999999997726,
       "pitch": -34.1,
@@ -5451,7 +5451,7 @@
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "objects",
+    "activeLayer": "オブジェクトレイヤー_3",
     "brush": {
       "shape": "floor",
       "rotation": 0,
@@ -28827,6 +28827,47 @@
               0
             ]
           }
+        }
+      ]
+    },
+    {
+      "id": "オブジェクトレイヤー_3",
+      "name": "NPC",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": [],
+      "objects": [
+        {
+          "id": "obj_1",
+          "name": "bat",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Sprite",
+              "type": "string",
+              "value": "bat.png#32x32#7"
+            },
+            {
+              "name": "EnemyData",
+              "type": "string",
+              "value": "enemy02"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              -15.5,
+              -0.5
+            ]
+          ]
         }
       ]
     }

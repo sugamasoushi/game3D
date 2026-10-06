@@ -59,7 +59,7 @@ export interface ItemDef {
   equip?: ItemEquip;
 }
 
-interface ItemBook {
+export interface ItemBook {
   items: Record<string, ItemDef>;
 }
 

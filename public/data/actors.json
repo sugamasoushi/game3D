@@ -62,6 +62,21 @@
       "wander": {
         "range": 2
       }
+    },
+    "pipo-charachip003a": {
+      "sheet": "pipo-charachip003a.png"
+    },
+    "bat": {
+      "sheet": "bat.png",
+      "order": [
+        "north",
+        "west",
+        "south",
+        "east"
+      ],
+      "wander": {
+        "range": 2
+      }
     }
   }
 }

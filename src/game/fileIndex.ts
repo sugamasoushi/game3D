@@ -9,7 +9,7 @@
 
 import { assetUrl } from './assets';
 
-interface FileList {
+export interface FileList {
   /** 在る法線マップ（`public/` からの相対）。 */
   normals: string[];
   /** イベント JSON が在るマップ名（`0101_home` のように拡張子なし）。 */

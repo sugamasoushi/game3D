@@ -59,7 +59,13 @@ export interface EventContext {
    * **プレイヤーも受ける。** 軸に `"player"` と書けば**主人公と同じ座標**（GS-154）
    * ——プレイヤー自身を置くときは「その軸は動かさない」の意味になる。解くのは実行機側。
    */
-  place(target: ActorRef, at: PlaceAt, face?: Step, px?: PixelOffset): void;
+  place(
+    target: ActorRef,
+    at: PlaceAt,
+    face?: Step,
+    px?: PixelOffset,
+    look?: { appear?: 'glow' | 'fade'; opacity?: number; ms?: number },
+  ): void | Promise<void>;
   /**
    * 漫画のようにめくる絵（GS-188）。`read` は読み終わるまで、ほかはめくり終わるまで待って返る。
    * `images` は `assets/img/Event/` の名前（拡張子まで）。
@@ -76,7 +82,7 @@ export interface EventContext {
    * 消す（GS-157）。**その場ですぐ居なくなる。** `remember` が真なら、
    * そのキャラ自身の覚えに残してマップを読み直しても出さない。居ない相手なら何もしない。
    */
-  hide(target: ActorRef, remember: boolean): void;
+  hide(target: ActorRef, remember: boolean, vanish?: { ms?: number }): void | Promise<void>;
   /**
    * いま向いている方（GS-158）。**前後左右で歩かせる**ときだけ使う。
    * 居ない相手なら null。
@@ -318,7 +324,18 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   },
 
   place: async (ctx, cmd) => {
-    ctx.place(cmd.target, cmd.at, cmd.face, cmd.px);
+    // 現れ方・不透明度（GS-207）。書いたときだけ渡す。不透明度は % で書き、ここで 0〜1 に。
+    const look =
+      cmd.appear || cmd.opacity !== undefined
+        ? {
+            ...(cmd.appear ? { appear: cmd.appear } : {}),
+            ...(cmd.opacity !== undefined ? { opacity: Math.min(100, Math.max(0, cmd.opacity)) / 100 } : {}),
+            ...(cmd.ms !== undefined ? { ms: Math.max(0, cmd.ms) } : {}),
+          }
+        : undefined;
+    const run = ctx.place(cmd.target, cmd.at, cmd.face, cmd.px, look);
+    if (cmd.wait === false) void run;
+    else await run;
   },
 
   // 漫画のようにめくる絵（GS-188）。既定は「読ませる」・1 枚 500ms・めくる音あり。
@@ -347,7 +364,14 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
 
   // 消す（GS-157）。**覚えるのが既定**——見送った鶏が入り直すと戻っていたら話が合わない。
   hide: async (ctx, cmd) => {
-    ctx.hide(cmd.target, cmd.remember ?? true);
+    // 消え方（GS-208）。書いたときだけ薄くしてから消す。
+    const run = ctx.hide(
+      cmd.target,
+      cmd.remember ?? true,
+      cmd.vanish === 'fade' ? (cmd.ms !== undefined ? { ms: Math.max(0, cmd.ms) } : {}) : undefined,
+    );
+    if (cmd.wait === false) void run;
+    else await run;
   },
 
   portrait: async (ctx, cmd) => {

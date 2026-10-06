@@ -29,6 +29,8 @@
 //            `self:開けた` と書くと**その物自身の覚え**（GS-134）。ふつうに書くと通しのスイッチ
 //   StepInPlace … **常時その場で足踏みする**（GS-169）。値は真偽。進まず足だけ動く
 //            （揺れる旗・回る風車・じっとしていない人）。**うろつきとは両立しない**
+//   Opacity … **不透明度（%）**（GS-207）。幽霊のような半透明の人に。0〜100、書かなければ 100。
+//            イベントの「置き直す」の不透明度は、その場かぎり（マップを読み直すとこちらに戻る）
 //   Hidden … **ゲームには出さない**（GS-160）。エディタでは見える。置き場所の目印用
 //   Standby … **最初は出さない**（GS-157）。イベントの「置き直す」で出すまで居ない。
 //             出入りはイベントが決めるので、**ここにイベント名は書かない**
@@ -120,6 +122,8 @@ export interface NpcDef {
    * 歩かせたりうろつかせたりすると、歩き終わりにマスの真ん中へ戻る。
    */
   pixel?: boolean;
+  /** 不透明度（0〜1。GS-207。マップの `Opacity` は % で書く）。無ければ不透明。 */
+  opacity?: number;
   x: number;
   y: number;
   z: number;
@@ -153,6 +157,8 @@ const STANDBY_PROPERTY = 'Standby';
 const STEP_IN_PLACE_PROPERTY = 'StepInPlace';
 /** ピクセル単位で置く（GS-191）。値は真偽。 */
 const PIXEL_PLACE_PROPERTY = 'PixelPlace';
+/** 不透明度（GS-207）。% で書く（0〜100）。 */
+const OPACITY_PROPERTY = 'Opacity';
 /** 中身（GS-132）。宝箱の「何が」「いくつ」。 */
 const ITEM_PROPERTY = 'Item';
 const NUM_PROPERTY = 'Num';
@@ -324,6 +330,10 @@ export function readNpcs(map: MapDef): NpcDef[] {
         // 最初は出さない（GS-157）。イベントの「置き直す」で出す。
         ...(truthOf(object.properties, STANDBY_PROPERTY) ? { standby: true } : {}),
         ...(truthOf(object.properties, PIXEL_PLACE_PROPERTY) ? { pixel: true } : {}),
+        // 不透明度（GS-207）。% で書く。100 以上は書いていないのと同じ。
+        ...((numberOf(object.properties, OPACITY_PROPERTY) ?? 100) < 100
+          ? { opacity: Math.max(0, numberOf(object.properties, OPACITY_PROPERTY) ?? 100) / 100 }
+          : {}),
         // 常時その場で足踏み（GS-169）。イベントを書かなくても動いて見える。
         ...(truthOf(object.properties, STEP_IN_PLACE_PROPERTY) ? { stepping: true } : {}),
         ...(textOf(object.properties, ITEM_PROPERTY) ? { item: textOf(object.properties, ITEM_PROPERTY) } : {}),

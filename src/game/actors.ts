@@ -17,7 +17,7 @@ const GUESS_COLS = 3;
 const GUESS_ROWS = 4;
 
 /** `actors.json` の 1 人ぶん。 */
-interface ActorEntry {
+export interface ActorEntry {
   /**
    * 絵のファイル名（`assets/spritesheet/` の中。GS-121）。
    * 1 コマの大きさ・横のコマ数・縦の行数は `spriteSheets.json` が持つ。
@@ -65,7 +65,7 @@ export const WANDER_DEFAULT: Required<WanderDef> = {
 };
 
 /** `actors.json` の中身。 */
-interface ActorFile {
+export interface ActorFile {
   actors: Record<string, ActorEntry>;
 }
 

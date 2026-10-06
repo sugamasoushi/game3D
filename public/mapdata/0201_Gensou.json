@@ -5982,10 +5982,12 @@
   "view": {
     "backdrop": {
       "src": "nightsky_full-moon01.png",
-      "y": -7,
-      "height": 37,
-      "offset": 11,
-      "spin": -3,
+      "y": -14.5,
+      "z": -7.5,
+      "height": 60.5,
+      "width": 214,
+      "offset": 32,
+      "spin": -110,
       "shape": "sphere",
       "count": 2
     }
@@ -6080,17 +6082,17 @@
   "editor": {
     "camera": {
       "target": [
-        4.784434805174621,
-        7.055609077234993,
-        -1.1768770586593054
+        -2.5400401399842543,
+        8.526200738327741,
+        5.8805182022671865
       ],
       "yaw": 0,
       "pitch": -15,
-      "distance": 9.842104254400802,
+      "distance": 8.345137614500887,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "objects",
+    "activeLayer": "オブジェクトレイヤー_4",
     "brush": {
       "shape": "floor",
       "rotation": 0,
@@ -15840,6 +15842,42 @@
               1
             ]
           ]
+        },
+        {
+          "id": "obj_1",
+          "name": "0101",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "MapMove",
+              "type": "string",
+              "value": "0101"
+            }
+          ],
+          "space": "solid",
+          "y": 5,
+          "height": 1,
+          "points": [
+            [
+              -4,
+              -9
+            ],
+            [
+              -1,
+              -9
+            ],
+            [
+              -1,
+              -7
+            ],
+            [
+              -4,
+              -7
+            ]
+          ]
         }
       ]
     },
@@ -16101,6 +16139,47 @@
       "collision": false,
       "properties": [],
       "batches": []
+    },
+    {
+      "id": "オブジェクトレイヤー_4",
+      "name": "NPC",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "collision": false,
+      "properties": [],
+      "batches": [],
+      "objects": [
+        {
+          "id": "obj_2",
+          "name": "pipo-charachip003a",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Sprite",
+              "type": "string",
+              "value": "pipo-charachip003a.png#32x32#1"
+            },
+            {
+              "name": "Standby",
+              "type": "boolean",
+              "value": true
+            }
+          ],
+          "space": "plane",
+          "y": 5,
+          "points": [
+            [
+              -2.5,
+              -8.5
+            ]
+          ]
+        }
+      ]
     }
   ],
   "stats": {

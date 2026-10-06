@@ -19,6 +19,9 @@ import {
 import { skyUrl } from './camera';
 import type { BackdropDef } from './types';
 
+/** 書き割りの板の名前（DEC-433）。エディタが回転の中心の印を置くときに探す。 */
+export const BACKDROP_MESH_NAME = 'backdrop';
+
 /**
  * 背景の絵（DEC-274）。**組み直しをまたいで使い回す。**
  * 中身の変わらない画像なので、URL で憶えて持ち回す。捨てない。
@@ -80,7 +83,8 @@ export function createBackdrop(): Backdrop {
     color: new Color(1, 1, 1),
   }));
   const mesh: Mesh<BufferGeometry, MeshBasicMaterial> = new Mesh(new PlaneGeometry(1, 1), material);
-  mesh.name = 'backdrop';
+  // エディタが回転の中心の印を置くときにこの名前で探す（DEC-433）。
+  mesh.name = BACKDROP_MESH_NAME;
   mesh.visible = false;
   // 背景なので一番先に描く。手前のタイルが上書きする。
   mesh.renderOrder = -2;
@@ -125,9 +129,11 @@ export function createBackdrop(): Backdrop {
     const count = Math.max(1, Math.round(def.count ?? 1));
     // 絵 1 枚が世界で何メートルになるか。高さの自動計算はこれを基準にする（引き伸ばさない）。
     const round = shape === 'cylinder' || shape === 'sphere';
+    // 板の幅（DEC-432）。0 ならマップの幅。広げたぶん絵も引き延ばす（1 枚の幅も一緒に広がる）。
+    const across = def.width && def.width > 0 ? def.width : wide;
     const span = round
       ? (Math.PI * (Math.hypot(wide, deep) + (def.offset ?? 0) * 2) * unit) / count
-      : (wide * unit) / count;
+      : (across * unit) / count;
     if (texture) {
       // 1 枚おきに反転して継ぎ目を消す（DEC-149）。反転しないと絵の左端と右端が接する。
       texture.wrapS = def.mirror === false ? RepeatWrapping : MirroredRepeatWrapping;
@@ -143,7 +149,18 @@ export function createBackdrop(): Backdrop {
      * 位置も同じだけ回してマップの周りを回り込ませる。
      */
     const spin = (((def.spin ?? 0) % 360) * Math.PI) / 180;
+    /*
+     * 下へ回す（DEC-431）。**Y で向けたあとの横軸**まわりに回すので、回転の順は Y → X。
+     * 正面（回したあとの −Z）が下がる向きを＋にする（X 軸の＋回転は正面を上げるので符号を反す）。
+     * 軸は形の真ん中——球は赤道（下端）、筒と板は高さの中ほど。
+     */
+    const tilt = (Math.max(-90, Math.min(90, def.tilt ?? 0)) * Math.PI) / 180;
+    mesh.rotation.order = 'YXZ';
     mesh.rotation.y = spin;
+    mesh.rotation.x = -tilt;
+    // X・Z 方向へ動かす（DEC-433 / DEC-434）。回す軸ごとずらす。Y は下端（`bottom`）が持つ。
+    const shift = (def.x ?? 0) * unit;
+    const shiftZ = (def.z ?? 0) * unit;
     if (round) {
       // マップの角まで入る半径。マップは原点中心なので位置は中央のまま。
       const radius = (Math.hypot(wide, deep) / 2 + (def.offset ?? 0)) * unit;
@@ -155,17 +172,17 @@ export function createBackdrop(): Backdrop {
          * 見上げると何も無かった。
          */
         mesh.scale.set(radius * 2, height * 2, radius * 2);
-        mesh.position.set(0, bottom, 0);
+        mesh.position.set(shift, bottom, shiftZ);
         return;
       }
       mesh.scale.set(radius * 2, height, radius * 2);
-      mesh.position.set(0, bottom + height / 2, 0);
+      mesh.position.set(shift, bottom + height / 2, shiftZ);
       return;
     }
     const north = -(deep / 2) * unit - (def.offset ?? 0) * unit;
-    mesh.scale.set(wide * unit, height, 1);
+    mesh.scale.set(across * unit, height, 1);
     // 板は (0, y, north) に立つ。回すぶんだけ原点まわりに位置も持っていく。
-    mesh.position.set(north * Math.sin(spin), bottom + height / 2, north * Math.cos(spin));
+    mesh.position.set(shift + north * Math.sin(spin), bottom + height / 2, shiftZ + north * Math.cos(spin));
   };
 
   return {

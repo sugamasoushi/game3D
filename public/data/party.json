@@ -43,31 +43,34 @@
       }
     },
     "grandpa": {
-   "level": 1,
-   "hp": 45,
-   "mp": 10,
-   "attack": 24,
-   "guard": 8,
-   "speed": 7,
-   "skills": [
-    "special01"
-   ],
-   "growth": {
-    "hp": 5,
-    "mp": 1,
-    "attack": 2,
-    "guard": 2,
-    "speed": 1
-   }
-  },
-  "lamy": {
       "level": 1,
-      "hp": 38,
+      "hp": 45,
+      "mp": 10,
+      "attack": 24,
+      "guard": 8,
+      "speed": 7,
+      "skills": [
+        "special01"
+      ],
+      "growth": {
+        "hp": 5,
+        "mp": 1,
+        "attack": 2,
+        "guard": 2,
+        "speed": 1
+      }
+    },
+    "lamy": {
+      "level": 1,
+      "hp": 40,
       "mp": 32,
       "attack": 22,
       "guard": 4,
       "speed": 12,
-      "skills": ["magic01", "magic02", "magic04"],
+      "skills": [
+        "magic02",
+        "magic04"
+      ],
       "equip": {
         "weapon": "木のぼう"
       },
@@ -78,7 +81,11 @@
         "guard": 1,
         "speed": 1
       },
-      "learn": {"6": ["magic03"]}
+      "learn": {
+        "6": [
+          "magic03"
+        ]
+      }
     }
   },
   "levelUp": {

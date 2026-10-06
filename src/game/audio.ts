@@ -12,7 +12,7 @@ import { bgmAllowed, seAllowed } from './devMode';
 import { onOptionsChanged, options } from './options';
 
 /** 台帳の 1 行。 */
-interface SoundDef {
+export interface SoundDef {
   /** `public/assets/sound/` の中のファイル名。日本語のままでよい。 */
   file: string;
   /** 台帳が決める既定の音量（0〜1）。イベント側で上書きできる。 */
@@ -21,7 +21,7 @@ interface SoundDef {
   loop?: boolean;
 }
 
-interface SoundFile {
+export interface SoundFile {
   sounds: Record<string, SoundDef>;
   /** 画面が自分で鳴らす音（GS-21）。**どれを使うかも台帳で決める**。 */
   ui?: Partial<Record<UiSound, string>>;

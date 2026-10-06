@@ -19,7 +19,8 @@
     "fanfare": { "file": "ジャジャーン.mp3", "volume": 0.7 },
     "levelup": { "file": "ひらめく2.mp3", "volume": 0.6 },
     "Crystal_Cave": { "file": "Crystal Cave.mp3", "volume": 0.5, "loop": true },
-    "The_Cave": { "file": "The Cave.mp3", "volume": 0.5, "loop": true }
+    "The_Cave": { "file": "The Cave.mp3", "volume": 0.5, "loop": true },
+    "幽霊出現": { "file": "幽霊出現.wav", "volume": 0.5 }
   },
   "ui": {
     "message": "message",

@@ -65,6 +65,9 @@ ${SUN_SHADOW_UNIFORMS_GLSL}
 ${SUN_ACTOR_UNIFORMS_GLSL}
 ${FOG_UNIFORMS_GLSL}
 uniform vec4 frameClamp;  // コマの内側（半画素ぶん締めた UV の枠）
+// 見た目（GS-207）。不透明度（幽霊のような半透明）と、白く光らせる量（0〜1。出現の光）。
+uniform float actorOpacity;
+uniform float actorGlow;
 varying vec2 vChipUv;
 varying vec3 vWorldPos;
 varying vec3 vShadowPos;
@@ -101,7 +104,9 @@ void main() {
   if (mepFogOn) {
     colour = mix(colour, mepFogColor, mepFogFactor(length(vFogView)));
   }
-  gl_FragColor = vec4(colour, 1.0);
+  // 白く光らせる（GS-207）。光と霧の後に混ぜる——暗い場所でも白く見えるように。
+  colour = mix(colour, vec3(1.0), actorGlow);
+  gl_FragColor = vec4(colour, actorOpacity);
   #include <colorspace_fragment>
 }
 `;
@@ -221,8 +226,16 @@ export interface ActorMaterial {
   setCameraFx(fx: Required<CameraFxDef>): void;
   /** 点滅・炎のゆらぎを進める。経過秒。 */
   setTime(seconds: number): void;
+  /**
+   * 見た目（GS-207）。`opacity` は不透明度（0〜1）、`glow` は白く光らせる量（0〜1）。
+   * 1 未満にすると半透明で描く（深度は書かない——後ろの物が消えないように）。地面の影も同じ割合で薄くなる。
+   */
+  setLook(opacity: number, glow: number): void;
   dispose(): void;
 }
+
+/** 地面へ寝かせる影の濃さ（DEC-157）。不透明度を下げるとこれに掛ける（GS-207）。 */
+const ACTOR_SHADOW_ALPHA = 0.45;
 
 export function createActorMaterial(
   texture: Texture,
@@ -250,7 +263,9 @@ export function createActorMaterial(
       shadowBase: { value: new Vector3() },
       sunLift: { value: 1 },
       // 地面へ寝かせる影の濃さ（DEC-157）。
-      actorShadowAlpha: { value: 0.45 },
+      actorShadowAlpha: { value: ACTOR_SHADOW_ALPHA },
+      actorOpacity: { value: 1 },
+      actorGlow: { value: 0 },
       mepShadowMap: { value: emptyShadowMap() },
       mepShadowOrigin: { value: new Vector2() },
       mepShadowSize: { value: new Vector2(1, 1) },
@@ -338,6 +353,16 @@ export function createActorMaterial(
     },
     setTime(seconds) {
       material.uniforms.lightTime.value = seconds;
+    },
+    setLook(opacity, glow) {
+      const alpha = Math.min(1, Math.max(0, opacity));
+      material.uniforms.actorOpacity.value = alpha;
+      material.uniforms.actorGlow.value = Math.min(1, Math.max(0, glow));
+      material.uniforms.actorShadowAlpha.value = ACTOR_SHADOW_ALPHA * alpha;
+      // 半透明は**混ぜて描き、深度は書かない**。書くと後ろに描く物（ほかの人・草）が抜けて見える。
+      const clear = alpha < 0.999;
+      material.transparent = clear;
+      material.depthWrite = !clear;
     },
     dispose() {
       material.dispose();

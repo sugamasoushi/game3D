@@ -96,8 +96,10 @@
           "type": "message",
           "talk": [{ "who": "meina", "lines": ["ごちそうさまでした。", "う～ん、そろそろ食料が尽きてきたし", "今日は狩にでも行くかな"] }],
           "style": "window"
-        }
-      ]
+        },
+        { "type": "setSwitch", "key": "EVENT010101", "value": false }
+      ],
+      "when": [{ "switch": "EVENT010101", "is": true }]
     },
     {
       "id": "EVENT010401",
@@ -130,19 +132,12 @@
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "portrait", "slot": "scene", "image": "20250603.jpg" },
         { "type": "cameraFollow", "on": false },
-        {
-          "type": "place",
-          "target": "player",
-          "at": { "x": -8, "y": 0, "z": -3 },
-          "face": "right",
-          "follow": false
-        },
+        { "type": "place", "target": "player", "at": { "x": -8, "y": 0, "z": -3 }, "face": "right" },
         {
           "type": "place",
           "target": "npc:lamy_32_40",
           "at": { "x": -5, "y": 0, "z": -3 },
-          "face": "left",
-          "follow": false
+          "face": "left"
         },
         {
           "type": "stepInPlace",
@@ -349,7 +344,7 @@
           "ms": 800,
           "dim": 0.5
         },
-        { "type": "wait", "ms": 300 },
+        { "type": "message", "talk": [{ "lines": ["おまけとデバッグモードが解放されました。"] }], "style": "window" },
         { "type": "returnToTitle" }
       ],
       "kind": "scenario"

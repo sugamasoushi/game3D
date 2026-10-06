@@ -11,8 +11,8 @@
           "type": "portrait",
           "slot": "right",
           "who": "lamy",
-          "face": "normal",
-          "x": -15,
+          "face": "talk",
+          "x": -10,
           "id": "lamy"
         },
         {
@@ -23,13 +23,33 @@
             { "who": "meina", "lines": ["あんたそればっかりね", "", "ん？あれは・・・？"] }
           ]
         },
-        { "type": "portrait", "slot": "right", "face": "normal", "id": "meina" },
-        { "type": "portrait", "slot": "right", "face": "normal", "id": "lamy" },
+        { "type": "playSe", "key": "幽霊出現" },
+        {
+          "type": "place",
+          "target": "npc:pipo-charachip003a",
+          "at": { "x": -3, "y": 5, "z": -4 },
+          "face": "right",
+          "appear": "glow",
+          "opacity": 70
+        },
         {
           "type": "comic",
           "images": ["EVENT020301_1.png", "EVENT020301_2.png", "EVENT020301_3.png"]
         },
-        { "type": "wait", "ms": 500 },
+        {
+          "type": "move",
+          "target": "npc:pipo-charachip003a",
+          "dir": "up",
+          "cells": 5,
+          "wait": false
+        },
+        {
+          "type": "hide",
+          "target": "npc:pipo-charachip003a",
+          "vanish": "fade",
+          "ms": 500,
+          "remember": false
+        },
         {
           "type": "message",
           "talk": [
@@ -37,6 +57,8 @@
             { "who": "meina", "lines": ["入って大丈夫かな・・・"] }
           ]
         },
+        { "type": "portrait", "slot": "right", "face": "normal", "id": "meina" },
+        { "type": "portrait", "slot": "right", "face": "normal", "id": "lamy" },
         { "type": "setSwitch", "key": "EVENT020301", "value": false }
       ],
       "kind": "scenario"
@@ -50,6 +72,10 @@
     {
       "object": "obj_7",
       "to": [{ "map": "0106", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }]
+    },
+    {
+      "object": "obj_1",
+      "to": [{ "map": "0101", "at": { "x": 5, "y": 0, "z": 4 }, "px": { "x": 0, "z": -6 } }]
     }
   ]
 }

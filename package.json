@@ -10,10 +10,7 @@
     "build:production": "node tools/buildProduction.mjs",
     "start": "next start -p 5928",
     "typecheck": "tsc --noEmit",
-    "sync:maps": "node tools/syncMaps.mjs",
-    "check:assets": "node tools/checkAssets.mjs",
     "index:files": "node tools/fileIndex.mjs",
-    "test": "node tests/run.mjs",
     "electron:dev": "electron .",
     "electron:build": "npm run build:production && electron-builder --win portable --x64",
     "electron:pack": "npm run build:production && electron-builder --win --x64 --dir"
@@ -54,7 +51,6 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.169.0",
-    "tsx": "^4.23.12",
     "typescript": "^5.6.3",
     "zustand": "^5.0.15"
   }

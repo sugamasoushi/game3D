@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createGameView, STAGE_COMMAND_FIGURE, type GameStatus, type GameView, type WalkDir } from '../game/GameView';
 import { START_MAP, assetUrl, mapUrl } from '../game/assets';
-import { mapEntryOf, entryForFile } from '../game/mapIndex';
+import { mapEntryOf, entryForFile, loadMapIndex } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
 import { loadItemBook } from '../game/items';
@@ -17,17 +17,10 @@ import { startGamepad } from '../game/gamepad';
 import { chooseBattleFormation, loadBattleBook, previewEffects, type EffectDef, type EffectEntry } from '../game/battle/book';
 import { BATTLE_START_CAMERA } from '../game/battle/battleCamera';
 import { battleSettings } from '../game/battle/settings';
-import {
-  // [凍結 BPE-15] 戦闘演出エディタのカメラ割り当て。再開するときに戻す。
-  // battlePresentationBinding,
-  // loadBattlePresentation,
-  // previewBattlePresentation,
-  // type BattlePresentationBook,
-  type BattlePresentationContext,
-  type BattlePresentationHook,
-} from '../game/battle/presentation';
+import type { BattlePresentationContext, BattlePresentationHook } from '../game/battle/presentation';
 import { ensureParty, joinParty, resetParty, revive } from '../game/battle/party';
 import * as dev from '../game/devMode';
+import { DEV_WINDOW, expose, withdraw, type CameraEditorWindow } from '../dev/devWindow';
 import { DEV_MODE, loadDevOptions } from '../game/devMode';
 import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
 import { GameOver, type BattleOutcome } from '../game/battle/flow';
@@ -49,7 +42,7 @@ import { chestEventDef, chestEventOf, chestOf, drawChest, loadChestBook } from '
 import { openedLayerShown, readOpenedLayers, type OpenedLayer } from '../game/openedLayers';
 import { applyChestVisit, forgetRespawnChests, rollChestVisit, type ChestVisit } from '../game/chestVisit';
 import { canRun, meets, runCommands, ReturnToTitle } from '../event/interpreter';
-import type { EventCommand, EventDef, EventFile, MapMoveDef } from '../event/types';
+import type { EventCommand, EventDef, EventFile } from '../event/types';
 import type { MapDef } from '../mep3d/types';
 import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
@@ -114,6 +107,16 @@ export default function GameCanvas() {
   const bridgeRef = useRef<EventBridge | null>(null);
   const [notice, setNotice] = useState('');
   const [, refreshParty] = useState(0);
+  /** デバッグのマップ移動（GS-216）。台帳（`maps.json`）の番号とファイル名。開発モードのときだけ読む。 */
+  const [debugMaps, setDebugMaps] = useState<Array<{ key: string; file: string }>>([]);
+  /** いま居るマップの番号。リストの選択に出す（`mapRef` は描き直しを起こさないので別に持つ）。 */
+  const [debugMapAt, setDebugMapAt] = useState('');
+  useEffect(() => {
+    if (!DEV_MODE) return;
+    void loadMapIndex().then((index) =>
+      setDebugMaps(Object.entries(index).map(([key, entry]) => ({ key, file: entry.file }))),
+    );
+  }, []);
   /** 遊んだ記録（GS-27）。セーブに入るものはこの 1 つに集める。 */
   const stateRef = useRef<GameState>(newState());
   const phase = useUi((s) => s.phase);
@@ -223,16 +226,6 @@ export default function GameCanvas() {
         return 0;
       }
     }
-    // [凍結 BPE-15] 戦闘演出エディタのカメラ割り当て。台帳の演出IDを引いてカメラ演出を再生していた。
-    // const { key, cue } = battlePresentationBinding(hook, context.slot);
-    // window.dispatchEvent(new CustomEvent('battle-presentation', { detail: { hook, key, cue, subject: context.subject ?? '' } }));
-    // if (!cue) return 0;
-    // try {
-    //   return viewRef.current?.playCameraCue(cue, context.subject) ?? 0;
-    // } catch (error) {
-    //   console.warn(`[battle-presentation] ${hook}:`, error);
-    //   return 0;
-    // }
     return 0;
   }, []);
 
@@ -243,8 +236,6 @@ export default function GameCanvas() {
    */
   const startBattle = useCallback(
     async (enemies: string[], canLose: boolean, formation?: string) => {
-      // [凍結 BPE-15] 戦闘演出エディタのカメラ割り当て台帳は読まない。
-      // await Promise.all([loadBattlePresentation(), loadBattleBook()]);
       await loadBattleBook();
       const mapEntry = await entryForFile(mapRef.current);
       battleFormationRef.current = chooseBattleFormation(formation, mapEntry?.battleStage?.formations);
@@ -704,6 +695,7 @@ export default function GameCanvas() {
   const adopt = useCallback(
     async (file: string) => {
       mapRef.current = file;
+      setDebugMapAt(mapNumber(file));
       // 戦闘の背景は台帳から（GS-79）。台帳は 1 回読んで使い回すので、ここは待っても速い。
       battleFieldRef.current = (await entryForFile(file))?.battleField ?? 'hill';
       // イベントの有無は**台帳で決める**（DEC-374）。無いマップを取りに行かない。
@@ -820,40 +812,28 @@ export default function GameCanvas() {
     // 敵・技・はじめの仲間の台帳（GS-60）。数値だけで、いまの HP はセーブが持つ。
     void loadBattleBook();
     void loadIllustrations().catch((error) => console.warn('[illustrations]', error));
-    // [凍結 BPE-15] 戦闘演出エディタのカメラ割り当て台帳は読まない。
-    // void loadBattlePresentation().catch((error) => console.warn('[battle-presentation]', error));
     const onFirstInput = () => unlockAudio();
     window.addEventListener('keydown', onFirstInput);
     window.addEventListener('pointerdown', onFirstInput);
 
-    if (process.env.NODE_ENV === 'development') {
-      (window as unknown as { __game?: GameView }).__game = view;
-      // コマンド選択中の味方を左端へ立たせる値（GS-103）。Console で書き換えてその場で試す。
-      (window as unknown as { __stageCommandFigure?: typeof STAGE_COMMAND_FIGURE }).__stageCommandFigure = STAGE_COMMAND_FIGURE;
-      (window as unknown as { __audio?: typeof audio }).__audio = audio;
-      (window as unknown as { __options?: typeof gameOptions }).__options = gameOptions;
-      // 開発中のつまみ（GS-126）。Console から `__dev.setDevOptions({ muteBgm: false })` で試せる。
-      (window as unknown as { __dev?: typeof dev }).__dev = dev;
+    // 開発中だけ外へ出す口。一覧と型は `dev/devWindow.ts`（2026-10-06）。
+    if (DEV_WINDOW) {
+      expose('__game', view);
+      expose('__stageCommandFigure', STAGE_COMMAND_FIGURE);
+      expose('__audio', audio);
+      expose('__options', gameOptions);
+      expose('__dev', dev);
       // 画面の状態（`busy` など）も開発中に見たい。**見えないものは直せない**——
       // 「歩けないのはイベントの最中だからか、別の理由か」がこれで分かる。
-      (window as unknown as { __ui?: typeof useUi }).__ui = useUi;
+      expose('__ui', useUi);
       /**
-       * イベントエディタから 1 本走らせる口（GS-37）。**道具のための窓口はここに集める。**
+       * イベントエディタから 1 本走らせる口（GS-37）。
        *
        * 渡された命令をそのまま動かす——`when`（動く条件）は見ない。
        * 書いた中身を確かめるための口なので、スイッチの都合で動かないと役に立たない。
        * 保存していない下書きもそのまま渡せる（エディタが持っている JSON を送るだけ）。
        */
-      (
-        window as unknown as {
-          __preview?: {
-            play(event: EventDef, npc?: string, carry?: { item?: string; num?: number }): Promise<void>;
-            flags(): Record<string, boolean>;
-            setFlag(key: string, value: boolean | null): void;
-            mapMove(destinations: string[], def?: MapMoveDef): Promise<string>;
-          };
-        }
-      ).__preview = {
+      expose('__preview', {
         // `carry` は宝箱の中身（GS-132）。ふだんはマップのオブジェクトが持つ物を、
         // 下書きを試すときは手で渡せるようにしておく。
         play: (event, npc = '', carry = {}) => playRef.current(event, npc, carry),
@@ -877,13 +857,13 @@ export default function GameCanvas() {
           await goTo(choice.map, choice.landing, choice.face, true);
           return choice.map;
         },
-      };
+      });
       const idle = () => {
         const ui = useUi.getState();
         if (!bridgeRef.current) throw new Error('ゲームの初期化を待ってください');
         if (ui.busy || ui.battle || ui.menu || ui.shop) throw new Error('実行中の場面を終了してください');
       };
-      const cameraEditor = {
+      const cameraEditor: CameraEditorWindow = {
         async prepare(file: string) {
           idle();
           view.unstageBattle();
@@ -917,7 +897,7 @@ export default function GameCanvas() {
           await playRef.current(event, event.npc ?? '');
         },
       };
-      (window as unknown as { __cameraEditor?: typeof cameraEditor }).__cameraEditor = cameraEditor;
+      expose('__cameraEditor', cameraEditor);
       // 戦闘演出エディタ（アニメーション演出。GS-105）の開発用入口。技の絵（`effects.json`）の下書きを差し替えて試す。
       const battleEffectEditor = {
         prepare: cameraEditor.prepare,
@@ -936,35 +916,14 @@ export default function GameCanvas() {
           return true;
         },
       };
-      (window as unknown as { __battleEffectEditor?: typeof battleEffectEditor }).__battleEffectEditor = battleEffectEditor;
-      // [凍結 BPE-15] 旧・戦闘演出エディタ（カメラ割り当て）の開発用入口。
-      // const battlePresentationEditor = {
-        // prepare: cameraEditor.prepare,
-        // setBook: (next: BattlePresentationBook) => previewBattlePresentation(next),
-        // // 味方ごとの割り当ては `契機@人数`（BPE-12）。何人目として試すかだけ渡す。
-        // play: (key: string) => {
-          // const [hook, slot] = key.split('@');
-          // return presentBattle(hook as BattlePresentationHook, slot ? { slot: Number(slot) } : {});
-        // },
-        // async battle(enemies: string[]) { idle(); await debugBattle(enemies); },
-        // forceBattle() {
-          // if (!useUi.getState().battle) return false;
-          // battleAbortRef.current?.abort();
-          // endBattle('escape');
-          // return true;
-        // },
-      // };
-      // (window as unknown as { __battlePresentationEditor?: typeof battlePresentationEditor }).__battlePresentationEditor = battlePresentationEditor;
+      expose('__battleEffectEditor', battleEffectEditor);
     }
 
     return () => {
       window.removeEventListener('keydown', onFirstInput);
       window.removeEventListener('pointerdown', onFirstInput);
       viewRef.current = null;
-      delete (window as unknown as { __cameraEditor?: unknown }).__cameraEditor;
-      delete (window as unknown as { __battleEffectEditor?: unknown }).__battleEffectEditor;
-      // [凍結 BPE-15] 戦闘演出エディタの開発用入口。
-      // delete (window as unknown as { __battlePresentationEditor?: unknown }).__battlePresentationEditor;
+      withdraw('__cameraEditor', '__battleEffectEditor');
       view.dispose();
     };
   }, []);
@@ -1015,16 +974,13 @@ export default function GameCanvas() {
        */
       parallelBridgeRef.current = createEventBridge(options);
       // 開発中だけ外から叩けるようにする。イベントを 1 命令ずつ試すのに使う。
-      if (process.env.NODE_ENV === 'development') {
-        (window as unknown as { __event?: EventBridge }).__event = bridgeRef.current;
-        // 3D の口も出しておく。**居る場所や向きを外から聞ける**と、
-        // 起動場所の当たり（入口・調べ物）を調べるのが速い。
-        (window as unknown as { __view?: () => GameView | null }).__view = () => viewRef.current;
-        // 戦闘を 1 回試す口（GS-60）。**負けても話は終わらせない**（`canLose`）——
-        // 試している最中にタイトルへ戻されると、続けて試せない。
-        (window as unknown as { __battle?: (ids: string[]) => Promise<BattleOutcome> }).__battle = (ids) =>
-          startBattleRef.current(ids, true);
-      }
+      expose('__event', bridgeRef.current);
+      // 3D の口も出しておく。**居る場所や向きを外から聞ける**と、
+      // 起動場所の当たり（入口・調べ物）を調べるのが速い。
+      expose('__view', () => viewRef.current);
+      // 戦闘を 1 回試す口（GS-60）。**負けても話は終わらせない**（`canLose`）——
+      // 試している最中にタイトルへ戻されると、続けて試せない。
+      expose('__battle', (ids) => startBattleRef.current(ids, true));
     })();
     return () => {
       cancelled = true;
@@ -1484,6 +1440,30 @@ export default function GameCanvas() {
                 </button>
               ))}
             </div>
+            {/*
+             * マップへ飛ぶ（GS-216）。台帳（`maps.json`）の全マップから選ぶ。着地はそのマップの `default`。
+             * 選んだら焦点を canvas へ返す——リストに残ると、矢印キーで次のマップへ移ってしまう。
+             */}
+            <label className="debug-party">
+              <span>マップ</span>
+              <select
+                className="debug-map"
+                tabIndex={-1}
+                value={debugMapAt}
+                onChange={(event) => {
+                  const key = event.target.value;
+                  event.target.blur();
+                  canvasRef.current?.focus();
+                  void goTo(key, { marker: '', at: null }, '');
+                }}
+              >
+                {debugMaps.map(({ key, file }) => (
+                  <option key={key} value={key}>
+                    {file.replace(/\.json$/i, '')}
+                  </option>
+                ))}
+              </select>
+            </label>
             {/* 台帳（`items.json`）の持ち物を全部 2 個ずつ足す（GS-210）。 */}
             <button
               type="button"

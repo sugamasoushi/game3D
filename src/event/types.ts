@@ -151,8 +151,23 @@ export type EventCommand =
    *
    * 軸ごとに **`"player"`** と書くと**主人公と同じ座標**に合わせる（GS-154）。
    * 旧作の `setPosition(player.x, 902)`（横は主人公に合わせ、奥行きは決め打ち）がこれに当たる。
+   *
+   * **現れ方と不透明度**（GS-207。NPC だけ）。`appear` を書くと透明から現れる——
+   * `glow` は**白く光ってから色が戻る**（幽霊・魔法）、`fade` はふわっと浮かぶ。`ms` はその長さ（既定 1200）。
+   * `opacity` は**不透明度（%）**。幽霊のような半透明の人は `70` など。書かなければ 100（`appear` だけなら不透明で現れる）。
+   * `wait: false` で現れ終わるのを待たない。不透明度はその場かぎり——マップを読み直すとマップの `Opacity` に戻る。
    */
-  | { type: 'place'; target: ActorRef; at: PlaceAt; face?: Step; px?: PixelOffset }
+  | {
+      type: 'place';
+      target: ActorRef;
+      at: PlaceAt;
+      face?: Step;
+      px?: PixelOffset;
+      appear?: 'glow' | 'fade';
+      opacity?: number;
+      ms?: number;
+      wait?: boolean;
+    }
   /**
    * その場でジャンプ（GS-184）。**進まない**——絵だけ跳ねて着地する。怒る・喜ぶ・驚く。
    * `times` 回（省くと 3）、1 回 `ms`（省くと 200）、高さ `height` マス（省くと 0.5）。
@@ -200,8 +215,11 @@ export type EventCommand =
    * こちらは `self:出た` を残す。**マップに `HideIf` とイベント名を書く必要はない。**
    *
    * `remember` を切ると覚えない——その場だけ消し、マップに入り直せば元どおり立っている。
+   *
+   * **`vanish: 'fade'` でフェードアウトして消える**（GS-208）。いまの濃さ（半透明の人ならその濃さ）から
+   * 透明へ薄くなってから居なくなる。`ms` はその長さ（既定 1000）、`wait: false` で消え終わるのを待たない。
    */
-  | { type: 'hide'; target: ActorRef; remember?: boolean }
+  | { type: 'hide'; target: ActorRef; remember?: boolean; vanish?: 'fade'; ms?: number; wait?: boolean }
   /**
    * キャライラスト。`slot` は左・中・右。`who` を空にする（`hide`）とその絵を引っ込める。
    *
