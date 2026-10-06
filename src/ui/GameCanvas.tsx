@@ -902,8 +902,6 @@ export default function GameCanvas() {
       const battleEffectEditor = {
         prepare: cameraEditor.prepare,
         setEffects: (next: Record<string, EffectEntry>) => previewEffects(next),
-        // 平行投影で見る（GS-219）。切ればマップの設定に戻る。
-        setOrthographic: (on: boolean) => view.setProjectionOverride(on ? true : null),
         async battle(enemies: string[]) { idle(); await debugBattle(enemies); },
         /** 戦闘中なら先頭の敵へ絵を出す。戦闘中でなければ偽。 */
         playEffect(def: EffectDef) {

@@ -384,11 +384,6 @@ export interface GameView {
    */
   setEditorGrid(on: boolean): void;
   /**
-   * 投影をエディタから決める（GS-219）。`true` で平行投影、`false` で透視、`null` でマップの設定へ戻す。
-   * **エディタの見比べ用**——遊ぶ画面では使わない。マップを読み直しても、戻すまでは効いたまま。
-   */
-  setProjectionOverride(orthographic: boolean | null): void;
-  /**
    * 画面を押したマスを知らせる先（GS-167）。`null` で止める。
    * 高さは**主人公の立っている面**で見る（床の上のマスを拾う）。
    */
@@ -882,22 +877,15 @@ export function createGameView(
   let playPitch = HD2D_PITCH;
   let playYaw = HD2D_YAW;
   let playOrtho = false;
-  /** エディタが決めた投影（GS-219）。`null` ならマップの設定（`playOrtho`）。 */
-  let projectionOverride: boolean | null = null;
   /** いまの透過の濃さ（0..1。DEC-281）。 */
   let seeFade = 0;
-  /** 投影をリグへ。エディタの指定があればそちらを先に見る。 */
-  const applyProjection = () => {
-    const orthographic = projectionOverride ?? playOrtho;
-    rig.orthographic = orthographic;
-    status.orthographic = orthographic;
-  };
   /** マップのカメラ値をリグへ。ここ以外で向きと寄りを触らない（DEC-260）。 */
   const applyMapCamera = () => {
     rig.distance = playDistance;
     rig.pitch = playPitch;
     rig.yaw = playYaw;
-    applyProjection();
+    rig.orthographic = playOrtho;
+    status.orthographic = playOrtho;
   };
   let sizedH = 0;
 
@@ -2618,12 +2606,6 @@ export function createGameView(
     },
     setEditorGrid(on) {
       editorGrid.setVisible(on);
-    },
-    setProjectionOverride(orthographic) {
-      projectionOverride = orthographic;
-      applyProjection();
-      rig.apply();
-      report();
     },
     setCellPicker(handler) {
       cellPicker = handler;
