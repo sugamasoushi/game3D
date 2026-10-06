@@ -43,6 +43,8 @@ export interface CameraEditorWindow {
 export interface BattleEffectEditorWindow {
   prepare(file: string): Promise<void>;
   setEffects(next: Record<string, EffectEntry>): void;
+  /** 平行投影で見る（GS-219）。`false` でマップの設定へ戻す。 */
+  setOrthographic(on: boolean): void;
   battle(enemies: string[]): Promise<void>;
   playEffect(def: EffectDef): boolean;
   forceBattle(): boolean;
