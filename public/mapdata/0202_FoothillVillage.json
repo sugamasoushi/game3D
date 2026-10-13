@@ -35,135 +35,107 @@
       },
       {
         "id": "tex_terrain_grass-dirt_summer_",
-        "src": "assets/tilesets/Terrain/Grass-Dirt (Summer).png",
+        "src": "assets/tilesets/Mountain/Grass-Dirt (Summer).png",
         "w": 96,
         "h": 224,
         "filter": "nearest"
       },
       {
         "id": "tex_terrain_dirt_non-winter_",
-        "src": "assets/tilesets/Terrain/Dirt (Non-Winter).png",
+        "src": "assets/tilesets/Mountain/Dirt (Non-Winter).png",
         "w": 96,
         "h": 64,
         "filter": "nearest"
       },
       {
         "id": "tex_terrain_grass-shallows_summer_",
-        "src": "assets/tilesets/Terrain/Grass-Shallows (Summer).png",
+        "src": "assets/tilesets/Mountain/Grass-Shallows (Summer).png",
         "w": 192,
         "h": 384,
         "filter": "nearest"
       },
       {
-        "id": "tex_village_village_soil",
-        "src": "assets/tilesets/Village/village_soil.png",
-        "w": 96,
-        "h": 192,
-        "filter": "nearest"
-      },
-      {
         "id": "tex_walls",
-        "src": "assets/tilesets/walls.png",
+        "src": "assets/tilesets/Dwelling/walls.png",
         "w": 2048,
         "h": 3072,
         "filter": "nearest"
       },
       {
         "id": "tex_hipped_shingle_roof_a",
-        "src": "assets/tilesets/Hipped Shingle Roof A.png",
+        "src": "assets/tilesets/Dwelling/Hipped Shingle Roof A.png",
         "w": 960,
         "h": 480,
         "filter": "nearest"
       },
       {
         "id": "tex_roof_trim",
-        "src": "assets/tilesets/Roof Trim.png",
+        "src": "assets/tilesets/Dwelling/Roof Trim.png",
         "w": 1536,
         "h": 288,
         "filter": "nearest"
       },
       {
         "id": "tex_windows_doors",
-        "src": "assets/tilesets/windows_doors.png",
+        "src": "assets/tilesets/Dwelling/windows_doors.png",
         "w": 1024,
         "h": 1024,
         "filter": "nearest"
       },
       {
         "id": "tex_village_village_objects",
-        "src": "assets/tilesets/Village/village_objects.png",
+        "src": "assets/tilesets/outside_objects/outside_objects.png",
         "w": 1024,
         "h": 1024,
         "filter": "nearest"
       },
       {
-        "id": "tex_village_well_sheet",
-        "src": "assets/tilesets/Village/village_well_sheet.png",
-        "w": 256,
-        "h": 256,
-        "filter": "nearest"
-      },
-      {
         "id": "tex_village_woodshop",
-        "src": "assets/tilesets/Village/village_woodshop.png",
+        "src": "assets/tilesets/Dwelling/woodshop.png",
         "w": 512,
         "h": 512,
         "filter": "nearest"
       },
       {
-        "id": "tex_village_signs",
-        "src": "assets/tilesets/Village/village_signs.png",
-        "w": 128,
-        "h": 128,
-        "filter": "nearest"
-      },
-      {
         "id": "tex_village_trees",
-        "src": "assets/tilesets/Village/village_trees.png",
+        "src": "assets/tilesets/Nature/trees-green.png",
         "w": 1024,
         "h": 1024,
         "filter": "nearest"
       },
       {
         "id": "tex_grass_summer_",
-        "src": "assets/tilesets/Grass (Summer).png",
+        "src": "assets/tilesets/Mountain/Grass (Summer).png",
         "w": 96,
         "h": 320,
         "filter": "nearest"
       },
       {
         "id": "tex_palisade-160x96",
-        "src": "assets/tilesets/palisade-160x96.png",
+        "src": "assets/tilesets/outside_objects/palisade-160x96.png",
         "w": 160,
         "h": 96,
         "filter": "nearest"
       },
       {
         "id": "tex_plants",
-        "src": "assets/tilesets/plants.png",
+        "src": "assets/tilesets/Nature/plants.png",
         "w": 512,
         "h": 1024,
         "filter": "nearest"
       },
       {
-        "id": "tex_barrels",
-        "src": "assets/tilesets/Barrels.png",
+        "id": "tex_storage_barrels",
+        "src": "assets/tilesets/Storage/Barrels.png",
         "w": 160,
         "h": 64,
         "filter": "nearest"
       },
       {
-        "id": "tex_buckets",
-        "src": "assets/tilesets/Buckets.png",
-        "w": 96,
-        "h": 64,
-        "filter": "nearest"
-      },
-      {
-        "id": "tex_terrain_atlas",
-        "src": "assets/tilesets/terrain_atlas.png",
-        "w": 1024,
-        "h": 1024,
+        "id": "tex_outside_objects_lpc-hanging-signs",
+        "src": "assets/tilesets/outside_objects/lpc-hanging-signs.png",
+        "w": 128,
+        "h": 128,
         "filter": "nearest"
       }
     ],
@@ -195,16 +167,6 @@
         "tile": 32,
         "cols": 6,
         "rows": 12,
-        "margin": 0,
-        "spacing": 0
-      },
-      {
-        "id": "village_village_soil",
-        "tex": "tex_village_village_soil",
-        "mat": "mat_village_village_soil",
-        "tile": 32,
-        "cols": 3,
-        "rows": 6,
         "margin": 0,
         "spacing": 0
       },
@@ -259,32 +221,12 @@
         "spacing": 0
       },
       {
-        "id": "village_well_sheet",
-        "tex": "tex_village_well_sheet",
-        "mat": "mat_village_well_sheet",
-        "tile": 32,
-        "cols": 8,
-        "rows": 8,
-        "margin": 0,
-        "spacing": 0
-      },
-      {
         "id": "village_woodshop",
         "tex": "tex_village_woodshop",
         "mat": "mat_village_woodshop",
         "tile": 32,
         "cols": 16,
         "rows": 16,
-        "margin": 0,
-        "spacing": 0
-      },
-      {
-        "id": "village_signs",
-        "tex": "tex_village_signs",
-        "mat": "mat_village_signs",
-        "tile": 32,
-        "cols": 4,
-        "rows": 4,
         "margin": 0,
         "spacing": 0
       },
@@ -329,9 +271,9 @@
         "spacing": 0
       },
       {
-        "id": "barrels",
-        "tex": "tex_barrels",
-        "mat": "mat_barrels",
+        "id": "storage_barrels",
+        "tex": "tex_storage_barrels",
+        "mat": "mat_storage_barrels",
         "tile": 32,
         "cols": 5,
         "rows": 2,
@@ -339,22 +281,12 @@
         "spacing": 0
       },
       {
-        "id": "buckets",
-        "tex": "tex_buckets",
-        "mat": "mat_buckets",
+        "id": "outside_objects_lpc-hanging-signs",
+        "tex": "tex_outside_objects_lpc-hanging-signs",
+        "mat": "mat_outside_objects_lpc-hanging-signs",
         "tile": 32,
-        "cols": 3,
-        "rows": 2,
-        "margin": 0,
-        "spacing": 0
-      },
-      {
-        "id": "terrain_atlas",
-        "tex": "tex_terrain_atlas",
-        "mat": "mat_terrain_atlas",
-        "tile": 32,
-        "cols": 32,
-        "rows": 32,
+        "cols": 4,
+        "rows": 4,
         "margin": 0,
         "spacing": 0
       }
@@ -393,16 +325,6 @@
       {
         "id": "mat_terrain_grass-shallows_summer_",
         "tex": "tex_terrain_grass-shallows_summer_",
-        "kind": "tiles",
-        "shading": "unlit",
-        "alphaTest": 0.5,
-        "transparent": false,
-        "side": "double",
-        "depthWrite": true
-      },
-      {
-        "id": "mat_village_village_soil",
-        "tex": "tex_village_village_soil",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -461,28 +383,8 @@
         "depthWrite": true
       },
       {
-        "id": "mat_village_well_sheet",
-        "tex": "tex_village_well_sheet",
-        "kind": "tiles",
-        "shading": "unlit",
-        "alphaTest": 0.5,
-        "transparent": false,
-        "side": "double",
-        "depthWrite": true
-      },
-      {
         "id": "mat_village_woodshop",
         "tex": "tex_village_woodshop",
-        "kind": "tiles",
-        "shading": "unlit",
-        "alphaTest": 0.5,
-        "transparent": false,
-        "side": "double",
-        "depthWrite": true
-      },
-      {
-        "id": "mat_village_signs",
-        "tex": "tex_village_signs",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -531,8 +433,8 @@
         "depthWrite": true
       },
       {
-        "id": "mat_barrels",
-        "tex": "tex_barrels",
+        "id": "mat_storage_barrels",
+        "tex": "tex_storage_barrels",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -541,18 +443,8 @@
         "depthWrite": true
       },
       {
-        "id": "mat_buckets",
-        "tex": "tex_buckets",
-        "kind": "tiles",
-        "shading": "unlit",
-        "alphaTest": 0.5,
-        "transparent": false,
-        "side": "double",
-        "depthWrite": true
-      },
-      {
-        "id": "mat_terrain_atlas",
-        "tex": "tex_terrain_atlas",
+        "id": "mat_outside_objects_lpc-hanging-signs",
+        "tex": "tex_outside_objects_lpc-hanging-signs",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -1787,14 +1679,6 @@
         "tile": 14
       },
       {
-        "id": "p_village_village_soil_1_floor",
-        "name": "village_village_soil #1 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 1
-      },
-      {
         "id": "p_walls_4501_wall",
         "name": "walls #4501 wall",
         "shape": "wall",
@@ -2243,54 +2127,6 @@
         "tile": 502
       },
       {
-        "id": "p_village_well_sheet_0_billboard_fixed",
-        "name": "village_well_sheet #0 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 0
-      },
-      {
-        "id": "p_village_well_sheet_1_billboard_fixed",
-        "name": "village_well_sheet #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 1
-      },
-      {
-        "id": "p_village_well_sheet_8_billboard_fixed",
-        "name": "village_well_sheet #8 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 8
-      },
-      {
-        "id": "p_village_well_sheet_9_billboard_fixed",
-        "name": "village_well_sheet #9 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 9
-      },
-      {
-        "id": "p_village_well_sheet_16_billboard_fixed",
-        "name": "village_well_sheet #16 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 16
-      },
-      {
-        "id": "p_village_well_sheet_17_billboard_fixed",
-        "name": "village_well_sheet #17 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 17
-      },
-      {
         "id": "p_village_village_objects_561_billboard_fixed",
         "name": "village_village_objects #561 billboard_fixed",
         "shape": "billboard_fixed",
@@ -2585,30 +2421,6 @@
         "mat": "mat_village_village_objects",
         "ts": "village_village_objects",
         "tile": 494
-      },
-      {
-        "id": "p_village_signs_1_billboard_fixed",
-        "name": "village_signs #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 1
-      },
-      {
-        "id": "p_village_signs_0_billboard_fixed",
-        "name": "village_signs #0 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 0
-      },
-      {
-        "id": "p_village_signs_5_billboard_fixed",
-        "name": "village_signs #5 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 5
       },
       {
         "id": "p_village_trees_229_billboard_fixed",
@@ -2953,14 +2765,6 @@
         "mat": "mat_village_trees",
         "ts": "village_trees",
         "tile": 321
-      },
-      {
-        "id": "p_village_village_soil_10_floor",
-        "name": "village_village_soil #10 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 10
       },
       {
         "id": "p_walls_4109_wall",
@@ -3623,70 +3427,6 @@
         "tile": 10
       },
       {
-        "id": "p_village_village_soil_6_floor",
-        "name": "village_village_soil #6 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 6
-      },
-      {
-        "id": "p_village_village_soil_7_floor",
-        "name": "village_village_soil #7 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 7
-      },
-      {
-        "id": "p_village_village_soil_8_floor",
-        "name": "village_village_soil #8 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 8
-      },
-      {
-        "id": "p_village_village_soil_11_floor",
-        "name": "village_village_soil #11 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 11
-      },
-      {
-        "id": "p_village_village_soil_13_floor",
-        "name": "village_village_soil #13 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 13
-      },
-      {
-        "id": "p_village_village_soil_14_floor",
-        "name": "village_village_soil #14 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 14
-      },
-      {
-        "id": "p_village_village_soil_9_floor",
-        "name": "village_village_soil #9 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 9
-      },
-      {
-        "id": "p_village_village_soil_12_floor",
-        "name": "village_village_soil #12 floor",
-        "shape": "floor",
-        "mat": "mat_village_village_soil",
-        "ts": "village_village_soil",
-        "tile": 12
-      },
-      {
         "id": "p_grass_summer__27_floor",
         "name": "grass_summer_ #27 floor",
         "shape": "floor",
@@ -3781,22 +3521,6 @@
         "mat": "mat_grass_summer_",
         "ts": "grass_summer_",
         "tile": 16
-      },
-      {
-        "id": "p_village_signs_5_wall",
-        "name": "village_signs #5 wall",
-        "shape": "wall",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 5
-      },
-      {
-        "id": "p_village_signs_4_wall",
-        "name": "village_signs #4 wall",
-        "shape": "wall",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 4
       },
       {
         "id": "p_village_trees_226_wall",
@@ -8461,30 +8185,6 @@
         "tile": 115
       },
       {
-        "id": "p_village_signs_0_wall",
-        "name": "village_signs #0 wall",
-        "shape": "wall",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 0
-      },
-      {
-        "id": "p_village_signs_7_wall",
-        "name": "village_signs #7 wall",
-        "shape": "wall",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 7
-      },
-      {
-        "id": "p_village_signs_1_wall",
-        "name": "village_signs #1 wall",
-        "shape": "wall",
-        "mat": "mat_village_signs",
-        "ts": "village_signs",
-        "tile": 1
-      },
-      {
         "id": "p_village_village_objects_788_wall_o0_2_0",
         "name": "village_village_objects #788 wall",
         "shape": "wall",
@@ -11341,166 +11041,6 @@
           15,
           8
         ]
-      },
-      {
-        "id": "p_village_well_sheet_0_wall",
-        "name": "village_well_sheet #0 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 0
-      },
-      {
-        "id": "p_village_well_sheet_1_wall",
-        "name": "village_well_sheet #1 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 1
-      },
-      {
-        "id": "p_village_well_sheet_8_wall",
-        "name": "village_well_sheet #8 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 8
-      },
-      {
-        "id": "p_village_well_sheet_9_wall",
-        "name": "village_well_sheet #9 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 9
-      },
-      {
-        "id": "p_village_well_sheet_16_wall",
-        "name": "village_well_sheet #16 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 16
-      },
-      {
-        "id": "p_village_well_sheet_17_wall",
-        "name": "village_well_sheet #17 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 17
-      },
-      {
-        "id": "p_village_well_sheet_24_wall",
-        "name": "village_well_sheet #24 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 24
-      },
-      {
-        "id": "p_village_well_sheet_27_wall",
-        "name": "village_well_sheet #27 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 27
-      },
-      {
-        "id": "p_village_well_sheet_32_wall",
-        "name": "village_well_sheet #32 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 32
-      },
-      {
-        "id": "p_village_well_sheet_33_wall",
-        "name": "village_well_sheet #33 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 33
-      },
-      {
-        "id": "p_village_well_sheet_34_wall",
-        "name": "village_well_sheet #34 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 34
-      },
-      {
-        "id": "p_village_well_sheet_35_wall",
-        "name": "village_well_sheet #35 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 35
-      },
-      {
-        "id": "p_village_well_sheet_40_wall",
-        "name": "village_well_sheet #40 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 40
-      },
-      {
-        "id": "p_village_well_sheet_41_wall",
-        "name": "village_well_sheet #41 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 41
-      },
-      {
-        "id": "p_village_well_sheet_42_wall",
-        "name": "village_well_sheet #42 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 42
-      },
-      {
-        "id": "p_village_well_sheet_43_wall",
-        "name": "village_well_sheet #43 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 43
-      },
-      {
-        "id": "p_village_well_sheet_2_wall",
-        "name": "village_well_sheet #2 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 2
-      },
-      {
-        "id": "p_village_well_sheet_10_wall",
-        "name": "village_well_sheet #10 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 10
-      },
-      {
-        "id": "p_village_well_sheet_3_wall",
-        "name": "village_well_sheet #3 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 3
-      },
-      {
-        "id": "p_village_well_sheet_11_wall",
-        "name": "village_well_sheet #11 wall",
-        "shape": "wall",
-        "mat": "mat_village_well_sheet",
-        "ts": "village_well_sheet",
-        "tile": 11
       },
       {
         "id": "p_village_village_objects_282_wall",
@@ -15113,486 +14653,6 @@
         "tile": 544
       },
       {
-        "id": "p_barrels_0_wall",
-        "name": "barrels #0 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 0
-      },
-      {
-        "id": "p_barrels_0_wall_o0_-5_16",
-        "name": "barrels #0 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 0,
-        "base": "p_barrels_0_wall",
-        "offset": [
-          0,
-          -5,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_5_wall",
-        "name": "barrels #5 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 5
-      },
-      {
-        "id": "p_barrels_5_wall_o0_-5_16",
-        "name": "barrels #5 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 5,
-        "base": "p_barrels_5_wall",
-        "offset": [
-          0,
-          -5,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_0_wall_o0_-14_16",
-        "name": "barrels #0 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 0,
-        "base": "p_barrels_0_wall",
-        "offset": [
-          0,
-          -14,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_5_wall_o0_-14_16",
-        "name": "barrels #5 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 5,
-        "base": "p_barrels_5_wall",
-        "offset": [
-          0,
-          -14,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_0_wall_o0_-17_16",
-        "name": "barrels #0 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 0,
-        "base": "p_barrels_0_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_5_wall_o0_-17_16",
-        "name": "barrels #5 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 5,
-        "base": "p_barrels_5_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_0_wall_o0_-18_16",
-        "name": "barrels #0 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 0,
-        "base": "p_barrels_0_wall",
-        "offset": [
-          0,
-          -18,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_5_wall_o0_-18_16",
-        "name": "barrels #5 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 5,
-        "base": "p_barrels_5_wall",
-        "offset": [
-          0,
-          -18,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_1_wall",
-        "name": "barrels #1 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1
-      },
-      {
-        "id": "p_barrels_1_wall_o0_-17_16",
-        "name": "barrels #1 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_6_wall",
-        "name": "barrels #6 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6
-      },
-      {
-        "id": "p_barrels_6_wall_o0_-17_16",
-        "name": "barrels #6 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_3_wall",
-        "name": "barrels #3 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 3
-      },
-      {
-        "id": "p_barrels_3_wall_o0_-17_16",
-        "name": "barrels #3 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 3,
-        "base": "p_barrels_3_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_4_wall",
-        "name": "barrels #4 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 4
-      },
-      {
-        "id": "p_barrels_4_wall_o0_-17_16",
-        "name": "barrels #4 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 4,
-        "base": "p_barrels_4_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_8_wall",
-        "name": "barrels #8 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 8
-      },
-      {
-        "id": "p_barrels_8_wall_o0_-17_16",
-        "name": "barrels #8 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 8,
-        "base": "p_barrels_8_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_9_wall",
-        "name": "barrels #9 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 9
-      },
-      {
-        "id": "p_barrels_9_wall_o0_-17_16",
-        "name": "barrels #9 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 9,
-        "base": "p_barrels_9_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_2_wall",
-        "name": "barrels #2 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 2
-      },
-      {
-        "id": "p_barrels_2_wall_o0_-17_16",
-        "name": "barrels #2 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 2,
-        "base": "p_barrels_2_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_7_wall",
-        "name": "barrels #7 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 7
-      },
-      {
-        "id": "p_barrels_7_wall_o0_-17_16",
-        "name": "barrels #7 wall",
-        "shape": "wall",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 7,
-        "base": "p_barrels_7_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_buckets_1_wall",
-        "name": "buckets #1 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 1
-      },
-      {
-        "id": "p_buckets_1_wall_o0_-17_16",
-        "name": "buckets #1 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 1,
-        "base": "p_buckets_1_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_buckets_4_wall",
-        "name": "buckets #4 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 4
-      },
-      {
-        "id": "p_buckets_4_wall_o0_-17_16",
-        "name": "buckets #4 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 4,
-        "base": "p_buckets_4_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_buckets_2_wall",
-        "name": "buckets #2 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 2
-      },
-      {
-        "id": "p_buckets_2_wall_o0_-17_16",
-        "name": "buckets #2 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 2,
-        "base": "p_buckets_2_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_buckets_5_wall",
-        "name": "buckets #5 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 5
-      },
-      {
-        "id": "p_buckets_5_wall_o0_-17_16",
-        "name": "buckets #5 wall",
-        "shape": "wall",
-        "mat": "mat_buckets",
-        "ts": "buckets",
-        "tile": 5,
-        "base": "p_buckets_5_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_terrain_atlas_685_wall",
-        "name": "terrain_atlas #685 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 685
-      },
-      {
-        "id": "p_terrain_atlas_685_wall_o0_-17_16",
-        "name": "terrain_atlas #685 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 685,
-        "base": "p_terrain_atlas_685_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_terrain_atlas_717_wall",
-        "name": "terrain_atlas #717 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 717
-      },
-      {
-        "id": "p_terrain_atlas_717_wall_o0_-17_16",
-        "name": "terrain_atlas #717 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 717,
-        "base": "p_terrain_atlas_717_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_terrain_atlas_688_wall",
-        "name": "terrain_atlas #688 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 688
-      },
-      {
-        "id": "p_terrain_atlas_688_wall_o0_-17_16",
-        "name": "terrain_atlas #688 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 688,
-        "base": "p_terrain_atlas_688_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_terrain_atlas_720_wall",
-        "name": "terrain_atlas #720 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 720
-      },
-      {
-        "id": "p_terrain_atlas_720_wall_o0_-17_16",
-        "name": "terrain_atlas #720 wall",
-        "shape": "wall",
-        "mat": "mat_terrain_atlas",
-        "ts": "terrain_atlas",
-        "tile": 720,
-        "base": "p_terrain_atlas_720_wall",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
         "id": "p_walls_1785_wall_cylinder",
         "name": "walls #1785 wall_cylinder",
         "shape": "wall_cylinder",
@@ -15863,50 +14923,6 @@
         "tile": 687
       },
       {
-        "id": "p_barrels_0_billboard_fixed",
-        "name": "barrels #0 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 0
-      },
-      {
-        "id": "p_barrels_0_billboard_fixed_o0_-17_16",
-        "name": "barrels #0 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 0,
-        "base": "p_barrels_0_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_5_billboard_fixed",
-        "name": "barrels #5 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 5
-      },
-      {
-        "id": "p_barrels_5_billboard_fixed_o0_-17_16",
-        "name": "barrels #5 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 5,
-        "base": "p_barrels_5_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
         "id": "p_village_woodshop_5_billboard_flat",
         "name": "village_woodshop #5 billboard_flat",
         "shape": "billboard_flat",
@@ -16039,374 +15055,6 @@
         ]
       },
       {
-        "id": "p_barrels_1_billboard_flat",
-        "name": "barrels #1 billboard_flat",
-        "shape": "billboard_flat",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1
-      },
-      {
-        "id": "p_barrels_1_billboard_flat_o0_-17_16",
-        "name": "barrels #1 billboard_flat",
-        "shape": "billboard_flat",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_flat",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_flat",
-        "name": "barrels #6 billboard_flat",
-        "shape": "billboard_flat",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6
-      },
-      {
-        "id": "p_barrels_6_billboard_flat_o0_-17_16",
-        "name": "barrels #6 billboard_flat",
-        "shape": "billboard_flat",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_flat",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-17_16",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-17_16",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-14_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-14_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-14_16",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -14,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-14_16",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -14,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-19_16",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -19,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-19_16",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -19,
-          16
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-19_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -19,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-19_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -19,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-25_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -25,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-25_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -25,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-18_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -18,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-18_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -18,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-20_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -20,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-20_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -20,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-17_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-17_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-17_-16",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          -16
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-17_-16",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          -16
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-17_20",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          20
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-17_20",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -17,
-          20
-        ]
-      },
-      {
         "id": "p_village_woodshop_3_billboard_fixed_o0_-17_0",
         "name": "village_woodshop #3 billboard_fixed",
         "shape": "billboard_fixed",
@@ -16499,153 +15147,21 @@
         ]
       },
       {
-        "id": "p_barrels_1_billboard_fixed_o0_-21_0",
-        "name": "barrels #1 billboard_fixed",
+        "id": "p_storage_barrels_0_billboard_fixed",
+        "name": "storage_barrels #0 billboard_fixed",
         "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -21,
-          0
-        ]
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 0
       },
       {
-        "id": "p_barrels_6_billboard_fixed_o0_-21_0",
-        "name": "barrels #6 billboard_fixed",
+        "id": "p_storage_barrels_0_billboard_fixed_o0_-17_0",
+        "name": "storage_barrels #0 billboard_fixed",
         "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -21,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_3_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          3,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_3_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          3,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-6_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -6,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-6_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -6,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-16_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -16,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-16_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -16,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_1_billboard_fixed_o0_-24_0",
-        "name": "barrels #1 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 1,
-        "base": "p_barrels_1_billboard_fixed",
-        "offset": [
-          0,
-          -24,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_6_billboard_fixed_o0_-24_0",
-        "name": "barrels #6 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
-        "tile": 6,
-        "base": "p_barrels_6_billboard_fixed",
-        "offset": [
-          0,
-          -24,
-          0
-        ]
-      },
-      {
-        "id": "p_barrels_0_billboard_fixed_o0_-17_0",
-        "name": "barrels #0 billboard_fixed",
-        "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
         "tile": 0,
-        "base": "p_barrels_0_billboard_fixed",
+        "base": "p_storage_barrels_0_billboard_fixed",
         "offset": [
           0,
           -17,
@@ -16653,18 +15169,282 @@
         ]
       },
       {
-        "id": "p_barrels_5_billboard_fixed_o0_-17_0",
-        "name": "barrels #5 billboard_fixed",
+        "id": "p_storage_barrels_5_billboard_fixed",
+        "name": "storage_barrels #5 billboard_fixed",
         "shape": "billboard_fixed",
-        "mat": "mat_barrels",
-        "ts": "barrels",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 5
+      },
+      {
+        "id": "p_storage_barrels_5_billboard_fixed_o0_-17_0",
+        "name": "storage_barrels #5 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
         "tile": 5,
-        "base": "p_barrels_5_billboard_fixed",
+        "base": "p_storage_barrels_5_billboard_fixed",
         "offset": [
           0,
           -17,
           0
         ]
+      },
+      {
+        "id": "p_storage_barrels_1_billboard_fixed",
+        "name": "storage_barrels #1 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 1
+      },
+      {
+        "id": "p_storage_barrels_1_billboard_fixed_o0_-17_0",
+        "name": "storage_barrels #1 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 1,
+        "base": "p_storage_barrels_1_billboard_fixed",
+        "offset": [
+          0,
+          -17,
+          0
+        ]
+      },
+      {
+        "id": "p_storage_barrels_6_billboard_fixed",
+        "name": "storage_barrels #6 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 6
+      },
+      {
+        "id": "p_storage_barrels_6_billboard_fixed_o0_-17_0",
+        "name": "storage_barrels #6 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 6,
+        "base": "p_storage_barrels_6_billboard_fixed",
+        "offset": [
+          0,
+          -17,
+          0
+        ]
+      },
+      {
+        "id": "p_storage_barrels_2_billboard_fixed",
+        "name": "storage_barrels #2 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 2
+      },
+      {
+        "id": "p_storage_barrels_2_billboard_fixed_o0_-17_0",
+        "name": "storage_barrels #2 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 2,
+        "base": "p_storage_barrels_2_billboard_fixed",
+        "offset": [
+          0,
+          -17,
+          0
+        ]
+      },
+      {
+        "id": "p_storage_barrels_7_billboard_fixed",
+        "name": "storage_barrels #7 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 7
+      },
+      {
+        "id": "p_storage_barrels_7_billboard_fixed_o0_-17_0",
+        "name": "storage_barrels #7 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_barrels",
+        "ts": "storage_barrels",
+        "tile": 7,
+        "base": "p_storage_barrels_7_billboard_fixed",
+        "offset": [
+          0,
+          -17,
+          0
+        ]
+      },
+      {
+        "id": "p_village_village_objects_697_wall_o0_0_16",
+        "name": "village_village_objects #697 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 697,
+        "base": "p_village_village_objects_697_wall",
+        "offset": [
+          0,
+          0,
+          16
+        ]
+      },
+      {
+        "id": "p_village_village_objects_697_wall_o0_16_16",
+        "name": "village_village_objects #697 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 697,
+        "base": "p_village_village_objects_697_wall",
+        "offset": [
+          0,
+          16,
+          16
+        ]
+      },
+      {
+        "id": "p_village_village_objects_697_wall_o0_13_10",
+        "name": "village_village_objects #697 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 697,
+        "base": "p_village_village_objects_697_wall",
+        "offset": [
+          0,
+          13,
+          10
+        ]
+      },
+      {
+        "id": "p_village_village_objects_692_wall",
+        "name": "village_village_objects #692 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 692
+      },
+      {
+        "id": "p_village_village_objects_692_wall_o0_13_10",
+        "name": "village_village_objects #692 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 692,
+        "base": "p_village_village_objects_692_wall",
+        "offset": [
+          0,
+          13,
+          10
+        ]
+      },
+      {
+        "id": "p_village_village_objects_692_wall_o0_16_10",
+        "name": "village_village_objects #692 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 692,
+        "base": "p_village_village_objects_692_wall",
+        "offset": [
+          0,
+          16,
+          10
+        ]
+      },
+      {
+        "id": "p_village_village_objects_729_wall_o0_16_10",
+        "name": "village_village_objects #729 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 729,
+        "base": "p_village_village_objects_729_wall",
+        "offset": [
+          0,
+          16,
+          10
+        ]
+      },
+      {
+        "id": "p_village_village_objects_696_wall",
+        "name": "village_village_objects #696 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 696
+      },
+      {
+        "id": "p_village_village_objects_696_wall_o0_16_10",
+        "name": "village_village_objects #696 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 696,
+        "base": "p_village_village_objects_696_wall",
+        "offset": [
+          0,
+          16,
+          10
+        ]
+      },
+      {
+        "id": "p_village_village_objects_758_wall",
+        "name": "village_village_objects #758 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 758
+      },
+      {
+        "id": "p_village_village_objects_758_wall_o0_16_10",
+        "name": "village_village_objects #758 wall",
+        "shape": "wall",
+        "mat": "mat_village_village_objects",
+        "ts": "village_village_objects",
+        "tile": 758,
+        "base": "p_village_village_objects_758_wall",
+        "offset": [
+          0,
+          16,
+          10
+        ]
+      },
+      {
+        "id": "p_outside_objects_lpc-hanging-signs_5_wall",
+        "name": "outside_objects_lpc-hanging-signs #5 wall",
+        "shape": "wall",
+        "mat": "mat_outside_objects_lpc-hanging-signs",
+        "ts": "outside_objects_lpc-hanging-signs",
+        "tile": 5
+      },
+      {
+        "id": "p_outside_objects_lpc-hanging-signs_1_wall",
+        "name": "outside_objects_lpc-hanging-signs #1 wall",
+        "shape": "wall",
+        "mat": "mat_outside_objects_lpc-hanging-signs",
+        "ts": "outside_objects_lpc-hanging-signs",
+        "tile": 1
+      },
+      {
+        "id": "p_outside_objects_lpc-hanging-signs_4_wall",
+        "name": "outside_objects_lpc-hanging-signs #4 wall",
+        "shape": "wall",
+        "mat": "mat_outside_objects_lpc-hanging-signs",
+        "ts": "outside_objects_lpc-hanging-signs",
+        "tile": 4
+      },
+      {
+        "id": "p_outside_objects_lpc-hanging-signs_7_wall",
+        "name": "outside_objects_lpc-hanging-signs #7 wall",
+        "shape": "wall",
+        "mat": "mat_outside_objects_lpc-hanging-signs",
+        "ts": "outside_objects_lpc-hanging-signs",
+        "tile": 7
       }
     ]
   },
@@ -17139,29 +15919,29 @@
   "editor": {
     "camera": {
       "target": [
-        -10.852244284725725,
-        0.013432497503278476,
-        5.06723593455092
+        -3.7771315062913375,
+        0.020983592600384224,
+        -1.1057837451561436
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 17.35723597464249,
+      "distance": 27.11462766114814,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "タイルマップレイヤー_28",
+    "activeLayer": "タイルマップレイヤー_27",
     "brush": {
-      "shape": "billboard_fixed",
+      "shape": "wall",
       "rotation": 0,
       "color": "#130e1e",
-      "tileset": "barrels",
-      "tile": 7,
+      "tileset": "outside_objects_lpc-hanging-signs",
+      "tile": 1,
       "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
         0,
-        -17,
+        0,
         0
       ],
       "thickness": [
@@ -17220,7 +16000,7 @@
     {
       "name": "ScrollMaxZ",
       "type": "float",
-      "value": 39
+      "value": 35
     },
     {
       "name": "ScrollWhole",
@@ -37902,775 +36682,7 @@
       "visible": true,
       "opacity": 1,
       "properties": [],
-      "batches": [
-        {
-          "id": "畑-floor-0",
-          "shape": "floor",
-          "mat": "mat_village_village_soil",
-          "ts": "village_village_soil",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_village_village_soil_10_floor"
-          ],
-          "count": 149,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -28,
-              0,
-              -21,
-              -27,
-              0,
-              -21,
-              -26,
-              0,
-              -21,
-              -25,
-              0,
-              -21,
-              -24,
-              0,
-              -21,
-              -23,
-              0,
-              -21,
-              -22,
-              0,
-              -21,
-              -21,
-              0,
-              -21,
-              -20,
-              0,
-              -21,
-              -19,
-              0,
-              -21,
-              -18,
-              0,
-              -21,
-              -28,
-              0,
-              -20,
-              -27,
-              0,
-              -20,
-              -26,
-              0,
-              -20,
-              -25,
-              0,
-              -20,
-              -24,
-              0,
-              -20,
-              -23,
-              0,
-              -20,
-              -22,
-              0,
-              -20,
-              -21,
-              0,
-              -20,
-              -20,
-              0,
-              -20,
-              -19,
-              0,
-              -20,
-              -18,
-              0,
-              -20,
-              -28,
-              0,
-              -19,
-              -27,
-              0,
-              -19,
-              -26,
-              0,
-              -19,
-              -25,
-              0,
-              -19,
-              -24,
-              0,
-              -19,
-              -23,
-              0,
-              -19,
-              -22,
-              0,
-              -19,
-              -21,
-              0,
-              -19,
-              -20,
-              0,
-              -19,
-              -19,
-              0,
-              -19,
-              -18,
-              0,
-              -19,
-              -28,
-              0,
-              -18,
-              -27,
-              0,
-              -18,
-              -26,
-              0,
-              -18,
-              -25,
-              0,
-              -18,
-              -24,
-              0,
-              -18,
-              -23,
-              0,
-              -18,
-              -22,
-              0,
-              -18,
-              -21,
-              0,
-              -18,
-              -20,
-              0,
-              -18,
-              -19,
-              0,
-              -18,
-              -18,
-              0,
-              -18,
-              -28,
-              0,
-              -17,
-              -27,
-              0,
-              -17,
-              -26,
-              0,
-              -17,
-              -25,
-              0,
-              -17,
-              -24,
-              0,
-              -17,
-              -23,
-              0,
-              -17,
-              -22,
-              0,
-              -17,
-              -21,
-              0,
-              -17,
-              -20,
-              0,
-              -17,
-              -19,
-              0,
-              -17,
-              -18,
-              0,
-              -17,
-              -28,
-              0,
-              -16,
-              -27,
-              0,
-              -16,
-              -26,
-              0,
-              -16,
-              -25,
-              0,
-              -16,
-              -24,
-              0,
-              -16,
-              -23,
-              0,
-              -16,
-              -22,
-              0,
-              -16,
-              -21,
-              0,
-              -16,
-              -20,
-              0,
-              -16,
-              -19,
-              0,
-              -16,
-              -18,
-              0,
-              -16,
-              -28,
-              0,
-              -15,
-              -27,
-              0,
-              -15,
-              -26,
-              0,
-              -15,
-              -25,
-              0,
-              -15,
-              -24,
-              0,
-              -15,
-              -23,
-              0,
-              -15,
-              -22,
-              0,
-              -15,
-              -21,
-              0,
-              -15,
-              -20,
-              0,
-              -15,
-              -19,
-              0,
-              -15,
-              -18,
-              0,
-              -15,
-              3,
-              0,
-              17,
-              4,
-              0,
-              17,
-              5,
-              0,
-              17,
-              6,
-              0,
-              17,
-              7,
-              0,
-              17,
-              8,
-              0,
-              17,
-              9,
-              0,
-              17,
-              10,
-              0,
-              17,
-              11,
-              0,
-              17,
-              12,
-              0,
-              17,
-              13,
-              0,
-              17,
-              14,
-              0,
-              17,
-              3,
-              0,
-              18,
-              4,
-              0,
-              18,
-              5,
-              0,
-              18,
-              6,
-              0,
-              18,
-              7,
-              0,
-              18,
-              8,
-              0,
-              18,
-              9,
-              0,
-              18,
-              10,
-              0,
-              18,
-              11,
-              0,
-              18,
-              12,
-              0,
-              18,
-              13,
-              0,
-              18,
-              14,
-              0,
-              18,
-              3,
-              0,
-              19,
-              4,
-              0,
-              19,
-              5,
-              0,
-              19,
-              6,
-              0,
-              19,
-              7,
-              0,
-              19,
-              8,
-              0,
-              19,
-              9,
-              0,
-              19,
-              10,
-              0,
-              19,
-              11,
-              0,
-              19,
-              12,
-              0,
-              19,
-              13,
-              0,
-              19,
-              14,
-              0,
-              19,
-              3,
-              0,
-              20,
-              4,
-              0,
-              20,
-              5,
-              0,
-              20,
-              6,
-              0,
-              20,
-              7,
-              0,
-              20,
-              8,
-              0,
-              20,
-              9,
-              0,
-              20,
-              10,
-              0,
-              20,
-              11,
-              0,
-              20,
-              12,
-              0,
-              20,
-              13,
-              0,
-              20,
-              14,
-              0,
-              20,
-              3,
-              0,
-              21,
-              4,
-              0,
-              21,
-              5,
-              0,
-              21,
-              6,
-              0,
-              21,
-              7,
-              0,
-              21,
-              8,
-              0,
-              21,
-              9,
-              0,
-              21,
-              10,
-              0,
-              21,
-              11,
-              0,
-              21,
-              12,
-              0,
-              21,
-              13,
-              0,
-              21,
-              14,
-              0,
-              21,
-              3,
-              0,
-              22,
-              4,
-              0,
-              22,
-              5,
-              0,
-              22,
-              6,
-              0,
-              22,
-              7,
-              0,
-              22,
-              8,
-              0,
-              22,
-              9,
-              0,
-              22,
-              10,
-              0,
-              22,
-              11,
-              0,
-              22,
-              12,
-              0,
-              22,
-              13,
-              0,
-              22,
-              14,
-              0,
-              22
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ]
-          }
-        }
-      ]
+      "batches": []
     },
     {
       "id": "建物",
@@ -41777,185 +39789,7 @@
           }
         },
         {
-          "id": "タイルマップレイヤー_28-wall-3",
-          "shape": "wall",
-          "mat": "mat_barrels",
-          "ts": "barrels",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_barrels_3_wall",
-            "p_barrels_4_wall",
-            "p_barrels_8_wall",
-            "p_barrels_9_wall",
-            "p_barrels_2_wall_o0_-17_16",
-            "p_barrels_7_wall_o0_-17_16",
-            "p_barrels_0_wall_o0_-17_16",
-            "p_barrels_5_wall_o0_-17_16"
-          ],
-          "count": 16,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              4,
-              1,
-              -21,
-              5,
-              1,
-              -21,
-              4,
-              0,
-              -21,
-              5,
-              0,
-              -21,
-              -14,
-              1,
-              -21,
-              -13,
-              1,
-              -21,
-              -14,
-              0,
-              -21,
-              -13,
-              0,
-              -21,
-              12,
-              1,
-              -7,
-              12,
-              0,
-              -7,
-              4,
-              1,
-              7,
-              4,
-              0,
-              7,
-              2,
-              1,
-              21,
-              2,
-              0,
-              21,
-              -24,
-              1,
-              -7,
-              -24,
-              0,
-              -7
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              6,
-              7,
-              6,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              653,
-              653,
-              653,
-              653,
-              654,
-              654,
-              654,
-              654,
-              655,
-              655,
-              656,
-              656,
-              658,
-              658,
-              660,
-              660
-            ]
-          }
-        },
-        {
-          "id": "タイルマップレイヤー_28-wall-4",
-          "shape": "wall",
-          "mat": "mat_buckets",
-          "ts": "buckets",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_buckets_1_wall_o0_-17_16",
-            "p_buckets_4_wall_o0_-17_16",
-            "p_buckets_2_wall_o0_-17_16",
-            "p_buckets_5_wall_o0_-17_16"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              5,
-              1,
-              -10,
-              5,
-              0,
-              -10,
-              1,
-              1,
-              22,
-              1,
-              0,
-              22
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              661,
-              661,
-              662,
-              662
-            ]
-          }
-        },
-        {
-          "id": "タイルマップレイヤー_28-wall_cylinder-5",
+          "id": "タイルマップレイヤー_28-wall_cylinder-3",
           "shape": "wall_cylinder",
           "mat": "mat_walls",
           "ts": "walls",
@@ -41987,17 +39821,19 @@
           }
         },
         {
-          "id": "タイルマップレイヤー_28-billboard_fixed-6",
+          "id": "タイルマップレイヤー_28-billboard_fixed-4",
           "shape": "billboard_fixed",
-          "mat": "mat_barrels",
-          "ts": "barrels",
+          "mat": "mat_storage_barrels",
+          "ts": "storage_barrels",
           "mode": "instanced",
           "anim": null,
           "protos": [
-            "p_barrels_1_billboard_fixed_o0_-17_0",
-            "p_barrels_6_billboard_fixed_o0_-17_0",
-            "p_barrels_0_billboard_fixed_o0_-17_0",
-            "p_barrels_5_billboard_fixed_o0_-17_0"
+            "p_storage_barrels_0_billboard_fixed_o0_-17_0",
+            "p_storage_barrels_5_billboard_fixed_o0_-17_0",
+            "p_storage_barrels_1_billboard_fixed_o0_-17_0",
+            "p_storage_barrels_6_billboard_fixed_o0_-17_0",
+            "p_storage_barrels_2_billboard_fixed_o0_-17_0",
+            "p_storage_barrels_7_billboard_fixed_o0_-17_0"
           ],
           "count": 6,
           "enc": "json",
@@ -42007,13 +39843,13 @@
               -10,
               1,
               12,
+              -10,
+              0,
+              12,
               -14,
               1,
               12,
               -14,
-              0,
-              12,
-              -10,
               0,
               12,
               -19,
@@ -42025,11 +39861,11 @@
             ],
             "proto": [
               0,
-              0,
-              1,
               1,
               2,
-              3
+              3,
+              4,
+              5
             ],
             "rf": [
               0,
@@ -42040,12 +39876,12 @@
               0
             ],
             "gid": [
-              724,
-              728,
-              728,
-              724,
-              732,
-              732
+              696,
+              696,
+              697,
+              697,
+              699,
+              699
             ]
           }
         }
@@ -42682,57 +40518,6 @@
         {
           "id": "タイルマップレイヤー_27-wall-0",
           "shape": "wall",
-          "mat": "mat_village_signs",
-          "ts": "village_signs",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_village_signs_4_wall",
-            "p_village_signs_5_wall",
-            "p_village_signs_0_wall",
-            "p_village_signs_7_wall",
-            "p_village_signs_1_wall"
-          ],
-          "count": 5,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -12,
-              1,
-              11,
-              -10,
-              1,
-              11,
-              7,
-              1,
-              10,
-              9,
-              1,
-              10,
-              1,
-              1,
-              10
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0
-            ]
-          }
-        },
-        {
-          "id": "タイルマップレイヤー_27-wall-1",
-          "shape": "wall",
           "mat": "mat_village_village_objects",
           "ts": "village_village_objects",
           "mode": "instanced",
@@ -42753,6 +40538,56 @@
               0
             ],
             "rf": [
+              0
+            ]
+          }
+        },
+        {
+          "id": "タイルマップレイヤー_27-wall-1",
+          "shape": "wall",
+          "mat": "mat_outside_objects_lpc-hanging-signs",
+          "ts": "outside_objects_lpc-hanging-signs",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_outside_objects_lpc-hanging-signs_5_wall",
+            "p_outside_objects_lpc-hanging-signs_1_wall",
+            "p_outside_objects_lpc-hanging-signs_4_wall",
+            "p_outside_objects_lpc-hanging-signs_7_wall"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -10,
+              1,
+              11,
+              1,
+              1,
+              10,
+              -12,
+              1,
+              11,
+              7,
+              1,
+              10,
+              10,
+              1,
+              -8
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
               0
             ]
           }
@@ -44234,9 +42069,11 @@
             "p_village_village_objects_1008_wall_o0_4_8",
             "p_village_village_objects_987_wall_o0_15_8",
             "p_village_village_objects_988_wall_o0_15_8",
-            "p_village_village_objects_794_wall_o0_-10_16"
+            "p_village_village_objects_794_wall_o0_-10_16",
+            "p_village_village_objects_729_wall_o0_16_10",
+            "p_village_village_objects_758_wall_o0_16_10"
           ],
-          "count": 19,
+          "count": 21,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -44297,6 +42134,12 @@
               -6,
               -1,
               1,
+              11,
+              1,
+              0,
+              11,
+              0,
+              0,
               11
             ],
             "proto": [
@@ -44318,9 +42161,13 @@
               15,
               16,
               17,
-              18
+              18,
+              19,
+              20
             ],
             "rf": [
+              0,
+              0,
               0,
               0,
               0,
@@ -44360,6 +42207,8 @@
               674,
               675,
               675,
+              0,
+              0,
               0
             ]
           }
@@ -53873,8 +51722,8 @@
     }
   ],
   "stats": {
-    "tiles": 5808,
-    "batches": 158,
-    "drawCalls": 158
+    "tiles": 5641,
+    "batches": 155,
+    "drawCalls": 155
   }
 }

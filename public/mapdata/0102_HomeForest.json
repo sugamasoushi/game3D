@@ -165,6 +165,13 @@
         "w": 128,
         "h": 96,
         "filter": "nearest"
+      },
+      {
+        "id": "tex_collision",
+        "src": "assets/tilesets/collision.png",
+        "w": 32,
+        "h": 32,
+        "filter": "nearest"
       }
     ],
     "tilesets": [
@@ -355,6 +362,16 @@
         "tile": 32,
         "cols": 4,
         "rows": 3,
+        "margin": 0,
+        "spacing": 0
+      },
+      {
+        "id": "collision",
+        "tex": "tex_collision",
+        "mat": "mat_collision",
+        "tile": 32,
+        "cols": 1,
+        "rows": 1,
         "margin": 0,
         "spacing": 0
       }
@@ -553,6 +570,16 @@
       {
         "id": "mat_chests",
         "tex": "tex_chests",
+        "kind": "tiles",
+        "shading": "unlit",
+        "alphaTest": 0.5,
+        "transparent": false,
+        "side": "double",
+        "depthWrite": true
+      },
+      {
+        "id": "mat_collision",
+        "tex": "tex_collision",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -19821,6 +19848,28 @@
         "mat": "mat_chests",
         "ts": "chests",
         "tile": 4
+      },
+      {
+        "id": "p_collision_0_floor",
+        "name": "collision #0 floor",
+        "shape": "floor",
+        "mat": "mat_collision",
+        "ts": "collision",
+        "tile": 0
+      },
+      {
+        "id": "p_collision_0_floor_o0_16_0",
+        "name": "collision #0 floor",
+        "shape": "floor",
+        "mat": "mat_collision",
+        "ts": "collision",
+        "tile": 0,
+        "base": "p_collision_0_floor",
+        "offset": [
+          0,
+          16,
+          0
+        ]
       }
     ]
   },
@@ -20013,29 +20062,29 @@
   "editor": {
     "camera": {
       "target": [
-        2.2618592174393477,
-        9.760862202986377,
-        -6.195946512080965
+        5.431133280538643,
+        11.631972795417568,
+        5.023371983445664
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 11.908946147824977,
+      "distance": 14.191834156946795,
       "orthographic": false
     },
-    "activeLayer": "グループ_2",
+    "activeLayer": "タイルマップレイヤー_14",
     "height": 0,
     "brush": {
-      "shape": "billboard_fixed",
+      "shape": "floor",
       "rotation": 0,
       "color": "#f2f2f2",
-      "tileset": "chests",
+      "tileset": "collision",
       "tile": 0,
-      "paint": "prefab",
+      "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
         0,
-        0,
+        16,
         0
       ],
       "thickness": [
@@ -47161,11 +47210,80 @@
           }
         }
       ]
+    },
+    {
+      "id": "タイルマップレイヤー_14",
+      "name": "進入禁止",
+      "kind": "tile",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "block"
+        },
+        {
+          "name": "Hidden",
+          "type": "boolean",
+          "value": true
+        }
+      ],
+      "batches": [
+        {
+          "id": "タイルマップレイヤー_14-floor-0",
+          "shape": "floor",
+          "mat": "mat_collision",
+          "ts": "collision",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_collision_0_floor"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              10,
+              -2,
+              2,
+              10,
+              -2,
+              3,
+              10,
+              -2,
+              5,
+              10,
+              -2,
+              8,
+              10,
+              -3
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ]
     }
   ],
   "stats": {
-    "tiles": 4124,
-    "batches": 70,
-    "drawCalls": 70
+    "tiles": 4129,
+    "batches": 71,
+    "drawCalls": 71
   }
 }

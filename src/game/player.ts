@@ -19,7 +19,7 @@ import { blockShadowLength, resolveLighting, shadowDirection } from '../mep3d/li
 import { MAX_WALK, SEGMENTS_PER_CELL, drape, profile } from '../mep3d/shadowCast';
 import { cellOf } from '../mep3d/collision';
 import type { PhysicsBody, Terrain } from './physics';
-import { laneNudge } from './lane';
+import { createLaneAligner } from './lane';
 import type { CameraFxDef, LightingDef, PointLightDef } from '../mep3d/types';
 
 /** 行の添字。シートの既定の並び（上から 下・左・右・上）。 */
@@ -574,6 +574,8 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
 
   /** 体の背丈（マス）。Rapier の体（カプセル）と同じ（GS-239）。 */
   const bodyTall = BODY_TALL_CELLS * size;
+  /** マスの揃え（GS-245）。寄せ始めたら中央に着くまでやり切る。 */
+  const aligner = createLaneAligner();
 
   /** その足元位置に体が入るか（地形だけを見る。GS-239）。 */
   const fits = (wx: number, wy: number, wz: number, terrain: Terrain): boolean =>
@@ -651,6 +653,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       z: cellOf(position.z, unit),
     }),
     placeAt(x, y, z) {
+      aligner.reset();
       position.set(x, y, z);
       group.position.copy(position);
       onGround = false;
@@ -843,25 +846,23 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         // --- Rapier の体（GS-237 / GS-239）。壁に沿った滑り・坂・落下は Rapier に任せる。 ---
         // 登れる段差は今までどおり `Climb` の範囲だけ（DEC-237 / DEC-256）。
         const climb = terrain.climbAt(position.x / unit, position.y / unit, position.z / unit, STEP_UP);
-        // マスの揃え（GS-240）。1 マス幅の通路へ少しずれて入ろうとしたら、列の中央へ寄せる。
-        const nudge = input.slide
-          ? null
-          : laneNudge(position, move, speed, {
+        // マスの揃え（GS-240 / GS-245）。1 マス幅の通路へずれて入ろうとしたら、列の中央に着くまで横だけ動かす。
+        const lane = input.slide
+          ? { x: move.x * speed, z: move.z * speed, aligning: false }
+          : aligner.step(position, move, speed, {
               unit,
               half: bodyHalfWidth,
               fits: (wx, wy, wz, half) => terrain.fits(wx, wy, wz, half, bodyTall),
             });
-        const moved = body.move(move.x * speed + (nudge?.x ?? 0), move.z * speed + (nudge?.z ?? 0), deltaSeconds, climb);
-        const stepX = moved.x - position.x;
-        const stepZ = moved.z - position.z;
+        if (input.slide) aligner.reset();
+        const moved = body.move(lane.x, lane.z, deltaSeconds, climb);
         position.set(moved.x, moved.y, moved.z);
         onGround = moved.grounded;
         if (!input.slide) {
-          // 寄せている間は**実際に動いた向き**を向く（GS-116 / GS-241）。前が塞がって横へ動いているのに
-          // 前を向いたままだと、横へ滑っているように見える。
+          // 寄せている間は**寄せる向き**を向く（GS-116 / GS-245）。中央に着いてから進む向きへ向き直す。
           facing =
-            nudge && input.yaw !== undefined && Math.hypot(stepX, stepZ) > 0.0001 * unit
-              ? facingForWorld(stepX, stepZ, input.yaw)
+            lane.aligning && input.yaw !== undefined && Math.hypot(lane.x, lane.z) > 0
+              ? facingForWorld(lane.x, lane.z, input.yaw)
               : facingFor(axis);
         }
         const stepping = !input.slide && (axis.x !== 0 || axis.y !== 0);

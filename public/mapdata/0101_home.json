@@ -55,13 +55,6 @@
         "filter": "nearest"
       },
       {
-        "id": "tex_terrain",
-        "src": "assets/tilesets/terrain.png",
-        "w": 1024,
-        "h": 1024,
-        "filter": "nearest"
-      },
-      {
         "id": "tex_walls",
         "src": "assets/tilesets/walls.png",
         "w": 2048,
@@ -105,7 +98,7 @@
       },
       {
         "id": "tex_chests",
-        "src": "assets/tilesets/Chests.png",
+        "src": "assets/tilesets/Storage/Chests.png",
         "w": 128,
         "h": 96,
         "filter": "nearest"
@@ -136,16 +129,6 @@
         "id": "outside_objects",
         "tex": "tex_outside_objects",
         "mat": "mat_outside_objects",
-        "tile": 32,
-        "cols": 32,
-        "rows": 32,
-        "margin": 0,
-        "spacing": 0
-      },
-      {
-        "id": "terrain",
-        "tex": "tex_terrain",
-        "mat": "mat_terrain",
         "tile": 32,
         "cols": 32,
         "rows": 32,
@@ -257,16 +240,6 @@
       {
         "id": "mat_outside_objects",
         "tex": "tex_outside_objects",
-        "kind": "tiles",
-        "shading": "unlit",
-        "alphaTest": 0.5,
-        "transparent": false,
-        "side": "double",
-        "depthWrite": true
-      },
-      {
-        "id": "mat_terrain",
-        "tex": "tex_terrain",
         "kind": "tiles",
         "shading": "unlit",
         "alphaTest": 0.5,
@@ -14933,14 +14906,6 @@
         "mat": "mat_house_inside",
         "ts": "house_inside",
         "tile": 98
-      },
-      {
-        "id": "p_terrain_100_floor",
-        "name": "terrain #100 floor",
-        "shape": "floor",
-        "mat": "mat_terrain",
-        "ts": "terrain",
-        "tile": 100
       },
       {
         "id": "p_house_inside_100_floor",
@@ -46128,13 +46093,13 @@
   "editor": {
     "camera": {
       "target": [
-        -3.6001331909718406,
-        0.025119899226913607,
-        -2.6783644799740784
+        -0.5225958143113193,
+        0.044056419456387025,
+        -3.8972013361886395
       ],
       "yaw": 0,
       "pitch": -44,
-      "distance": 12.332482841029162,
+      "distance": 21.62926817799311,
       "orthographic": false
     },
     "activeLayer": "グループ_1",
