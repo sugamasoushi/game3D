@@ -11,6 +11,7 @@ import { playUi } from '../game/audio';
 import { options } from '../game/options';
 import { faceCount, portraitLook, scrollMs, useUi } from './store';
 import { ComicPager } from './ComicPager';
+import { nextStop, pageTop, splitPages, type MessagePage } from './messagePages';
 import { GAME_SCREEN_WIDTH } from '../mep3d/mapCamera';
 
 /**
@@ -132,8 +133,8 @@ export function MessageWindow({
    * -1 は「まだ測っていない」（測るまでは打たない）。
    */
   const [limit, setLimit] = useState(-1);
-  /** 窓が埋まる所（文字数。GS-199）。全文を窓と同じ幅で並べて測る。 */
-  const pausesRef = useRef<number[]>([]);
+  /** 窓が埋まる所と、送ったあと一番上に出す行（GS-199 / GS-210）。全文を窓と同じ幅で並べて測る。 */
+  const pagesRef = useRef<MessagePage[]>([]);
   if (source !== full) {
     setSource(full);
     setShown(0);
@@ -143,7 +144,7 @@ export function MessageWindow({
   /** 窓が埋まって押されるのを待っている（GS-199）。 */
   const paused = !done && limit >= 0 && shown >= limit;
   /** 次に止まる所。無ければ終わりまで。 */
-  const nextLimit = (from: number) => pausesRef.current.find((at) => at > from) ?? full.length;
+  const nextLimit = (from: number) => nextStop(pagesRef.current, from, full.length);
 
   /**
    * 文字の巻き上げ（GS-146）。窓は 3 行ぶんしか見せず、**あふれたぶんだけ上へ寄せる**。
@@ -164,8 +165,11 @@ export function MessageWindow({
     // （▼ の印だけで 4px あふれることがあり、そのぶんが常に切れていた）。
     const line = Number.parseFloat(window.getComputedStyle(body).lineHeight) || 35;
     const over = body.offsetHeight - view.clientHeight;
-    setLift(over > 0 ? Math.round(over / line) * line : 0);
-  }, [shown, full]);
+    // 送ったら**次の行を窓の一番上へ**（GS-210）。打ち始める前から前の窓の行は上へ抜けている——
+    // 1 行ずつ巻き上げると、読んだ行と新しい行が混ざって見えた。
+    const top = limit >= 0 ? pageTop(pagesRef.current, limit) * line : 0;
+    setLift(Math.max(over > 0 ? Math.round(over / line) * line : 0, top));
+  }, [shown, full, limit]);
 
   /**
    * 窓が埋まる所を測る（GS-199）。見えない写し（`measureRef`）に**頭から何文字か**を窓と同じ幅で並べ、
@@ -179,7 +183,7 @@ export function MessageWindow({
   const measureRef = useRef<HTMLParagraphElement | null>(null);
   const bubbled = Boolean(talk?.bubble);
   useLayoutEffect(() => {
-    const pauses: number[] = [];
+    let pages: MessagePage[] = [];
     const mirror = measureRef.current;
     if (mirror) {
       const lineH = Number.parseFloat(window.getComputedStyle(mirror).lineHeight) || 35;
@@ -194,29 +198,11 @@ export function MessageWindow({
         return Math.round(mirror.offsetHeight / lineH);
       };
       if (bubbled) setBubbleRows(Math.min(BUBBLE_ROWS, Math.max(1, rowsOf(full.length, false))));
-      // 行数がこれを超えたら止まる。
-      let edge = page;
-      let low = 0;
-      while (low < full.length && rowsOf(full.length) > edge) {
-        // low 文字では edge 行に収まり、high 文字ではあふれる。
-        let high = full.length;
-        while (high - low > 1) {
-          const mid = (low + high) >> 1;
-          if (rowsOf(mid) > edge) high = mid;
-          else low = mid;
-        }
-        if (low > (pauses[pauses.length - 1] ?? 0)) pauses.push(low);
-        // 次の窓は 1 枚ぶん先。空行が続いて窓 2 枚ぶん飛んでも、境目は窓の行数ごとに数える
-        // （ここは印なしの丈。末尾の改行は行を増やさない）。
-        edge += page;
-        const rows = rowsOf(high, false);
-        while (rows > edge) edge += page;
-        low = high;
-      }
+      pages = splitPages(full.length, page, (count) => rowsOf(count), (count) => rowsOf(count, false));
       mirror.textContent = '';
     }
-    pausesRef.current = pauses;
-    setLimit(pauses[0] ?? full.length);
+    pagesRef.current = pages;
+    setLimit(pages[0]?.at ?? full.length);
   }, [full, bubbled]);
 
   // 1 文字ずつ。**タイマーは 1 本だけ**にして、文字数ぶんの setTimeout を積まない。

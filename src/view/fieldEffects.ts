@@ -146,7 +146,14 @@ export function readFieldPresets(map: FieldEffectSource): FieldEffectPreset[] {
  * **描いた格子の向き**（xz / xy / yz）がそのまま面の向きになる。
  * **目を切ったレイヤー・オブジェクトは拾わない**（DEC-221）。
  */
-export function readFieldVolumes(map: FieldEffectSource): FieldEffectVolume[] {
+/**
+ * 時間帯ごとの `Effect`（DEC-439）。`Effect.<プリセット id>` があれば、その時間帯はそちらを使う。
+ * 値が空なら、その時間帯は出さない。無ければ `Effect` のまま。
+ * 時間帯なし（基準）は時間帯の条件をかけず、`Effect` も `Effect.<id>` もすべて重ねて出す（DEC-449）。
+ */
+export const EFFECT_TIME_PREFIX = `${EFFECT_PROPERTY_NAME}.`;
+
+export function readFieldVolumes(map: FieldEffectSource, time = ''): FieldEffectVolume[] {
   const presets = new Map(readFieldPresets(map).map((entry) => [entry.id, entry]));
   const out: FieldEffectVolume[] = [];
   for (const layer of map.layers) {
@@ -155,22 +162,50 @@ export function readFieldVolumes(map: FieldEffectSource): FieldEffectVolume[] {
     if (!layerShown(map, layer)) continue;
     for (const object of layer.objects ?? []) {
       if (object.visible === false) continue;
-      let look: FieldEffectPreset | null = null;
-      for (const entry of object.properties ?? []) {
-        if (entry.name !== EFFECT_PROPERTY_NAME) continue;
-        const raw = String(entry.value).trim();
-        // まずプリセットの id。無ければ種類名そのもの（既定の見た目。旧いマップ用）。
-        const hit = presets.get(raw) ?? presets.get(raw.toLowerCase());
-        if (hit) {
-          look = hit;
-          break;
-        }
-        const kind = asKind(raw);
-        look = kind
-          ? { id: kind, name: FIELD_EFFECT_LABELS[kind], kind, ...FIELD_EFFECT_DEFAULTS[kind] }
-          : null;
+      const props = object.properties ?? [];
+      // 時間帯で出す物（`ShowIn`。DEC-446）。その時間帯でなければ、掛けたエフェクトごと出さない。
+      // **時間帯なし（基準）ではすべて出す**（DEC-448）。
+      const showIn = time ? props.find((entry) => entry.name === 'ShowIn') : undefined;
+      if (showIn) {
+        const times = String(showIn.value ?? '').split(',').map((part) => part.trim()).filter(Boolean);
+        if (!times.includes(time)) continue;
       }
-      if (!look) continue;
+      // まずプリセットの id。無ければ種類名そのもの（既定の見た目。旧いマップ用）。
+      const resolve = (raw: string): FieldEffectPreset | null => {
+        const hit = presets.get(raw) ?? presets.get(raw.toLowerCase());
+        if (hit) return hit;
+        const kind = asKind(raw);
+        return kind ? { id: kind, name: FIELD_EFFECT_LABELS[kind], kind, ...FIELD_EFFECT_DEFAULTS[kind] } : null;
+      };
+      const looks: FieldEffectPreset[] = [];
+      if (time) {
+        // 時間帯あり: `Effect.<id>` があればそちら（空なら出さない）、無ければ `Effect`。最初に引けた 1 つ。
+        const timed = props.filter((entry) => entry.name === `${EFFECT_TIME_PREFIX}${time}`);
+        const effects = timed.length ? timed : props.filter((entry) => entry.name === EFFECT_PROPERTY_NAME);
+        let look: FieldEffectPreset | null = null;
+        for (const entry of effects) {
+          const raw = String(entry.value).trim();
+          if (!raw) continue;
+          const hit = resolve(raw);
+          look = hit;
+          if (hit && presets.has(hit.id)) break;
+        }
+        if (look) looks.push(look);
+      } else {
+        // **時間帯なし（基準）は時間帯の条件をかけない**——`Effect` も `Effect.<id>` もすべて重ねて出す（DEC-449）。
+        // 同じ物は 1 回だけ。出ていて困る物は置いた人が直す（DEC-448 と同じ考え）。
+        const seen = new Set<string>();
+        for (const entry of props) {
+          if (entry.name !== EFFECT_PROPERTY_NAME && !entry.name.startsWith(EFFECT_TIME_PREFIX)) continue;
+          const raw = String(entry.value).trim();
+          if (!raw) continue;
+          const hit = resolve(raw);
+          if (!hit || seen.has(hit.id)) continue;
+          seen.add(hit.id);
+          looks.push(hit);
+        }
+      }
+      if (!looks.length) continue;
       const points = object.points ?? [];
       if (points.length < 2) continue;
       // 点は (u, v)。面によって軸の意味が変わる（`editor/mapObject.setMapObjectPosition` と同じ）。
@@ -187,18 +222,20 @@ export function readFieldVolumes(map: FieldEffectSource): FieldEffectVolume[] {
       if (!Number.isFinite(minU)) continue;
       const plane: FieldEffectPlane =
         object.plane === 'xy' || object.plane === 'yz' ? object.plane : 'xz';
-      const lift = look.lift;
-      if (plane === 'xy') {
-        const z = object.z ?? 0;
-        out.push({ look, plane, baseY: minV, minX: minU, maxX: maxU, minY: minV + lift, maxY: maxV + lift, minZ: z, maxZ: z });
-      } else if (plane === 'yz') {
-        const x = object.x ?? 0;
-        out.push({ look, plane, baseY: minV, minX: x, maxX: x, minY: minV + lift, maxY: maxV + lift, minZ: minU, maxZ: maxU });
-      } else {
-        // 床は厚みを設定から取る。オブジェクトの高さは使わない（DEC-200）。
-        const base = object.y ?? 0;
-        const y = base + lift;
-        out.push({ look, plane, baseY: base, minX: minU, maxX: maxU, minY: y, maxY: y + Math.max(0.2, look.thick), minZ: minV, maxZ: maxV });
+      for (const look of looks) {
+        const lift = look.lift;
+        if (plane === 'xy') {
+          const z = object.z ?? 0;
+          out.push({ look, plane, baseY: minV, minX: minU, maxX: maxU, minY: minV + lift, maxY: maxV + lift, minZ: z, maxZ: z });
+        } else if (plane === 'yz') {
+          const x = object.x ?? 0;
+          out.push({ look, plane, baseY: minV, minX: x, maxX: x, minY: minV + lift, maxY: maxV + lift, minZ: minU, maxZ: maxU });
+        } else {
+          // 床は厚みを設定から取る。オブジェクトの高さは使わない（DEC-200）。
+          const base = object.y ?? 0;
+          const y = base + lift;
+          out.push({ look, plane, baseY: base, minX: minU, maxX: maxU, minY: y, maxY: y + Math.max(0.2, look.thick), minZ: minV, maxZ: maxV });
+        }
       }
     }
   }
@@ -240,6 +277,26 @@ export interface FieldEffectVolume {
   maxY: number;
   minZ: number;
   maxZ: number;
+  /**
+   * 時間帯の切り替えの途中（GS-226）。`out` は前の時間帯だけの物（薄れて消える）、`in` は次の時間帯だけの物
+   * （濃くなって出る）。どちらにも在る物は付けない（そのまま出す）。濃さは `setFade` で動かす。
+   */
+  fade?: 'in' | 'out';
+}
+
+/**
+ * 時間帯を移るあいだに出す置き場所（GS-226）。前と次の両方に在る物（同じ置き場所・同じプリセット）は
+ * そのまま、片方だけの物は `fade` を付けて両方とも出す。
+ */
+export function mergeFieldVolumes(from: readonly FieldEffectVolume[], to: readonly FieldEffectVolume[]): FieldEffectVolume[] {
+  const keyOf = (volume: FieldEffectVolume) =>
+    [volume.look.id, volume.plane, volume.minX, volume.maxX, volume.minY, volume.maxY, volume.minZ, volume.maxZ].join('|');
+  const next = new Set(to.map(keyOf));
+  const before = new Set(from.map(keyOf));
+  return [
+    ...from.map((volume) => (next.has(keyOf(volume)) ? volume : { ...volume, fade: 'out' as const })),
+    ...to.filter((volume) => !before.has(keyOf(volume))).map((volume) => ({ ...volume, fade: 'in' as const })),
+  ];
 }
 
 export interface FieldEffectSettings {
@@ -335,6 +392,11 @@ export interface FieldEffects {
    * 渡さなければ「うねり」は水の色だけになる。画面をもう一度描かないので**軽い**。
    */
   setSkyTexture(texture: Texture | null): void;
+  /**
+   * 時間帯の切り替えの進み（GS-226。0..1）。`fade: 'in'` の板は濃さ × `k`、`'out'` の板は × (1 - k)。
+   * `fade` の無い板には効かない。
+   */
+  setFade(k: number): void;
   /** 毎フレーム。時間を進める。 */
   update(deltaSeconds: number): void;
   dispose(): void;
@@ -1250,7 +1312,14 @@ export function createFieldEffects(): FieldEffects {
     poolKey: string;
     reflects: boolean;
     cast: boolean;
+    /** 元の見た目と、時間帯の切り替えで薄めるか（GS-226）。 */
+    look: FieldEffectSettings;
+    fade?: 'in' | 'out';
   }> = [];
+  /** 時間帯の切り替えの進み（GS-226）。 */
+  let fadeAt = 1;
+  const weightOf = (fade: 'in' | 'out' | undefined): number =>
+    fade === 'in' ? fadeAt : fade === 'out' ? 1 - fadeAt : 1;
   let clock = 0;
   /** 画面の切り替え（DEC-201）。置いてあっても切っていれば出さない。 */
   let shown = true;
@@ -1262,13 +1331,14 @@ export function createFieldEffects(): FieldEffects {
    * （DEC-323）——歪み・映り込み・正面の映り・映りの染まりが抜けていて、
    * フィールドエフェクト編集で動かしても画に出なかった。
    */
-  const applyLook = (look: FieldEffectSettings, material: ShaderMaterial) => {
-    material.uniforms.amount.value = Math.max(0, look.amount);
+  const applyLook = (look: FieldEffectSettings, material: ShaderMaterial, weight = 1) => {
+    // 時間帯の切り替え（GS-226）。濃さと映り込みを薄めて出し入れする。
+    material.uniforms.amount.value = Math.max(0, look.amount) * weight;
     material.uniforms.speed.value = Math.max(0, look.speed);
     material.uniforms.scale.value = Math.max(0.001, look.scale);
     material.uniforms.tint.value = tintOf(look.color, 'ffffff');
     if (material.uniforms.warp) material.uniforms.warp.value = Math.max(0, look.warp);
-    if (material.uniforms.mirror) material.uniforms.mirror.value = Math.max(0, look.mirror);
+    if (material.uniforms.mirror) material.uniforms.mirror.value = Math.max(0, look.mirror) * weight;
     if (material.uniforms.face) material.uniforms.face.value = Math.min(1, Math.max(0, look.face));
     if (material.uniforms.dye) material.uniforms.dye.value = Math.min(1, Math.max(0, look.dye));
     material.visible = look.on;
@@ -1365,7 +1435,7 @@ export function createFieldEffects(): FieldEffects {
             u.dye.value = look.dye;
             u.mirror.value = look.mirror;
           }
-          applyLook(look, material);
+          applyLook(look, material, weightOf(volume.fade));
           const mesh = new Mesh(geometry, material);
           if (REFLECTS[kind]) {
             mesh.onBeforeRender = (renderer, _scene, drawCamera) => {
@@ -1449,7 +1519,7 @@ export function createFieldEffects(): FieldEffects {
            * 「鏡面を描く前の画」を写してしまい、下の鏡が見えなくなる。
            */
           mesh.renderOrder = (kind === 'mirror' ? 4 : 8) + i;
-          slices.push({ id: look.id, mesh, poolKey: key, reflects: REFLECTS[kind] === true, cast: look.cast });
+          slices.push({ id: look.id, mesh, poolKey: key, reflects: REFLECTS[kind] === true, cast: look.cast, look, fade: volume.fade });
           group.add(mesh);
         }
       }
@@ -1485,10 +1555,16 @@ export function createFieldEffects(): FieldEffects {
       for (const slice of slices) {
         const look = looks[slice.id];
         if (!look) continue;
-        applyLook(look, slice.mesh.material);
+        slice.look = look;
+        applyLook(look, slice.mesh.material, weightOf(slice.fade));
         // 映すかは uniform ではないので、板の側に憶える（DEC-345）。
         slice.cast = look.cast;
       }
+    },
+
+    setFade(k) {
+      fadeAt = Math.min(1, Math.max(0, k));
+      for (const slice of slices) if (slice.fade) applyLook(slice.look, slice.mesh.material, weightOf(slice.fade));
     },
 
     update(deltaSeconds) {

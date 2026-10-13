@@ -3,10 +3,12 @@
 // **実行機はここに在るものしか動かせない。** だから「まだ無い機能」は
 // 黙って無視せず、印を出して分かるようにしておく（`todo()`）。
 
+import { timeSettings } from './timeClock';
 import type { EventContext } from '../event/interpreter';
 import type { ActorRef, EventCommand, PixelOffset, PlaceAt, PlaceAxis, Step } from '../event/types';
 import type { GameView, WalkDir } from './GameView';
 import { selfKey, switchOn, type GameState } from './state';
+import { layerKey } from './layerSwitch';
 import { NPC_CAME, NPC_GONE } from './npcs';
 import { commonEvent } from './commons';
 import { scriptFn } from './scriptBook';
@@ -56,7 +58,7 @@ export interface EventBridge {
    * `npc` は吹き出しの相手、セルフスイッチは `map` と `event`（と `owner`）で決まる。
    * **イベントを動かす前に必ず入れる**——条件を見るときにも要る。
    */
-  setScene(scene: { npc?: string; map?: string; event?: string; item?: string; num?: number; owner?: string }): void;
+  setScene(scene: { npc?: string; map?: string; event?: string; owner?: string }): void;
 }
 
 export interface EventBridgeOptions {
@@ -89,6 +91,11 @@ export interface EventBridgeOptions {
    * 見張りの周期（100ms）を待つと「開けたのにメッセージのほうが先」に見える。
    */
   onSwitch?(): void;
+  /**
+   * いまのマップにその `Id` のレイヤーが在るか（GS-233。「レイヤーの出し入れ」の空振りを知らせる）。
+   * 渡さなければ在るものとして扱う。
+   */
+  knownLayer?(id: string): boolean;
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -131,12 +138,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
   /** いま見ているイベント（セルフスイッチの宛先）。 */
   let sceneMap = '';
   let sceneEvent = '';
-  /**
-   * 起こしたオブジェクトが持っていた中身（GS-132。マップの `Item` / `Num`）。
-   * 宝箱のように**中身だけマップが決める**物のためのもので、無ければ空。
-   */
+  /** そのイベントで最後に手に入れた物（GS-233）。文の `{アイテム}` に入る。 */
   let sceneItem = '';
-  let sceneNum: number | undefined;
   /**
    * 起こした物の名前（GS-134。マップの `Id`）。**覚えの行き先**になる——
    * 同じイベントを何個の宝箱で使っても、`setSelfSwitch` が混ざらない。
@@ -149,7 +152,7 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
   /**
    * 出入りの覚え（GS-157）。**書く先は動かした相手**——`setSelfSwitch` の宛先
    * （イベントを起こした物）とは別なので、誰のイベントから消しても取り違えない。
-   * これが在るおかげで、マップに `HideIf` とイベント名を書かずに済む。
+   * これが在るおかげで、出す条件にイベント名を書かずに済む。
    */
   const rememberNpc = (id: string, gone: boolean) => {
     options.state.self.set(selfKey(sceneMap, `@${id}`, NPC_GONE), gone);
@@ -158,19 +161,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
   };
 
   /**
-   * 持ち物の id を決める（GS-132）。**空ならマップの `Item`**。
-   * どちらも無ければ何もしない——知らせだけ出す。黙って通すと「開けたのに増えない」になる。
-   */
-  const itemOf = (id: string): string => {
-    const what = id || sceneItem;
-    if (!what) console.warn('[event] 持ち物が決まらない（命令の id も、マップの Item も空）');
-    return what;
-  };
-  /** 個数。書いてあればそれ、無ければマップの `Num`、それも無ければ 1。 */
-  const countOf = (count: number | undefined): number => count ?? sceneNum ?? 1;
-  /**
    * 文の中の合言葉を差し替える（GS-132）。いまは `{アイテム}` だけ——
-   * **中身をマップが決める**物に、名前を書かずに文を書けるようにするためのもの。
+   * 抽選で決まった中身（GS-233）を、名前を書かずに文へ出すためのもの。
    */
   const fill = (text: string): string =>
     sceneItem ? text.replaceAll('{アイテム}', itemName(sceneItem) || sceneItem) : text;
@@ -715,6 +707,12 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       options.state.self.set(selfKey(sceneMap, selfScope(), key), value);
       options.onSwitch?.();
     },
+    // レイヤーの出し入れ（GS-233）。覚えはセルフスイッチと同じ置き場（`<マップ>/#<Id>/出す`）。
+    setLayer: (id, shown) => {
+      options.state.self.set(layerKey(sceneMap, id), shown);
+      options.onSwitch?.();
+      return options.knownLayer?.(id) ?? true;
+    },
     getVariable: (key) => options.state.variables.get(key) ?? 0,
     setVariable: (key, value) => {
       options.state.variables.set(key, value);
@@ -751,16 +749,16 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
      */
     countItem: (id) => options.state.items.get(id) ?? 0,
     getItem: (id, count) => {
-      const what = itemOf(id);
-      if (!what) return;
-      const next = (options.state.items.get(what) ?? 0) + Math.max(0, Math.trunc(countOf(count)));
-      if (next > 0) options.state.items.set(what, next);
-      if (!knownItem(what)) console.warn('[event] 台帳に無い持ち物: ' + what);
+      if (!id) return;
+      sceneItem = id;
+      const next = (options.state.items.get(id) ?? 0) + Math.max(0, Math.trunc(count));
+      if (next > 0) options.state.items.set(id, next);
+      if (!knownItem(id)) console.warn('[event] 台帳に無い持ち物: ' + id);
     },
     loseItem: (id, count) => {
-      const what = itemOf(id);
+      const what = id;
       if (!what) return;
-      const next = (options.state.items.get(what) ?? 0) - Math.max(0, Math.trunc(countOf(count)));
+      const next = (options.state.items.get(what) ?? 0) - Math.max(0, Math.trunc(count ?? 1));
       if (next > 0) options.state.items.set(what, next);
       else options.state.items.delete(what);
     },
@@ -791,6 +789,21 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     getGold: () => options.state.gold,
     setGold: (value) => {
       options.state.gold = Math.max(0, Math.round(value));
+    },
+
+    /**
+     * 時間帯（GS-222）。**記録が持つ**のは id と時計だけで、見た目は画面（`GameView.setTime`）が混ぜて移す。
+     * 切り替えたら時計はその時間帯の頭から。出す・出さない（`ShowIn`）は画面の見張りが拾う。
+     */
+    getTime: () => options.state.time,
+    setTime: (time, ms) => {
+      options.state.time = time;
+      options.state.clock.ms = 0;
+      options.getView()?.setTime(time, ms ?? timeSettings().shiftMs);
+      options.onSwitch?.();
+    },
+    setClock: (run) => {
+      options.state.clock.running = run;
     },
 
     /**
@@ -846,8 +859,7 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       self = scene.npc ?? '';
       sceneMap = scene.map ?? '';
       sceneEvent = scene.event ?? '';
-      sceneItem = scene.item ?? '';
-      sceneNum = scene.num;
+      sceneItem = '';
       sceneOwner = scene.owner ?? '';
     },
   };

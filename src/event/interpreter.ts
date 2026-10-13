@@ -161,9 +161,14 @@ export interface EventContext {
   /** 静止コマを指名する（GS-47）。知らない名前なら false。 */
   pose(target: ActorRef, name: string | null): boolean;
   /** 持ち物（GS-46）。数を足す・引く・数える。 */
-  /** `id` を空にすると、起こしたオブジェクトの `Item`（GS-132）。`count` は undefined で `Num`。 */
-  getItem(id: string, count: number | undefined): void;
+  /** 中身と個数は命令で決めてから渡す（GS-233。抽選は `drawGetItem`）。 */
+  getItem(id: string, count: number): void;
   loseItem(id: string, count: number | undefined): void;
+  /**
+   * レイヤーの出し入れ（GS-233）。マップのレイヤーの `Id` で指す。セーブに残る。
+   * そのマップにその `Id` のレイヤーが無ければ false。
+   */
+  setLayer(id: string, shown: boolean): boolean;
   countItem(id: string): number;
   /**
    * 戦闘（GS-60）。**決着が付くまで返らない。**
@@ -185,6 +190,12 @@ export interface EventContext {
   /** 所持金（GS-65）。 */
   getGold(): number;
   setGold(value: number): void;
+  /** いまの時間帯（GS-222）。'' は時間帯なし。 */
+  getTime(): string;
+  /** 時間帯を切り替える（GS-222）。`ms` かけて見た目を混ぜる（省略は台帳の既定）。待たない。 */
+  setTime(time: string, ms?: number): void;
+  /** 時計を動かす・止める（GS-222）。 */
+  setClock(run: boolean): void;
   /** 回復（GS-64）。`who` を省くと隊列ぜんぶ。 */
   heal(
     hp: number | 'full' | undefined,
@@ -435,6 +446,13 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
     ctx.stopBgm(cmd.fade);
   },
 
+  time: async (ctx, cmd) => {
+    // 先に時計を決めてから切り替える——切り替えで時計を頭から数え直すため（GS-222）。
+    if (cmd.clock) ctx.setClock(cmd.clock === 'run');
+    // `base`（か ''）は時間帯なし（基準）。エディタの欄は空を「書かない」にするので言葉で書く。
+    if (cmd.to !== undefined) ctx.setTime(cmd.to.trim() === 'base' ? '' : cmd.to.trim(), cmd.ms);
+  },
+
   block: async (ctx, cmd) => {
     // `chip` は「全部の面をこれ 1 枚に」の書き方。`faces` があればそちらが勝つ。
     const all =
@@ -449,11 +467,20 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   },
 
   getItem: async (ctx, cmd) => {
-    ctx.getItem(cmd.id ?? '', cmd.count);
+    const { item, count } = drawGetItem(cmd);
+    if (!item) {
+      console.warn('[event] 持ち物が決まらない（id も random も空）');
+      return;
+    }
+    ctx.getItem(item, count);
   },
 
   loseItem: async (ctx, cmd) => {
-    ctx.loseItem(cmd.id ?? '', cmd.count);
+    ctx.loseItem(cmd.id, cmd.count);
+  },
+
+  layer: async (ctx, cmd) => {
+    if (!ctx.setLayer(cmd.id, cmd.shown)) console.warn(`[event] このマップに Id「${cmd.id}」のレイヤーが無い`);
   },
 
   // 戦闘（GS-60）。**終わるまで待つ**ので、続きは勝ってから動く。
@@ -530,6 +557,28 @@ export async function runCommands(list: EventCommand[], ctx: EventContext): Prom
 }
 
 /**
+ * 「アイテム取得」の中身と個数を決める（GS-233）。**抽選はここで 1 回だけ**——
+ * 文に出す名前と実際に増える物がずれないように。`random` は差し替え口（テスト用）。
+ * - `random` が在ればその中から 1 つ（`id` より勝つ）。空の並びは書き忘れなので中身なし。
+ * - `count` が 2 つの数なら、その範囲から（並びの順は問わない）。省くと 1。0 以下は 1。
+ */
+export function drawGetItem(
+  cmd: { id?: string; random?: string[]; count?: number | [number, number] },
+  random: () => number = Math.random,
+): { item: string; count: number } {
+  const item = cmd.random ? (cmd.random[Math.floor(random() * cmd.random.length)] ?? '') : (cmd.id ?? '');
+  let count = 1;
+  if (Array.isArray(cmd.count)) {
+    const low = Math.min(cmd.count[0], cmd.count[1]);
+    const high = Math.max(cmd.count[0], cmd.count[1]);
+    count = Math.floor(random() * (high - low + 1)) + low;
+  } else if (typeof cmd.count === 'number') {
+    count = cmd.count;
+  }
+  return { item: item.trim(), count: Math.max(1, Math.trunc(count)) };
+}
+
+/**
  * 起動条件を満たすか。スイッチでもセルフスイッチでも書ける（GS-27）。
  * **セルフスイッチを見るときは、そのイベントを動かす前提**——
  * 呼ぶ側が「どのイベントの話か」を `ctx` に伝えてから聞く。
@@ -547,12 +596,27 @@ function meetsOne(ctx: EventContext, when: IfCondition): boolean {
   if ('self' in when) return ctx.getSelfSwitch(when.self) === (when.is ?? true);
   if ('item' in when) return ctx.countItem(when.item) >= (when.count ?? 1);
   if ('gold' in when) return ctx.getGold() >= when.gold;
+  if ('time' in when) return timeMatches(ctx.getTime(), when.time);
   return compare(ctx.getVariable(when.variable), when.op, when.value);
+}
+
+/**
+ * 時間帯の条件（GS-222）。`spec` はカンマ区切りの id で、いまの時間帯がどれかなら当たり。
+ * 時間帯なし（''）はどれにも当たらない。
+ */
+export function timeMatches(now: string, spec: string): boolean {
+  if (!now) return false;
+  return spec
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .includes(now);
 }
 
 export function canRun(event: EventDef, ctx: EventContext): boolean {
   if (!event.when) return true;
   return event.when.every((cond) => {
+    if (cond.time !== undefined) return timeMatches(ctx.getTime(), cond.time);
     const now = cond.self !== undefined ? ctx.getSelfSwitch(cond.self) : ctx.getSwitch(cond.switch ?? '');
     return now === (cond.is ?? true);
   });

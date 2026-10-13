@@ -27,6 +27,49 @@ export const BACKDROP_MESH_NAME = 'backdrop';
  * 中身の変わらない画像なので、URL で憶えて持ち回す。捨てない。
  */
 const skyCache = new Map<string, Texture>();
+/** 読み込み中の絵。同じ絵を 2 本取りに行かない（先読みと板の両方から頼まれる。GS-225）。 */
+const skyLoading = new Map<string, Promise<Texture>>();
+const skyLoader = new TextureLoader();
+
+/** 絵を読んで憶える。読み終わっていればそれを返す。 */
+function loadSky(url: string): Promise<Texture> {
+  const cached = skyCache.get(url);
+  if (cached) return Promise.resolve(cached);
+  let loading = skyLoading.get(url);
+  if (!loading) {
+    loading = skyLoader
+      .loadAsync(url)
+      .then((next) => {
+        next.colorSpace = SRGBColorSpace;
+        next.magFilter = NearestFilter;
+        next.minFilter = NearestFilter;
+        next.generateMipmaps = false;
+        next.needsUpdate = true;
+        skyCache.set(url, next);
+        return next;
+      })
+      .finally(() => skyLoading.delete(url));
+    skyLoading.set(url, loading);
+  }
+  return loading;
+}
+
+/**
+ * 書き割りの絵を先に読んでおく（GS-225）。時間帯で入れ替える絵は、切り替えの間に重ねて少しずつ出す。
+ * その場で読むと届くまで重ねられず、切り替えの終わりで**ぱっと**替わる。読めなくても失敗にしない。
+ */
+export function preloadBackdrop(src: string): Promise<void> {
+  if (!src) return Promise.resolve();
+  return loadSky(skyUrl(src)).then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
+/** その書き割りの絵を読み終えているか。 */
+export function backdropLoaded(src: string): boolean {
+  return !src || skyCache.has(skyUrl(src));
+}
 
 /**
  * 背景の書き割り（DEC-148）。マップの北端に立てる縦板 1 枚。
@@ -40,6 +83,8 @@ export interface Backdrop {
   update(def: BackdropDef | undefined, widthCells: number, depthCells: number, unit: number): void;
   /** 今出している絵（DEC-316）。「うねり」が環境として引く。読み込み前は null。 */
   texture(): Texture | null;
+  /** 濃さ（0..1。GS-222）。重ねて入れ替える 2 枚目（`fade`）だけが使う。 */
+  setOpacity(amount: number): void;
   dispose(): void;
 }
 
@@ -74,22 +119,28 @@ function domeGeometry(): SphereGeometry {
   return geometry;
 }
 
-export function createBackdrop(): Backdrop {
-  const material = (sharedMaterial ??= new MeshBasicMaterial({
-    transparent: true,
-    side: DoubleSide,
-    depthWrite: true,
-    toneMapped: false,
-    color: new Color(1, 1, 1),
-  }));
+/**
+ * `fade` は時間帯の切り替えで**前の絵の上に次の絵を重ねる 2 枚目**（GS-222）。マテリアルを自分で持ち
+ * （共有すると絵が 1 枚になる）、深度は書かず、前の絵のあとに描く。
+ */
+export function createBackdrop(options: { fade?: boolean } = {}): Backdrop {
+  const fade = options.fade === true;
+  const material = fade
+    ? new MeshBasicMaterial({ transparent: true, side: DoubleSide, depthWrite: false, toneMapped: false, color: new Color(1, 1, 1), opacity: 0 })
+    : (sharedMaterial ??= new MeshBasicMaterial({
+        transparent: true,
+        side: DoubleSide,
+        depthWrite: true,
+        toneMapped: false,
+        color: new Color(1, 1, 1),
+      }));
   const mesh: Mesh<BufferGeometry, MeshBasicMaterial> = new Mesh(new PlaneGeometry(1, 1), material);
   // エディタが回転の中心の印を置くときにこの名前で探す（DEC-433）。
   mesh.name = BACKDROP_MESH_NAME;
   mesh.visible = false;
-  // 背景なので一番先に描く。手前のタイルが上書きする。
-  mesh.renderOrder = -2;
+  // 背景なので一番先に描く。手前のタイルが上書きする。重ねる 2 枚目は前の絵のすぐあと。
+  mesh.renderOrder = fade ? -1 : -2;
 
-  const loader = new TextureLoader();
   let texture: Texture | null = null;
   /** 読み終わった絵。読み込み中は入れない（入れると古い絵のまま居座る）。 */
   let loadedSrc = '';
@@ -192,6 +243,10 @@ export function createBackdrop(): Backdrop {
       return mesh.visible ? texture : null;
     },
 
+    setOpacity(amount) {
+      material.opacity = Math.min(1, Math.max(0, amount));
+    },
+
     update(def, widthCells, depthCells, unit) {
       const src = def?.src ?? '';
       if (!src || !def) {
@@ -230,19 +285,8 @@ export function createBackdrop(): Backdrop {
       const mine = (gen += 1);
       pendingSrc = src;
       mesh.visible = false;
-      void loader
-        .loadAsync(url)
-        .then((next) => {
-          next.colorSpace = SRGBColorSpace;
-          next.magFilter = NearestFilter;
-          next.minFilter = NearestFilter;
-          next.generateMipmaps = false;
-          next.needsUpdate = true;
-          // 取り込みが競ったときは先に入ったほうを使い、余りだけ捨てる。
-          const shared = skyCache.get(url);
-          if (shared) next.dispose();
-          else skyCache.set(url, next);
-          const use = shared ?? next;
+      void loadSky(url)
+        .then((use) => {
           if (mine !== gen) return;
           texture = use;
           material.map = use;
@@ -262,7 +306,8 @@ export function createBackdrop(): Backdrop {
     dispose() {
       gen += 1;
       mesh.geometry.dispose();
-      // マテリアルと絵はモジュールの持ち物（DEC-274 / DEC-277）。ここでは捨てない。
+      // マテリアルと絵はモジュールの持ち物（DEC-274 / DEC-277）。ここでは捨てない。重ねる 2 枚目のマテリアルだけ自分の物。
+      if (fade) material.dispose();
       texture = null;
     },
   };

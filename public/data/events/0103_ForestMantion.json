@@ -10,7 +10,7 @@
         { "type": "playSe", "key": "punch" },
         {
           "type": "place",
-          "target": "npc:lamy_32_40",
+          "target": "npc:lamyNPC",
           "at": { "x": "player", "y": "player", "z": 7 },
           "face": "down"
         },
@@ -107,7 +107,7 @@
           "style": "bubble"
         }
       ],
-      "npc": "pipo-charachip029"
+      "npc": "1"
     },
     {
       "id": "woman0001",
@@ -142,7 +142,7 @@
           ]
         }
       ],
-      "npc": "pipo-charachip030"
+      "npc": "2"
     },
     {
       "id": "talk_lamyNPC",
@@ -159,7 +159,7 @@
           "style": "bubble"
         }
       ],
-      "npc": "lamy_32_40"
+      "npc": "lamyNPC"
     },
     {
       "id": "click010301",
@@ -169,12 +169,34 @@
         {
           "type": "message",
           "talk": [
-            { "who": "noName", "lines": ["木です"] },
+            { "lines": ["木です"] },
             { "who": "meina", "lines": ["ｷｬｱｱｱｱｱｱｱ!!", "ｼｬﾍﾞｯﾀｱｱｱｱｱｱ!!!!"] },
             { "who": "noName", "lines": ["気にするなって", "ふふっ・・・"] },
             { "who": "meina", "lines": ["（真顔）"] }
           ],
           "style": "bubble"
+        }
+      ]
+    },
+    {
+      "id": "Chest_Map0103",
+      "kind": "click",
+      "trigger": "action",
+      "respawn": true,
+      "chance": 0.5,
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "開けた" },
+          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
+          "else": [
+            { "type": "playSe", "key": "chest" },
+            { "type": "getItem", "random": ["やくそう", "おにぎり", "ばんそうこう"], "count": [1, 2] },
+            { "type": "layer", "id": "Chest_Map0103_閉", "shown": false },
+            { "type": "layer", "id": "Chest_Map0103_開", "shown": true },
+            { "type": "setSelfSwitch", "key": "開けた", "value": true },
+            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] }
+          ]
         }
       ]
     }

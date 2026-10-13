@@ -86,6 +86,10 @@ export interface SaveData {
   >;
   /** 所持金（版 3 から）。 */
   gold?: number;
+  /** いまの時間帯（GS-222）。光のプリセットの id。'' は時間帯なし。無い記録は台帳の始まりで埋める。 */
+  time?: string;
+  /** 時計（GS-222）。 */
+  clock?: { running: boolean; ms: number };
   /** セルフスイッチ。キーは `<マップ>/<イベント>/<名前>`。 */
   self: Record<string, boolean>;
   /**

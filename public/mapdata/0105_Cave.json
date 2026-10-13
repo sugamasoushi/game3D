@@ -1,6 +1,6 @@
 {
   "format": "mep3d-map",
-  "version": 2,
+  "version": 3,
   "name": "untitled",
   "grid": {
     "tilePx": 32,
@@ -78,7 +78,7 @@
         "shading": "lambert",
         "alphaTest": 0,
         "transparent": false,
-        "side": "front",
+        "side": "double",
         "depthWrite": true
       },
       {
@@ -1639,7 +1639,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": []
     },
@@ -1650,8 +1649,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_4-wall-0",
@@ -6593,8 +6597,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": []
     },
     {
@@ -6604,7 +6613,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -6669,7 +6677,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -6718,12 +6725,11 @@
       "parent": "グループ_1",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [
         {
-          "name": "Walkable",
-          "type": "boolean",
-          "value": true
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
         }
       ],
       "batches": [
@@ -14758,9 +14764,14 @@
       "parent": "グループ_1",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "overlay": true,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_3-floor-0",
@@ -18669,7 +18680,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -18682,19 +18692,19 @@
           "collision": false,
           "properties": [
             {
-              "name": "Sprite",
+              "name": "Character",
               "type": "string",
-              "value": "enemy02.png#32x32#1"
+              "value": "slime"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "slime"
             },
             {
               "name": "EnemyData",
               "type": "string",
               "value": "enemy02"
-            },
-            {
-              "name": "Npc",
-              "type": "boolean",
-              "value": true
             }
           ],
           "space": "plane",
@@ -18715,9 +18725,14 @@
           "collision": false,
           "properties": [
             {
-              "name": "Sprite",
+              "name": "Character",
               "type": "string",
-              "value": "enemy02.png#32x32#1"
+              "value": "slime"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "slime2"
             },
             {
               "name": "EnemyData",
@@ -18728,21 +18743,6 @@
               "name": "Scale",
               "type": "int",
               "value": 4
-            },
-            {
-              "name": "Npc",
-              "type": "boolean",
-              "value": true
-            },
-            {
-              "name": "NpcId",
-              "type": "string",
-              "value": "boss"
-            },
-            {
-              "name": "ShowWhile",
-              "type": "string",
-              "value": "EVENT020101"
             }
           ],
           "space": "plane",

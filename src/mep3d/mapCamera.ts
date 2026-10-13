@@ -164,3 +164,25 @@ export function scrollRectOf(
   if (isWholeMapScroll(properties)) return mapScrollRect(width, depth);
   return storedScrollRect(properties, width, depth);
 }
+
+/**
+ * キャラクターの大きさ（マップ全体。2026-10-11）。**全員**（プレイヤー・仲間・NPC・物）の絵と当たりに掛ける。
+ * NPC ごとの `Scale` とは掛け合わせる。戦闘（3D 舞台）の絵にも掛ける。書かなければ 1。
+ * 1 より大きいと 1 マス幅の通路に入れなくなる——そこは設定者の責任（検査はしない）。
+ */
+export const CHARACTER_SCALE_PROPERTY_NAME = 'CharacterScale';
+/** 受け付ける範囲。外れた値は端に寄せる。 */
+export const CHARACTER_SCALE_MIN = 0.25;
+export const CHARACTER_SCALE_MAX = 4;
+
+/** マップのプロパティ（並びでも名前→値の表でもよい）からキャラクターの大きさを読む。無い・壊れているときは 1。 */
+export function characterScaleOf(
+  properties: Record<string, number | boolean | string> | readonly { name: string; value: unknown }[] | undefined,
+): number {
+  const raw = Array.isArray(properties)
+    ? properties.find((entry) => entry?.name === CHARACTER_SCALE_PROPERTY_NAME)?.value
+    : (properties as Record<string, unknown> | undefined)?.[CHARACTER_SCALE_PROPERTY_NAME];
+  const value = Number(raw);
+  if (raw === undefined || raw === '' || !Number.isFinite(value) || value <= 0) return 1;
+  return Math.min(CHARACTER_SCALE_MAX, Math.max(CHARACTER_SCALE_MIN, value));
+}

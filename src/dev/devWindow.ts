@@ -19,7 +19,7 @@ import type { useUi } from '../ui/store';
 
 /** イベントエディタ（5927）が使う口（GS-37 / GS-206 / GS-211）。保存していない下書きをそのまま受ける。 */
 export interface PreviewWindow {
-  play(event: EventDef, npc?: string, carry?: { item?: string; num?: number }): Promise<void>;
+  play(event: EventDef, npc?: string, carry?: { owner?: string }): Promise<void>;
   flags(): Record<string, boolean>;
   setFlag(key: string, value: boolean | null): void;
   mapMove(destinations: string[], def?: MapMoveDef): Promise<string>;
@@ -39,13 +39,20 @@ export interface CameraEditorWindow {
   event(id: string): Promise<void>;
 }
 
-/** 戦闘演出エディタ（5930。技の絵）が使う口（GS-105）。 */
+/** 戦闘演出エディタ（5930。技の絵）が使う口（GS-105 / GS-219）。 */
 export interface BattleEffectEditorWindow {
+  /** マップを読む。背景の戦闘を出していれば先に片付ける。 */
   prepare(file: string): Promise<void>;
   setEffects(next: Record<string, EffectEntry>): void;
-  battle(enemies: string[]): Promise<void>;
+  /**
+   * いまのマップで**背景だけの戦闘**を出す（GS-219）。戦いは進めない——命令も文も出さず、キーも受けない。
+   * 舞台はふつうの戦闘と同じ決め方（`BattleStage=true` の点があれば 3D、無ければ `battleField` の 2D）。どちらになったかを返す。
+   */
+  backdrop(enemies: string[]): Promise<'3d' | '2d'>;
+  /** 背景の戦闘を片付ける。出していなければ何もしない。 */
+  clearBackdrop(): void;
+  /** 戦闘中（背景の戦闘を含む）なら先頭の敵へ絵を出す。戦闘中でなければ偽。 */
   playEffect(def: EffectDef): boolean;
-  forceBattle(): boolean;
 }
 
 export interface DevWindow {

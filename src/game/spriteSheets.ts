@@ -20,6 +20,11 @@ export interface SpriteSheetDef {
   columns: number;
   /** 縦の行数。 */
   rows: number;
+  /**
+   * 足元が 1 コマの下端から何画素上にあるか（GS-52）。人の絵として立てるときだけ、絵をそのぶん下げる。
+   * 余白は**画像の性質**なので区切りと一緒に持つ（2026-10-11）。立ち姿の行が無い画像にも効く。
+   */
+  footPx?: number;
 }
 
 let sheets: Record<string, SpriteSheetDef> = {};

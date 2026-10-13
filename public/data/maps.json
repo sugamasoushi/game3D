@@ -3,7 +3,13 @@
   "maps": {
     "0101": {
       "file": "0101_home.json",
-      "bgm": "field"
+      "bgm": "field",
+      "time": {
+        "fallback": {
+          "morning": "day",
+          "evening": "night"
+        }
+      }
     },
     "0102": {
       "file": "0102_HomeForest.json",
@@ -14,6 +20,11 @@
         "formations": [
           "standard"
         ]
+      },
+      "time": {
+        "fallback": {
+          "morning": "day"
+        }
       }
     },
     "0103": {
@@ -38,6 +49,12 @@
       "file": "0201_Gensou.json",
       "battleField": "hill",
       "bgm": "Crystal_Cave"
+    },
+    "0202": {
+      "file": "0202_FoothillVillage.json"
+    },
+    "0301": {
+      "file": "0301_PurpleRingWastes.json"
     }
   }
 }

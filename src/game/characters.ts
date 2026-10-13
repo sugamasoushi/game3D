@@ -18,9 +18,22 @@ const ICON_DIR = 'assets/img/charIcon';
 /** 主人公の話者キー。吹き出しとメニューの左に出す人（GS-23 と同じ約束）。 */
 export const PLAYER_CHARACTER = 'meina';
 
+/**
+ * 種別（2026-10-08）。`player` は仲間として操作する人（隊列に入る・先頭になる）、
+ * `npc` は操作しない人（マップに置く NPC・話者だけの人）。
+ */
+export type CharacterKind = 'player' | 'npc';
+
 /** 台帳の 1 人ぶん（旧作の形）。 */
 export interface CharacterEntry {
   name: string;
+  kind: CharacterKind;
+  /**
+   * フィールドの絵（2026-10-08）。**画像のファイル名**（`spriteSheets.json` のキー。立ち姿 `actors.json` も同じキー）。
+   * **無ければフィールドに出ない**（話者だけの人）。マップの NPC（`Character`）も隊列の仲間もここから絵を引く。
+   * 同じ画像を何人で使ってもよい（ラミィとラミア娘など）。
+   */
+  sheet?: string;
   icon?: string;
   normal?: string;
   smile?: string;
@@ -44,6 +57,22 @@ export async function loadCharacterBook(): Promise<CharacterBook> {
     /* 読めなければ空のまま。 */
   }
   return book;
+}
+
+let ready: Promise<CharacterBook> | null = null;
+
+/**
+ * 台帳が読めているのを待つ（2026-10-08）。**フィールドの絵を引く前に呼ぶ**——
+ * マップの組み立てが起動時の読み込みより先に走っても、NPC の絵を取りこぼさない。
+ */
+export function characterBookReady(): Promise<CharacterBook> {
+  ready ??= loadCharacterBook();
+  return ready;
+}
+
+/** その人のフィールドの絵（画像のファイル名）。台帳に無い人・絵の無い人は null。 */
+export function characterSheet(who: string): string | null {
+  return character(who)?.sheet || null;
 }
 
 /** 1 人ぶん。人ではない行（`infomation`）は null。 */

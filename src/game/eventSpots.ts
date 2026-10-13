@@ -1,15 +1,15 @@
 // マップに置いたオブジェクト → イベントの起動場所（GS-14）。
 //
-// **どのイベントか**はマップが持ち（オブジェクトのプロパティ `Event`）、
+// **どのイベントか**はマップが持ち（オブジェクトのプロパティ `Event`。EVENT / CLICKEVENT レイヤーなら `Id` でもよい）、
 // **どう始まるか**はイベント JSON が持つ（`trigger`）。役割を分けておくと、
 // マップを触らずにイベントの起動条件を変えられる。
 //
 // マップ移動の入口は **MAPMOVE レイヤーの物の `MapMove`**（行き先をカンマ区切り。GS-211）。
 // 条件・立ち位置・向きはイベント JSON の `mapMoves`（`mapMoves.ts`）。
 
-import { decodeCells } from '../mep3d/decode';
 import type { MapDef, MapObjectDef, PropertyDef } from '../mep3d/types';
 import { parseMapMoves } from './mapMoves';
+import { CHARACTER_PROPERTY } from './npcs';
 
 /**
  * 行き先での立ち位置（GS-17）。マス（`at`）か目印の名前（`marker`）。
@@ -37,11 +37,6 @@ export interface EventSpot {
    * レイヤーごとに `obj_1` から振る。中身は `<レイヤー番号>/<オブジェクト id>`。
    */
   objectId: string;
-  /**
-   * オブジェクトの名前。**吹き出しを頭の上に出す宛先**（GS-55）。
-   * `Event` プロパティで書いたときは名前とイベント id が別になるので、別に持つ。
-   */
-  name: string;
   /** 動かすイベントの id。マップ移動の入口なら空。 */
   event: string;
   /**
@@ -58,22 +53,10 @@ export interface EventSpot {
    */
   examine: boolean;
   /**
-   * 中身（GS-132。マップの `Item` / `Num`）。宝箱のように**中身だけマップが決める**物のため。
-   * イベントの `getItem` で `id` を空にすると、これが使われる。
-   */
-  item: string;
-  num?: number;
-  /**
    * その枠の名前（GS-134。マップの `Id`）。**覚えの行き先**になる——
    * 同じイベントを何か所に置いても、`setSelfSwitch` が混ざらない。
    */
   owner: string;
-  /**
-   * ブロックそのものを調べる枠にしたとき（GS-175）の**そのマス**。
-   * オブジェクトの枠は床に描くので高さを持たないが、ブロックは高さまで決まっている——
-   * 宝箱の開け閉め（マスの絵の差し替え）は、この `y` が無いと当てる先が分からない。
-   */
-  cell?: { x: number; y: number; z: number };
   x0: number;
   x1: number;
   z0: number;
@@ -83,27 +66,18 @@ export interface EventSpot {
 /** イベント id を書くプロパティ名。 */
 const EVENT_PROPERTY = 'Event';
 /**
- * ここに置いたものは**名前がイベント id**になるレイヤー名（GS-19）。
- * 旧作の Tiled と同じ並べ方（`EVENT010101` のような名前をそのまま使う）。
- * NPC レイヤー（GS-18）と同じ「レイヤー名＝役割」。
+ * 踏むと動く物を置くレイヤー名（GS-19）。ここと CLICKEVENT の物は、`Event` が無ければ
+ * **`Id` がイベント id**（GS-233）。物の名前は目印で、何にも使わない（以前は名前がイベント id だった）。
  */
 const EVENT_LAYER = 'event';
-/** 中身（GS-132）。宝箱の「何が」「いくつ」。旧作の SPRITE の `item` / `num` に当たる。 */
-const ITEM_PROPERTY = 'Item';
-const NUM_PROPERTY = 'Num';
 /** その枠の名前（GS-134）。覚えの行き先。 */
 const ID_PROPERTY = 'Id';
 /**
  * 調べ物のレイヤー名（GS-55）。旧作の Tiled と同じ名前。
- * ここも**名前がイベント id**で、EVENT レイヤーと違うのは**起こし方だけ**
- * ——踏むのではなく、隣に立って向いて決定キー。
+ * EVENT レイヤーと違うのは**起こし方だけ**——踏むのではなく、隣に立って向いて決定キー。
+ * 宝箱もここに置く（GS-233）。見た目はタイルのプレハブで、開け閉めはイベントの「レイヤーの出し入れ」。
  */
 const CLICK_LAYER = 'clickevent';
-/**
- * NPC の姿を書くプロパティ名（GS-16）。**これが在るオブジェクトは踏み台にしない。**
- * NPC の `Event` は「話しかけたとき」に動くもので、床の起動場所ではない。
- */
-const NPC_PROPERTY = 'Npc';
 /** 行き先マップを書くプロパティ名。値は `0201,0106` のようにカンマ区切り（GS-211）。 */
 const MAP_MOVE_PROPERTY = 'MapMove';
 /**
@@ -127,57 +101,6 @@ function textOf(properties: PropertyDef[] | undefined, name: string): string {
   const hit = properties?.find((entry) => entry.name === name);
   if (!hit || typeof hit.value !== 'string') return '';
   return hit.value.trim();
-}
-
-/** 数のプロパティ。**数で書いても文字で書いても受ける**（`npcs.ts` と同じ扱い）。 */
-function numberOf(properties: PropertyDef[] | undefined, name: string): number | undefined {
-  const hit = properties?.find((entry) => entry.name === name);
-  if (!hit) return undefined;
-  const value = typeof hit.value === 'number' ? hit.value : Number(String(hit.value).trim());
-  return Number.isFinite(value) ? value : undefined;
-}
-
-/**
- * タイルレイヤーのマスを調べる枠にする（GS-175）。`Event` が無ければ何もしない。
- *
- * **1 マスにつき 1 枠**にする。まとめて外接四角にすると、離れて置いた同じレイヤーの
- * ブロックの**あいだの空きマス**まで枠になってしまう。
- * **踏む起動にはしない**（`examine`）——ブロックは当たりを持つので、そもそも上に立てない。
- */
-function pushCellSpots(spots: EventSpot[], layer: MapDef['layers'][number], index: number): void {
-  const event = textOf(layer.properties, EVENT_PROPERTY);
-  const owner = textOf(layer.properties, ID_PROPERTY);
-  // **`Id` だけでも枠になる**（GS-178）。宝箱は台帳が動きを決めるので、
-  // マップに `Event` を書かなくてよい——書かせると「台帳とマップのどちらが正か」が毎回問題になる。
-  // 宝箱でない物に `Id` だけ付けたときは、空の枠ができて**何も起きない**（動くイベントが無い）。
-  if (!event && !owner) return;
-  const item = textOf(layer.properties, ITEM_PROPERTY);
-  const num = numberOf(layer.properties, NUM_PROPERTY);
-  const name = (layer.name ?? '').trim();
-  for (const batch of layer.batches ?? []) {
-    const cells = decodeCells(batch);
-    for (let i = 0; i + 2 < cells.length; i += 3) {
-      const x = cells[i];
-      const y = cells[i + 1];
-      const z = cells[i + 2];
-      spots.push({
-        objectId: `${index}/cell:${x},${y},${z}`,
-        name,
-        event,
-        mapMoves: [],
-        moveObject: '',
-        examine: true,
-        item,
-        owner,
-        ...(num !== undefined ? { num: Math.max(0, Math.trunc(num)) } : {}),
-        cell: { x, y, z },
-        x0: x,
-        x1: x + 1,
-        z0: z,
-        z1: z + 1,
-      });
-    }
-  }
 }
 
 /** 平面オブジェクトの外接四角（マス）。ブロックは占有セルから。 */
@@ -219,13 +142,8 @@ function footprint(object: MapObjectDef): { x0: number; x1: number; z0: number; 
 export function readEventSpots(map: MapDef): EventSpot[] {
   const spots: EventSpot[] = [];
   for (const [index, layer] of map.layers.entries()) {
-    // ブロックそのものを調べる枠にする（GS-175）。**レイヤーに `Event` を書く。**
-    // マスには名前が持てないので、どの宝箱かは**レイヤーが持つ**——プレハブを置いた
-    // レイヤーへ `Event` と `Id` を足せば、起動用のオブジェクトを別に置かなくてよい。
-    if (layer.kind === 'tile') {
-      pushCellSpots(spots, layer, index);
-      continue;
-    }
+    // タイルレイヤーのブロックを調べる枠にする形（GS-175。レイヤーの `Event` / `Id`）はやめた（GS-233）。
+    // 調べる物は CLICKEVENT レイヤーに置く。
     if (layer.kind !== 'object') continue;
     const layerName = (layer.name ?? '').trim().toLowerCase();
     const eventLayer = layerName === EVENT_LAYER;
@@ -233,10 +151,12 @@ export function readEventSpots(map: MapDef): EventSpot[] {
     const moveLayer = inMapMoveLayer(map, layer);
     for (const object of layer.objects ?? []) {
       if ((object.plane ?? 'xz') !== 'xz') continue;
-      if (textOf(object.properties, NPC_PROPERTY)) continue;
-      // `Event` が在ればそれ。無ければ **EVENT レイヤーの名前**（GS-19）。
-      const event =
-        textOf(object.properties, EVENT_PROPERTY) || (eventLayer || clickLayer ? object.name.trim() : '');
+      // キャラクター（NPC。2026-10-08 に `Npc` から変えた）は踏み台にしない。
+      // NPC の `Event` は「話しかけたとき」に動くもので、床の起動場所ではない。
+      if (textOf(object.properties, CHARACTER_PROPERTY)) continue;
+      // `Event` が在ればそれ。無ければ EVENT / CLICKEVENT レイヤーの物は **`Id`**（GS-233）。
+      const owner = textOf(object.properties, ID_PROPERTY);
+      const event = textOf(object.properties, EVENT_PROPERTY) || (eventLayer || clickLayer ? owner : '');
       // 点は入口にしない（着地の目印。`default` も MAPMOVE に置く）。
       const mapMoves =
         moveLayer && object.kind !== 'point' ? parseMapMoves(textOf(object.properties, MAP_MOVE_PROPERTY)) : [];
@@ -248,16 +168,11 @@ export function readEventSpots(map: MapDef): EventSpot[] {
         // 実測: 家のオープニング（EVENT レイヤーの `obj_1`）を見た直後、
         // 入口（MAPMOVE レイヤーの `obj_1`）を踏んでも外へ出られなかった。
         objectId: `${index}/${object.id}`,
-        name: object.name.trim(),
         event,
         mapMoves,
         moveObject: mapMoves.length ? object.id : '',
         examine: clickLayer,
-        item: textOf(object.properties, ITEM_PROPERTY),
-        owner: textOf(object.properties, ID_PROPERTY),
-        ...(numberOf(object.properties, NUM_PROPERTY) !== undefined
-          ? { num: Math.max(0, Math.trunc(numberOf(object.properties, NUM_PROPERTY) ?? 1)) }
-          : {}),
+        owner,
         ...box,
       });
     }
@@ -310,8 +225,7 @@ export function spotAhead(
   let found: EventSpot | null = null;
   let near = Infinity;
   for (const spot of spots) {
-    // `Id` だけの枠も拾う（GS-178）。宝箱は台帳が動きを決めるので、マップに `Event` が無い。
-    if (!spot.examine || (!spot.event && !spot.owner)) continue;
+    if (!spot.examine || !spot.event) continue;
     if (!crosses(spot, at, aim, reach)) continue;
     // 重なって置いてあれば近いほうを調べる。
     const span = Math.hypot((spot.x0 + spot.x1) / 2 - at.x, (spot.z0 + spot.z1) / 2 - at.z);

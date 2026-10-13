@@ -285,9 +285,15 @@ export function BattleView({
   onPresentation,
   signal,
   onEnd,
+  backdrop = false,
 }: {
   /** 出す敵（台帳の id）。同じ id を並べれば 2 体出る。 */
   enemies: string[];
+  /**
+   * 背景だけ（GS-219。戦闘演出エディタのプレビュー）。舞台と敵を出すだけで、**戦いを始めない**——
+   * 命令・文・隊列の窓は出ず、キーも受けない。技の絵は `battle-effect-preview` で重ねる。
+   */
+  backdrop?: boolean;
   /**
    * 背景（GS-79 / GS-94）。`battlefields.json` のキー。呼び出し側は未指定を既定の hill に解決する。
    * 裏で動いている画面の上に半透明の黒を敷いて「同じ場所で戦っている」ように見せる。
@@ -479,6 +485,12 @@ export function BattleView({
         if (signal?.aborted) onAbort();
         else signal?.addEventListener('abort', onAbort, { once: true });
       });
+
+    // 背景だけなら、戦闘開始のカメラまでで止める（GS-219）。`runBattle` を回さないので手番は来ない。
+    if (backdrop) {
+      presentationRef.current?.('battle.start');
+      return;
+    }
 
     void (async () => {
       try {
@@ -876,6 +888,8 @@ export function BattleView({
       // **戦闘中はキーを通さない。** 通すと後ろで人が歩く（GS-59 と同じ穴）。
       event.preventDefault();
       event.stopPropagation();
+      // 背景だけのときはキーを止めるだけ（GS-219）。後ろで人も歩かず、命令も選ばれない。
+      if (backdrop) return;
       if (event.key === 'Escape') {
         back();
         return;
@@ -894,7 +908,7 @@ export function BattleView({
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [back, picks, at]);
+  }, [back, picks, at, backdrop]);
 
   // 舞台の板へ見せ方を渡す（GS-87）。点滅・仰け反り・攻めかかり・選ばれている・倒れた。
   // 描き直すたびに渡す（軽い。板の側は立ち上がりだけを見る）。

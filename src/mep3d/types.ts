@@ -98,6 +98,14 @@ export type Shape =
   | 'floor_fold_ne'
   /** 折れ面の左右反転（DEC-354）。尾根が南東（0）から北西（1）へ上る（画面では ＼）。 */
   | 'floor_fold_nw'
+  /**
+   * 折れ面の斜面入隅（ブロック `slope_corner_in` の上面だけを面 1 枚にしたもの）。
+   * 隅の高さは北西 1・北東 1・南東 0・南西 1。折り目は**北西—南東の対角線**で、そこが谷になる——
+   * 南へ下る斜面と東へ下る斜面のつなぎ目。ブロックではないので中身は詰まらない。
+   */
+  | 'floor_fold_in'
+  /** 斜面入隅の左右反転（「上＋縦面（右）」に合わせる）。低いのは南西、北東—南西で谷折り。 */
+  | 'floor_fold_in_flip'
   | 'ceil'
   /** 天井の直角二等辺三角形。床と同じ並び。 */
   | 'ceil_tri_nw'
@@ -916,8 +924,6 @@ export interface LayerDef {
   opacity: number;
   /** オブジェクトレイヤーで、中の名前・形状線をまとめて隠す。省略時は出す。 */
   guides?: boolean;
-  /** ゲーム側で当たりにするか。 */
-  collision: boolean;
   /**
    * 1 つ下のレイヤーに重ねる（DEC-191）。同じ面へ飾りを載せるときに入れる。
    * 入れたレイヤーは**すぐ下のレイヤーより 1 段手前**に描かれる。
@@ -946,6 +952,13 @@ export interface LightingDef {
   wrap?: number;
   /** ビルボードの固定明るさ。法線が安定しないため。 */
   billboard?: number;
+  /**
+   * 光の色（DEC-442）。`#rrggbb`、省略時は白。**環境光**と**日向（直射）**で別に持つ——
+   * 夕方の「影は紫・日向は橙」のように。明るさのうち環境光までを環境光の色、それを超えたぶんを日向の色で照らす（空の光と太陽の光を足す）。
+   * 置いた光源（点光源）と発光のチップには掛からない。
+   */
+  ambientColor?: string;
+  sunColor?: string;
   /** ブロックが背後を遮るか。 */
   blockShadow?: boolean;
   /** ブロック影が直射を落とす割合。0..1。 */
@@ -961,6 +974,70 @@ export interface LightingDef {
   cloudShadowScale?: number;
   /** 雲が流れる速さ。 */
   cloudShadowSpeed?: number;
+  /**
+   * 配置光源の影の出どころを、光源の方へ寄せる量（絵の画素。DEC-470 / DEC-471）。省略時は 4。
+   * 影を作る板（ビルボード・キャラ）は絵の真ん中を通る縦の面なので、0 だと影が絵の奥行きの真ん中から出る。
+   * 負の値は光源から離す。**時間帯のプリセットには持たせない**（光源の位置と同じく全時間帯で共通）。
+   */
+  pointShadowShift?: number;
+}
+
+/**
+ * 光のプリセット（DEC-435）。朝・昼・夕・夜などの時間帯を、名前を付けて並べる。値はマップごと。
+ *
+ * **「基準」はプリセットではなく `lighting`・`pointLights`・`camera`・`view` そのもの**——
+ * 時間帯を使わないときの光で、全時間帯で共通の値（光源の位置・色、チルトシフトなど）の置き場。
+ * プリセットは時間帯で変わる値を全部自分で持ち、表示するときは基準の写しをその値で差し替える
+ * （光源の強さと背景の明暗だけは基準への倍率）。保存した基準は変えない。
+ *
+ * **ゲームは `id` で引く**——マップをまたいで同じ `id` が同じ時間帯（0101 の `night` と 0102 の `night`）。
+ * `name` は画面に出すだけ。
+ */
+export interface LightingPresetDef {
+  /**
+   * 朝・昼・夕・夜は決まった id（`morning` / `day` / `evening` / `night`）で、いつもこの順に並ぶ（DEC-448）。
+   * 自分で足すプリセットは `preset_1`、`preset_2`…（その後ろに並ぶ）。
+   */
+  id: string;
+  /**
+   * 朝・昼・夕・夜だけ: このマップでその時間帯を使うか（DEC-448）。`false` ならゲームはその時間帯も基準の光で出す。
+   * 足したプリセットには無い。
+   */
+  enabled?: boolean;
+  /** 表示名（作成者が付ける）。 */
+  name: string;
+  /** 方向光。`lighting` と同じ意味。 */
+  azimuth: number;
+  elevation: number;
+  ambient: number;
+  intensity: number;
+  wrap: number;
+  billboard: number;
+  /** 光の色。`lighting.ambientColor`（環境光）/ `sunColor`（日向）と同じ意味。 */
+  ambientColor: string;
+  sunColor: string;
+  /** 配置光源の強さの倍率。0 で消える（光の玉も）、1 で基準のまま。 */
+  lights: number;
+  /** 影。`lighting.blockShadow` / `blockShadowStrength` と同じ意味。 */
+  blockShadow: boolean;
+  blockShadowStrength: number;
+  /** 雲の影。`lighting.cloudShadow` / `cloudShadowAmount` / `cloudShadowScale` / `cloudShadowSpeed` と同じ意味。 */
+  cloudShadow: boolean;
+  cloudShadowAmount: number;
+  cloudShadowScale: number;
+  cloudShadowSpeed: number;
+  /** 霧（フォグ）。`camera.fog` / `fogColor` / `fogNear` / `fogFar` / `fogMax` と同じ意味。 */
+  fog: boolean;
+  fogColor: string;
+  fogNear: number;
+  fogFar: number;
+  fogMax: number;
+  /** 背景の明暗（倍率）。パノラマ（`camera.skyGain`）と書き割り（`view.backdrop.gain`）にかける。1 で基準のまま。 */
+  skyGain: number;
+  /** 背景のパノラマの絵（`camera.sky` と同じ書き方）。省略で基準の絵。 */
+  sky?: string;
+  /** 書き割りの絵（`view.backdrop.src` と同じ書き方）。省略で基準の絵。形・位置は基準のまま。 */
+  backdrop?: string;
 }
 
 /**
@@ -1226,6 +1303,11 @@ export interface ScreenEffectDef {
   bottom?: number;
   /** 木漏れ日の筋の太さ。小さいほど太い。 */
   thickness?: number;
+  /**
+   * 出す時間帯（SampleGame GS-227 / マップエディタ DEC-452）。光のプリセットの id のカンマ区切りで、
+   * レイヤーやオブジェクトの `ShowIn` と同じ書き方。無ければいつも出す。時間帯なし（基準）ではすべて出す。
+   */
+  showIn?: string;
 }
 
 export interface MapDef {
@@ -1249,6 +1331,8 @@ export interface MapDef {
   lighting?: LightingDef;
   /** 点光源。無いファイルは空。ゲームも同じ uniforms を読む。 */
   pointLights?: PointLightDef[];
+  /** 光のプリセット（昼・夕・夜など。DEC-435）。無ければ `lighting` だけ。 */
+  lightingPresets?: LightingPresetDef[];
   /** カメラ効果。無いファイルは旧形式。 */
   camera?: CameraFxDef;
   /** ゲーム画面の見え方と背景の書き割り（DEC-148）。無いファイルは既定。 */

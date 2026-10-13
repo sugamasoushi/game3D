@@ -20,7 +20,7 @@ import { battleSettings } from '../game/battle/settings';
 import type { BattlePresentationContext, BattlePresentationHook } from '../game/battle/presentation';
 import { ensureParty, joinParty, resetParty, revive } from '../game/battle/party';
 import * as dev from '../game/devMode';
-import { DEV_WINDOW, expose, withdraw, type CameraEditorWindow } from '../dev/devWindow';
+import { DEV_WINDOW, expose, withdraw, type BattleEffectEditorWindow, type CameraEditorWindow } from '../dev/devWindow';
 import { DEV_MODE, loadDevOptions } from '../game/devMode';
 import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
 import { GameOver, type BattleOutcome } from '../game/battle/flow';
@@ -37,12 +37,12 @@ import { applyMapSound, loadSoundBook, unlockAudio } from '../game/audio';
 import { createEventBridge, type EventBridge } from '../game/uiEventContext';
 import { readEventSpots, spotAhead, spotUnder, type EventSpot, type Landing } from '../game/eventSpots';
 import { pickMapMove } from '../game/mapMoves';
-import { EVENT_READY_PREFIX, readNpcs, npcShown, type NpcDef } from '../game/npcs';
-import { chestEventDef, chestEventOf, chestOf, drawChest, loadChestBook } from '../game/chests';
-import { openedLayerShown, readOpenedLayers, type OpenedLayer } from '../game/openedLayers';
-import { applyChestVisit, forgetRespawnChests, rollChestVisit, type ChestVisit } from '../game/chestVisit';
-import { canRun, meets, runCommands, ReturnToTitle } from '../event/interpreter';
-import type { EventCommand, EventDef, EventFile } from '../event/types';
+import { readNpcs, npcShown, type NpcDef, TIME_PREFIX } from '../game/npcs';
+import { layerKey, readSwitchLayers, switchLayerShown, type SwitchLayer } from '../game/layerSwitch';
+import { applyEventVisit, forgetRespawn, NO_VISIT, rollEventVisit, type EventVisit } from '../game/eventVisit';
+import { canRun, meets, runCommands, ReturnToTitle, timeMatches } from '../event/interpreter';
+import type { EventCommand, EventDef, EventFile, IfCondition } from '../event/types';
+import { mapNpcSettingsForFile } from '../game/mapNpcs';
 import type { MapDef } from '../mep3d/types';
 import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
@@ -53,6 +53,7 @@ import { SettingsMenu } from './SettingsMenu';
 import { TitleScreen } from './TitleScreen';
 import { PwaInstall } from './PwaInstall';
 import { fromSave, newState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
+import { advanceClock, loadTimeSettings, timeSettings } from '../game/timeClock';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
 import { canWalk, useUi } from './store';
 import { clearComic, useComic } from './comic';
@@ -89,6 +90,8 @@ const WALK_NOTE_MS = 2200;
 const DEBUG_PARTY = ['meina', 'lamy', 'grandpa'];
 /** デバッグの「アイテム」（GS-210）で 1 回に足す数。台帳の持ち物それぞれに。 */
 const DEBUG_ITEM_COUNT = 2;
+/** 開発用の時間帯ボタンの名前（GS-224）。ここに無い id（足したプリセット）はそのまま出す。 */
+const DEBUG_TIME_LABELS: Record<string, string> = { '': '基準', morning: '朝', day: '昼', evening: '夕', night: '夜' };
 const DEBUG_ENEMIES = ['enemy02', 'enemy00', 'enemy01'];
 /** ゲームオーバーで黒くなるまで（ミリ秒）。**ゆっくり**——負けたことを飲み込む間を置く。 */
 const GAME_OVER_FADE_MS = 1600;
@@ -178,6 +181,8 @@ export default function GameCanvas() {
    * 戦闘が始まってから引きに行くと、絵が出るまで一瞬 3D が見えてしまう。
    */
   const battleFieldRef = useRef('');
+  /** いまのマップでは時計を止めるか（GS-223。`maps.json` の `time.stopClock`）。 */
+  const stopClockRef = useRef(false);
   /** マップの読み直しを外の効果からも呼べるようにしておく。 */
   const adoptRef = useRef<(file: string) => Promise<void>>(async () => {});
   /**
@@ -195,6 +200,12 @@ export default function GameCanvas() {
   const battleEndRef = useRef<((outcome: BattleOutcome) => void) | null>(null);
   /** デバッグ画面からの強制終了で、戦闘内部の待機や入力待ちも止める。 */
   const battleAbortRef = useRef<AbortController | null>(null);
+  /**
+   * 背景だけの戦闘か（GS-219。戦闘演出エディタのプレビュー）。戦いは進めず、舞台と敵を出しておくだけ。
+   * `backdropSeqRef` は出し直しの合図——同じ敵で出し直しても戦闘画面を作り直す。
+   */
+  const battleBackdropRef = useRef(false);
+  const backdropSeqRef = useRef(0);
   /** 今回の戦闘開始時に解決した隊形。イベント指定またはマップ候補から選ぶ。 */
   const battleFormationRef = useRef<string | undefined>(undefined);
   /**
@@ -302,6 +313,7 @@ export default function GameCanvas() {
     useUi.getState().setBattle(null);
     battleFormationRef.current = undefined;
     battleAbortRef.current = null;
+    battleBackdropRef.current = false;
     // マップの曲へ戻す（GS-62）。**負けたときは戻さない**——このあと暗転してタイトルへ行く。
     if (outcome !== 'lose') void entryForFile(mapRef.current).then((entry) => applyMapSound(entry ?? {}));
     const done = battleEndRef.current;
@@ -392,6 +404,7 @@ export default function GameCanvas() {
       battleAbortRef.current = null;
       battleEndRef.current = null;
       battleFormationRef.current = undefined;
+      battleBackdropRef.current = false;
       ui.setBattle(null);
       ui.setShop(null);
       ui.setSettings(false);
@@ -420,22 +433,25 @@ export default function GameCanvas() {
    */
   const symbolHeldRef = useRef('');
   /**
-   * いまのマップの NPC ぜんぶ（GS-130）。出す条件（`ShowIf` / `HideIf`）は
+   * いまのマップの NPC ぜんぶ（GS-130）。出す条件（台帳 `mapNpcs.json` の `showWhen` など）は
    * **スイッチが変わったら見直す**ので、条件を持ったまま控えておく。
    */
   const npcDefsRef = useRef<NpcDef[]>([]);
   /** もう消した NPC。二度消さないための覚え。 */
   const npcHiddenRef = useRef<Set<string>>(new Set());
+  /** 時間帯（`ShowIn`。GS-222）だけで隠した NPC。時間帯が戻ったら出し直す。 */
+  const npcTimeHiddenRef = useRef<Set<string>>(new Set());
   /** いま当てている見た目（GS-133）。同じものを毎回指し直さないための覚え。 */
   const npcPoseRef = useRef<Map<string, string>>(new Map());
   /**
-   * 入ったときに決めた宝箱（GS-180）。`GameView` がマップを組む前に決め、
-   * 起動場所を読むとき（`adopt`）にも同じ結果を使う——2 回引くと、見えている宝箱と調べられる宝箱がずれる。
+   * 入ったときに決めた、入るたびに出るかが変わる物（イベントの `respawn` / `chance`。GS-233）。
+   * `GameView` がマップを組む前に決め、起動場所を読むとき（`adopt`）にも同じ結果を使う——
+   * 2 回引くと、見えている宝箱と調べられる宝箱がずれる。
    */
-  const chestVisitRef = useRef<{ name: string; visit: ChestVisit }>({ name: '', visit: { removed: new Set(), absent: new Set() } });
+  const visitRef = useRef<{ name: string; visit: EventVisit }>({ name: '', visit: NO_VISIT });
   /**
    * いま組んでいる（組み終えた）マップのイベント（GS-195）。**3D 側がマップを組む前に読んでおく**——
-   * `ShowWhile` の NPC を出すかは組むときに聞かれるが、`adopt`（`eventsRef`）はその後に動く。
+   * 起動場所を読む `adopt`（`eventsRef`）はマップを組んだ後に動くので、先に読んだ物を渡す。
    */
   const eventBookRef = useRef<{ file: string; events: EventFile | null }>({ file: '', events: null });
   /** そのマップのイベントを読む。無いマップは台帳で分かるので取りに行かない（DEC-374）。 */
@@ -452,37 +468,46 @@ export default function GameCanvas() {
     eventBookRef.current = { file, events: await fetchEvents(file) };
   };
   /**
-   * そのイベントが動けるか（GS-195）。`canRun` と同じ読み方だが、**いま動いているイベントの宛先を変えない**
-   * ——`runnableRef` は `setScene` を書き換えるので、イベントの途中（スイッチが変わった直後の見直し）で呼べない。
-   * セルフスイッチはそのイベント自身の覚え。イベントが見つからなければ出さない。
-   */
-  const eventReady = (id: string): boolean => {
-    const book = eventBookRef.current;
-    const event = book.events?.events.find((entry) => entry.id === id);
-    if (!event) {
-      console.warn(`[npc] ShowWhile のイベントが無い: ${id}（${book.file || 'マップ未読込'}）`);
-      return false;
-    }
-    return (event.when ?? []).every((cond) => {
-      const now =
-        cond.self !== undefined
-          ? (stateRef.current.self.get(selfKey(mapKey(book.file), event.id, cond.self)) ?? false)
-          : switchOn(stateRef.current, cond.switch ?? '');
-      return now === (cond.is ?? true);
-    });
-  };
-  /**
    * スイッチを聞く口。3D 側（`GameView`）にも同じ物を渡す。
    * **`self:` で始めると「その物自身の覚え」**（GS-134）——同じイベントを何個の宝箱で使っても、
    * 開けた覚えは物ごとに分かれる。頭が無ければ今までどおり通しのスイッチ。
    */
   const switchOnRef = useRef((key: string, owner?: string) => {
-    // `event:<id>` は**そのイベントが動けるか**（GS-195。NPC の `ShowWhile`）。
-    if (key.startsWith(EVENT_READY_PREFIX)) return eventReady(key.slice(EVENT_READY_PREFIX.length));
+    // `time:<id,id>` は**いまの時間帯がどれか**（GS-222。NPC の `ShowIn`）。見るのは画面が出し分けに
+    // 使っている時間帯（切り替えの半分で移る）。時間帯なし（基準）ではすべて出す。
+    if (key.startsWith(TIME_PREFIX)) {
+      const now = viewRef.current?.shownTime() ?? '';
+      if (!now) return true;
+      return key.slice(TIME_PREFIX.length).split(',').map((part) => part.trim()).includes(now);
+    }
     // 通しのフラグは**書いていなければ「まだ動ける」**（GS-147）。
     if (!key.startsWith('self:')) return switchOn(stateRef.current, key);
     if (!owner) return false;
     return stateRef.current.self.get(selfKey(mapKey(mapRef.current), `@${owner}`, key.slice(5))) ?? false;
+  });
+
+  /**
+   * NPC の出す条件（台帳 `mapNpcs.json` の `showWhen`。GS-230）を満たすか。**イベントの条件と同じ決まり**
+   * （`interpreter.ts` の `meets`）——スイッチ・覚え（その 1 体自身の）・変数・持ち物・所持金・時間帯。全部満たせば当たり。
+   * `ignoreTime` は時間帯の条件を満たした扱いにする（時間帯だけで隠した人を見分ける。`checkNpcShown`）。
+   */
+  const npcMeetsRef = useRef((when: IfCondition[], owner: string, ignoreTime = false): boolean => {
+    const state = stateRef.current;
+    return when.every((one) => {
+      if ('switch' in one) return switchOn(state, one.switch) === (one.is ?? true);
+      if ('self' in one) return (state.self.get(selfKey(mapKey(mapRef.current), `@${owner}`, one.self)) ?? false) === (one.is ?? true);
+      if ('item' in one) return (state.items.get(one.item) ?? 0) >= (one.count ?? 1);
+      if ('gold' in one) return state.gold >= one.gold;
+      if ('time' in one) return ignoreTime || timeMatches(state.time, one.time);
+      const left = state.variables.get(one.variable) ?? 0;
+      const right = one.value;
+      if (one.op === '==') return left === right;
+      if (one.op === '!=') return left !== right;
+      if (one.op === '>=') return left >= right;
+      if (one.op === '<=') return left <= right;
+      if (one.op === '>') return left > right;
+      return left < right;
+    });
   });
 
   /**
@@ -645,26 +670,13 @@ export default function GameCanvas() {
    * イベントを 1 本動かす。動いているあいだは歩けない。
    * `self` は話しかけた相手（GS-16）。イベントの `this` はこの人を指す。
    */
-  /**
-   * 起こした物が宝箱なら、中身を台帳から決める（GS-135）。**抽選はここで 1 回だけ**——
-   * 文に出す名前と実際に増える物がずれないように。台帳に無ければマップの `Item` / `Num` のまま。
-   */
-  const chestCarry = useCallback((carry: { item?: string; num?: number; owner?: string }) => {
-    const chest = carry.owner ? chestOf(carry.owner) : null;
-    if (!chest) return carry;
-    return { ...carry, ...drawChest(chest) };
-  }, []);
-
-  const chestCarryRef = useRef(chestCarry);
-  chestCarryRef.current = chestCarry;
-
-  const play = useCallback(async (event: EventDef, npc = '', carry: { item?: string; num?: number; owner?: string } = {}) => {
+  const play = useCallback(async (event: EventDef, npc = '', carry: { owner?: string } = {}) => {
     const bridge = bridgeRef.current;
     if (!bridge || useUi.getState().busy || useUi.getState().phase !== 'play') return;
     useUi.getState().setBusy(true);
     // どのイベントを動かしているかを先に伝える（GS-27）。セルフスイッチの宛先になる。
-    // `carry` は起こした物が持っていた中身（GS-132。宝箱の `Item` / `Num`）。
-    bridge.setScene({ npc, map: mapKey(mapRef.current), event: event.id, ...chestCarryRef.current(carry) });
+    // `carry.owner` は起こした物の `Id`（GS-134）。物ごとの覚えの宛先。
+    bridge.setScene({ npc, map: mapKey(mapRef.current), event: event.id, owner: carry.owner });
     try {
       await runCommands(event.commands, bridge.ctx);
     } catch (error) {
@@ -697,7 +709,10 @@ export default function GameCanvas() {
       mapRef.current = file;
       setDebugMapAt(mapNumber(file));
       // 戦闘の背景は台帳から（GS-79）。台帳は 1 回読んで使い回すので、ここは待っても速い。
-      battleFieldRef.current = (await entryForFile(file))?.battleField ?? 'hill';
+      const mapEntry = await entryForFile(file);
+      battleFieldRef.current = mapEntry?.battleField ?? 'hill';
+      // このマップでは時計を止めるか（GS-223）。
+      stopClockRef.current = mapEntry?.time?.stopClock === true;
       // イベントの有無は**台帳で決める**（DEC-374）。無いマップを取りに行かない。
       // 組む前に読んであればそれを使う（GS-195）。読み直すと、組んだ時と条件の元がずれる。
       const ahead = eventBookRef.current.file === file ? eventBookRef.current.events : undefined;
@@ -706,10 +721,10 @@ export default function GameCanvas() {
         ahead !== undefined ? ahead : fetchEvents(file),
       ]);
       eventBookRef.current = { file, events };
-      // 入ったときに決めた宝箱（GS-180）と同じマップを見る。出なかった宝箱の調べる枠を作らない。
-      const visit = chestVisitRef.current;
-      const map = visit.name === file ? applyChestVisit(rawMap, visit.visit) : rawMap;
-      spotsRef.current = readEventSpots(map);
+      // 入ったときに決めたこと（GS-233）と同じマップを見る。出なかった物の調べる枠を作らない。
+      const visit = visitRef.current.name === file ? visitRef.current.visit : NO_VISIT;
+      const map = applyEventVisit(rawMap, visit);
+      spotsRef.current = readEventSpots(map).filter((spot) => !visit.absent.has(spot.event));
       // **着いた先が入口の上でも、そこからは動かさない**（DEC-247）。
       // 着いた立ち位置（イベント JSON の `mapMoves`。GS-211）が入口の枠に重なっていると、着いた瞬間にまた飛んで
       // 2 枚のマップを往復し続ける（実測: 家 ⇔ 森が止まらなくなった）。
@@ -723,16 +738,20 @@ export default function GameCanvas() {
       }
       // 出す条件（GS-130）を満たす人だけを相手にする。**3D 側も同じ条件で作らない**ので、
       // 話しかけ先も敵シンボルもここで揃えておかないと「居ないのに触れる」が起きる。
-      npcDefsRef.current = readNpcs(map);
+      // 最初は出さない・出す条件はそのマップの NPC の設定（台帳 `mapNpcs.json`。GS-230）から。
+      npcDefsRef.current = readNpcs(map, mapNpcSettingsForFile(file));
       npcHiddenRef.current = new Set();
+      npcTimeHiddenRef.current = new Set();
       // 見た目の覚えはマップごと（GS-133）。作り直した板には当て直す。
       npcPoseRef.current = new Map();
-      // 宝箱の閉じた形・開いた形（GS-179）。**読み込み時の形は 3D 側が決めている**ので、
+      // イベントで出し入れするレイヤー（GS-233）。**読み込み時の形は 3D 側が決めている**ので、
       // ここではどちらを出しているかを控え直すだけ。控えが無いと、次の見張りで全部当て直す。
-      openedLayersRef.current = readOpenedLayers(map);
-      openedShownRef.current = new Map();
-      checkOpenedLayersRef.current();
-      const npcList = npcDefsRef.current.filter((npc) => npcShown(npc, (key) => switchOnRef.current(key, npc.id)));
+      switchLayersRef.current = readSwitchLayers(map);
+      switchShownRef.current = new Map();
+      checkSwitchLayersRef.current();
+      const npcList = npcDefsRef.current.filter((npc) =>
+        npcShown(npc, (key) => switchOnRef.current(key, npc.id), (when) => npcMeetsRef.current(when, npc.id)),
+      );
       npcTalkRef.current = new Map(npcList.map((npc) => [npc.id, npc.event]));
       npcThingRef.current = new Set(npcList.filter((npc) => npc.thing).map((npc) => npc.id));
       // 敵シンボル（GS-76）。`EnemyData` を書いた NPC だけ。マップが変われば作り直す。
@@ -746,7 +765,7 @@ export default function GameCanvas() {
       for (const entry of eventsRef.current.values()) {
         if (entry.npc) npcTalkRef.current.set(entry.npc, entry.id);
       }
-      // 組む前にイベントを読めなかった道（GS-195）でも、`ShowWhile` の食い違いをここで片付ける。
+      // 出す条件（GS-230）を、イベントを読み終えたところでもう一度見る。
       checkNpcShownRef.current();
 
       // マップが変われば並行イベントの覚えも捨てる（GS-43）。前のマップの話。
@@ -787,13 +806,19 @@ export default function GameCanvas() {
     const view = createGameView(canvas, onStatus, {
       party: () => stateRef.current.party,
       switchOn: (key, owner) => switchOnRef.current(key, owner),
-      // マップに入るたびに戻る宝箱（GS-180）。**組む前に**覚えを消し、出る場所・出るかを決める。
+      npcMeets: (when, owner) => npcMeetsRef.current(when, owner),
+      // マップに入るたびに戻るイベント（GS-233）。**組む前に**覚えを消し、出るかを決める。
+      // イベントは組む前に読んである（GS-195。`readEventsAhead`）。
       prepareMap: (name, map) => {
-        forgetRespawnChests(stateRef.current.self, chestOf);
-        const visit = rollChestVisit(map, chestOf);
-        chestVisitRef.current = { name, visit };
-        return applyChestVisit(map, visit);
+        const book = eventBookRef.current;
+        const events = book.file === name ? (book.events?.events ?? []) : [];
+        forgetRespawn(stateRef.current.self, mapKey(name), events, readEventSpots(map));
+        const visit = rollEventVisit(map, events);
+        visitRef.current = { name, visit };
+        return applyEventVisit(map, visit);
       },
+      // レイヤーの出し入れの覚え（GS-233）。組んでいるマップの分。
+      layerState: (name, id) => stateRef.current.self.get(layerKey(mapKey(name), id)),
     });
     viewRef.current = view;
     canvas.focus();
@@ -807,10 +832,11 @@ export default function GameCanvas() {
     void loadCommonBook();
     // 持ち物の台帳（GS-46）。名前と説明だけ。持っている数はセーブが持つ。
     void loadItemBook();
-    // 宝箱の台帳（GS-135）。中身と開け方。無くても遊べるので、読めなければ空のまま。
-    void loadChestBook();
     // 敵・技・はじめの仲間の台帳（GS-60）。数値だけで、いまの HP はセーブが持つ。
     void loadBattleBook();
+    // 時間帯と時計の台帳（GS-222 / GS-223）。**起動時に読む**——「はじめから」「つづきから」を通らない道
+    // （エディタのプレビュー）でも、時計と切り替えの時間が台帳のとおりになるように。
+    void loadTimeSettings();
     void loadIllustrations().catch((error) => console.warn('[illustrations]', error));
     const onFirstInput = () => unlockAudio();
     window.addEventListener('keydown', onFirstInput);
@@ -834,8 +860,7 @@ export default function GameCanvas() {
        * 保存していない下書きもそのまま渡せる（エディタが持っている JSON を送るだけ）。
        */
       expose('__preview', {
-        // `carry` は宝箱の中身（GS-132）。ふだんはマップのオブジェクトが持つ物を、
-        // 下書きを試すときは手で渡せるようにしておく。
+        // `carry.owner` は起こした物の `Id`（GS-233）。下書きを試すときに覚えの宛先を手で渡せる。
         play: (event, npc = '', carry = {}) => playRef.current(event, npc, carry),
         // フラグを確認のために書き換える（GS-206。イベントエディタの「フラグ（確認用）」）。
         // 書いてあるフラグだけ返す——書いていなければ true（`switchOn`）。`null` で書いていない状態へ戻す。
@@ -844,7 +869,7 @@ export default function GameCanvas() {
         setFlag: (key, value) => {
           if (value === null) stateRef.current.switches.delete(key);
           else stateRef.current.switches.set(key, value);
-          // フラグで出る人（`ShowWhile`。GS-195）を見直す。
+          // フラグで出る人（`showWhen`。GS-230）を見直す。
           checkNpcShownRef.current();
         },
         // マップ移動を試す（GS-211。イベントエディタの「マップ移動」）。**踏んだときと同じ決め方・同じ道**で移る。
@@ -899,20 +924,37 @@ export default function GameCanvas() {
       };
       expose('__cameraEditor', cameraEditor);
       // 戦闘演出エディタ（アニメーション演出。GS-105）の開発用入口。技の絵（`effects.json`）の下書きを差し替えて試す。
-      const battleEffectEditor = {
-        prepare: cameraEditor.prepare,
+      // プレビューは**背景だけの戦闘**（GS-219）——舞台と敵を出し、戦いは進めずに絵だけ重ねる。
+      const clearBackdrop = () => {
+        if (!battleBackdropRef.current) return;
+        battleAbortRef.current?.abort();
+        endBattle('escape');
+      };
+      const battleEffectEditor: BattleEffectEditorWindow = {
+        async prepare(file: string) {
+          clearBackdrop();
+          await cameraEditor.prepare(file);
+        },
         setEffects: (next: Record<string, EffectEntry>) => previewEffects(next),
-        async battle(enemies: string[]) { idle(); await debugBattle(enemies); },
-        /** 戦闘中なら先頭の敵へ絵を出す。戦闘中でなければ偽。 */
+        async backdrop(enemies: string[]) {
+          clearBackdrop();
+          idle();
+          if (enemies.length === 0) throw new Error('背景に出す敵を選んでください');
+          await loadBattleBook();
+          // 舞台の決め方はふつうの戦闘と同じ（隊形はマップの候補から。3D か 2D かはマップの点で決まる）。
+          const entry = await entryForFile(mapRef.current);
+          battleFormationRef.current = chooseBattleFormation(undefined, entry?.battleStage?.formations);
+          battleAbortRef.current = new AbortController();
+          battleEndRef.current = null;
+          battleBackdropRef.current = true;
+          backdropSeqRef.current += 1;
+          useUi.getState().setBattle(enemies);
+          return view.battleStage(battleFormationRef.current) ? '3d' : '2d';
+        },
+        clearBackdrop,
         playEffect(def: EffectDef) {
           if (!useUi.getState().battle) return false;
           window.dispatchEvent(new CustomEvent('battle-effect-preview', { detail: { def } }));
-          return true;
-        },
-        forceBattle() {
-          if (!useUi.getState().battle) return false;
-          battleAbortRef.current?.abort();
-          endBattle('escape');
           return true;
         },
       };
@@ -963,8 +1005,9 @@ export default function GameCanvas() {
         onSwitch: () => {
           checkNpcShownRef.current();
           checkNpcPoseRef.current();
-          checkOpenedLayersRef.current();
+          checkSwitchLayersRef.current();
         },
+        knownLayer: (id: string) => switchLayersRef.current.some((layer) => layer.ids.includes(id)),
       };
       bridgeRef.current = createEventBridge(options);
       /**
@@ -1019,9 +1062,8 @@ export default function GameCanvas() {
       });
       return;
     }
-    const event = eventForRef.current(spot.owner, spot.event);
-    if (event && event.trigger === 'touch' && runnableRef.current(event, spot.owner))
-      void play(event, '', { item: spot.item, num: spot.num, owner: spot.owner });
+    const event = eventsRef.current.get(spot.event);
+    if (event && event.trigger === 'touch' && runnableRef.current(event, spot.owner)) void play(event, '', { owner: spot.owner });
   }, [play, goTo]);
   const checkSpotsRef = useRef(checkSpots);
   checkSpotsRef.current = checkSpots;
@@ -1098,7 +1140,19 @@ export default function GameCanvas() {
     const view = viewRef.current;
     if (!view) return;
     for (const def of npcDefsRef.current) {
-      const shown = npcShown(def, (key) => switchOnRef.current(key, def.id));
+      const shown = npcShown(def, (key) => switchOnRef.current(key, def.id), (when) => npcMeetsRef.current(when, def.id));
+      // 時間帯だけで隠した人（GS-222）。**時間帯が戻ればその場に出し直す**——ほかの条件（`showWhen` など）で
+      // 現れるのはマップを読み直したときだけ（下の約束）だが、時間帯は歩いている間に移るので待てない。
+      const otherwise = npcShown(
+        def,
+        (key) => (key.startsWith(TIME_PREFIX) ? true : switchOnRef.current(key, def.id)),
+        (when) => npcMeetsRef.current(when, def.id, true),
+      );
+      if (shown && npcTimeHiddenRef.current.has(def.id)) {
+        npcTimeHiddenRef.current.delete(def.id);
+        view.restoreNpc(def.id);
+      }
+      if (!shown && otherwise) npcTimeHiddenRef.current.add(def.id);
       if (npcHiddenRef.current.has(def.id)) {
         // **イベントが置き直して出した人**（`place`）は、話しかけ先も戻す（GS-193）。
         // 戻さないと、見えているのに吹き出しが出ず、話しかけても何も起きない。
@@ -1125,49 +1179,29 @@ export default function GameCanvas() {
   checkNpcShownRef.current = checkNpcShown;
 
   /**
-   * その物を起こすイベント（GS-178）。**宝箱は台帳が決める**——
-   * 台帳が `event` を指していればそのイベント、指していなければ**台帳の文で組み立てた手順**。
-   * 宝箱でなければ今までどおりマップの `Event`。
-   *
-   * **決める所を 1 つにする**：起こし方は 4 通り（踏む・調べる・話しかける・立っている）あり、
-   * 散らすと「調べると開くのに、踏むと何も起きない」のような食い違いが静かに入る。
+   * イベントで出し入れするレイヤー（GS-233）。このマップのものと、いま出しているか。
+   * **マップごと**——組み直したら読み込み時の形から始まる。
    */
-  const eventFor = useCallback((owner: string, mapEvent: string) => {
-    if (owner) {
-      const built = chestEventDef(owner);
-      if (built) return built;
-      const named = chestEventOf(owner, '');
-      if (named) return eventsRef.current.get(named);
-    }
-    return eventsRef.current.get(mapEvent);
-  }, []);
-  const eventForRef = useRef(eventFor);
-  eventForRef.current = eventFor;
+  const switchLayersRef = useRef<SwitchLayer[]>([]);
+  const switchShownRef = useRef(new Map<string, boolean>());
 
   /**
-   * 開けたら入れ替わる見た目（GS-179）。このマップの出し入れするレイヤーと、
-   * いま出しているか。**マップごと**——組み直したら読み込み時の形から始まる。
+   * レイヤーの出し入れ（命令 `layer`。GS-233）を見た目に合わせる。**覚えから毎回決める**ので、
+   * マップを読み直しても出し入れしたまま。
    */
-  const openedLayersRef = useRef<OpenedLayer[]>([]);
-  const openedShownRef = useRef(new Map<string, boolean>());
-
-  /**
-   * 宝箱の閉じた形・開いた形を出し入れする（GS-179）。**スイッチから毎回決める**ので、
-   * イベントに「絵を変える」を書かなくてよく、マップを読み直しても開いたまま。
-   * 形は両方マップに置いてある（マップエディタで同じマスに重ねる）。
-   */
-  const checkOpenedLayers = useCallback(() => {
+  const checkSwitchLayers = useCallback(() => {
     const view = viewRef.current;
     if (!view) return;
-    for (const layer of openedLayersRef.current) {
-      const shown = openedLayerShown(layer, (key, owner) => switchOnRef.current(key, owner));
-      if (openedShownRef.current.get(layer.id) === shown) continue;
-      openedShownRef.current.set(layer.id, shown);
-      view.setLayerShown(layer.id, shown);
+    const map = mapKey(mapRef.current);
+    for (const layer of switchLayersRef.current) {
+      const shown = switchLayerShown(layer, (id) => stateRef.current.self.get(layerKey(map, id)));
+      if (switchShownRef.current.get(layer.layer) === shown) continue;
+      switchShownRef.current.set(layer.layer, shown);
+      view.setLayerShown(layer.layer, shown);
     }
   }, []);
-  const checkOpenedLayersRef = useRef(checkOpenedLayers);
-  checkOpenedLayersRef.current = checkOpenedLayers;
+  const checkSwitchLayersRef = useRef(checkSwitchLayers);
+  checkSwitchLayersRef.current = checkSwitchLayers;
 
   /**
    * スイッチで変わる見た目を合わせる（GS-133。マップの `Pose` / `PoseIf`）。
@@ -1202,8 +1236,8 @@ export default function GameCanvas() {
       checkNpcShownRef.current();
       // スイッチで変わる見た目（GS-133）。**`busy` でも見る**——開けたその場で絵が変わる。
       checkNpcPoseRef.current();
-      // 宝箱の閉じた形・開いた形も同じ（GS-179）。
-      checkOpenedLayersRef.current();
+      // イベントで出し入れするレイヤーも同じ（GS-233）。
+      checkSwitchLayersRef.current();
       // 並行イベント（GS-43）。**`busy` でも見る**——止めないのが持ち場なので、
       // 会話の裏でスイッチが入るのは正しい動き。
       checkParallelRef.current();
@@ -1229,13 +1263,13 @@ export default function GameCanvas() {
       if (!view || !bridge) return;
       // まず**目の前の相手**（GS-16）。話しかけるのは足元ではなく向いた先。
       const who = view.npcInFront();
-      const talk = who ? eventFor(who, npcTalkRef.current.get(who) ?? '') : undefined;
+      const talk = who ? eventsRef.current.get(npcTalkRef.current.get(who) ?? '') : undefined;
       if (who && talk && talk.trigger === 'action' && runnableRef.current(talk, who)) {
         const def = npcDefsRef.current.find((npc) => npc.id === who);
         // 話しかけられた人はこちらを向く（GS-118）。イベントが `turn` で向きを指すなら、
         // そちらが後から上書きする。**物（宝箱など）は向かない**（GS-133）。
         if (!def?.thing) view.faceNpcToPlayer(who);
-        void play(talk, who, { item: def?.item, num: def?.num, owner: def?.id });
+        void play(talk, who, { owner: def?.id });
         return;
       }
       const at = view.playerAt();
@@ -1244,23 +1278,44 @@ export default function GameCanvas() {
       const aim = view.facingVector();
       const look = aim ? spotAhead(spotsRef.current, at, aim, EXAMINE_REACH) : null;
       if (look) {
-        const found = eventFor(look.owner, look.event);
+        const found = eventsRef.current.get(look.event);
         if (found && found.trigger === 'action' && runnableRef.current(found, look.owner)) {
-          // 名前を**話し相手として**渡す（GS-55）。吹き出しがこの物の上に出る。
+          // `Id` を**話し相手として**渡す（GS-55）。物の名前は目印なので使わない（GS-233）。
           // 人ではないので `walk` や `pose` の相手にはならない——やれば警告が出る。
-          void play(found, look.name, { item: look.item, num: look.num, owner: look.owner });
+          void play(found, look.owner, { owner: look.owner });
           return;
         }
       }
       const spot = spotUnder(spotsRef.current, at, view.playerRadius());
       if (!spot?.event) return;
-      const event = eventFor(spot.owner, spot.event);
-      if (event && event.trigger === 'action' && runnableRef.current(event, spot.owner))
-        void play(event, '', { item: spot.item, num: spot.num, owner: spot.owner });
+      const event = eventsRef.current.get(spot.event);
+      if (event && event.trigger === 'action' && runnableRef.current(event, spot.owner)) void play(event, '', { owner: spot.owner });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [play]);
+
+  /**
+   * 時計（GS-222）。実時間で 朝 → 昼 → 夕 → 夜 → 朝… と進める。**歩ける間だけ**進む——
+   * 会話・イベント・戦闘・メニューの間は止まる（話の途中で夜になると、書いた人の思った場面と変わる）。
+   * 進んだら見た目は画面が混ぜて移す（`setTime`）。長さ・順番は台帳 `timeSettings.json`。
+   */
+  useEffect(() => {
+    if (phase !== 'play') return;
+    const timer = window.setInterval(() => {
+      if (!canWalk(useUi.getState())) return;
+      const state = stateRef.current;
+      // このマップでは時計を止める（GS-223。`maps.json` の `time.stopClock`）。
+      if (stopClockRef.current) return;
+      const next = advanceClock(state.time, state.clock, timeSettings(), CLOCK_MS);
+      if (next === null) return;
+      state.time = next;
+      viewRef.current?.setTime(next, timeSettings().shiftMs);
+      // 開発用の時間帯ボタン（GS-224）の押された印を合わせる。
+      if (DEV_MODE) refreshParty((value) => value + 1);
+    }, CLOCK_MS);
+    return () => window.clearInterval(timer);
+  }, [phase]);
 
   /** 遊んだ秒を数える（GS-27）。タイトルに居る間とイベント中は数えない。 */
   useEffect(() => {
@@ -1300,6 +1355,12 @@ export default function GameCanvas() {
     // 仲間を台帳のとおりに（GS-60）。台帳を読み終える前に押されても揃うよう待つ。
     await loadBattleBook();
     resetParty(stateRef.current);
+    // 時間帯と時計（GS-222）。台帳の「はじめから」の時間帯で始める。暗転の裏なので混ぜずに当てる。
+    const times = await loadTimeSettings();
+    stateRef.current.time = times.start;
+    // 時計は台帳で使うときだけ動かして始める（GS-223）。
+    stateRef.current.clock = { running: times.clock, ms: 0 };
+    viewRef.current?.setTime(times.start, 0);
     useUi.getState().setPhase('play');
     // **読み込みのあいだは黒のまま**（GS-28）。一瞬で覆い、オープニングの暗幕へそのまま渡す。
     useUi.getState().setFade(1, 0);
@@ -1328,6 +1389,11 @@ export default function GameCanvas() {
       stateRef.current.clear = state.clear;
       stateRef.current.playSeconds = state.playSeconds;
       stateRef.current.items = state.items;
+      // 時間帯と時計（GS-222）。持っていない古い記録は台帳の「はじめから」で埋める。
+      const times = await loadTimeSettings();
+      stateRef.current.time = data.time !== undefined ? state.time : times.start;
+      stateRef.current.clock = data.clock ? { ...state.clock } : { running: times.clock, ms: 0 };
+      viewRef.current?.setTime(stateRef.current.time, 0);
       // 仲間（GS-60）。**版 2 までの記録には無い**ので、台帳から入れ直す。
       await loadBattleBook();
       stateRef.current.party = state.party;
@@ -1464,6 +1530,34 @@ export default function GameCanvas() {
                 ))}
               </select>
             </label>
+            {/*
+             * 時間帯を選ぶ（GS-224）。押したら切り替えの時間（`shiftMs`）で混ぜて移り、時計はそこから数え直す。
+             * 「基準」は時間帯なし（マップの基準の光。時計は進まない）。
+             */}
+            <div className="debug-party" role="group" aria-label="時間帯">
+              <span>時間帯</span>
+              {['', ...timeSettings().order].map((id) => (
+                <button
+                  key={id || 'base'}
+                  type="button"
+                  className="debug-battle"
+                  tabIndex={-1}
+                  aria-pressed={stateRef.current.time === id}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (event.button !== 0) return;
+                    const state = stateRef.current;
+                    state.time = id;
+                    state.clock.ms = 0;
+                    viewRef.current?.setTime(id, timeSettings().shiftMs);
+                    refreshParty((value) => value + 1);
+                  }}
+                >
+                  {DEBUG_TIME_LABELS[id] ?? id}
+                </button>
+              ))}
+            </div>
             {/* 台帳（`items.json`）の持ち物を全部 2 個ずつ足す（GS-210）。 */}
             <button
               type="button"
@@ -1523,8 +1617,9 @@ export default function GameCanvas() {
         {/* 戦闘（GS-60）。マップの上に重ねる——3D はそのまま裏で動いている。 */}
         {phase === 'play' && battle ? (
           <BattleView
-            key={battle.join(',')}
+            key={`${battle.join(',')}#${backdropSeqRef.current}`}
             enemies={battle}
+            backdrop={battleBackdropRef.current}
             field={battleFieldRef.current}
             scene3d={battleStageRef.current}
             state={stateRef.current}

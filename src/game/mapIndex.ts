@@ -26,6 +26,23 @@ export interface MapEntry {
    * カメラ演出は持たない（GS-97）——戦闘演出の割り当て（`battlePresentation.json`）と二重にかかった。
    */
   battleStage?: { formations?: string[] };
+  /** 時間帯（GS-223）。台帳エディタの「マップ構成」で直す。 */
+  time?: MapTimeDef;
+}
+
+/**
+ * マップの時間帯の決まり（GS-223）。
+ * 朝・昼・夕・夜のうち、このマップで**使わない**（マップエディタで「このマップで使う」を外した・無い）時間帯の代わり。
+ */
+export interface MapTimeDef {
+  /**
+   * 使わない時間帯 → 代わりに出す時間帯（光のプリセットの id）。書かなければ基準の光。
+   * 例 `{ "morning": "day", "evening": "night" }`。代わりの先もこのマップで使う時間帯であること（使わなければ基準）。
+   * **時間が変わっても代わりの見た目のまま**（朝のあいだずっと昼の見た目）。
+   */
+  fallback?: Record<string, string>;
+  /** このマップに居るあいだは時計を進めない（洞窟・屋内など）。 */
+  stopClock?: boolean;
 }
 
 export interface MapFile {
@@ -33,6 +50,8 @@ export interface MapFile {
 }
 
 let pending: Promise<Record<string, MapEntry>> | null = null;
+/** 読み終えた台帳（同期で引くため。`knownMapKeyForFile`）。読む前は空。 */
+let loaded: Record<string, MapEntry> = {};
 
 /** 台帳を読む。**1 回だけ読んで使い回す**。 */
 export function loadMapIndex(): Promise<Record<string, MapEntry>> {
@@ -43,6 +62,10 @@ export function loadMapIndex(): Promise<Record<string, MapEntry>> {
     .catch((error) => {
       console.warn('[maps] 台帳を読めなかった', error);
       return {};
+    })
+    .then((maps) => {
+      loaded = maps;
+      return maps;
     });
   return pending;
 }
@@ -60,6 +83,20 @@ export async function mapEntryOf(name: string): Promise<MapEntry> {
 /** 読むファイル名だけが要るとき。 */
 export async function mapFileOf(name: string): Promise<string> {
   return (await mapEntryOf(name)).file;
+}
+
+/**
+ * `mapKeyForFile` の同期版。**台帳を読み終えてから**呼ぶ（マップを組んだあとなら読んである）。
+ * 画面側が NPC の設定（`mapNpcs.json`）を引くのに使う。
+ */
+export function knownMapKeyForFile(file: string): string | null {
+  return Object.entries(loaded).find(([, entry]) => entry.file === file)?.[0] ?? null;
+}
+
+/** ファイル名から台帳の番号（`0102`）を逆に引く。台帳に無ければ null。NPC の設定（`mapNpcs.json`）を引くのに使う。 */
+export async function mapKeyForFile(file: string): Promise<string | null> {
+  const index = await loadMapIndex();
+  return Object.entries(index).find(([, entry]) => entry.file === file)?.[0] ?? null;
 }
 
 /** ファイル名から台帳の 1 行を逆に引く（ビューが自分でマップを移したとき）。 */

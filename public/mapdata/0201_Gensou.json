@@ -1,6 +1,6 @@
 {
   "format": "mep3d-map",
-  "version": 2,
+  "version": 3,
   "name": "untitled",
   "grid": {
     "tilePx": 32,
@@ -61,7 +61,7 @@
         "shading": "lambert",
         "alphaTest": 0,
         "transparent": false,
-        "side": "front",
+        "side": "double",
         "depthWrite": true
       },
       {
@@ -6173,8 +6173,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_3-floor-0",
@@ -11007,12 +11012,11 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [
         {
-          "name": "Walkable",
-          "type": "boolean",
-          "value": true
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
         }
       ],
       "batches": [
@@ -14980,8 +14984,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": []
     },
     {
@@ -14991,7 +15000,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -15767,7 +15775,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -15888,7 +15895,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "models": [
@@ -15933,7 +15939,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -16125,7 +16130,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": []
     },
@@ -16136,7 +16140,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": []
     },
@@ -16147,27 +16150,26 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
         {
           "id": "obj_2",
-          "name": "pipo-charachip003a",
+          "name": "謎のじいさん",
           "kind": "point",
           "visible": true,
           "guides": true,
           "collision": false,
           "properties": [
             {
-              "name": "Sprite",
+              "name": "Character",
               "type": "string",
-              "value": "pipo-charachip003a.png#32x32#1"
+              "value": "elderly_male_ghost_01"
             },
             {
-              "name": "Standby",
-              "type": "boolean",
-              "value": true
+              "name": "Id",
+              "type": "string",
+              "value": "elderly_male_ghost_01"
             }
           ],
           "space": "plane",

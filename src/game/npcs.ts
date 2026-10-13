@@ -2,68 +2,52 @@
 //
 // イベントの起動場所（`eventSpots.ts`）と同じ考え方で、**マップは「誰がどこに居るか」だけ**を持つ。
 // 何を喋るかは同じオブジェクトの `Event` が指すイベント JSON、
-// どんな姿かは `actors.json`。3 つを別々に直せるようにしておく。
+// 誰か（名前・絵）はキャラクターの台帳（`characterdata.json`）。3 つを別々に直せるようにしておく。
 //
-// **NPC になるのは 2 通り**（GS-18）。
-//   1. `Npc` のプロパティが在るオブジェクト（レイヤーはどこでもよい）
-//   2. **`NPC` という名前のオブジェクトレイヤー**に置いた「キャラ画像」（`Sprite`）
+// **NPC になるのは、`NPC` / `SPRITE` という名前のオブジェクトレイヤーに置いた、`Character` を持つ物**（2026-10-08）。
+// レイヤー名で絞るのが要点——絵の目印として置いた物（出発点の見本など）まで動き出すと困る。
 //
-// 2 は旧作の Tiled と同じ並べ方（オブジェクトレイヤー名が役割）。エディタで
-// 形状「キャラ画像」を置くと `Sprite` が自動で入るので、**置くだけで立つ**。
-// レイヤー名で絞るのが要点——絵の目印として置いた「キャラ画像」（出発点の見本など）まで
-// 動き出すと困る。
+// **絵はキャラクターから引く**（2026-10-08）。`Character` → `characterdata.json` の `sheet`（画像）→ 区切りと立ち姿。
+// それまでは `Sprite`（エディタが書く絵の指定）の**ファイル名から**姿のキーを推し量っていたが、
+// 台帳から誰がどこに居るか追えず、同じ絵を使う人を区別できなかったのでやめた（`Sprite` と `Npc` は外した）。
 //
 // オブジェクトのプロパティ
-//   Npc    … 姿のキー（`actors.json` を引く）
-//   Sprite … エディタが書く絵の指定（`chicken_walk.png#32x32#10`）。姿のキーとしても使う
+//   Character … キャラクターのキー（`characterdata.json`）。誰か——名前・会話の絵・フィールドの絵
 //   Id     … その物の名前（GS-134）。イベントから `npc:<id>` で呼び、**覚えもこの名前に付く**
 //            （`setSelfSwitch` の行き先。同じイベントを何個の宝箱で使っても混ざらない）。
-//            省略すると姿のキーと同じ。`NpcId` は古い書き方で、同じ意味
+//            **マップエディタが置いたときに書く**（2026-10-08。1 体目はキャラクターのキー、2 体目から `slime2`・`slime3`…）。
+//            省略されていればキャラクターのキー。NPC の設定（`mapNpcs.json`）もこの名前で引く
 //   Event  … 話しかけたときに動くイベントの id
 //   Face   … 最初に向いている方（up / down / left / right）
 //   EnemyData … 敵の台帳（`data/enemies.json`）のキー（GS-76）。書くと**シンボル**になり、
 //               触ると戦闘が始まる。話しかけるイベントは持たない（触るのが用件）
 //   Scale  … 絵の大きさの倍率（GS-130）。**見た目だけ**で、当たりも届く範囲も変わらない
-//   Pose   … スイッチが入っているときの静止コマの名前（GS-133。`actors.json` の `poses`）
+//   Pose   … スイッチが入っているときの静止コマの名前（GS-133。立ち姿 `actors.json` の `poses`）
 //   PoseIf … その `Pose` にするスイッチ。**見た目はイベントではなくここで決まる**
 //            `self:開けた` と書くと**その物自身の覚え**（GS-134）。ふつうに書くと通しのスイッチ
-//   StepInPlace … **常時その場で足踏みする**（GS-169）。値は真偽。進まず足だけ動く
-//            （揺れる旗・回る風車・じっとしていない人）。**うろつきとは両立しない**
+//   （うろつき `Wander`・その場の足踏み `StepInPlace`・最初は出さない `Standby`・出す条件 `ShowIf` / `HideIf` / `ShowWhile` は
+//    2026-10-08 にマップから外し、NPC の設定の台帳 `mapNpcs.json`（マップ＋1 体）へ移した。`mapNpcs.ts`）
 //   Opacity … **不透明度（%）**（GS-207）。幽霊のような半透明の人に。0〜100、書かなければ 100。
 //            イベントの「置き直す」の不透明度は、その場かぎり（マップを読み直すとこちらに戻る）
 //   Hidden … **ゲームには出さない**（GS-160）。エディタでは見える。置き場所の目印用
-//   Standby … **最初は出さない**（GS-157）。イベントの「置き直す」で出すまで居ない。
-//             出入りはイベントが決めるので、**ここにイベント名は書かない**
-//   ShowWhile … そのイベントが**動ける（条件を満たす）ときだけ**出す（GS-195）。値はイベント id。
-//            イベントの条件を変えてもマップは直さなくてよい（ボスをイベントと一緒に出し入れする）
-//   ShowIf … このスイッチが**入っているときだけ**出す（古い書き方。GS-157 を見よ）
-//   HideIf … このスイッチが**入っていると出さない**（古い書き方。GS-157 を見よ）
+//   ShowIn … **この時間帯だけ**出す（GS-222）。光のプリセットの id のカンマ区切り。マップの見た目の話なのでマップに残す
 //
 // **出入りはイベントの命令で決める**（GS-157）。イベントが「消す」「置き直す」を通ると、
 // その**キャラ自身の覚え**（`self:消えた` / `self:出た`）に書く——マップを読み直しても
-// 消えたままだし、出たままになる。`ShowIf` / `HideIf` にイベント名を書いていた頃は、
-// フラグの向きを変えるたびにマップを直す必要があった（GS-147 で実際に壊れた）。
+// 消えたままだし、出たままになる。最初は出さない・出す条件は台帳（`mapNpcs.json`）が持つ。
 
 import type { MapDef, MapObjectDef, PropertyDef } from '../mep3d/types';
+import type { IfCondition } from '../event/types';
+import type { MapNpcDef } from './mapNpcs';
 import { HIDDEN_PROPERTY } from './hiddenLayers';
 import type { WalkDir } from './GameView';
-
-/** エディタの「キャラ画像」の指定（GS-18）。`ファイル名#幅x高さ#コマ番号`。 */
-export interface SpriteRef {
-  /** `chicken_walk.png`。 */
-  file: string;
-  /** 1 コマの大きさ（px）。省略されることもある。 */
-  framePx?: [number, number];
-}
 
 /** 立たせる 1 人ぶん。位置はマス（小数）。 */
 export interface NpcDef {
   /** イベントから呼ぶ名前。`npc:<id>`。 */
   id: string;
-  /** 姿のキー。`actors.json` を引く。 */
-  actor: string;
-  /** エディタが書いた絵の指定（GS-18）。台帳に無い絵はこれで出す。 */
-  sprite?: SpriteRef;
+  /** キャラクターのキー（`characterdata.json`。マップの `Character`）。絵はここから引く。 */
+  character: string;
   /** 話しかけたときのイベント id。無ければ空。 */
   event: string;
   /**
@@ -76,23 +60,20 @@ export interface NpcDef {
    * **見た目だけ**——当たりも話しかけの届く範囲も 1 マスのまま。大物を大物らしく見せるためのもの。
    */
   scale?: number;
-  /** このスイッチが入っているときだけ出す（GS-130。マップの `ShowIf`）。 */
-  showIf?: string;
-  /** このスイッチが入っていると出さない（GS-130。マップの `HideIf`）。 */
-  hideIf?: string;
   /**
-   * **最初は出さない**（GS-157。マップの `Standby`）。イベントが「置き直す」で出すまで居ない。
-   * 「イベントで初めて現れる人」はこれ 1 つで足りる——**イベント名は要らない。**
+   * この時間帯だけ出す（GS-222。マップの `ShowIn`）。光のプリセットの id のカンマ区切り。
+   * 時間帯なし（基準）では出す。
+   */
+  showIn?: string;
+  /**
+   * **最初は出さない**（GS-157。台帳 `mapNpcs.json` の `standby`）。イベントが「置き直す」で出すまで居ない。
    */
   standby?: boolean;
   /**
-   * このイベントが動ける（`when` を満たす）ときだけ出す（GS-195。マップの `ShowWhile`）。
-   * 問い合わせは `switchOn('event:<id>')`——条件を読むのは呼ぶ側（イベントを持っている方）。
+   * この条件を満たす間だけ出す（GS-230。台帳の `showWhen`）。イベントの条件と同じ書き方。
+   * 判定は呼ぶ側（記録を持っている画面）——`npcShown` の `meets`。
    */
-  showWhile?: string;
-  /** 中身（GS-132。マップの `Item` / `Num`）。話しかけたイベントの `getItem` が使う。 */
-  item?: string;
-  num?: number;
+  showWhen?: IfCondition[];
   /**
    * **人ではなく物**（GS-133。`SPRITE` レイヤーに置いたもの）。
    * うろつかず、話しかけてもこちらを向かない。宝箱・立て札など。
@@ -105,17 +86,6 @@ export interface NpcDef {
    */
   pose?: string;
   poseIf?: string;
-  /**
-   * うろつく距離（GS-48）。マップのプロパティ `Wander`。
-   * 書いてなければ undefined（台帳の言うとおり）、`0` なら**この個体だけ動かない**。
-   */
-  wander?: number;
-  /**
-   * **常時その場で足踏みする**（GS-169。マップの `StepInPlace`）。
-   * イベントの「その場で足踏み」と同じ見せ方を、イベントの外でも続ける。
-   * 踏んでいるあいだ**うろつきは入らない**（動かずに足だけ動く物・人のためのもの）。
-   */
-  stepping?: boolean;
   /**
    * **ピクセル単位で置いた**（GS-191。マップの `PixelPlace`）。置いた点の位置そのままに立つ。
    * 無ければ今までどおりマスの真ん中へ寄せる（今あるマップの NPC は点が小数でも真ん中に立っている）。
@@ -130,45 +100,30 @@ export interface NpcDef {
   facing: WalkDir;
 }
 
-const NPC_PROPERTY = 'Npc';
-/** その物の名前（GS-134）。`NpcId` は古い書き方。 */
+/** キャラクターのキー（2026-10-08。`characterdata.json`）。 */
+export const CHARACTER_PROPERTY = 'Character';
+/** その物の名前（GS-134）。 */
 const ID_PROPERTY = 'Id';
-const NPC_ID_PROPERTY = 'NpcId';
 const EVENT_PROPERTY = 'Event';
 const FACE_PROPERTY = 'Face';
-/** エディタの「キャラ画像」が書くプロパティ（GS-18）。 */
-const SPRITE_PROPERTY = 'Sprite';
-/** うろつく距離（GS-48）。台帳の設定を個体ごとに上書きする。 */
-const WANDER_PROPERTY = 'Wander';
 /** 敵シンボル（GS-76）。値は `data/enemies.json` のキー。 */
 const ENEMY_PROPERTY = 'EnemyData';
 /** 絵の大きさの倍率（GS-130）。見た目だけ。 */
 const SCALE_PROPERTY = 'Scale';
-/** 出す・出さないの条件（GS-130）。値はスイッチの名前。**古い書き方**（GS-157）。 */
-const SHOW_IF_PROPERTY = 'ShowIf';
-/** そのイベントが動けるときだけ出す（GS-195）。値はイベント id。 */
-const SHOW_WHILE_PROPERTY = 'ShowWhile';
-/** `switchOn` に渡す「そのイベントは動けるか」の頭（GS-195）。 */
-export const EVENT_READY_PREFIX = 'event:';
-const HIDE_IF_PROPERTY = 'HideIf';
-/** 最初は出さない（GS-157）。値は真偽（`true` / `"true"`）。 */
-const STANDBY_PROPERTY = 'Standby';
-/** 常時その場で足踏みする（GS-169）。値は真偽。 */
-const STEP_IN_PLACE_PROPERTY = 'StepInPlace';
+const SHOW_IN_PROPERTY = 'ShowIn';
+/** 時間帯の問い合わせ（GS-222）。`time:<id,id>` は、いまの時間帯がどれか（時間帯なしなら真）。 */
+export const TIME_PREFIX = 'time:';
 /** ピクセル単位で置く（GS-191）。値は真偽。 */
 const PIXEL_PLACE_PROPERTY = 'PixelPlace';
 /** 不透明度（GS-207）。% で書く（0〜100）。 */
 const OPACITY_PROPERTY = 'Opacity';
-/** 中身（GS-132）。宝箱の「何が」「いくつ」。 */
-const ITEM_PROPERTY = 'Item';
-const NUM_PROPERTY = 'Num';
 /** スイッチで変わる見た目（GS-133）。`PoseIf` が入っているあいだ `Pose` の静止コマにする。 */
 const POSE_PROPERTY = 'Pose';
 const POSE_IF_PROPERTY = 'PoseIf';
-/** ここに置いた「キャラ画像」は NPC になる、というレイヤー名（大文字小文字は問わない）。 */
+/** ここに置いた、キャラクター（`Character`）を持つ物は NPC になる、というレイヤー名（大文字小文字は問わない）。 */
 const NPC_LAYER = 'npc';
 /**
- * ここに置いた「キャラ画像」は**物**になる、というレイヤー名（GS-133）。旧作の Tiled と同じ名前。
+ * ここに置いた、キャラクターを持つ物は**物**になる、というレイヤー名（GS-133）。旧作の Tiled と同じ名前。
  * NPC と同じ板 1 枚だが、**人として扱わない**——うろつかないし、話しかけてもこちらを向かない。
  * 宝箱・立て札のような「そこに在るだけの物」用。
  */
@@ -225,41 +180,34 @@ export const NPC_CAME = '出た';
  * その NPC を出すか（GS-130 / GS-157）。上から順に見て、最初に決まったところで止まる。
  *
  *   1. **キャラ自身の覚え**（`self:消えた` / `self:出た`）。イベントが書いたもの——一番強い
- *   2. マップの `Standby`（最初は出さない）
- *   3. マップの `ShowWhile`（そのイベントが動けるときだけ。GS-195）
- *   4. マップの `ShowIf` / `HideIf`（古い書き方）。**書いたものを全部満たすときだけ**出す
+ *   2. 台帳の `standby`（最初は出さない）
+ *   3. マップの `ShowIn`（その時間帯だけ。GS-222。時間帯なしでは出す）
+ *   4. 台帳の `showWhen`（この条件を満たす間だけ。GS-230。イベントの条件と同じ書き方）
  *
- * どれも無ければいつでも出す。
+ * どれも無ければいつでも出す。`meets` は条件の判定（記録を持っている画面が渡す）。
+ * 渡さなければ、スイッチと覚えだけを `switchOn` で見る（変数・持ち物などは満たさない扱い）。
  */
 export function npcShown(
-  def: Pick<NpcDef, 'showIf' | 'hideIf' | 'standby' | 'showWhile'>,
+  def: Pick<NpcDef, 'standby' | 'showWhen' | 'showIn'>,
   switchOn: (key: string) => boolean,
+  meets?: (when: IfCondition[]) => boolean,
 ): boolean {
   // イベントが消した人は、マップを読み直しても出さない（旧作の `setVisible(false)` が残る）。
   if (switchOn(`self:${NPC_GONE}`)) return false;
-  // イベントが出した人は、`Standby` でも `ShowIf` でも出す。**命令のほうが後の話**。
+  // イベントが出した人は、`standby` でも条件でも出す。**命令のほうが後の話**。
   if (switchOn(`self:${NPC_CAME}`)) return true;
   if (def.standby) return false;
-  if (def.showWhile && !switchOn(`${EVENT_READY_PREFIX}${def.showWhile}`)) return false;
-  if (def.showIf && !switchOn(def.showIf)) return false;
-  if (def.hideIf && switchOn(def.hideIf)) return false;
+  if (def.showIn && !switchOn(`${TIME_PREFIX}${def.showIn}`)) return false;
+  if (def.showWhen?.length) {
+    const ok = meets
+      ? meets(def.showWhen)
+      : def.showWhen.every((one) =>
+          'switch' in one ? switchOn(one.switch) === (one.is ?? true) : 'self' in one ? switchOn(`self:${one.self}`) === (one.is ?? true) : false,
+        );
+    if (!ok) return false;
+  }
   return true;
 }
-
-/**
- * `Sprite` を解く（GS-18）。`chicken_walk.png#32x32#10` → ファイルと 1 コマの大きさ。
- * コマ番号はエディタが見本を出すためのもので、ゲームは向きから決めるので使わない。
- */
-function parseSprite(text: string): SpriteRef | null {
-  if (!text) return null;
-  const [file, size] = text.split('#');
-  if (!file) return null;
-  const wh = size?.match(/^(\d+)x(\d+)$/i);
-  return wh ? { file, framePx: [Number(wh[1]), Number(wh[2])] } : { file };
-}
-
-/** 絵のファイル名から姿のキーを作る。`chicken_walk.png` → `chicken_walk`。 */
-const spriteKey = (file: string): string => file.replace(/\.[^.]+$/, '');
 
 /** 立ち位置（マス）。点はその点、それ以外は外接四角の真ん中。 */
 function standAt(object: MapObjectDef): { x: number; z: number } | null {
@@ -288,8 +236,11 @@ function standAt(object: MapObjectDef): { x: number; z: number } | null {
   return { x: sumX / points.length, z: sumZ / points.length };
 }
 
-/** マップから NPC を集める。XZ 平面（床向き）のものだけ見る。 */
-export function readNpcs(map: MapDef): NpcDef[] {
+/**
+ * マップから NPC を集める。XZ 平面（床向き）のものだけ見る。
+ * `settings` はそのマップの NPC の設定（台帳 `mapNpcs.json`。1 体の名前 → 設定）——最初は出さない・出す条件をここから足す。
+ */
+export function readNpcs(map: MapDef, settings: Record<string, MapNpcDef> = {}): NpcDef[] {
   const npcs: NpcDef[] = [];
   for (const layer of map.layers) {
     if (layer.kind !== 'object') continue;
@@ -302,43 +253,31 @@ export function readNpcs(map: MapDef): NpcDef[] {
       // **エディタには見えるがゲームには出ない**——置き場所の目印に使う。
       // 当たりや起動枠は今までどおり（`Hidden` は見た目の話。GS-57）。
       if (truthOf(object.properties, HIDDEN_PROPERTY)) continue;
-      const named = textOf(object.properties, NPC_PROPERTY);
-      const sprite = parseSprite(textOf(object.properties, SPRITE_PROPERTY));
-      // `Npc` が在ればどこでも。無ければ **`NPC` / `SPRITE` レイヤーのキャラ画像**だけ。
-      if (!named && !((npcLayer || thingLayer) && sprite)) continue;
-      const actor = named || spriteKey(sprite!.file);
+      // **`NPC` / `SPRITE` レイヤーの、キャラクターを持つ物**だけ（2026-10-08）。
+      if (!npcLayer && !thingLayer) continue;
+      const character = textOf(object.properties, CHARACTER_PROPERTY);
+      if (!character) continue;
       const at = standAt(object);
       if (!at) continue;
+      const id = textOf(object.properties, ID_PROPERTY) || character;
+      const setting = settings[id];
       npcs.push({
-        id: textOf(object.properties, ID_PROPERTY) || textOf(object.properties, NPC_ID_PROPERTY) || actor,
-        actor,
-        ...(sprite ? { sprite } : {}),
+        id,
+        character,
         event: textOf(object.properties, EVENT_PROPERTY),
         ...(textOf(object.properties, ENEMY_PROPERTY) ? { enemy: textOf(object.properties, ENEMY_PROPERTY) } : {}),
-        ...(numberOf(object.properties, WANDER_PROPERTY) !== undefined
-          ? { wander: Math.max(0, numberOf(object.properties, WANDER_PROPERTY) ?? 0) }
-          : {}),
         // 倍率は 0 以下を受けない（消えてしまう）。上も程々で止める。
         ...(numberOf(object.properties, SCALE_PROPERTY) !== undefined
           ? { scale: Math.min(16, Math.max(0.1, numberOf(object.properties, SCALE_PROPERTY) ?? 1)) }
           : {}),
-        ...(textOf(object.properties, SHOW_WHILE_PROPERTY)
-          ? { showWhile: textOf(object.properties, SHOW_WHILE_PROPERTY) }
-          : {}),
-        ...(textOf(object.properties, SHOW_IF_PROPERTY) ? { showIf: textOf(object.properties, SHOW_IF_PROPERTY) } : {}),
-        ...(textOf(object.properties, HIDE_IF_PROPERTY) ? { hideIf: textOf(object.properties, HIDE_IF_PROPERTY) } : {}),
-        // 最初は出さない（GS-157）。イベントの「置き直す」で出す。
-        ...(truthOf(object.properties, STANDBY_PROPERTY) ? { standby: true } : {}),
+        ...(textOf(object.properties, SHOW_IN_PROPERTY) ? { showIn: textOf(object.properties, SHOW_IN_PROPERTY) } : {}),
+        // 最初は出さない・出す条件は台帳から（GS-230）。
+        ...(setting?.standby ? { standby: true } : {}),
+        ...(setting?.showWhen?.length ? { showWhen: setting.showWhen } : {}),
         ...(truthOf(object.properties, PIXEL_PLACE_PROPERTY) ? { pixel: true } : {}),
         // 不透明度（GS-207）。% で書く。100 以上は書いていないのと同じ。
         ...((numberOf(object.properties, OPACITY_PROPERTY) ?? 100) < 100
           ? { opacity: Math.max(0, numberOf(object.properties, OPACITY_PROPERTY) ?? 100) / 100 }
-          : {}),
-        // 常時その場で足踏み（GS-169）。イベントを書かなくても動いて見える。
-        ...(truthOf(object.properties, STEP_IN_PLACE_PROPERTY) ? { stepping: true } : {}),
-        ...(textOf(object.properties, ITEM_PROPERTY) ? { item: textOf(object.properties, ITEM_PROPERTY) } : {}),
-        ...(numberOf(object.properties, NUM_PROPERTY) !== undefined
-          ? { num: Math.max(0, Math.trunc(numberOf(object.properties, NUM_PROPERTY) ?? 1)) }
           : {}),
         ...(thingLayer ? { thing: true } : {}),
         ...(textOf(object.properties, POSE_PROPERTY) ? { pose: textOf(object.properties, POSE_PROPERTY) } : {}),

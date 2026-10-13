@@ -53,7 +53,12 @@ export type IfCondition =
   /** 持ち物（GS-46）。`count` 個**以上**持っているか。省略は 1。 */
   | { item: string; count?: number }
   /** 所持金（GS-65）。その額**以上**持っているか。 */
-  | { gold: number };
+  | { gold: number }
+  /**
+   * 時間帯（GS-222）。いまの時間帯がこれか。カンマ区切りで**どれか**（`evening,night`）。
+   * 時間帯なし（基準）のときはどれにも当たらない。
+   */
+  | { time: string };
 
 /** 条件命令の 1 つの枝の条件（GS-197）。1 つか、並び（**全部満たしたら当たり**＝`&&`）。 */
 export type IfWhen = IfCondition | IfCondition[];
@@ -212,7 +217,7 @@ export type EventCommand =
    *
    * 消えたことは**そのキャラ自身の覚え**（`self:消えた`）に残るので、
    * **マップを読み直しても戻ってこない**。逆に出すのは「置き直す」（`place`）で、
-   * こちらは `self:出た` を残す。**マップに `HideIf` とイベント名を書く必要はない。**
+   * こちらは `self:出た` を残す。**出す条件にイベント名を書く必要はない。**
    *
    * `remember` を切ると覚えない——その場だけ消し、マップに入り直せば元どおり立っている。
    *
@@ -396,12 +401,20 @@ export type EventCommand =
    * 持ち物（GS-46）。`id` は `data/items.json` のキー。`count` は省略で 1。
    * **減らすほうは別の命令**にしてある——負の数で渡す形にすると、書き間違いが静かに増える。
    *
-   * **`id` を空にすると、そのイベントを起こしたオブジェクトの `Item` を使う**（GS-132）。
-   * `count` を省くと同じく `Num`（それも無ければ 1）。宝箱のように「中身はマップが決める」物を、
-   * **1 本の共通イベントで**開けられるようにするためのもの。
+   * 宝箱の中身もここに書く（GS-233。台帳 `chests.json` はやめた）。
+   * - `random` を書くと**その中から 1 つ**選ぶ（`id` より勝つ）。
+   * - `count` を 2 つの数にすると**その範囲から**選ぶ（`[1, 3]` で 1〜3 個）。
+   * 手に入れた物は、そのあとの文の `{アイテム}` に入る。
    */
-  | { type: 'getItem'; id?: string; count?: number }
-  | { type: 'loseItem'; id?: string; count?: number }
+  | { type: 'getItem'; id?: string; random?: string[]; count?: number | [number, number] }
+  | { type: 'loseItem'; id: string; count?: number }
+  /**
+   * レイヤーの出し入れ（GS-233）。マップのレイヤーの **`Id`** で指し、出す（`shown: true`）か隠すか。
+   * プレハブ（入れ物）に付けた `Id` なら中身ごと。宝箱の閉じた形・開いた形の入れ替えに使う。
+   * **出し入れした形はセーブに残る**（マップを読み直しても保つ）。最初に隠しておく形には、
+   * マップでレイヤーに `StartHidden` を付ける。見た目だけで、当たりは変えない。
+   */
+  | { type: 'layer'; id: string; shown: boolean }
   /**
    * 仲間の出入り（GS-70）。`who` は `data/party.json` の人。
    * **最後の 1 人は外せない**（誰も居ない隊列は次の戦いで即座に負ける）。
@@ -436,6 +449,12 @@ export type EventCommand =
    * 減らすときは `sub`。持っている以上は減らない（0 で止まる）。
    */
   | { type: 'gold'; value: number; op?: 'add' | 'sub' | 'set' }
+  /**
+   * 時間帯（GS-222）。`to` へ切り替える（光のプリセットの id。`base`（か ''）は時間帯なし＝基準）。書かなければ今のまま。
+   * 暗転せず `ms`（省略は台帳 `timeSettings.json` の `shiftMs`）かけて見た目を混ぜて移る。待たない。
+   * `clock` で時計を動かす（`run`）・止める（`stop`）。切り替えると時計はその時間帯の頭から数え直す。
+   */
+  | { type: 'time'; to?: string; ms?: number; clock?: 'run' | 'stop' }
   /**
    * 回復（GS-64）。宿・泉・話の区切りで使う。`hp` / `mp` は戻す量で、
    * `"full"` なら満タンまで。`who` を書かなければ**隊列ぜんぶ**。
@@ -491,8 +510,24 @@ export interface EventDef {
   kind?: string;
   /** 起動の仕方。`action` は決定キー、`touch` は踏む、`auto` はマップに入ったら。 */
   trigger: 'action' | 'touch' | 'auto' | 'parallel';
-  /** 動かす条件（全部満たしたときだけ動く）。省略は無条件。 */
-  when?: Array<{ switch?: string; self?: string; is?: boolean }>;
+  /**
+   * 動かす条件（全部満たしたときだけ動く）。省略は無条件。
+   * `time` は時間帯（GS-222。カンマ区切りでどれか）。書いたら `switch` / `self` は見ない。
+   */
+  when?: Array<{ switch?: string; self?: string; is?: boolean; time?: string }>;
+  /**
+   * **マップに入るたびに戻る**（GS-233。元は宝箱の台帳の `respawn`。GS-180）。
+   * 入るたびに、このイベントを起こす物の覚え（`self`）と、このイベントの「レイヤーの出し入れ」で
+   * 変えた形を最初へ戻す——宝箱なら、出て戻ればまた閉じて中身が入っている。
+   * 書かなければ、覚えも形もセーブに残る（開けた宝箱は開いたまま）。
+   */
+  respawn?: boolean;
+  /**
+   * 入るたびに出る確率（0〜1。GS-233）。`respawn` のときだけ効く。省くと必ず出る。
+   * 外れたら、このイベントを起こす物を調べられなくし、このイベントの「レイヤーの出し入れ」が
+   * 指すレイヤーを全部組まない（見た目も当たりも無い）。
+   */
+  chance?: number;
   commands: EventCommand[];
 }
 

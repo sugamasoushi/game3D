@@ -11,13 +11,13 @@
         { "type": "shot", "id": "event010201_camera01", "wait": false },
         {
           "type": "place",
-          "target": "npc:chicken_walk",
+          "target": "npc:grandpaNpc",
           "at": { "x": -6, "y": 10, "z": -1 },
           "face": "left"
         },
         {
           "type": "move",
-          "target": "npc:chicken_walk",
+          "target": "npc:grandpaNpc",
           "to": { "x": -6, "y": 10, "z": 1 },
           "first": "upDown"
         },
@@ -71,20 +71,20 @@
         },
         {
           "type": "move",
-          "target": "npc:chicken_walk",
+          "target": "npc:grandpaNpc",
           "to": { "x": -6, "y": 10, "z": -1 },
           "first": "upDown"
         },
         {
           "type": "move",
-          "target": "npc:chicken_walk",
+          "target": "npc:grandpaNpc",
           "to": { "x": 6, "y": 10, "z": -1 },
           "first": "leftRight",
           "wait": false
         },
         { "type": "shot", "id": "event010201_camera02" },
         { "type": "wait", "ms": 600 },
-        { "type": "hide", "target": "npc:chicken_walk" },
+        { "type": "hide", "target": "npc:grandpaNpc" },
         { "type": "setSwitch", "key": "EVENT010201", "value": false },
         { "type": "setSwitch", "key": "EVENT010202", "value": false }
       ],
@@ -120,9 +120,9 @@
           "type": "message",
           "style": "bubble",
           "talk": [
-            { "who": "mob", "lines": ["我が力を欲するか？", "・・・・・・・", "我が力いらない？"] },
+            { "lines": ["我が力を欲するか？", "・・・・・・・", "我が力いらない？"] },
             { "who": "meina", "lines": ["えぇ？", "う～ん、どうしようかな", "やっぱりいらねっす・・・"] },
-            { "who": "mob", "lines": ["そんなぁ・・・"] }
+            { "lines": ["そんなぁ・・・"] }
           ]
         }
       ],
@@ -144,6 +144,26 @@
         }
       ],
       "kind": "talk"
+    },
+    {
+      "id": "Chest_Map0102",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "開けた" },
+          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
+          "else": [
+            { "type": "playSe", "key": "chest" },
+            { "type": "getItem", "id": "やくそう", "count": 2 },
+            { "type": "layer", "id": "Chest_Map0102_閉", "shown": false },
+            { "type": "layer", "id": "Chest_Map0102_開", "shown": true },
+            { "type": "setSelfSwitch", "key": "開けた", "value": true },
+            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] }
+          ]
+        }
+      ]
     }
   ],
   "mapMoves": [

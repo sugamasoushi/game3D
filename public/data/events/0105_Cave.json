@@ -32,7 +32,7 @@
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "battle", "enemies": ["enemy03"] },
-        { "type": "hide", "target": "npc:boss" },
+        { "type": "hide", "target": "npc:slime2" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
         {

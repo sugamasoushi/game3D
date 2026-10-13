@@ -21,6 +21,7 @@ import {
   Vector2,
   Vector3,
   Vector4,
+  type Color,
   type Material,
   type Object3D,
   type WebGLRenderer,
@@ -38,7 +39,9 @@ import {
   clipDirectionalShadowLength,
   emittingPointLights,
   fillPointLightUniforms,
+  lightColor,
   lightDirection,
+  LIGHTING_DEFAULTS,
   resolveLighting,
   shadowDirection,
 } from './lighting';
@@ -134,6 +137,7 @@ import {
   type FaceFit,
   type FaceFitByFace,
   type FaceName,
+  type BackdropDef,
   type GameViewDef,
   type LayerDef,
   type LightingDef,
@@ -258,8 +262,6 @@ export interface Mep3DScene {
   group: Group;
   map: MapDef;
   assets: AssetsDef;
-  /** 当たりレイヤーのセルキー（"x,y,z"）。 */
-  collision: Set<string>;
   /** オブジェクトレイヤーのセル。レイヤー id ごと。 */
   objects: Map<string, ObjectLayer>;
   /** マップのカスタムプロパティ。名前 → 値。 */
@@ -284,6 +286,8 @@ export interface Mep3DScene {
   setLightWalls(layers: LightWallLayer[]): void;
   /** 遮光平面をキャラなどへ渡す。 */
   bindLightWalls(material: ShaderMaterial): void;
+  /** `attachShadowMask` / `bindLightWalls` で渡した材質を外す（捨てる前に。DEC-436）。 */
+  detachMaterial(material: ShaderMaterial): void;
   /** ブロック影マスクをキャラなどへ渡す。足元の柱で引く。 */
   attachShadowMask(material: ShaderMaterial): void;
   /**
@@ -350,6 +354,11 @@ export interface Mep3DScene {
    */
   /** ゲーム画面の設定を差し替える（DEC-148）。今は背景の書き割りだけ効く。 */
   setView(next: GameViewDef): void;
+  /**
+   * 書き割りの上に**次の絵**を重ねる（GS-222。時間帯の切り替え）。`amount` は重ねる濃さ（0..1）。
+   * `null` で外す。形・位置は渡した物のまま（ふつうは今の書き割りと同じ）。
+   */
+  setBackdropFade(next: BackdropDef | null, amount: number): void;
   /**
    * マップの外にある遮蔽体を差し替える（DEC-154）。キャラなど。
    * 動いたら `markSunDirty()` を呼ぶ。呼ばないと焼き直さない。
@@ -443,7 +452,6 @@ export interface Mep3DScene {
 interface ObjectLayer {
   id: string;
   name: string;
-  collision: boolean;
   properties: Record<string, number | boolean | string>;
     items: Array<{
       id: string;
@@ -1195,6 +1203,22 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
   const materials = new Map<string, ShaderMaterial>();
   /** 太陽の深度を焼く相手（DEC-145）。旧方式の影メッシュや補助線と見分けるため。 */
   const tileMaterials = new Set<ShaderMaterial>();
+  /** 使い回すメッシュが使っているマテリアルを、前のシーンの手元からこのシーンへ移す（DEC-447）。 */
+  const claimKeptMaterials = (object: Object3D) => {
+    if (!carried) return;
+    object.traverse((node) => {
+      const own = (node as Mesh).material;
+      for (const material of Array.isArray(own) ? own : own ? [own] : []) {
+        for (const [key, handed] of carried.materials) {
+          if (handed !== material) continue;
+          carried.materials.delete(key);
+          materials.set(key, handed);
+          tileMaterials.add(handed);
+          break;
+        }
+      }
+    });
+  };
   const materialFor = (
     materialId: string,
     tilesetId: string,
@@ -1464,17 +1488,21 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
 
   let occluderAtlas: OccluderAtlas | null = null;
 
+  /** 板を光源へ寄せる長さ（ワールド。DEC-470 / DEC-471）。`lighting.pointShadowShift`（絵の画素）から。 */
+  const occluderNudge = () => {
+    const px = Number.isFinite(lighting.pointShadowShift) ? lighting.pointShadowShift : LIGHTING_DEFAULTS.pointShadowShift;
+    return (px / (map.grid?.tilePx ?? 32)) * unit;
+  };
   const applyOccluders = () => {
     fillOccluderUniforms(occluders, emittingPointLights(pointLights), unit, occluderBuf);
     for (const material of materials.values()) {
-      applyOccluderUniforms(material, occluderBuf, occluderAtlas?.texture ?? null, 0.5);
+      applyOccluderUniforms(material, occluderBuf, occluderAtlas?.texture ?? null, 0.5, occluderNudge());
     }
   };
 
   const group = new Group();
   group.name = map.name;
 
-  const collision = new Set<string>();
   const objects = new Map<string, ObjectLayer>();
   const animated: AnimatedBatch[] = [];
   /**
@@ -1625,7 +1653,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
   const pendingAdopt: Array<{ group: Group; object: Object3D }> = [];
 
   for (const layer of map.layers) {
-    if (layer.collision) collectCells(layer.batches, collision);
     if (layer.kind === 'object') objects.set(layer.id, describeObjectLayer(layer));
     if (isContainerKind(layer.kind) || layer.kind === 'object') continue;
     // 見えないレイヤーは形を作らない（DEC-270）。目を戻したときに組み直す。
@@ -1653,6 +1680,10 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       const kept = reusable ? carried?.meshes.get(sig) : undefined;
       if (kept) {
         carried?.meshes.delete(sig);
+        // 使い回すメッシュのマテリアルも**このシーンの持ち物にする**（DEC-447）。
+        // 持ち物の一覧（`materials`）に無いと、光・霧・点光源の差し替えがそのメッシュだけ届かず、
+        // 時間帯を切り替えたあとの組み直しで、前の時間帯の明るさが残った。
+        claimKeptMaterials(kept.object);
         pendingAdopt.push({ group: layerGroup, object: kept.object });
         meshCache.set(sig, kept);
         drawCalls += 1;
@@ -1725,6 +1756,10 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
   // 当てにならなくなり、**大きな物ほど落ちる**。書き割りは 1 枚しかないので、常に描いてよい。
   backdrop.mesh.frustumCulled = false;
   group.add(backdrop.mesh);
+  // 時間帯の切り替えで次の絵を重ねる 2 枚目（GS-222）。ふだんは出さない。
+  const fadeBackdrop = createBackdrop({ fade: true });
+  fadeBackdrop.mesh.frustumCulled = false;
+  group.add(fadeBackdrop.mesh);
   // 光の玉（DEC-314）。点光源の姿。地形と同じ入れ物に入れるので水へも映る。
   const lightBulbs = createLightBulbs();
   lightBulbs.setLights(pointLights, unit);
@@ -1923,6 +1958,9 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       material.uniforms.lightIntensity.value = shown.intensity;
       material.uniforms.lightWrap.value = shown.wrap;
       material.uniforms.lightBillboard.value = shown.billboard;
+      // 光の色（DEC-442）。環境光と日向（直射）。
+      if (material.uniforms.lightAmbientColor) lightColor(shown.ambientColor, material.uniforms.lightAmbientColor.value as Color);
+      if (material.uniforms.lightSunColor) lightColor(shown.sunColor, material.uniforms.lightSunColor.value as Color);
     }
   };
 
@@ -1947,6 +1985,15 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     }
   };
 
+  // 前のシーンから受け取ったマテリアル（DEC-275）は、**前のシーンの光のまま**届く。
+  // このシーンの光（`setLighting` が覚えている値）と食い違うと、`setLighting` が「同じ」と見て当て直さず、
+  // 時間帯を切り替えたあとの組み直しで前の時間帯の明るさが残った（DEC-447）。ここで一度当て直す。
+  if (carried) {
+    applyLightingUniforms();
+    applyPointLightUniforms();
+    applyFogUniforms();
+  }
+
   let elapsed = 0;
   /** 持ち物を次へ渡したか（DEC-275）。渡したら `dispose` で捨てない。 */
   let handedOver = false;
@@ -1955,7 +2002,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     group,
     map,
     assets,
-    collision,
     objects,
     properties: propertiesToRecord(map.properties),
     get lighting() {
@@ -1974,15 +2020,41 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
         next.intensity === lighting.intensity &&
         next.wrap === lighting.wrap &&
         next.billboard === lighting.billboard &&
+        next.ambientColor === lighting.ambientColor &&
+        next.sunColor === lighting.sunColor &&
         next.blockShadow === lighting.blockShadow &&
         next.blockShadowStrength === lighting.blockShadowStrength &&
         next.cloudShadow === lighting.cloudShadow &&
         next.cloudShadowAmount === lighting.cloudShadowAmount &&
         next.cloudShadowScale === lighting.cloudShadowScale &&
-        next.cloudShadowSpeed === lighting.cloudShadowSpeed;
+        next.cloudShadowSpeed === lighting.cloudShadowSpeed &&
+        next.pointShadowShift === lighting.pointShadowShift;
       if (same) return;
+      // 配置光源の影の寄せ（DEC-471）が変わったら遮光体の uniform を書き直す。形は組み直さない。
+      const nudgeChanged = next.pointShadowShift !== lighting.pointShadowShift;
+      // 影の**形**（向き・出すか）が同じなら組み直さない（GS-222）。明るさ・光の色・影の濃さ・雲は
+      // uniform を書くだけ——時間帯の切り替えは毎フレームここを通る。
+      const shapeSame =
+        next.azimuth === lighting.azimuth &&
+        next.elevation === lighting.elevation &&
+        blockShadowsOn(next) === blockShadowsOn(lighting);
       lighting = next;
       applyLightingUniforms();
+      if (nudgeChanged) applyOccluders();
+      if (shapeSame) {
+        const shown = viewLighting();
+        floorShadow?.traverse((node) => {
+          const uniforms = ((node as Mesh).material as ShaderMaterial | undefined)?.uniforms;
+          if (!uniforms?.lightAmbient) return;
+          uniforms.lightAmbient.value = shown.ambient;
+          uniforms.lightIntensity.value = shown.intensity;
+          uniforms.lightWrap.value = shown.wrap;
+          if (uniforms.shadowStrength) uniforms.shadowStrength.value = Math.min(1, blockShadowStrength(shown));
+        });
+        // 太陽の影の濃さと雲の影（DEC-145 / DEC-218）。深度は焼き直さない。
+        applySunShadowUniforms();
+        return;
+      }
       rebuildShadows();
     },
     setPointLights(lights: PointLightDef[]) {
@@ -2045,6 +2117,12 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       if (!lightWallTargets.includes(material)) lightWallTargets.push(material);
       applyLightWallUniforms(material, lightWalls, map.grid?.unit ?? 1);
     },
+    detachMaterial(material: ShaderMaterial) {
+      const mask = shadowMaskTargets.indexOf(material);
+      if (mask >= 0) shadowMaskTargets.splice(mask, 1);
+      const wall = lightWallTargets.indexOf(material);
+      if (wall >= 0) lightWallTargets.splice(wall, 1);
+    },
     setActorOccluder(state: ActorOccluder | null) {
       for (const material of materials.values()) {
         const on = material.uniforms.mepActorOn;
@@ -2075,6 +2153,14 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       const pixel = unit / (map.grid?.tilePx ?? 32);
       for (const material of materials.values()) applySunActors(material, list, direction, facing, pixel);
       for (const material of extra) applySunActors(material, list, direction, facing, pixel);
+    },
+    setBackdropFade(next, amount) {
+      if (!next || amount <= 0) {
+        fadeBackdrop.update(undefined, 0, 0, unit);
+        return;
+      }
+      fadeBackdrop.update(next, map.grid?.width ?? 40, map.grid?.depth ?? map.grid?.width ?? 40, unit);
+      fadeBackdrop.setOpacity(amount);
     },
     setView(next: GameViewDef) {
       map.view = { ...next };
@@ -2252,6 +2338,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       if (!handedOver) sunDepthMaterials.clear();
       sunShadow.dispose();
       backdrop.dispose();
+      fadeBackdrop.dispose();
       lightBulbs.dispose();
       dropFloorShadow();
     },
@@ -2886,7 +2973,6 @@ function describeObjectLayer(layer: LayerDef): ObjectLayer {
   return {
     id: layer.id,
     name: layer.name,
-    collision: layer.collision === true,
     properties: propertiesToRecord(layer.properties),
     items: (layer.objects ?? []).map((entry) => ({
       id: entry.id,

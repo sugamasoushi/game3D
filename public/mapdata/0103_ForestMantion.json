@@ -1,6 +1,6 @@
 {
   "format": "mep3d-map",
-  "version": 2,
+  "version": 3,
   "name": "untitled",
   "grid": {
     "tilePx": 32,
@@ -248,7 +248,7 @@
         "shading": "lambert",
         "alphaTest": 0,
         "transparent": false,
-        "side": "front",
+        "side": "double",
         "depthWrite": true
       },
       {
@@ -25016,6 +25016,223 @@
     "cloudShadowScale": 0.03,
     "cloudShadowSpeed": 0.021
   },
+  "pointLights": [
+    {
+      "id": "光源レイヤー_1",
+      "name": "光源レイヤー 1",
+      "kind": "group",
+      "visible": true,
+      "guides": true,
+      "x": 0,
+      "y": 0,
+      "z": 0,
+      "color": "#ffd9a0",
+      "intensity": 0.7,
+      "range": 6
+    },
+    {
+      "id": "light_1",
+      "name": "光源 1",
+      "kind": "light",
+      "parent": "光源レイヤー_1",
+      "visible": true,
+      "guides": true,
+      "x": 5.53125,
+      "y": 2.59375,
+      "z": 7.21875,
+      "color": "#ffd9a0",
+      "intensity": 5,
+      "range": 3.1875,
+      "yaw": 0,
+      "pitch": 0,
+      "cone": 40,
+      "width": 2,
+      "height": 1.5,
+      "bulb": 0,
+      "bulbGain": 1,
+      "pulseSpeed": 1,
+      "pulseAmount": 0.45
+    },
+    {
+      "id": "light_2",
+      "name": "光源 1 のコピー",
+      "kind": "light",
+      "parent": "光源レイヤー_1",
+      "visible": true,
+      "guides": true,
+      "x": 9.53125,
+      "y": 2.59375,
+      "z": 7.375,
+      "color": "#ffd9a0",
+      "intensity": 5,
+      "range": 3.1875,
+      "yaw": 0,
+      "pitch": 0,
+      "cone": 40,
+      "width": 2,
+      "height": 1.5,
+      "bulb": 0,
+      "bulbGain": 1,
+      "pulseSpeed": 1,
+      "pulseAmount": 0.45
+    },
+    {
+      "id": "light_3",
+      "name": "光源 1 のコピー 2",
+      "kind": "light",
+      "parent": "光源レイヤー_1",
+      "visible": true,
+      "guides": true,
+      "x": 14.5,
+      "y": 2.59375,
+      "z": 7.375,
+      "color": "#ffd9a0",
+      "intensity": 5,
+      "range": 3.1875,
+      "yaw": 0,
+      "pitch": 0,
+      "cone": 40,
+      "width": 2,
+      "height": 1.5,
+      "bulb": 0,
+      "bulbGain": 1,
+      "pulseSpeed": 1,
+      "pulseAmount": 0.45
+    },
+    {
+      "id": "light_4",
+      "name": "光源 1 のコピー 3",
+      "kind": "light",
+      "parent": "光源レイヤー_1",
+      "visible": true,
+      "guides": true,
+      "x": 18.4375,
+      "y": 2.59375,
+      "z": 7.375,
+      "color": "#ffd9a0",
+      "intensity": 5,
+      "range": 3.1875,
+      "yaw": 0,
+      "pitch": 0,
+      "cone": 40,
+      "width": 2,
+      "height": 1.5,
+      "bulb": 0,
+      "bulbGain": 1,
+      "pulseSpeed": 1,
+      "pulseAmount": 0.45
+    }
+  ],
+  "lightingPresets": [
+    {
+      "id": "morning",
+      "name": "朝",
+      "enabled": true,
+      "azimuth": 225,
+      "elevation": 50,
+      "ambient": 1,
+      "intensity": 1.2,
+      "wrap": 0,
+      "billboard": 1,
+      "ambientColor": "#c7e9ff",
+      "sunColor": "#d8ff9e",
+      "lights": 1,
+      "blockShadow": true,
+      "blockShadowStrength": 1.46,
+      "cloudShadow": true,
+      "cloudShadowAmount": 0.78,
+      "cloudShadowScale": 0.03,
+      "cloudShadowSpeed": 0.021,
+      "fog": true,
+      "fogColor": "adffd9",
+      "fogNear": 35,
+      "fogFar": 128,
+      "fogMax": 0.62,
+      "skyGain": 1,
+      "backdrop": "forest_distant_06.png"
+    },
+    {
+      "id": "day",
+      "name": "昼",
+      "enabled": true,
+      "azimuth": 225,
+      "elevation": 50,
+      "ambient": 1,
+      "intensity": 1,
+      "wrap": 0,
+      "billboard": 1,
+      "ambientColor": "#ffffff",
+      "sunColor": "#feffc7",
+      "lights": 1,
+      "blockShadow": true,
+      "blockShadowStrength": 1.46,
+      "cloudShadow": true,
+      "cloudShadowAmount": 0.78,
+      "cloudShadowScale": 0.03,
+      "cloudShadowSpeed": 0.021,
+      "fog": true,
+      "fogColor": "adffd9",
+      "fogNear": 35,
+      "fogFar": 128,
+      "fogMax": 0.62,
+      "skyGain": 1,
+      "backdrop": "forest_distant_06.png"
+    },
+    {
+      "id": "evening",
+      "name": "夕",
+      "enabled": true,
+      "azimuth": 180,
+      "elevation": 20,
+      "ambient": 0.3,
+      "intensity": 2,
+      "wrap": 0,
+      "billboard": 1.9999999999999998,
+      "ambientColor": "#b4c6fe",
+      "sunColor": "#ffa53d",
+      "lights": 0.9999999999999998,
+      "blockShadow": true,
+      "blockShadowStrength": 1.46,
+      "cloudShadow": true,
+      "cloudShadowAmount": 0.78,
+      "cloudShadowScale": 0.03,
+      "cloudShadowSpeed": 0.021,
+      "fog": true,
+      "fogColor": "adffd9",
+      "fogNear": 35,
+      "fogFar": 128,
+      "fogMax": 0.62,
+      "skyGain": 0.4,
+      "backdrop": "forest_distant_06.png"
+    },
+    {
+      "id": "night",
+      "name": "夜",
+      "enabled": true,
+      "azimuth": 130,
+      "elevation": 40,
+      "ambient": 0.09999999999999999,
+      "intensity": 0.19999999999999996,
+      "wrap": 0,
+      "billboard": 0.3,
+      "ambientColor": "#858dff",
+      "sunColor": "#ffffff",
+      "lights": 1,
+      "blockShadow": true,
+      "blockShadowStrength": 0.4999999999999999,
+      "cloudShadow": false,
+      "cloudShadowAmount": 0.78,
+      "cloudShadowScale": 0.03,
+      "cloudShadowSpeed": 0.021,
+      "fog": true,
+      "fogColor": "020418",
+      "fogNear": 25,
+      "fogFar": 51,
+      "fogMax": 0.62,
+      "skyGain": 0.1,
+      "backdrop": "forest_distant_06.png"
+    }
+  ],
   "camera": {
     "background": "000000",
     "tilt": true,
@@ -25036,48 +25253,30 @@
       "count": 7
     }
   },
-  "fieldEffects": [
-    {
-      "id": "dapple1",
-      "name": "木漏れ日",
-      "kind": "dapple",
-      "on": true,
-      "amount": 0.45,
-      "speed": 0.02,
-      "scale": 0.14,
-      "color": "#fff3cf",
-      "lift": 0,
-      "thick": 1,
-      "warp": 0,
-      "mirror": 0,
-      "face": 0.22,
-      "dye": 0,
-      "cast": false
-    }
-  ],
   "screenEffects": [
     {
       "id": "dapple1",
       "name": "木漏れ日1",
       "kind": "dapple",
       "amount": 0.4,
-      "thickness": 0.5
+      "thickness": 0.5,
+      "showIn": "morning,day"
     }
   ],
   "editor": {
     "camera": {
       "target": [
-        -4.400480385658298,
-        3.8258948611034325,
-        27.70339696139792
+        6.357955284966673,
+        2.3486649708689558,
+        7.550405145482449
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 10,
+      "distance": 9.5,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "objects",
+    "activeLayer": "光源レイヤー_1",
     "brush": {
       "shape": "wall",
       "rotation": 0,
@@ -25157,12 +25356,11 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [
         {
-          "name": "Walkable",
-          "type": "boolean",
-          "value": true
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
         }
       ],
       "batches": [
@@ -44719,9 +44917,14 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "overlay": true,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_7-floor-0",
@@ -48765,7 +48968,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": []
     },
@@ -48776,12 +48978,11 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [
         {
-          "name": "NoEntry",
-          "type": "boolean",
-          "value": true
+          "name": "Hit",
+          "type": "string",
+          "value": "block"
         }
       ],
       "batches": [
@@ -53657,8 +53858,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_9-wall-0",
@@ -55706,7 +55912,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -55844,7 +56049,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": []
     },
@@ -55855,9 +56059,14 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "overlay": true,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "decoration-wall-0",
@@ -55926,8 +56135,13 @@
       "parent": "森の城_12",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "森の城_12_2-wall-0",
@@ -63114,8 +63328,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_12-wall-0",
@@ -64008,8 +64227,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_11_2-wall-0",
@@ -70615,8 +70839,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_9_2-wall-0",
@@ -72116,17 +72345,16 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [
-        {
-          "name": "NoEntry",
-          "type": "boolean",
-          "value": true
-        },
         {
           "name": "Hidden",
           "type": "boolean",
           "value": true
+        },
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "block"
         }
       ],
       "batches": [
@@ -74306,19 +74534,7 @@
       "parent": "グループ_1",
       "visible": true,
       "opacity": 1,
-      "collision": true,
-      "properties": [
-        {
-          "name": "Walkable",
-          "type": "boolean",
-          "value": true
-        },
-        {
-          "name": "Collision",
-          "type": "boolean",
-          "value": true
-        }
-      ],
+      "properties": [],
       "batches": [
         {
           "id": "タイルマップレイヤー_4-wall-0",
@@ -77162,9 +77378,14 @@
       "parent": "グループ_1",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "overlay": true,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_10-floor-0",
@@ -77295,7 +77516,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -77308,7 +77528,7 @@
           "collision": false,
           "properties": [
             {
-              "name": "Event",
+              "name": "Id",
               "type": "string",
               "value": "EVENT010301"
             }
@@ -77319,19 +77539,19 @@
           "points": [
             [
               11,
-              6
+              5
             ],
             [
-              13,
-              6
+              13.026775042783886,
+              5
             ],
             [
-              13,
-              7
+              13.026775042783886,
+              6.380885576209481
             ],
             [
               11,
-              7
+              6.380885576209481
             ]
           ]
         },
@@ -77344,7 +77564,7 @@
           "collision": false,
           "properties": [
             {
-              "name": "Event",
+              "name": "Id",
               "type": "string",
               "value": "EVENT010302"
             }
@@ -77380,7 +77600,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -77393,9 +77612,14 @@
           "collision": false,
           "properties": [
             {
-              "name": "Sprite",
+              "name": "Character",
               "type": "string",
-              "value": "enemy02.png#32x32#7"
+              "value": "slime"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "slime"
             },
             {
               "name": "EnemyData",
@@ -77414,16 +77638,21 @@
         },
         {
           "id": "obj_1",
-          "name": "男性",
+          "name": "男冒険者",
           "kind": "point",
           "visible": true,
           "guides": true,
           "collision": false,
           "properties": [
             {
-              "name": "Sprite",
+              "name": "Character",
               "type": "string",
-              "value": "pipo-charachip029.png#32x32#1"
+              "value": "adult_male_swordsman_male_01"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "1"
             }
           ],
           "space": "plane",
@@ -77437,16 +77666,21 @@
         },
         {
           "id": "obj_2",
-          "name": "pipo-charachip030",
+          "name": "女冒険者",
           "kind": "point",
           "visible": true,
           "guides": true,
           "collision": false,
           "properties": [
             {
-              "name": "Sprite",
+              "name": "Character",
               "type": "string",
-              "value": "pipo-charachip030.png#32x32#1"
+              "value": "adult_female_adventurer_01"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "2"
             }
           ],
           "space": "plane",
@@ -77467,19 +77701,14 @@
           "collision": false,
           "properties": [
             {
-              "name": "Sprite",
+              "name": "Character",
               "type": "string",
-              "value": "lamy_32_40.png#32x42#0"
+              "value": "lamyNPC"
             },
             {
-              "name": "HideIf",
+              "name": "Id",
               "type": "string",
-              "value": "EVENT010301"
-            },
-            {
-              "name": "Standby",
-              "type": "boolean",
-              "value": true
+              "value": "lamyNPC"
             }
           ],
           "space": "plane",
@@ -77494,13 +77723,22 @@
       ]
     },
     {
-      "id": "宝箱(閉)",
-      "name": "宝箱(閉)",
-      "kind": "prefab",
+      "id": "グループ_2",
+      "name": "宝箱",
+      "kind": "group",
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
+      "properties": [],
+      "batches": []
+    },
+    {
+      "id": "宝箱(閉)",
+      "name": "宝箱(閉)",
+      "kind": "prefab",
+      "parent": "グループ_2",
+      "visible": true,
+      "opacity": 1,
       "properties": [],
       "batches": []
     },
@@ -77511,13 +77749,7 @@
       "parent": "宝箱(閉)",
       "visible": true,
       "opacity": 1,
-      "collision": true,
       "properties": [
-        {
-          "name": "Collision",
-          "type": "boolean",
-          "value": true
-        },
         {
           "name": "Shade",
           "type": "boolean",
@@ -77526,7 +77758,7 @@
         {
           "name": "Id",
           "type": "string",
-          "value": "Chest_Map0103"
+          "value": "Chest_Map0103_閉"
         }
       ],
       "batches": [
@@ -77566,10 +77798,9 @@
       "id": "宝箱(開)",
       "name": "宝箱(開)",
       "kind": "prefab",
-      "parent": "",
+      "parent": "グループ_2",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": []
     },
@@ -77580,27 +77811,21 @@
       "parent": "宝箱(開)",
       "visible": true,
       "opacity": 1,
-      "collision": true,
       "properties": [
-        {
-          "name": "Collision",
-          "type": "boolean",
-          "value": true
-        },
         {
           "name": "Shade",
           "type": "boolean",
           "value": true
         },
         {
-          "name": "Opened",
-          "type": "boolean",
-          "value": true
-        },
-        {
           "name": "Id",
           "type": "string",
-          "value": "Chest_Map0103"
+          "value": "Chest_Map0103_開"
+        },
+        {
+          "name": "StartHidden",
+          "type": "boolean",
+          "value": true
         }
       ],
       "batches": [
@@ -77643,7 +77868,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -77654,7 +77878,13 @@
           "visible": true,
           "guides": true,
           "collision": false,
-          "properties": [],
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "click010301"
+            }
+          ],
           "space": "solid",
           "y": 1,
           "height": 1,
@@ -77676,8 +77906,60 @@
               26
             ]
           ]
+        },
+        {
+          "id": "obj_2",
+          "name": "Chest_Map0103",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "Chest_Map0103"
+            }
+          ],
+          "space": "solid",
+          "y": 0,
+          "height": 1,
+          "points": [
+            [
+              1,
+              5
+            ],
+            [
+              2,
+              5
+            ],
+            [
+              2,
+              6
+            ],
+            [
+              1,
+              6
+            ]
+          ]
         }
       ]
+    },
+    {
+      "id": "光源レイヤー_1",
+      "name": "光源レイヤー 1",
+      "kind": "light",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [
+        {
+          "name": "ShowIn",
+          "type": "string",
+          "value": "morning,day,evening,night"
+        }
+      ],
+      "batches": []
     }
   ],
   "stats": {

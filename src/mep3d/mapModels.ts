@@ -711,6 +711,10 @@ export function createMapModels(options: MapModelsOptions = {}): MapModels {
       ambient.intensity = first.ambient;
       sky.intensity = first.sky;
       sun.intensity = first.sun;
+      // 光の色（DEC-442）。環境光と空は環境光の色、日差しは日向の色を元の色に掛ける。
+      ambient.color.set(settings.ambientColor);
+      sky.color.set(settings.ambientColor);
+      sun.color.set(0xfff2e0).multiply(new Color(settings.sunColor));
       // 光の向きはマップの方向光と揃える。影は落とさないので距離は何でもよい。
       sun.position.copy(towards).multiplyScalar(100);
       sun.target.position.set(0, 0, 0);

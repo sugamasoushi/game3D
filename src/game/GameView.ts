@@ -28,17 +28,20 @@ import { MAX_SUN_ACTORS, type SunActor } from '../mep3d/material';
 import { collectMapModels, createMapModels, type MapModels } from '../mep3d/mapModels';
 import { createSkyBinder } from '../mep3d/camera';
 import { createTiltShiftPass } from '../mep3d/tiltshift';
-import { createFieldEffects, readFieldVolumes } from '../view/fieldEffects';
+import { createFieldEffects, mergeFieldVolumes, readFieldVolumes } from '../view/fieldEffects';
 import { CAMERA_SHOT_DEFAULTS, applyCameraShot, createCameraShots, type CameraShot } from '../view/cameraShots';
-import { createScreenEffects } from '../view/screenEffects';
+import { blendScreenEffects, createScreenEffects, screenEffectsAtTime } from '../view/screenEffects';
 import { createEditorGrid } from '../view/editorGrid';
+import { backdropFade, blendTimeLook, layerShownAtTime, readShowIn, timeLookOf, withTimeLook, type TimeLook } from '../mep3d/lightingPresets';
 import type { AssetsDef, ChipStretch, FaceName, MapDef } from '../mep3d/types';
-import { buildCollision, type CollisionMap, type LayerVerdict } from '../mep3d/collision';
-import { createCollisionWires, type CollisionWires } from '../mep3d/collisionWires';
+import { createPhysicsWorld, loadRapier, type PhysicsBody, type PhysicsWorld } from './physics';
+import { createHitWires, type HitWires } from '../mep3d/hitWires';
+import type { HitRole } from '../mep3d/hitRules';
 import { createCameraRig, HD2D_PITCH, HD2D_YAW } from './cameraRig';
 import { battleStageMarker } from './battleStageMarker';
 import {
   cameraNumber,
+  characterScaleOf,
   CAMERA_DISTANCE_PROPERTY_NAME,
   CAMERA_PITCH_PROPERTY_NAME,
   CAMERA_ORTHO_PROPERTY_NAME,
@@ -48,16 +51,20 @@ import {
   scrollRectOf,
 } from '../mep3d/mapCamera';
 import { createInput } from './input';
-import { createPlayer, type Facing, type Player } from './player';
+import { BODY_TALL_CELLS, BODY_WIDTH_HALF, createPlayer, type Facing, type Player } from './player';
 import { PartyTrail } from './partyTrail';
-import { loadActorBook, sheetOf, wanderOf, WANDER_DEFAULT, type WanderDef } from './actors';
+import { actorSheet, loadActorBook, sheetOf } from './actors';
+import { characterBookReady, characterSheet, PLAYER_CHARACTER } from './characters';
+import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from './mapNpcs';
+import type { IfCondition } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
 import { heavyOn } from './quality';
 import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { withoutHiddenLayers } from './hiddenLayers';
-import { openedLayerShown, readOpenedLayers, withOpenedLayersBuilt } from './openedLayers';
+import { backdropLoaded, preloadBackdrop } from '../mep3d/backdrop';
+import { readSwitchLayers, switchLayerShown, withStartHiddenBuilt } from './layerSwitch';
 import {
   cameraCue,
   createCuePlayer,
@@ -66,7 +73,7 @@ import {
   type CameraIllustrationSample,
 } from './cameraCues';
 import { createBattleCameraPlayer, type BattleCamera } from './battle/battleCamera';
-import { entryForFile, type MapEntry } from './mapIndex';
+import { entryForFile, mapKeyForFile, type MapEntry } from './mapIndex';
 import { battleFormationSlots, chooseBattleFormation } from './battle/book';
 
 /** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
@@ -86,8 +93,11 @@ const PAN_SPEED = 8;
 const PLAY_DISTANCE = 18;
 /** 出発点に使うオブジェクトの名前（GC-14）。 */
 const SPAWN_OBJECT = 'default';
-/** 主人公の姿（`actors.json` のキー。GS-16）。 */
-const PLAYER_ACTOR = 'meina';
+/**
+ * その人のフィールドの絵（画像のファイル名。2026-10-08）。キャラクターの `sheet` から引く。
+ * 台帳に無い人・絵の無い人は空（`sheetOf` が既定の絵で出してコンソールに書く）。
+ */
+const sheetKeyOf = (who: string): string => characterSheet(who) ?? '';
 /**
  * 話しかけられる範囲は**マスで数える**（GS-117。もとは距離 1.4 マス＋正面 45 度の網）。
  * 目の前の 1 マスと自分のマス（`npcInFront`）。体の太さや立ち位置のずれに左右されない。
@@ -131,8 +141,8 @@ export interface GameStatus {
   showCollision: boolean;
   /** 隠面除去（N-10）で落とした面の数。ゲームでは**常に効かせる**（DEC-267）。 */
   hiddenFaces: number;
-  /** 足場の面数・塞ぐマス数と、レイヤーごとの解釈。 */
-  collision: { surfaces: number; blockers: number; layers: LayerVerdict[] } | null;
+  /** 当たりの三角形の数（役割ごと。GS-239）。 */
+  collision: Record<HitRole, number> | null;
   loading: boolean;
   error: string;
 }
@@ -269,6 +279,11 @@ export interface GameView {
   removeNpc(id: string): boolean;
   /** その名前の NPC がこのマップに居るか。 */
   hasNpc(id: string): boolean;
+  /**
+   * 隠していた NPC を**マップに置いた場所に**出し直す（GS-222）。時間帯が変わって出す番になった人に使う。
+   * 隠していなければ何もしない（false）。
+   */
+  restoreNpc(id: string): boolean;
   /** NPC の居る所と向き（マス。小数）。居なければ null。 */
   npcAt(id: string): { x: number; y: number; z: number; facing: WalkDir } | null;
   /**
@@ -389,6 +404,17 @@ export interface GameView {
    */
   setCellPicker(handler: ((cell: { x: number; y: number; z: number }) => void) | null): void;
   /**
+   * 時間帯を切り替える（GS-222）。光のプリセットの id（'' は時間帯なし＝基準）。
+   * 暗転せず `ms` かけて見た目を混ぜて移る（0 ならその場で）。マップを読み直しても同じ時間帯のまま。
+   * マップにその時間帯のプリセットが無い・使わない（`enabled: false`）ときは基準の光。
+   */
+  setTime(time: string, ms?: number): void;
+  /**
+   * 出し分け（`ShowIn` / `Effect.<id>`）に使っている時間帯（GS-222）。切り替えの**半分**で次へ移る。
+   * 使うプリセットが無いマップでは ''（基準＝すべて出す）。NPC の出し入れはこれで決める。
+   */
+  shownTime(): string;
+  /**
    * マップに置いた**点オブジェクトの名前**でプレイヤーを置き直す（GS-17）。
    * 高さは出発点と同じで、その柱の足場に乗せる。見つからなければ false。
    */
@@ -464,6 +490,13 @@ export const STAGE_COMMAND_FIGURE = { x: 0.10, depth: 2, scale: 1, moveS: 0.25, 
 const STAGE_COMMAND_RENDER_ORDER = 10;
 /** 隊列を描く順の始まり（GS-190）。同じ場所に重なったときだけ効く（深度が同じなら後に描いた方が上）。 */
 const PARTY_RENDER_ORDER = 50;
+/**
+ * 隊列の 2 人目以降を深度で奥へずらす量（1 人ぶん。GS-220）。同じ場所に重なると板どうしの深度が
+ * ほぼ同じになり、どちらが上かは計算の誤差しだい——3 人目だけ主人公の上に出ていた。
+ * 並びの順に少しずつ奥へ置けば、重なったときは必ず 主人公 → 2 人目 → 3 人目 … の順で手前に出る。
+ * ずらすのは深度の数刻みだけなので、前後に離れて立っているときの見え方（手前の人が上）は変わらない。
+ */
+const PARTY_DEPTH_STEP = 4;
 
 /**
  * 画面に入る範囲の外でも、この距離（マス）までは太陽の影を落とす人に数える（GS-96）。
@@ -476,7 +509,7 @@ export interface GameViewOptions {
   /** 現在の編成。2人目以降をフィールドで主人公に追従させる。 */
   party?: () => readonly string[];
   /**
-   * マップの `ShowIf` / `HideIf` / `PoseIf` を見るための問い合わせ先。
+   * NPC の出す条件（台帳 `mapNpcs.json`）やマップの `PoseIf` を見るための問い合わせ先。
    * **記録は React 側が持つ**ので、3D 側は聞きに行くだけにする（構想 §5.3）。
    * `owner` はその物の名前（マップの `Id`）——`self:開けた` のような
    * **その物自身の覚え**を引くのに要る（GS-134）。
@@ -484,11 +517,21 @@ export interface GameViewOptions {
    */
   switchOn?: (key: string, owner?: string) => boolean;
   /**
-   * **組む前に**マップを整える口（GS-180）。マップに入るたびに 1 回呼ぶ。
-   * 入るたびに出る場所・出るかどうかが変わる宝箱を、ここで抜いておく——
+   * NPC の出す条件（台帳 `mapNpcs.json` の `showWhen`。GS-230）を満たすか。書き方はイベントの条件と同じ。
+   * `owner` はその 1 体の名前（覚えはその 1 体の物）。**記録は React 側が持つ**ので聞きに行く。
+   */
+  npcMeets?: (when: IfCondition[], owner: string) => boolean;
+  /**
+   * **組む前に**マップを整える口（GS-180 / GS-233）。マップに入るたびに 1 回呼ぶ。
+   * 入るたびに出るかどうかが変わる物（イベントの `respawn` / `chance`）を、ここで抜いておく——
    * 組んだ後に隠すと、当たりが見えない壁として残る。返したマップを描画にも当たりにも使う。
    */
   prepareMap?: (name: string, map: MapDef) => MapDef;
+  /**
+   * レイヤーの出し入れの覚え（GS-233。命令 `layer`）。`map`（ファイル名）でその `Id` を出す／隠すと決めてあれば
+   * true / false、決めていなければ undefined（最初の形 = `StartHidden` に従う）。記録は React 側が持つ。
+   */
+  layerState?: (map: string, id: string) => boolean | undefined;
 }
 
 export function createGameView(
@@ -534,13 +577,24 @@ export function createGameView(
   let built: Mep3DScene | null = null;
   /** マップに置いた 3D（DEC-288）。絵として重ねるだけ。 */
   let mapModels: MapModels | null = null;
-  let collision: CollisionMap | null = null;
   /**
-   * NPC を壁として足した当たり（GS-35）。**プレイヤーの更新にだけ**渡す。
-   * NPC 側には渡さない——イベントの歩きが人にぶつかって止まると、話がそこで詰まる。
+   * 当たり（GS-239）。物理エンジン Rapier の世界で、地形への問い合わせ（足場の高さ・はしご・登れる段差）にも答える。
+   * **元のマップから**組む（`Hidden` のレイヤーも当てる。GS-57）。マップを読むまでは null。
    */
-  let playerCollision: CollisionMap | null = null;
-  let wires: CollisionWires | null = null;
+  let collision: PhysicsWorld | null = null;
+  let playerBody: PhysicsBody | null = null;
+  /** NPC の体。最初に動かすときに作り、消すときに外す（GS-239）。 */
+  const npcBodies = new Map<string, PhysicsBody>();
+  /** 当たりの線（C キー）。形どおりの当たり（`hitWires.ts`。エディタと同じ見せ方）。 */
+  let wires: HitWires | null = null;
+  const dropPhysics = () => {
+    wires?.dispose();
+    wires = null;
+    playerBody = null;
+    npcBodies.clear();
+    collision?.dispose();
+    collision = null;
+  };
   let player: Player | null = null;
   let followerBook: Awaited<ReturnType<typeof loadActorBook>> = {};
   const followers = new Map<string, Player>();
@@ -579,6 +633,14 @@ export function createGameView(
     );
     members.forEach((actor, index) => {
       actor.group.renderOrder = PARTY_RENDER_ORDER + (members.length - 1 - index);
+      // 描く順だけでは誤差に負ける（GS-220）。並びの順に深度を奥へずらす。主人公（0 番）はずらさない。
+      const material = actor.bodyMaterial;
+      const units = index * PARTY_DEPTH_STEP;
+      if (material.polygonOffsetUnits !== units) {
+        material.polygonOffset = units > 0;
+        material.polygonOffsetFactor = 0;
+        material.polygonOffsetUnits = units;
+      }
     });
   };
   const resetFollowers = () => {
@@ -603,12 +665,12 @@ export function createGameView(
     for (const [id, actor] of followers) if (!ids.includes(id)) {
       actor.group.removeFromParent(); actor.dispose(); followers.delete(id);
     }
-    for (const id of ids) if (!followers.has(id) && followerBook[id]) {
-      const actor = createPlayer(unit, mapDef.grid?.tilePx ?? 32, followerBook[id]);
+    for (const id of ids) if (!followers.has(id) && actorSheet(followerBook, sheetKeyOf(id))) {
+      const actor = createPlayer(unit, mapDef.grid?.tilePx ?? 32, actorSheet(followerBook, sheetKeyOf(id))!, { scale: characterScaleOf(mapDef.properties) });
       actor.group.name = `follower:${id}`;
       actor.followAt(player.position, 0, rig.yaw);
       actor.face(player.facingNow());
-      actor.setLighting(mapDef.lighting ?? {}, litLights(mapDef), unit, built.cameraFx);
+      actor.setLighting(shownLighting(mapDef), shownLights(mapDef), unit, built.cameraFx);
       built.attachShadowMask(actor.bodyMaterial);
       built.bindLightWalls(actor.bodyMaterial);
       const field = built.shadowField();
@@ -616,14 +678,16 @@ export function createGameView(
       followers.set(id, actor);
       followerGroup.add(actor.group);
     }
-    partyTrail.advance(leaderPoint(unit), Math.max(1, ids.length) * 1.1);
+    // 間合いもキャラクターの大きさに合わせる（2026-10-11）。大きい人どうしが重ならないように。
+    const spacing = 1.1 * characterScaleOf(mapDef.properties);
+    partyTrail.advance(leaderPoint(unit), Math.max(1, ids.length) * spacing);
     layerParty();
     ids.forEach((id, index) => {
       const actor = followers.get(id);
       if (!actor) return;
       // イベントが置いた仲間はその場に留める（GS-184）。
       if (!pinnedFollowers.has(id)) {
-        const at = partyTrail.behind((index + 1) * 1.1);
+        const at = partyTrail.behind((index + 1) * spacing);
         // 向きは**主人公がそこを通ったときの向き**（GS-185）。歩いた向きから出すと、
         // 斜めに歩いたとき縦と横を行ったり来たりした。
         actor.followAt({ x: at.x * unit, y: at.y * unit, z: at.z * unit }, dt, rig.yaw, at.facing as Facing | undefined);
@@ -718,9 +782,6 @@ export function createGameView(
    */
   let cameraFollow = true;
 
-  /** 同じ高さと見なす差（マス）。体は 2 マスぶんあるので、その範囲を塞ぐ。 */
-  const NPC_LEVEL = 1.5;
-
   /**
    * そこに NPC が立っているか（GS-35）。`blockedAt` に足して、人をすり抜けないようにする。
    *
@@ -731,43 +792,38 @@ export function createGameView(
    * **すでに同じマスに立っているぶんは通す。** 置き場所がプレイヤーと重なっていると、
    * 四方が塞がって動けなくなる——出られなくなるより、その 1 人だけすり抜けるほうがまし。
    */
-  const npcBlocks = (x: number, y: number, z: number): boolean => {
-    if (!npcs.size || !player || !collision) return false;
-    // **イベント中はキャラ同士の当たりを解く**（GS-157）。殴られて後ろへ飛ぶ、
-    // 出てきた相手と同じマスに立つ、詰め寄る——どれも「人が邪魔で届かない」と絵が崩れる。
-    // 演出のあいだは人を書き割りとして扱い、終われば元どおり塞ぐ。
-    // 並行イベント（GS-43）は `busy` を立てないので、裏で何か動いていても塞いだまま。
-    if (useUi.getState().busy) return false;
-    const unit = collision.unit || 1;
-    const cx = Math.floor(x);
-    const cz = Math.floor(z);
-    const px = Math.floor(player.position.x / unit);
-    const pz = Math.floor(player.position.z / unit);
-    for (const npc of npcs.values()) {
-      const nx = Math.floor(npc.actor.position.x / unit);
-      const nz = Math.floor(npc.actor.position.z / unit);
-      if (cx !== nx || cz !== nz) continue;
-      if (Math.abs(y - npc.actor.position.y / unit) > NPC_LEVEL) continue;
-      if (px === nx && pz === nz) continue;
-      return true;
-    }
-    return false;
-  };
-
-  /** 当たりに NPC を足したもの。マップを読むたび作り直す。 */
-  const withNpcBodies = (base: CollisionMap): CollisionMap => ({
-    ...base,
-    blockedAt: (x, y, z) => base.blockedAt(x, y, z) || npcBlocks(x, y, z),
-    // 人は立っているマスを丸ごと塞ぐ（GS-116）。四角の体はそのマスへ重ならない。
-    solidCellAt: (x, y, z) => base.solidCellAt(x, y, z) || npcBlocks(x, y, z),
-  });
-  let mapDef: MapDef | null = null;
   /**
-   * そのマップで**実際に出す**配置光源（GS-173）。低負荷モードでは空——
-   * 光も光の玉も出さず、環境光だけで照らす。**間引きの判断はここだけ**で、
-   * 呼ぶ側（マップ・プレイヤー・NPC）は同じ一覧を受け取る。
+   * 体の四角が**芯として塞ぐマス**の範囲 `[最小, 最大]`（2026-10-11）。`half` は体の半幅（マス）。
+   * 倍率 1（半幅 0.5）なら中心が居るマス 1 つ——今までどおり。倍率 2 なら 2 マス。
+   * 人どうしの当たり・話しかけ・触れたの判定は、みなこの範囲で数える。
    */
-  const litLights = (map: MapDef | null) => (map && heavyOn('pointLights') ? (map.pointLights ?? []) : []);
+  const coreCells = (center: number, half: number): [number, number] => {
+    const inner = Math.max(0, half - 0.5);
+    if (inner === 0) return [Math.floor(center), Math.floor(center)];
+    return [Math.floor(center - inner + 1e-6), Math.floor(center + inner - 1e-6)];
+  };
+  const overlaps = (a: [number, number], b: [number, number]) => a[0] <= b[1] && b[0] <= a[1];
+  let mapDef: MapDef | null = null;
+  // 配置光源の間引き（GS-173）は `shownLights` が持つ。低負荷モードでは空——光も光の玉も出さない。
+  /**
+   * 時間帯（GS-222）。`time` は頼まれた時間帯、`look` はいま描いている見た目（切り替え中は混ぜた物）。
+   * **光を渡すときは必ず下の 2 つを通す**——マップの値を直に読むと、途中で出た人や
+   * 描画モードを変えたときだけ基準の光に戻る。
+   */
+  let time = '';
+  /** このマップで使わない時間帯の代わり（GS-223。`maps.json` の `time.fallback`）。 */
+  let timeFallback: Record<string, string> = {};
+  /** 時間帯の切り替えを頼んだ回数（GS-225）。絵を待っているあいだに次が来たら、古いほうは始めない。 */
+  let timeGen = 0;
+  let look: TimeLook | null = null;
+  /** 切り替えの途中。`swapped` は出し分けを次の時間帯へ移したか（半分で 1 回）。 */
+  let shift: { from: TimeLook; to: TimeLook; at: number; ms: number; swapped: boolean } | null = null;
+  /** 出し分けに使っている時間帯（半分で切り替わる）。 */
+  let shownTimeId = '';
+  const shownLighting = (map: MapDef) => look?.lighting ?? map.lighting ?? {};
+  const shownLights = (map: MapDef | null) => (map && heavyOn('pointLights') ? (look?.lights ?? map.pointLights ?? []) : []);
+  /** イベントの「レイヤーの出し入れ」（GS-233。元は宝箱の開け閉め GS-179）で頼まれた出し入れ。時間帯の出し分けと**両方**満たすときだけ出す。 */
+  const layerWants = new Map<string, boolean>();
   let buildGen = 0;
   let renderedFrames = 0;
   let disposed = false;
@@ -816,7 +872,8 @@ export function createGameView(
   };
 
   const paintBackground = () => {
-    sky.apply(mapDef?.camera);
+    // 空の絵と明るさは時間帯の見た目から（GS-222）。
+    sky.apply(look?.cameraFx ?? mapDef?.camera);
   };
 
   /**
@@ -947,12 +1004,18 @@ export function createGameView(
       // 入るたびに変わる宝箱（GS-180）を先に決める。描画にも当たりにもこのマップを使う。
       const map = options.prepareMap ? options.prepareMap(name, raw) : raw;
       await loadCameraCues();
-      battleSetup = (await entryForFile(name))?.battleStage;
+      const entry = await entryForFile(name);
+      battleSetup = entry?.battleStage;
+      // 使わない時間帯の代わり（GS-223）。マップごとの台帳の値。
+      timeFallback = entry?.time?.fallback ?? {};
       watch.lap('json');
       logMap(name, map);
       // キャラの絵の台帳（GS-16）と法線マップの台帳（GS-26）。
       // どちらも 1 回読んだら使い回すので、マップごとの待ちは無い。
-      const [book, files] = await Promise.all([loadActorBook(), loadFileIndex()]);
+      // 絵はキャラクターから引く（2026-10-08）ので、キャラクターの台帳も待つ。
+      // NPC の設定（2026-10-08。マップ＋1 体。出し方と動き）も一緒に待つ。引くのはこのマップの番号（`maps.json` のキー）。
+      const [book, files] = await Promise.all([loadActorBook(), loadFileIndex(), characterBookReady(), loadMapNpcs()]);
+      const npcSettings = mapNpcSettings(await mapKeyForFile(name));
       followerBook = book;
       if (typeof map.assets === 'string') {
         throw new Error('assets が外部ファイル参照。エディタが書いた 1 ファイル形式のみ読める（DEC-04）');
@@ -960,8 +1023,13 @@ export function createGameView(
       // `Hidden` のレイヤーは**描く前に外す**（GS-57）。当たりには元のマップを渡すので、
       // 見えないまま通れなくできる。描画側を書き換えないのは、面の隠し合いや影が
       // レイヤーをまたいで絡んでいるため——居ないことにするのが一番安全。
-      // 開けたら入れ替わる見た目（GS-179）は、エディタで目を閉じていても組む。出し入れは組んだあと。
-      const shown = withoutHiddenLayers(withOpenedLayersBuilt(map));
+      // 最初は隠すレイヤー（`StartHidden`。GS-233）は、エディタで目を閉じていても組む。出し入れは組んだあと。
+      // 時間帯の見た目で組む（GS-222）。基準の光で組んでから差し替えると影を 2 回組む。
+      // **写しに入れる**（GS-224）。隠すレイヤーが無いと `withoutHiddenLayers` は `map` そのものを返すので、
+      // 直に書くと基準が組んだときの時間帯で上書きされ、書き割りを持たない時間帯へ移っても絵が変わらない。
+      const timed = timeLookOf(map, time, timeFallback);
+      const builtFor = time;
+      const shown = withTimeLook(withoutHiddenLayers(withStartHiddenBuilt(map)), timed);
       // 目を閉じたレイヤーは形を作らない（DEC-270）。ゲームは目を戻さないので素直に省ける。
       // 法線マップは**台帳で決める**（DEC-374）。無い絵を取りに行かせない——
       // 開発サーバの 404 が高くつく（実測 32 秒 → 0.5 秒）。
@@ -980,9 +1048,21 @@ export function createGameView(
       }
       mapDef = map;
       built = next;
-      // 開けた宝箱は**開いた形で置く**（GS-179）。最初の 1 枚から正しい形で描く——
+      // 時間帯（GS-222）。切り替えの途中でマップが変わったら、次の時間帯でそのまま始める。
+      shift = null;
+      timeGen += 1;
+      look = timed;
+      shownTimeId = timed.time;
+      // 時間帯で入れ替える書き割りの絵を先に読む（GS-225）。切り替えの間に重ねて少しずつ出すため。
+      for (const preset of map.lightingPresets ?? []) if (preset.backdrop) void preloadBackdrop(preset.backdrop);
+      layerWants.clear();
+      built.setBackdropFade(null, 0);
+      // 出し入れしたレイヤー（GS-233）は**覚えのとおりに置く**。最初の 1 枚から正しい形で描く——
       // 画面側の見張り（100ms）を待つと、入った瞬間だけ 2 つが重なって見える。
-      for (const layer of readOpenedLayers(map)) built.setLayerShown(layer.id, openedLayerShown(layer, switchOn));
+      for (const layer of readSwitchLayers(map)) {
+        layerWants.set(layer.layer, switchLayerShown(layer, (id) => options.layerState?.(name, id)));
+      }
+      applyLayerShown();
       scene.add(built.group);
       // 置いた 3D（DEC-288）。見た目だけ。当たりにも影にも出ないのですり抜ける。
       mapModels?.dispose();
@@ -994,29 +1074,32 @@ export function createGameView(
         // レンダラは映り込みを焼くのに要る（DEC-296）。
         mapModels = createMapModels({ onLoad: () => built?.setSunModels([mapModels!.group]), renderer });
         scene.add(mapModels.group);
-        mapModels.apply(models, map.grid?.unit ?? 1, map.lighting, map.camera, map.pointLights);
+        mapModels.apply(models, map.grid?.unit ?? 1, timed.lighting, timed.cameraFx, timed.lights);
         built.setSunModels([mapModels.group]);
       }
-      built.setPointLights(litLights(map));
-      fieldEffects.setVolumes(readFieldVolumes(map), map.grid?.unit ?? 1);
+      built.setPointLights(shownLights(map));
+      // 時間帯ごとのエフェクト（`Effect.<id>` / `ShowIn`。GS-222）。
+      fieldEffects.setVolumes(readFieldVolumes(map, shownTimeId), map.grid?.unit ?? 1);
       // 映り込みを焼くか（GS-173）。マップを読むたびに渡し直す——描画モードは途中で変わる。
       fieldEffects.setMirror(heavyOn('mirror'));
       // 画面エフェクト（DEC-389）。**隠したレイヤーとは無関係**——置き場所を持たない。
-      screenEffects.set(map.screenEffects ?? []);
+      // 時間帯で出す物（`showIn`。GS-227）はその時間帯の物だけ。
+      screenEffects.set(screenEffectsAtTime(map.screenEffects ?? [], shownTimeId));
 
       // 水面へ映すもの（DEC-303）。マップと置いた 3D。キャラは下で足す。
       fieldEffects.setReflectSources(
         mapModels ? [built.group, mapModels.group, fieldEffects.group] : [built.group, fieldEffects.group],
       );
 
-      // **当たりは元のマップから**（GS-57）。`Hidden` は見た目だけの話。
-      collision = buildCollision(map);
-      playerCollision = withNpcBodies(collision);
+      // **当たりは元のマップから**（GS-57）。`Hidden` は見た目だけの話。Rapier の世界（GS-239）。
+      dropPhysics();
+      const rapier = await loadRapier();
+      if (gen !== buildGen) return;
+      collision = createPhysicsWorld(rapier, map);
       watch.lap('collision');
-      wires?.dispose();
-      wires = createCollisionWires(scene, collision);
+      wires = createHitWires(scene, map);
       wires.setVisible(status.showCollision);
-      status.collision = { ...wires.stats, layers: collision.layers };
+      status.collision = { ...collision.stats };
       watch.lap('wires');
 
       const unit = map.grid?.unit ?? 1;
@@ -1029,7 +1112,13 @@ export function createGameView(
       // **前のマップの歩きは打ち切る**（GS-17）。イベントの `move` の途中で入口を踏むと、
       // 新しいマップのプレイヤーが前の歩きを続けて、着地点から数センチずれる。
       endWalk(hero, false);
-      player = createPlayer(unit, tilePx, sheetOf(book, PLAYER_ACTOR));
+      // 先頭の絵は**隊列の先頭のキャラクター**から引く（2026-10-08。それまでは meina に決め打ち）。
+      // 隊列の入れ替えで先頭が変わったときは、次にマップを読んだときから変わる。
+      // キャラクターの大きさ（2026-10-11。マップの `CharacterScale`）は絵にも当たりにも掛ける。
+      const characterScale = characterScaleOf(map.properties);
+      player = createPlayer(unit, tilePx, sheetOf(book, sheetKeyOf(options.party?.()[0] ?? PLAYER_CHARACTER)), { scale: characterScale });
+      // Rapier の体（GS-239 / GS-241）。マス目に揃った四角い柱。置き場所は最初の `update` で合わせる。
+      playerBody = collision.createBody(BODY_WIDTH_HALF * characterScale, BODY_TALL_CELLS * characterScale);
       const marker = markerObject(map, SPAWN_OBJECT);
       if (marker) {
         // 点は床の位置を指す。立つのはそのマスの中央、高さは柱の足場から。
@@ -1041,7 +1130,7 @@ export function createGameView(
         player.spawn(collision, map.bounds);
       }
       // キャラをマップの光に合わせる（GF-3.7）。
-      player.setLighting(map.lighting ?? {}, litLights(map), unit, built.cameraFx);
+      player.setLighting(shownLighting(map), shownLights(map), unit, built.cameraFx);
       // ブロックの投射影をキャラにも効かせる（GC-34）。
       built.attachShadowMask(player.bodyMaterial);
       built.bindLightWalls(player.bodyMaterial);
@@ -1081,7 +1170,14 @@ export function createGameView(
         }
         // 大きさの倍率（GS-130）。**絵だけ**大きくする——1 コマの画素数を掛けると、
         // 板の高さも足元の補正もそのまま比で付いてくる。当たりは 1 マスのまま。
-        const plain = sheetOf(book, def.actor, def.sprite);
+        // 絵はキャラクター（マップの `Character`）の `sheet` から引く（2026-10-08）。
+        // 絵の無いキャラクター（話者だけの人）は立たせない——白い板が立っても原因が分からない。
+        const sheetKey = characterSheet(def.character);
+        if (!sheetKey) {
+          console.warn(`[npc] フィールドの絵（sheet）が無いキャラクター: ${def.character}（${def.id} は置かない）`);
+          return false;
+        }
+        const plain = sheetOf(book, sheetKey);
         const sheet =
           def.scale && def.scale !== 1
             ? {
@@ -1090,13 +1186,14 @@ export function createGameView(
                 ...(plain.footPx !== undefined ? { footPx: plain.footPx * def.scale } : {}),
               }
             : plain;
-        const actor = createPlayer(unit, tilePx, sheet);
+        // NPC ごとの `Scale` は絵だけ、マップのキャラクターの大きさは絵と当たり。絵は掛け合わせになる。
+        const actor = createPlayer(unit, tilePx, sheet, { scale: characterScale });
         // 立つのはそのマスの中央（GS-18）。足場はプレイヤーの出発点と同じ取り方（GC-14）。
         // ピクセル単位で置いた人（GS-191。マップの `PixelPlace`）は、置いた位置そのままに立つ。
         const spot = def.pixel ? standExact(def.x, def.y, def.z, unit) : standOn(def.x, def.y, def.z, unit);
         actor.placeAt(spot.x, spot.y, spot.z);
         actor.face(DIR_FACE[def.facing]);
-        actor.setLighting(map.lighting ?? {}, litLights(map), unit, scenery.cameraFx);
+        actor.setLighting(shownLighting(map), shownLights(map), unit, scenery.cameraFx);
         scenery.attachShadowMask(actor.bodyMaterial);
         scenery.bindLightWalls(actor.bodyMaterial);
         actor.setShadowField(field.solid, field.surface, field.top, field.selfSolid);
@@ -1106,24 +1203,17 @@ export function createGameView(
         scene.add(actor.group);
         // 見た目をスイッチから導く（GS-133）。**マップを読み直しても開いたまま**になる。
         if (def.pose && def.poseIf && switchOn(def.poseIf, def.id)) actor.pose(def.pose);
-        // うろつき方（GS-48）。**台帳が既定、マップの `Wander` が上書き**。
-        // **物（`SPRITE` レイヤー）は動かない**——宝箱が歩き回ると困る（GS-133）。
-        const base = def.thing ? null : wanderOf(book, def.actor, def.sprite);
-        const wander =
-          def.thing || def.wander === 0
-            ? null
-            : def.wander !== undefined
-              ? { ...WANDER_DEFAULT, ...(base ?? {}), range: def.wander }
-              : base
-                ? { ...WANDER_DEFAULT, ...base }
-                : null;
+        // 動き（2026-10-08）。**マップ＋1 体（`Id`）ごと**に NPC の設定の台帳（`mapNpcs.json`）が持つ。
+        // 書いていなければ立ち止まる。**物（`SPRITE` レイヤー）はうろつかない**——宝箱が歩き回ると困る（GS-133）。
+        const motion = npcSettings[def.id] ?? null;
+        const wander = def.thing ? null : wanderWithDefaults(motion);
         npcs.set(def.id, {
           def,
           actor,
           walk: null,
           // 常時の足踏み（GS-169）。**物（`SPRITE` レイヤー）でも踏める**——
           // 揺れる旗や回る風車のように「その場で動いている物」に使えるので止めない。
-          ...(def.stepping ? { stepping: true } : {}),
+          ...(motion?.stepInPlace ? { stepping: true } : {}),
           wander,
           wandering: null,
           // 最初の 1 歩をばらけさせる。全員が同じ拍子で動き出すと機械じみて見える。
@@ -1134,10 +1224,10 @@ export function createGameView(
         return true;
       };
       makeNpc = build;
-      for (const def of readNpcs(map)) {
+      for (const def of readNpcs(map, npcSettings)) {
         // 出す条件（GS-130）。倒したら現れないイベント敵などは**そもそも作らない**——
         // 作ってから消すと 1 フレームだけ映る。**隠した人は覚えておく**（GS-153）。
-        if (!npcShown(def, (key) => switchOn(key, def.id))) {
+        if (!npcShown(def, (key) => switchOn(key, def.id), (when) => options.npcMeets?.(when, def.id) ?? false)) {
           hiddenNpcs.set(def.id, def);
           continue;
         }
@@ -1195,6 +1285,9 @@ export function createGameView(
         ...(mapModels ? [mapModels.waitUntilReady()] : []),
       ]);
       if (gen !== buildGen) return;
+      // 組んでいるあいだに時間帯が変わっていたら（開発用のボタン・時計・イベント。GS-226）、いまの時間帯へ移す。
+      // 組み始めの時間帯のまま終えると、頼んだ切り替えが消える。
+      if (time !== builtFor) beginTime(timeLookOf(map, time, timeFallback), 0);
       status.loading = false;
       watch.lap('finish');
       watch.report(name);
@@ -1544,7 +1637,7 @@ export function createGameView(
     built.setActorOccluder({
       texture: player.texture,
       frame: player.frame(),
-      foot: player.position,
+      foot: player.boardFoot(),
       size: player.size,
     });
   };
@@ -1578,7 +1671,7 @@ export function createGameView(
     sunActorList.length = 0;
     for (let i = 0; i < Math.min(sunActorPicks.length, MAX_SUN_ACTORS); i += 1) {
       const actor = sunActorPicks[i]!.actor;
-      sunActorList.push({ texture: actor.texture, frame: actor.frame(), foot: actor.position, size: actor.size });
+      sunActorList.push({ texture: actor.texture, frame: actor.frame(), foot: actor.boardFoot(), size: actor.size });
     }
     // 板はカメラを向く（`faceCamera(yaw)`）。その向き＝カメラ側の水平ベクトル。
     const yaw = (rig.yaw * Math.PI) / 180;
@@ -2002,7 +2095,9 @@ export function createGameView(
     const running = march ? march.run : hero.walk ? hero.walk.run : playable && input.shift();
     const unit = collision?.unit ?? 1;
     eventBusy = useUi.getState().busy;
-    if (status.mode === 'play' && player && collision) {
+    if (status.mode === 'play' && player && collision && playerBody) {
+      // イベント中はキャラ同士の当たりを解く（GS-157）。並行イベント（GS-43）は `busy` を立てないので塞いだまま。
+      collision.setCharactersSolid(!eventBusy);
       // 人にはぶつかる（GS-35）。壁と同じ仕組みなので、通路へのマス寄せ（GS-116）もそのまま効く。
       player.update(
         // 滑らせているあいだは向きも足も止める（GS-155）。
@@ -2015,7 +2110,8 @@ export function createGameView(
           yaw: rig.yaw,
           ...(hero.walk?.slide ? { slide: true } : {}),
         },
-        playerCollision ?? collision,
+        collision,
+        playerBody,
       );
       if (march) advanceMarch(hero, dt);
       advanceWalk(hero, player, dt, unit);
@@ -2034,6 +2130,13 @@ export function createGameView(
           : npc.walk
             ? npc.walk.axis
             : (npc.wandering?.axis ?? STILL);
+        // NPC の体（GS-239）。最初に動かすときに作る。大きさはキャラクターの大きさに合わせる（`radius` は半幅 0.5×倍率）。
+        let npcBody = npcBodies.get(npc.def.id);
+        if (!npcBody) {
+          const npcScale = npc.actor.radius / 0.5;
+          npcBody = collision.createBody(BODY_WIDTH_HALF * npcScale, BODY_TALL_CELLS * npcScale);
+          npcBodies.set(npc.def.id, npcBody);
+        }
         npc.actor.update(
           dt,
           {
@@ -2046,6 +2149,7 @@ export function createGameView(
             ...(npc.walk ? {} : npc.wandering ? { speed: npc.wandering.speed } : {}),
           },
           collision,
+          npcBody,
         );
         advanceWalk(npc, npc.actor, dt, unit);
         if (npcMarch) advanceMarch(npc, dt);
@@ -2157,6 +2261,7 @@ export function createGameView(
     // マス目（GS-167）。**演出を重ねた後**に置き直す——いま映しているマスが枠になる。
     if (player) editorGrid.update(player.position, rig.target, mapDef?.grid?.unit ?? 1);
     applyCameraShot(rig.active(), shot, mapDef?.grid?.unit ?? 1);
+    advanceTimeShift(dt);
     tilt.setVeil(shot.veil, shot.veilAlpha);
     tilt.render(renderer, scene, rig.active());
     // 画面エフェクト（DEC-389）。**一番上**に重ねる（絵ができてから貼る 1 枚）。
@@ -2196,14 +2301,117 @@ export function createGameView(
    * 設定画面を閉じたら戻る、では「変えた効果」が分からない。
    * 重い描画を足したら、**ここへも 1 行足す**（設定を変えたその場で効くように）。
    */
+  /**
+   * いまの見た目（`look`。GS-222）をマップ・空・置いた光源・主人公・仲間・NPC へ渡し直す。
+   * 切り替えのあいだは毎フレーム呼ぶ。影の形が変わらなければローダは組み直さない。
+   */
+  const applyLook = () => {
+    if (!built || !mapDef || !look) return;
+    const lighting = shownLighting(mapDef);
+    const lights = shownLights(mapDef);
+    const unit = mapDef.grid?.unit ?? 1;
+    built.setLighting(lighting);
+    built.setPointLights(lights);
+    built.setCameraFx(look.cameraFx);
+    built.setView(look.view);
+    sky.apply(look.cameraFx);
+    player?.setLighting(lighting, lights, unit, built.cameraFx);
+    for (const actor of followers.values()) actor.setLighting(lighting, lights, unit, built.cameraFx);
+    for (const npc of npcs.values()) npc.actor.setLighting(lighting, lights, unit, built.cameraFx);
+  };
+  /**
+   * 出し入れ（GS-222）。`ShowIn` の付いたレイヤー（親もたどる）と、イベントの出し入れ（`layerWants`。GS-233）。
+   * 両方満たすときだけ出す。触るのは**どちらかに関わるレイヤーだけ**（ほかは組んだときのまま）。
+   */
+  const applyLayerShown = () => {
+    if (!built || !mapDef) return;
+    for (const layer of mapDef.layers) {
+      const want = layerWants.get(layer.id);
+      const timed = readShowIn(layer.properties) !== null || hasTimedParent(layer.id);
+      if (want === undefined && !timed) continue;
+      built.setLayerShown(layer.id, (want ?? true) && layerShownAtTime(mapDef.layers, layer.id, shownTimeId));
+    }
+  };
+  /** 親のグループのどれかに `ShowIn` があるか。 */
+  const hasTimedParent = (id: string): boolean => {
+    if (!mapDef) return false;
+    const byId = new Map(mapDef.layers.map((layer) => [layer.id, layer]));
+    let current = byId.get(byId.get(id)?.parent ?? '');
+    let guard = 0;
+    while (current && guard <= mapDef.layers.length) {
+      if (readShowIn(current.properties) !== null) return true;
+      current = current.parent ? byId.get(current.parent) : undefined;
+      guard += 1;
+    }
+    return false;
+  };
+  /**
+   * 出し分け（レイヤー・エフェクト）を `shownTimeId` に合わせる。NPC は画面側の見張りが `shownTime()` で拾う。
+   * 切り替えの途中は、フィールドエフェクトは両方出して濃さで移す（GS-226）ので、ここではレイヤーだけ。
+   */
+  const applyShownTime = () => {
+    if (!mapDef) return;
+    applyLayerShown();
+    if (shift) return;
+    fieldEffects.setFade(1);
+    fieldEffects.setVolumes(readFieldVolumes(mapDef, shownTimeId), mapDef.grid?.unit ?? 1);
+    screenEffects.set(screenEffectsAtTime(mapDef.screenEffects ?? [], shownTimeId));
+  };
+  /** 時間帯の切り替えを 1 フレーム進める（GS-222）。 */
+  const advanceTimeShift = (dt: number) => {
+    if (!shift || !built) return;
+    shift.at += dt * 1000;
+    const k = shift.ms <= 0 ? 1 : Math.min(1, shift.at / shift.ms);
+    look = blendTimeLook(shift.from, shift.to, k);
+    // 書き割りの絵が違えば、次の絵を重ねて少しずつ入れ替える。
+    const fade = backdropFade(shift.from, shift.to, k);
+    built.setBackdropFade(fade && k < 1 ? fade.next : null, fade ? fade.amount : 0);
+    // フィールドエフェクト（GS-226）。前の時間帯だけの物は薄れ、次の時間帯だけの物は濃くなる。
+    fieldEffects.setFade(k);
+    // 画面エフェクト（GS-227）。片方の時間帯だけの物を濃さで出し入れする。
+    if (mapDef) {
+      const list = mapDef.screenEffects ?? [];
+      screenEffects.set(blendScreenEffects(screenEffectsAtTime(list, shift.from.time), screenEffectsAtTime(list, shift.to.time), k));
+    }
+    if (!shift.swapped && k >= 0.5) {
+      shift.swapped = true;
+      shownTimeId = shift.to.time;
+      applyShownTime();
+    }
+    if (k >= 1) {
+      look = shift.to;
+      shift = null;
+      built.setBackdropFade(null, 0);
+      // 出し終えたら次の時間帯の物だけにする（薄れきった板を片付ける）。
+      applyShownTime();
+    }
+    applyLook();
+  };
+  /** 時間帯の見た目 `to` へ移り始める（GS-222）。`ms` が 0 ならその場で替える。 */
+  const beginTime = (to: TimeLook, ms: number) => {
+    if (!built || !mapDef) return;
+    const from = look ?? timeLookOf(mapDef, '');
+    if (ms <= 0) {
+      shift = null;
+      look = to;
+      shownTimeId = to.time;
+      built.setBackdropFade(null, 0);
+      applyShownTime();
+      applyLook();
+      return;
+    }
+    // 切り替えの途中なら、いま見えている混ぜた見た目から次へ移る。
+    shift = { from, to, at: 0, ms, swapped: false };
+    // フィールドエフェクト（GS-226）。前と次の両方を出し、片方だけの物を濃さで出し入れする。
+    // 途中から次へ移るときは、いま出している時間帯から数え直す（薄れかけの物は一度戻る）。
+    const unit = mapDef.grid?.unit ?? 1;
+    fieldEffects.setFade(0);
+    fieldEffects.setVolumes(mergeFieldVolumes(readFieldVolumes(mapDef, shownTimeId), readFieldVolumes(mapDef, to.time)), unit);
+  };
   const applyDrawMode = () => {
     fieldEffects.setMirror(heavyOn('mirror'));
     if (!built || !mapDef) return;
-    const lights = litLights(mapDef);
-    const unit = mapDef.grid?.unit ?? 1;
-    built.setPointLights(lights);
-    player?.setLighting(mapDef.lighting ?? {}, lights, unit, built.cameraFx);
-    for (const npc of npcs.values()) npc.actor.setLighting(mapDef.lighting ?? {}, lights, unit, built.cameraFx);
+    applyLook();
   };
   const stopOptionWatch = onOptionsChanged(applyDrawMode);
 
@@ -2379,7 +2587,13 @@ export function createGameView(
       return true;
     },
     setCellChip: (at, faces, layer, stretch) => built?.setCellChip(at, faces, layer, stretch) ?? false,
-    setLayerShown: (id, shown) => built?.setLayerShown(id, shown) ?? false,
+    // イベントの出し入れ（GS-233）。時間帯の出し分け（GS-222）と両方満たすときだけ出す。
+    setLayerShown: (id, shown) => {
+      if (!built || !mapDef) return false;
+      layerWants.set(id, shown);
+      const ok = built.setLayerShown(id, shown && layerShownAtTime(mapDef.layers, id, shownTimeId));
+      return ok;
+    },
     posePlayer: (name) => player?.pose(name) ?? false,
     poseNpc(id, name) {
       return npcs.get(id)?.actor.pose(name) ?? false;
@@ -2425,6 +2639,9 @@ export function createGameView(
       scene.remove(npc.actor.group);
       npc.actor.dispose();
       npcs.delete(id);
+      // 体も世界から外す（GS-239）。残すと見えない人に当たる。
+      npcBodies.get(id)?.dispose();
+      npcBodies.delete(id);
       // 影と遮光の相手からも外す（消えた人の影が残らないように）。
       applyActorOccluder();
       return true;
@@ -2500,6 +2717,14 @@ export function createGameView(
       });
     },
     hasNpc: (id) => npcs.has(id),
+    restoreNpc(id) {
+      if (npcs.has(id) || !makeNpc) return false;
+      const def = hiddenNpcs.get(id);
+      if (!def || !makeNpc(def)) return false;
+      hiddenNpcs.delete(id);
+      cutWalks.delete(id);
+      return true;
+    },
     npcAt(id) {
       const npc = npcs.get(id);
       if (!npc || !collision) return null;
@@ -2527,17 +2752,22 @@ export function createGameView(
       const step = Math.abs(aim.x) >= Math.abs(aim.z)
         ? { x: Math.sign(aim.x), z: 0 }
         : { x: 0, z: Math.sign(aim.z) };
-      const px = Math.floor(player.position.x / unit);
-      const pz = Math.floor(player.position.z / unit);
+      // 体の芯のマス（2026-10-11）。倍率 1 なら居るマス 1 つで、今までどおり。
+      const px = coreCells(player.position.x / unit, player.radius);
+      const pz = coreCells(player.position.z / unit, player.radius);
+      // 向いている先の 1 列（芯の外側）。横の幅は自分の芯と同じ。
+      const front: { x: [number, number]; z: [number, number] } = step.x !== 0
+        ? { x: step.x > 0 ? [px[1] + 1, px[1] + 1] : [px[0] - 1, px[0] - 1], z: pz }
+        : { x: px, z: step.z > 0 ? [pz[1] + 1, pz[1] + 1] : [pz[0] - 1, pz[0] - 1] };
       let found: string | null = null;
       let near = Infinity;
       for (const [id, npc] of npcs) {
         if (Math.abs(npc.actor.position.y - player.position.y) / unit > TALK_RISE) continue;
-        const nx = Math.floor(npc.actor.position.x / unit);
-        const nz = Math.floor(npc.actor.position.z / unit);
+        const nx = coreCells(npc.actor.position.x / unit, npc.actor.radius);
+        const nz = coreCells(npc.actor.position.z / unit, npc.actor.radius);
         // 同じマス（重なって立っている）か、向いている先の 1 マス。
-        const here = nx === px && nz === pz;
-        if (!here && !(nx === px + step.x && nz === pz + step.z)) continue;
+        const here = overlaps(nx, px) && overlaps(nz, pz);
+        if (!here && !(overlaps(nx, front.x) && overlaps(nz, front.z))) continue;
         // 同じマスに何人も居るときは近いほうへ。
         const span = Math.hypot(npc.actor.position.x - player.position.x, npc.actor.position.z - player.position.z);
         if (span >= near) continue;
@@ -2553,25 +2783,26 @@ export function createGameView(
       if (Math.abs(npc.actor.position.y - player.position.y) / unit > TALK_RISE) return false;
       const me = { x: player.position.x / unit, z: player.position.z / unit };
       const it = { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit };
-      const cell = (at: { x: number; z: number }) => ({ x: Math.floor(at.x), z: Math.floor(at.z) });
-      const mine = cell(me);
-      const its = cell(it);
-      if (mine.x === its.x && mine.z === its.z) return true;
+      // 体の芯のマス（2026-10-11。キャラクターの大きさで広がる。倍率 1 なら居るマス 1 つ）。
+      type Core = { x: [number, number]; z: [number, number] };
+      const core = (at: { x: number; z: number }, half: number): Core => ({ x: coreCells(at.x, half), z: coreCells(at.z, half) });
+      const mine = core(me, player.radius);
+      const its = core(it, npc.actor.radius);
+      if (overlaps(mine.x, its.x) && overlaps(mine.z, its.z)) return true;
       /**
        * `from` の体（半幅 `half` の四角。GS-116）が、向いている先で `to` のマスに接しているか。
        * 横は中心がそのマスの幅に入っていること（角をかすめるだけでは触れない）。
        */
-      const touches = (from: { x: number; z: number }, half: number, facing: WalkDir, to: { x: number; z: number }) => {
+      const touches = (from: { x: number; z: number }, half: number, facing: WalkDir, to: Core) => {
         const aim = moveVector(DIR_AXIS[facing]);
         const alongX = Math.abs(aim.x) >= Math.abs(aim.z);
         const sign = Math.sign(alongX ? aim.x : aim.z);
         const pos = alongX ? from.x : from.z;
-        const side = alongX ? from.z : from.x;
-        const lo = alongX ? to.x : to.z;
-        const lane = alongX ? to.z : to.x;
-        if (Math.floor(side) !== lane) return false;
-        const gap = sign > 0 ? lo - (pos + half) : pos - half - (lo + 1);
-        return gap <= SYMBOL_TOUCH && gap > -1;
+        const side = coreCells(alongX ? from.z : from.x, half);
+        const [lo, hi] = alongX ? to.x : to.z;
+        if (!overlaps(side, alongX ? to.z : to.x)) return false;
+        const gap = sign > 0 ? lo - (pos + half) : pos - half - (hi + 1);
+        return gap <= SYMBOL_TOUCH && gap > -(hi - lo + 1);
       };
       return (
         touches(me, player.radius, FACE_DIR[player.facingNow()], its) ||
@@ -2607,6 +2838,25 @@ export function createGameView(
     setEditorGrid(on) {
       editorGrid.setVisible(on);
     },
+    setTime(next, ms = 0) {
+      time = next;
+      const mine = (timeGen += 1);
+      if (!built || !mapDef) return;
+      const to = timeLookOf(mapDef, next, timeFallback);
+      // 次の書き割りの絵がまだ届いていなければ、届いてから混ぜ始める（GS-225）。
+      // 届く前に始めると重ねる絵が無く、切り替えの終わりでぱっと替わる。
+      // 読めない絵でも待つのは 1 回だけ（届かなければ重ねずに移る）。
+      const src = to.view.backdrop?.src ?? '';
+      if (ms > 0 && !backdropLoaded(src)) {
+        const map = mapDef;
+        void preloadBackdrop(src).then(() => {
+          if (mine === timeGen && map === mapDef) beginTime(to, ms);
+        });
+        return;
+      }
+      beginTime(to, ms);
+    },
+    shownTime: () => shownTimeId,
     setCellPicker(handler) {
       cellPicker = handler;
     },
@@ -2736,7 +2986,8 @@ export function createGameView(
           texture.colorSpace = SRGBColorSpace;
           const img = texture.image as { width: number; height: number };
           const cells = def.height > 0 ? def.height : Math.min(3.2, Math.max(0.9, img.height / STAGE_PX_PER_CELL));
-          figure.height = cells * unit;
+          // 戦闘の絵にもマップのキャラクターの大きさを掛ける（2026-10-11）。
+          figure.height = cells * unit * characterScaleOf(mapDef?.properties);
           figure.width = (figure.height * img.width) / img.height;
           mesh.geometry.dispose();
           mesh.geometry = new PlaneGeometry(figure.width, figure.height).translate(0, figure.height / 2, 0);
@@ -2822,6 +3073,7 @@ export function createGameView(
       for (const npc of npcs.values()) npc.actor.dispose();
       npcs.clear();
       wires?.dispose();
+      dropPhysics();
       mapModels?.dispose();
       built?.dispose();
       scene.remove(fieldEffects.group);
@@ -2842,7 +3094,7 @@ function logMap(name: string, map: MapDef): void {
     map.layers.map((layer) => ({
       name: layer.name,
       kind: layer.kind,
-      collision: layer.collision === true,
+      hit: (layer.properties ?? []).find((p) => p.name === 'Hit')?.value ?? 'all',
       visible: layer.visible !== false,
       batches: layer.batches?.length ?? 0,
       objects: layer.objects?.length ?? 0,

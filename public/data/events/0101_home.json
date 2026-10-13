@@ -33,7 +33,7 @@
     },
     {
       "id": "talk_grandpa",
-      "npc": "chicken_walk",
+      "npc": "grandpaNpc",
       "trigger": "action",
       "commands": [
         {
@@ -110,7 +110,7 @@
         { "type": "shot", "id": "impact", "wait": false },
         {
           "type": "place",
-          "target": "npc:lamy_32_40",
+          "target": "npc:lamyNPC",
           "at": { "x": "player", "y": "player", "z": 3 },
           "face": "up"
         },
@@ -135,13 +135,13 @@
         { "type": "place", "target": "player", "at": { "x": -8, "y": 0, "z": -3 }, "face": "right" },
         {
           "type": "place",
-          "target": "npc:lamy_32_40",
+          "target": "npc:lamyNPC",
           "at": { "x": -5, "y": 0, "z": -3 },
           "face": "left"
         },
         {
           "type": "stepInPlace",
-          "target": "npc:lamy_32_40",
+          "target": "npc:lamyNPC",
           "steps": 4,
           "wait": false,
           "always": true
@@ -160,6 +160,7 @@
         { "type": "portrait", "slot": "scene", "hide": true },
         { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk", "instant": true },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk", "instant": true },
+        { "type": "time", "to": "evening ", "clock": "stop", "ms": 0 },
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
         { "type": "shot", "id": "pan01", "wait": false },
@@ -171,7 +172,7 @@
             { "who": "lamyNPC", "lines": ["こんな美味しいご飯食べたのは生まれて初めて！", "もう美味しくて美味しくて！！"] },
             {
               "who": "meina",
-              "lines": ["くっ・・・悪い気がしない・・・。", "まあ、あんたの口に合ったなら良かったよ。", "そういえば名前は？", "あたしはメイナ"]
+              "lines": ["くっ・・・悪い気がしない・・・。", "まあ、あんたの口に合ったなら良かったよ。", "", "そういえば名前は？", "あたしはメイナ"]
             },
             { "who": "lamyNPC", "lines": ["名前は無いから好きに呼んで！"] },
             { "who": "meina", "lines": ["ふ～ん、じゃあラミィって呼ぶね。"] }
@@ -181,18 +182,19 @@
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk", "from": "none" },
         {
           "type": "place",
-          "target": "npc:chicken_walk",
+          "target": "npc:grandpaNpc",
           "at": { "x": -7, "y": 0, "z": 0 },
           "face": "right"
         },
-        { "type": "wait", "ms": 300 },
+        { "type": "time", "to": "night", "clock": "stop", "ms": 0 },
         { "type": "fade", "to": "in", "ms": 400 },
+        { "type": "wait", "ms": 300 },
         {
           "type": "portrait",
           "slot": "center",
           "who": "grandpa",
           "face": "normal",
-          "x": 12,
+          "x": 20,
           "from": "right"
         },
         {
@@ -207,10 +209,11 @@
           ]
         },
         { "type": "fade", "to": "out", "ms": 400 },
-        { "type": "place", "target": "npc:chicken_walk", "at": { "x": -1, "y": 0, "z": -1 } },
+        { "type": "place", "target": "npc:grandpaNpc", "at": { "x": -1, "y": 0, "z": -1 } },
         { "type": "portrait", "slot": "center", "hide": true, "from": "left", "who": "grandpa" },
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
+        { "type": "stepInPlace", "target": "npc:lamyNPC", "steps": 4, "stop": true, "wait": false },
         {
           "type": "message",
           "talk": [
@@ -227,6 +230,7 @@
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "time", "to": "morning ", "clock": "run", "ms": 0 },
         { "type": "telop", "lines": ["━ 翌朝 ━"], "click": false },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
@@ -245,28 +249,10 @@
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
-        { "type": "hide", "target": "npc:lamy_32_40" },
+        { "type": "hide", "target": "npc:lamyNPC" },
         { "type": "setSwitch", "key": "EVENT010401", "value": false }
       ],
       "kind": "scenario"
-    },
-    {
-      "id": "宝箱_特殊イベント",
-      "trigger": "action",
-      "commands": [
-        {
-          "type": "if",
-          "when": { "self": "開けた" },
-          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
-          "else": [
-            { "type": "playSe", "key": "chest" },
-            { "type": "getItem" },
-            { "type": "setSelfSwitch", "key": "開けた", "value": true },
-            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！！！"] }] }
-          ]
-        }
-      ],
-      "kind": "object"
     },
     {
       "id": "EVENT020201",
@@ -348,6 +334,46 @@
         { "type": "returnToTitle" }
       ],
       "kind": "scenario"
+    },
+    {
+      "id": "宝箱_家1",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "開けた" },
+          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
+          "else": [
+            { "type": "playSe", "key": "chest" },
+            { "type": "getItem", "id": "おにぎり", "count": 1 },
+            { "type": "layer", "id": "宝箱_家1_閉", "shown": false },
+            { "type": "layer", "id": "宝箱_家1_開", "shown": true },
+            { "type": "setSelfSwitch", "key": "開けた", "value": true },
+            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "宝箱_家2",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "開けた" },
+          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
+          "else": [
+            { "type": "playSe", "key": "chest" },
+            { "type": "getItem", "id": "おにぎり", "count": 1 },
+            { "type": "layer", "id": "宝箱_家2_閉", "shown": false },
+            { "type": "layer", "id": "宝箱_家2_開", "shown": true },
+            { "type": "setSelfSwitch", "key": "開けた", "value": true },
+            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！！！"] }] }
+          ]
+        }
+      ]
     }
   ],
   "mapMoves": [

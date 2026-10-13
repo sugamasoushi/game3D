@@ -73,6 +73,7 @@ uniform sampler2D mepOccData;                 // 遮光体の中身
 uniform float mepOccRows;                     // データテクスチャの行数
 uniform vec2 mepOccSpan[${MAX_POINT_LIGHTS}]; // 光源ごとの (開始, 個数)
 uniform float mepOccCutoff;
+uniform float mepOccNudge;                    // 板を光源の方へ寄せる長さ（ワールド。DEC-470。lighting.pointShadowShift）
 `;
 
 export const OCCLUDER_GLSL = /* glsl */ `
@@ -102,13 +103,20 @@ bool mepOccHitsBox(vec3 fromPos, vec3 toPos, vec3 centre, vec3 halfSize) {
   return (t1 - t0) * length(d) > MEP_OCC_MIN_DEPTH;
 }
 
-/** 光源の方を向く縦板。当たった位置の絵が抜けていなければ遮る。 */
-bool mepOccHitsCard(vec3 fromPos, vec3 toPos, vec3 centre, vec2 size, vec4 uv) {
-  vec3 n = toPos - centre;
+/**
+ * 光源の方を向く縦板。当たった位置の絵が抜けていなければ遮る。
+ * 板の向きは \`facePos\`（光源の中心）で決め、線分は \`toPos\`（その断片から見た光の出どころ）へ引く（DEC-469）。
+ * 面光源の出どころは断片ごとに違うので、そちらで向きを決めると板が断片ごとに回り、
+ * 影が接地点を中心に円弧状に広がっていた。
+ */
+bool mepOccHitsCard(vec3 fromPos, vec3 toPos, vec3 facePos, vec3 centre, vec2 size, vec4 uv) {
+  vec3 n = facePos - centre;
   n.y = 0.0;
   float nl = length(n);
   if (nl < 0.0001) return false;
   n /= nl;
+  // 影の出どころを光源の方へ寄せる（DEC-470）。負なら離す。光源を追い越さない。
+  centre += n * min(mepOccNudge, nl * 0.5);
   vec3 seg = toPos - fromPos;
   float denom = dot(seg, n);
   if (abs(denom) < 0.0001) return false;
@@ -159,8 +167,8 @@ bool mepOccHitsSlope(vec3 fromPos, vec3 toPos, vec3 centre, vec3 halfSize, vec4 
   return false;
 }
 
-/** その光源に割り当てられた遮光体だけを見る。 */
-bool mepOccBlocks(int light, vec3 fromPos, vec3 toPos) {
+/** その光源に割り当てられた遮光体だけを見る。\`facePos\` は板を向ける先（光源の中心。DEC-469）。 */
+bool mepOccBlocks(int light, vec3 fromPos, vec3 toPos, vec3 facePos) {
   vec2 span = mepOccSpan[light];
   if (span.y < 0.5) return false;
   for (int k = 0; k < ${MAX_OCC_PER_LIGHT}; k++) {
@@ -170,7 +178,7 @@ bool mepOccBlocks(int light, vec3 fromPos, vec3 toPos) {
     vec4 body = mepOccFetch(row, 1.0);
     vec4 frame = mepOccFetch(row, 2.0);
     if (head.w < 0.5) {
-      if (mepOccHitsCard(fromPos, toPos, head.xyz, body.xy, frame)) return true;
+      if (mepOccHitsCard(fromPos, toPos, facePos, head.xyz, body.xy, frame)) return true;
     } else if (head.w < 1.5) {
       if (mepOccHitsBox(fromPos, toPos, head.xyz, body.xyz)) return true;
     } else if (mepOccHitsSlope(fromPos, toPos, head.xyz, body.xyz, frame)) {
@@ -389,17 +397,19 @@ export function fillOccluderUniforms(
   return cursor;
 }
 
-/** uniform をマテリアルへ流す。遮光体の枠を持たないマテリアルは何もしない。 */
+/** uniform をマテリアルへ流す。遮光体の枠を持たないマテリアルは何もしない。`nudge` は板を光源へ寄せる長さ（ワールド）。 */
 export function applyOccluderUniforms(
   material: { uniforms: Record<string, IUniform> },
   buf: OccluderUniformBuf,
   map: Texture | null,
   cutoff: number,
+  nudge = 0,
 ): void {
   const span = material.uniforms.mepOccSpan;
   if (!span) return;
   material.uniforms.mepOccMap.value = map ?? emptyOccluderMap();
   material.uniforms.mepOccCutoff.value = cutoff;
+  if (material.uniforms.mepOccNudge) material.uniforms.mepOccNudge.value = nudge;
   material.uniforms.mepOccData.value = buf.texture;
   material.uniforms.mepOccRows.value = MAX_OCCLUDERS;
   const spans = span.value as Vector2[];

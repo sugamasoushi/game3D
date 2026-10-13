@@ -17,7 +17,9 @@ import {
 import { createActorMaterial, createActorShadowMaterial } from '../mep3d/actorMaterial';
 import { blockShadowLength, resolveLighting, shadowDirection } from '../mep3d/lighting';
 import { MAX_WALK, SEGMENTS_PER_CELL, drape, profile } from '../mep3d/shadowCast';
-import { cellOf, type CollisionMap } from '../mep3d/collision';
+import { cellOf } from '../mep3d/collision';
+import type { PhysicsBody, Terrain } from './physics';
+import { laneNudge } from './lane';
 import type { CameraFxDef, LightingDef, PointLightDef } from '../mep3d/types';
 
 /** 行の添字。シートの既定の並び（上から 下・左・右・上）。 */
@@ -85,24 +87,24 @@ const walkPatternFor = (cols: number): number[] =>
 const STEP_SECONDS = 0.16;
 const RUN_STEP_SECONDS = 0.1;
 
-/** 体の高さ（マス）。頭がつかえるかの判定に使う（GOPEN-2）。 */
-const BODY_CELLS = 2;
 /**
- * 体の細さ（マスに対する割合）。**足元の面を探す範囲**と、踏んだ・調べたの目安に使う（DEC-247）。
- * 壁の当たりは `BODY_HALF` の四角で見る（GS-116）ので、ここは当たりの太さではない。
+ * 体の背丈（マス。GS-239）。Rapier の体（カプセル）の高さ。頭がつかえるかもこれで決まる。
+ * ゲーム（`GameView`）が体を作るときも同じ値を使う。
  */
-const RADIUS = 0.28;
+export const BODY_TALL_CELLS = 1.4;
 /**
- * 体の当たりの半分（マス。GS-116）。**マス 1 つぶんの四角**で当たりを取る。
- * マップのマス目と見た目が一致し、1 マス幅の通路は**マスに揃っていないと入れない**。
- * 揃えるのは `laneSlip`（通路へ半分以上かかっていれば自分で寄る）。
+ * 体の幅の半分（マス。GS-241）。Rapier の体は**マス目に揃った四角い柱**（前の作りの GS-116 と同じ考え方）で、
+ * 幅はマスより少しだけ細い——Rapier は面から 0.02 の隙間を空けて止めるので、0.5 だと 1 マス幅の通路に入れない。
+ * 1 マス幅の通路へは、マスの揃え（`lane.ts`）でほぼ真ん中へ寄せて入る。足元の面を探す範囲にも使う。
+ * ゲーム（`GameView`）が体を作るときも同じ値を使う。
+ */
+export const BODY_WIDTH_HALF = 0.46;
+/**
+ * 踏んだ・調べたの届く範囲の半分（マス。GS-116）。**マス 1 つぶんの四角**——
+ * 壁の手前で止まっても、壁のマスに描いた起動場所（扉など）に届くように。
  */
 const BODY_HALF = 0.5;
-/**
- * 四角の縁をほんの少し内へ入れる（マス）。ちょうど境目の点は隣のマスにも乗るので、
- * 揃って立っているだけで両隣を塞ぎ扱いにしてしまう。
- */
-const BODY_EDGE = BODY_HALF - 0.002;
+
 /** 歩き・走りの速さ（マス毎秒）。 */
 const WALK_SPEED = 4.2;
 const RUN_SPEED = 8;
@@ -119,28 +121,6 @@ const STEP_UP = 0;
 const LADDER_EXIT_REACH = 1;
 /** はしごを上り下りする速さ（マス毎秒。DEC-237）。歩きと同じにして、落下とは切り離す。 */
 const LADDER_SPEED = WALK_SPEED;
-/** 落下の加速と上限（マス毎秒）。 */
-const GRAVITY = 24;
-const FALL_MAX = 20;
-/** これより下は奈落。落ち続けないように止める。 */
-const VOID_Y = -32;
-/**
- * 坂を追う許容（マス。DEC-210）。**1 マス未満**にしておく——1 以上にすると、
- * 庇や 2 階の床の下を歩いただけで、その上へ吸い上げられてしまう。
- * 1 フレームで上がる量（走り 8 マス毎秒 × 45 度で 0.14 マス）より十分大きければよい。
- */
-const SLOPE_REACH = 0.6;
-/**
- * 接地しているあいだ、これだけ下の面までは落とさず貼り付ける（マス。DEC-210）。
- * 無いと下り坂で毎フレーム浮いては落ちるので、段差を降りるようにガタつく。
- */
-const GROUND_SNAP = 0.6;
-/** 埋まったときに上へ逃がす最大の高さ（マス。DEC-209）。 */
-const UNSTICK_UP = 4;
-/** 揃ったとみなす差（マス）。これ以下なら通路の真ん中へ置き直す。 */
-const LANE_SNAP = 0.001;
-/** 上へ逃げられないときに横へ探す範囲（マス。DEC-209）。 */
-const UNSTICK_OUT = 3;
 
 /** 1 フレーム分の入力。move はワールド方向、axis は画面基準（カメラから見た前後左右）。 */
 export interface PlayerInput {
@@ -188,10 +168,14 @@ export interface Player {
    * 渡さなければ今居るマスの真ん中。
    * **収まらない場所へは動かさない**（壁ぎわで止まったときに壁へ押し込まないため）。
    */
-  settle(collision: CollisionMap, from?: { x: number; z: number }): void;
+  settle(terrain: Terrain, from?: { x: number; z: number }): void;
   /** 立てるマスを探して置く。見つからなければ false。 */
-  spawn(collision: CollisionMap, bounds: { min: number[]; max: number[]; empty: boolean }): boolean;
-  update(deltaSeconds: number, input: PlayerInput, collision: CollisionMap): void;
+  spawn(terrain: Terrain, bounds: { min: number[]; max: number[]; empty: boolean }): boolean;
+  /**
+   * 1 フレーム動かす（GS-239）。**横移動・坂・段差・落下は Rapier の体（`body`）が受け持つ。**
+   * はしごと `Climb` の範囲は `terrain` に聞く。
+   */
+  update(deltaSeconds: number, input: PlayerInput, terrain: Terrain, body: PhysicsBody): void;
   /**
    * 向きだけ変える（GS-13）。イベントの `turn` から呼ぶ。
    * 歩かないので足は止まったまま——立ち止まって振り向く絵になる。
@@ -248,6 +232,12 @@ export interface Player {
   /** 板の大きさ（ワールド）。 */
   size: { width: number; height: number };
   /**
+   * 描いている板の下端の真ん中（ワールド。GS-243）。足元から `footLift` を下げ、跳ねている高さを足した所。
+   * 影を落とす板（遮光体・太陽の影）はここから立てる——足元から立てると絵より `footPx` だけ高くなり、
+   * 影の足元が絵の足元からずれる。返す値は使い回すので、持ち続けないこと。
+   */
+  boardFoot(): Vector3;
+  /**
    * 板の上の辺から**見えている絵の上端**（髪の上など）までの透明なすき間（ワールド。GS-205）。
    * 全部のコマのうち一番上まで描いてあるコマで測る（歩きで上下しないように）。読み込む前は 0。
    */
@@ -292,7 +282,17 @@ function measureHeadPad(image: CanvasImageSource & { width: number; height: numb
   return pad >= fh ? 0 : pad;
 }
 
-export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = ACTOR_SHEET): Player {
+/**
+ * `scale` はマップ全体のキャラクターの大きさ（2026-10-11。マップの `CharacterScale`）。
+ * **絵も当たりも同じ倍率で**大きくする——体の四角・細い体・体の高さ・踏んだ判定の範囲まで。
+ * 動く速さ（歩き・走り・うろつき・はしご）にも同じ倍率を掛ける。
+ * 1 マス幅の通路に入れるかは設定者の責任（1 より大きいと入れない通路が出る）。
+ */
+export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = ACTOR_SHEET, { scale = 1 }: { scale?: number } = {}): Player {
+  const size = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  /** 体の大きさ（マス）。倍率を掛けたもの。 */
+  const bodyHalfWidth = BODY_WIDTH_HALF * size;
+  const bodyHalf = BODY_HALF * size;
   const group = new Group();
   group.name = 'player';
 
@@ -343,11 +343,11 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
 
   // マップのビルボードと同じ光の当て方にする（GF-3.7）。
   const skin = createActorMaterial(texture);
-  const width = (sheet.framePx[0] / tilePx) * unit;
-  const height = (sheet.framePx[1] / tilePx) * unit;
+  const width = (sheet.framePx[0] / tilePx) * unit * size;
+  const height = (sheet.framePx[1] / tilePx) * unit * size;
   const body = new Mesh(new PlaneGeometry(width, height), skin.material);
   /** 絵を下げる量（GS-52）。台帳の `footPx` をワールドの長さへ直したもの。 */
-  const footLift = ((sheet.footPx ?? 0) / tilePx) * unit;
+  const footLift = ((sheet.footPx ?? 0) / tilePx) * unit * size;
   body.position.y = height / 2 - footLift;
   group.add(body);
   // 太陽の影は頭の少し上で引く（DEC-156）。自分も深度に入っているので、
@@ -413,6 +413,8 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
   let shadowTop: ((x: number, y: number, z: number, fx: number, fz: number) => number | null) | undefined;
 
   const position = new Vector3();
+  /** `boardFoot()` の受け皿。 */
+  const boardFootAt = new Vector3();
 
   /** 絵を地面へ寝かせ直す。位置・光・当たり判定が変わったら呼ぶ。 */
   /** 使い回しの受け皿（DEC-208）。毎フレーム作り直すと GC でカクつく。 */
@@ -538,7 +540,6 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
     (shadowGeometry.index as BufferAttribute).needsUpdate = true;
   };
 
-  let fallSpeed = 0;
   /** 前のフレームで面に乗っていたか（DEC-210）。坂の追従と貼り付けは接地中だけ効かせる。 */
   let onGround = false;
   /** はしごに掴まっているか（DEC-237）。掴まっている間は重力を切り、上下だけ動く。 */
@@ -571,76 +572,14 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
     showFrame(WALK_PATTERN[stepIndex], rowOf(facing));
   };
 
-  /** その足元位置に体が入るか。半径の四隅で見る。 */
-  /**
-   * 体の当たりを取る点（DEC-244）。**八角形。中心からの距離はどの向きも `RADIUS`。**
-   *
-   * 四隅を `(±R, ±R)` で取ると、**斜め方向だけ半径が `R√2`（1.4 倍）に太る**。
-   * 45 度の壁ではその角が法線を向くので、壁沿いにずらそうとしても角が帯へ入って動けない
-   * （実測: 斜面を滑って階段状の角で停止した）。軸方向の広がりは `±R` のままなので、
-   * 軸に沿った壁の当たりは今までと変わらない。
-   */
-  const BODY_RING: Array<[number, number]> = (() => {
-    const d = Math.SQRT1_2;
-    return [
-      [-1, 0],
-      [1, 0],
-      [0, -1],
-      [0, 1],
-      [-d, -d],
-      [-d, d],
-      [d, -d],
-      [d, d],
-    ];
-  })();
+  /** 体の背丈（マス）。Rapier の体（カプセル）と同じ（GS-239）。 */
+  const bodyTall = BODY_TALL_CELLS * size;
 
-  /** マス 1 つぶんの四角の四隅（GS-116）。四角が重なるマスはこの 4 点で全部出る。 */
-  const BODY_SQUARE: Array<[number, number]> = [
-    [-1, -1],
-    [1, -1],
-    [-1, 1],
-    [1, 1],
-  ];
+  /** その足元位置に体が入るか（地形だけを見る。GS-239）。 */
+  const fits = (wx: number, wy: number, wz: number, terrain: Terrain): boolean =>
+    terrain.fits(wx, wy, wz, bodyHalfWidth, bodyTall);
 
-  /**
-   * いま四角の体で当たりを見ているか（GS-116）。
-   *
-   * **壁ぎわに置かれた NPC など、四角が最初から収まらない場所に立っていることがある。**
-   * そのまま四角で見ると一歩も動けなくなるので、収まっていないあいだだけ四角の判定を外す。
-   * 動いて収まる場所へ出れば、次のフレームから四角に戻る。
-   */
-  let squareBody = true;
-
-  /**
-   * そこに体が入るか（GS-116）。**見方が 2 つある。**
-   *
-   * - **マス 1 つぶんの四角**が、丸ごと塞がるマス（ブロック・斜面・人）へ重ならないこと。
-   *   これが「当たり判定はマスの四角」。1 マス幅の通路はマスに揃っていないと入れない。
-   * - **細い体（八角形）**が、薄い壁チップの帯（DEC-236）へ当たらないこと。
-   *   薄い壁は**歩けるマスの中**に描いてあるので、四角で見ると壁ぎわの床に立てなくなる。
-   */
-  const fits = (wx: number, wy: number, wz: number, collision: CollisionMap): boolean => {
-    const r = RADIUS * unit;
-    const edge = BODY_EDGE * unit;
-    const base = cellOf(wy + 0.001 * unit, unit);
-    for (let level = 0; level < BODY_CELLS; level += 1) {
-      for (const [ox, oz] of BODY_RING) {
-        // セル座標は小数のまま渡す（DEC-236）。壁チップは帯だけを塞ぐ。
-        if (collision.blockedAt((wx + ox * r) / unit, base + level, (wz + oz * r) / unit)) {
-          return false;
-        }
-      }
-      if (!squareBody) continue;
-      for (const [ox, oz] of BODY_SQUARE) {
-        if (collision.solidCellAt((wx + ox * edge) / unit, base + level, (wz + oz * edge) / unit)) {
-          return false;
-        }
-      }
-    }
-    return true;
-  };
-
-/** 足元を見る点。中心と四隅（DEC-210）。中心が要るのは、坂の高さが場所で変わるため。 */
+  /** 足元を見る点。中心と四隅（DEC-210）。中心が要るのは、坂の高さが場所で変わるため。 */
   const FEET: Array<[number, number]> = [
     [0, 0],
     [-1, -1],
@@ -649,235 +588,19 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
     [1, 1],
   ];
 
-  /** 足元の面を探す。`pick` は柱 1 本ぶんの高さを返すもの。一番高いものを取る。 */
-  const highestUnder = (
-    pick: (x: number, z: number, feetY: number, fx: number, fz: number) => number | null,
-    wx: number,
-    wy: number,
-    wz: number,
-  ): number | null => {
-    const r = RADIUS * unit;
+  /** 足元にある一番高い床面（はしごの乗り降りに使う）。坂はマス内の位置で高さが変わる（DEC-210）。 */
+  const surface = (wx: number, wy: number, wz: number, terrain: Terrain): number | null => {
+    const r = bodyHalfWidth * unit;
     let best: number | null = null;
     for (const [sx, sz] of FEET) {
       const px = (wx + sx * r) / unit;
       const pz = (wz + sz * r) / unit;
       const cx = Math.floor(px);
       const cz = Math.floor(pz);
-      const found = pick(cx, cz, wy, px - cx, pz - cz);
+      const found = terrain.surfaceUnder(cx, cz, wy, px - cx, pz - cz);
       if (found !== null && (best === null || found > best)) best = found;
     }
     return best;
-  };
-
-  /** 足元にある一番高い床面。坂はマス内の位置で高さが変わる（DEC-210）。 */
-  const surface = (wx: number, wy: number, wz: number, collision: CollisionMap): number | null =>
-    highestUnder((x, z, feetY, fx, fz) => collision.surfaceUnder(x, z, feetY, fx, fz), wx, wy, wz);
-
-  /**
-   * 落下が止まる高さ。`surface` と違い**塞ぐマスの上面も受ける**（DEC-209）。
-   * 壁チップは足場を出さないので、これが無いと斜め壁の柱へ落ちたとき中まで抜けて動けなくなる。
-   * 登れるかの判定には使わない——使うと壁の横から 1 マスずつ登れてしまう。
-   */
-  const footing = (wx: number, wy: number, wz: number, collision: CollisionMap): number | null =>
-    highestUnder((x, z, feetY, fx, fz) => collision.landingUnder(x, z, feetY, fx, fz), wx, wy, wz);
-
-  /**
-   * 体が塞ぐマスに埋まっていたら逃がす（DEC-209）。まず真上、だめなら近い空きマスへ。
-   * 落下側は `footing` で入らないようにしてあるが、マップを描き替えた直後や
-   * 置き直しで埋まることはある。動けなくなるのが一番まずいので保険を置く。
-   */
-  const unstick = (collision: CollisionMap): void => {
-    if (fits(position.x, position.y, position.z, collision)) return;
-    for (let step = 1; step <= UNSTICK_UP; step += 1) {
-      const up = position.y + step * unit;
-      if (!fits(position.x, up, position.z, collision)) continue;
-      position.y = up;
-      fallSpeed = 0;
-      onGround = false;
-      return;
-    }
-    const cx = cellOf(position.x, unit);
-    const cz = cellOf(position.z, unit);
-    for (let ring = 1; ring <= UNSTICK_OUT; ring += 1) {
-      for (let dx = -ring; dx <= ring; dx += 1) {
-        for (let dz = -ring; dz <= ring; dz += 1) {
-          if (Math.max(Math.abs(dx), Math.abs(dz)) !== ring) continue;
-          const wx = (cx + dx + 0.5) * unit;
-          const wz = (cz + dz + 0.5) * unit;
-          if (!fits(wx, position.y, wz, collision)) continue;
-          position.x = wx;
-          position.z = wz;
-          fallSpeed = 0;
-          onGround = false;
-          return;
-        }
-      }
-    }
-  };
-
-  /** 1 軸だけ動かす。塞がっていれば 1 マスまで登る。だめならその軸は動かさない。 */
-  /**
-   * 斜めの壁に沿ってずらす（DEC-243）。**1 歩も動けなかったときだけ**呼ぶ。
-   *
-   * 軸ごとに動かすやり方（`slide`）だと、軸に沿った壁は自然に滑るが、
-   * **45 度の壁は X も Z も塞がるので止まってしまう**（実測: 斜面へ W を 1 秒押して 0.49 マスで停止）。
-   * そこで進みたい向きを 45 度ずらして試す。壁に沿う成分は `cos45` なので長さもそのぶん落とす。
-   * 内側の角では両方とも塞がるので、今までどおり止まる。
-   */
-  const deflect = (dx: number, dz: number, collision: CollisionMap): void => {
-    if (dx === 0 && dz === 0) return;
-    // ±45 度回して cos45 を掛けたもの。結局どちらも係数 1/2 になる。
-    const tries: [number, number][] = [
-      [(dx - dz) / 2, (dx + dz) / 2],
-      [(dx + dz) / 2, (dz - dx) / 2],
-    ];
-    for (const [rx, rz] of tries) {
-      if (!fits(position.x + rx, position.y, position.z + rz, collision)) continue;
-      position.x += rx;
-      position.z += rz;
-      return;
-    }
-  };
-
-  /**
-   * 通路へ入るためのマス寄せ（GS-116。GS-29 の「角の逃がし」を作り直したもの）。
-   * **進めなかったときだけ**呼ぶ。
-   *
-   * 体はマス 1 つぶんの四角なので、1 マス幅の通路へは**マスに揃っていないと入れない**。
-   * そこで、体が**半分以上かかっているマス**——つまり中心が居るマス——の真ん中へ、
-   * 進みたい向きと直角に歩いて揃える。揃えば次のフレームからキーの向きへ進む。
-   *
-   * 揃えるのは「揃えば前へ進める」ときだけ。そうしないと、ただの行き止まりでも
-   * 体が横へ滑って「押しているのに違う方へ動く」ことになる。
-   * 返すのは寄せているあいだ向く方（ワールドの向き）。寄せないなら null。
-   */
-  /**
-   * 通路へ寄せている最中（GS-185）。**寄せ始めたら真ん中に揃うまで寄せ切る。**
-   * 寄せを「前へ進めなかったフレームだけ」にしていると、壁の帯が段違いの入口（0101 の出口）では
-   * 寄せる → 少し進める → また当たる → 寄せる…を繰り返し、そのたびに横と前を向き直して見えた。
-   */
-  let aligning: { alongX: boolean; sign: number; lane: number } | null = null;
-
-  /** 寄せの続き。同じ向きへ押している間だけ続ける。揃ったか、押す向きが変わったら終わり。 */
-  const keepAligning = (
-    dx: number,
-    dz: number,
-    step: number,
-    collision: CollisionMap,
-  ): { x: number; z: number } | null => {
-    const hold = aligning;
-    if (!hold || (dx === 0 && dz === 0)) {
-      aligning = null;
-      return null;
-    }
-    const alongX = Math.abs(dx) >= Math.abs(dz);
-    const sign = Math.sign(alongX ? dx : dz);
-    if (alongX !== hold.alongX || sign !== hold.sign) {
-      aligning = null;
-      return null;
-    }
-    const here = alongX ? position.z : position.x;
-    const gap = hold.lane - here;
-    if (Math.abs(gap) <= LANE_SNAP * unit) {
-      aligning = null;
-      return null;
-    }
-    const next = Math.abs(gap) <= step ? hold.lane : here + Math.sign(gap) * step;
-    const nx = alongX ? position.x : next;
-    const nz = alongX ? next : position.z;
-    if (!fits(nx, position.y, nz, collision)) {
-      aligning = null;
-      return null;
-    }
-    position.x = nx;
-    position.z = nz;
-    if (next === hold.lane) aligning = null;
-    return alongX ? { x: 0, z: Math.sign(gap) } : { x: Math.sign(gap), z: 0 };
-  };
-
-  const laneSlip = (
-    dx: number,
-    dz: number,
-    step: number,
-    collision: CollisionMap,
-  ): { x: number; z: number } | null => {
-    if (dx === 0 && dz === 0) return null;
-    // 主に進みたい向きだけを見る。斜め入力は `slide` が軸ごとに片付けている。
-    const alongX = Math.abs(dx) >= Math.abs(dz);
-    const forward = (alongX ? Math.sign(dx) : Math.sign(dz)) * step;
-    const here = alongX ? position.z : position.x;
-    // 揃える先は、体の中心が居るマスの真ん中。
-    const lane = (Math.floor(here / unit) + 0.5) * unit;
-    const gap = lane - here;
-    // もう揃っている。進めないのは通路が無いからで、寄せても意味がない。
-    if (Math.abs(gap) <= LANE_SNAP * unit) return null;
-    // 揃った先から前へ進めるか。
-    const aheadX = alongX ? position.x + forward : lane;
-    const aheadZ = alongX ? lane : position.z + forward;
-    if (!fits(aheadX, position.y, aheadZ, collision)) return null;
-    // 1 フレームで動くのは進む速さぶんまで。届くなら**ぴったり真ん中へ**置く
-    // ——ここがずれていると、1 マス幅の通路に永久に入れない。
-    const next = Math.abs(gap) <= step ? lane : here + Math.sign(gap) * step;
-    const nx = alongX ? position.x : next;
-    const nz = alongX ? next : position.z;
-    // 寄る道自体も空いていること。
-    if (!fits(nx, position.y, nz, collision)) return null;
-    position.x = nx;
-    position.z = nz;
-    // 揃い切らなければ、次のフレームからも寄せ続ける（GS-185）。
-    aligning = next === lane ? null : { alongX, sign: Math.sign(forward), lane };
-    return alongX ? { x: 0, z: Math.sign(gap) } : { x: Math.sign(gap), z: 0 };
-  };
-
-  /**
-   * 壁の手前まで詰める（GS-116）。1 フレームぶん丸ごとは進めないとき、**進める分だけ**進む。
-   * これが無いと壁との間に最大 1 フレームぶん（走りで 0.13 マス）の隙間が残り、
-   * マス 1 つぶんの四角で当たりを取ると「マスに入り切っていない」のが見えてしまう。
-   */
-  const creep = (axis: 'x' | 'z', delta: number, collision: CollisionMap): void => {
-    let lo = 0;
-    let hi = delta;
-    for (let i = 0; i < 5; i += 1) {
-      const mid = (lo + hi) / 2;
-      const tx = axis === 'x' ? position.x + mid : position.x;
-      const tz = axis === 'z' ? position.z + mid : position.z;
-      if (fits(tx, position.y, tz, collision)) lo = mid;
-      else hi = mid;
-    }
-    if (lo === 0) return;
-    if (axis === 'x') position.x += lo;
-    else position.z += lo;
-  };
-
-  const slide = (axis: 'x' | 'z', delta: number, collision: CollisionMap): void => {
-    if (delta === 0) return;
-    const nx = axis === 'x' ? position.x + delta : position.x;
-    const nz = axis === 'z' ? position.z + delta : position.z;
-    if (fits(nx, position.y, nz, collision)) {
-      position.x = nx;
-      position.z = nz;
-      return;
-    }
-    // 登れる高さは場所で変わる（DEC-237）。`Climb` のオブジェクトの中では高くなる。
-    const reach = Math.ceil(collision.climbAt(position.x / unit, position.y / unit, position.z / unit, STEP_UP));
-    for (let step = 1; step <= reach; step += 1) {
-      const up = position.y + step * unit;
-      if (!fits(nx, up, nz, collision)) continue;
-      if (!fits(position.x, up, position.z, collision)) continue;
-      // 登った先に足場が要る。これが無いと壁の横で 1 マスずつ浮いて登れてしまう。
-      // 足場は `up` ちょうどでなくてよい（DEC-210）。坂の上なら少し下に来る。
-      // ただし今の足元より下ではだめで、その高さで体が収まることも要る。
-      const landing = surface(nx, up + 0.001 * unit, nz, collision);
-      if (landing === null) continue;
-      if (landing > up + 0.001 * unit || landing < position.y - 0.001 * unit) continue;
-      if (!fits(nx, landing, nz, collision)) continue;
-      position.x = nx;
-      position.z = nz;
-      position.y = landing;
-      fallSpeed = 0;
-      onGround = true;
-      return;
-    }
   };
 
   /** 画面基準の入力から向きを決める。入力が無ければ今の向きのまま。 */
@@ -928,10 +651,8 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       z: cellOf(position.z, unit),
     }),
     placeAt(x, y, z) {
-      aligning = null;
       position.set(x, y, z);
       group.position.copy(position);
-      fallSpeed = 0;
       onGround = false;
       onLadder = false;
     },
@@ -958,7 +679,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       skin.setShadowBase(position.x, position.y, position.z);
       layoutShadow();
     },
-    settle(collision, from) {
+    settle(terrain, from) {
       const cx = from
         ? from.x + Math.round((position.x - from.x) / unit) * unit
         : (Math.floor(position.x / unit) + 0.5) * unit;
@@ -966,14 +687,14 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         ? from.z + Math.round((position.z - from.z) / unit) * unit
         : (Math.floor(position.z / unit) + 0.5) * unit;
       if (cx === position.x && cz === position.z) return;
-      if (!fits(cx, position.y, cz, collision)) return;
+      if (!fits(cx, position.y, cz, terrain)) return;
       position.x = cx;
       position.z = cz;
       group.position.copy(position);
       skin.setShadowBase(position.x, position.y, position.z);
       layoutShadow();
     },
-    spawn(collision, bounds) {
+    spawn(terrain, bounds) {
       const minX = bounds.empty ? 0 : bounds.min[0];
       const maxX = bounds.empty ? 0 : bounds.max[0];
       const minZ = bounds.empty ? 0 : bounds.min[2];
@@ -991,9 +712,9 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
             const z = cz + dz;
             const wx = (x + 0.5) * unit;
             const wz = (z + 0.5) * unit;
-            const wy = collision.surfaceUnder(x, z, (top + 1) * unit);
+            const wy = terrain.surfaceUnder(x, z, (top + 1) * unit);
             if (wy === null) continue;
-            if (!fits(wx, wy, wz, collision)) continue;
+            if (!fits(wx, wy, wz, terrain)) continue;
             player.placeAt(wx, wy, wz);
             return true;
           }
@@ -1002,15 +723,15 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       player.placeAt((cx + 0.5) * unit, top * unit, (cz + 0.5) * unit);
       return false;
     },
-    update(deltaSeconds, input, collision) {
+    update(deltaSeconds, input, terrain, body) {
       const { move, axis, running } = input;
-      // 壁ぎわに置かれていて四角が収まらないあいだは細い体で動かす（GS-116）。
-      squareBody = true;
-      if (!fits(position.x, position.y, position.z, collision)) squareBody = false;
-      unstick(collision);
+      // 外から置き直された（イベント・マップ移動・はしご・`settle`）なら体も置き直す。
+      if (Math.hypot(body.feet.x - position.x, body.feet.y - position.y, body.feet.z - position.z) > 0.0001 * unit) {
+        body.teleport(position.x, position.y, position.z);
+      }
 
       // --- はしご（DEC-237）。掴まっている間は重力も横移動も止め、上下だけ動かす。 ---
-      const ladder = collision.ladderAt(position.x / unit, position.y / unit, position.z / unit);
+      const ladder = terrain.ladderAt(position.x / unit, position.y / unit, position.z / unit);
       if (!ladder) onLadder = false;
       // はしごの筒へ寄せる（DEC-237）。**既にその列に居るなら 1 ミリも動かさない。**
       // マスの中心へ吸い寄せると、2 マス幅のはしごで横に飛ぶ。
@@ -1018,7 +739,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
       const holdTo = (world: number, cell: number | null, lo: number, hi: number): number => {
         if (cell === null) return world;
         if (Math.floor(world / unit) === cell) return world;
-        const margin = RADIUS * unit;
+        const margin = bodyHalfWidth * unit;
         const want = Math.min(
           Math.max(world, cell * unit + margin),
           (cell + 1) * unit - margin,
@@ -1040,19 +761,18 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         }
       }
       if (onLadder && ladder) {
-        fallSpeed = 0;
         onGround = false;
         // W が -1、S が +1。筒から外れている向きだけ押さえて、上下だけ動かす。
         position.x = holdTo(position.x, ladder.shaftX, ladder.minX, ladder.maxX);
         position.z = holdTo(position.z, ladder.shaftZ, ladder.minZ, ladder.maxZ);
-        position.y += -axis.y * LADDER_SPEED * unit * deltaSeconds;
+        position.y += -axis.y * LADDER_SPEED * size * unit * deltaSeconds;
         const eps = 0.001 * unit;
         const low = ladder.minY * unit;
         const high = ladder.maxY * unit;
         if (position.y <= low) {
           // 下端。足場があればそこへ降りる。
           position.y = low;
-          const ground = footing(position.x, position.y + eps, position.z, collision);
+          const ground = surface(position.x, position.y + eps, position.z, terrain);
           if (ground !== null) position.y = ground;
           onLadder = false;
         } else if (position.y >= high) {
@@ -1066,16 +786,16 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
           // 乗り移り先も**今の横位置をできるだけ保つ**。マスが同じ向きは動かさない。
           const alongCell = (world: number, cell: number): number => {
             if (Math.floor(world / unit) === cell) return world;
-            const margin = RADIUS * unit;
+            const margin = bodyHalfWidth * unit;
             return Math.min(Math.max(world, cell * unit + margin), (cell + 1) * unit - margin);
           };
           for (let cz = Math.floor(ladder.minZ); cz < Math.ceil(ladder.maxZ); cz += 1) {
             for (let cx = Math.floor(ladder.minX); cx < Math.ceil(ladder.maxX); cx += 1) {
               const wx = alongCell(position.x, cx);
               const wz = alongCell(position.z, cz);
-              const top = footing(wx, high + LADDER_EXIT_REACH * unit, wz, collision);
+              const top = surface(wx, high + LADDER_EXIT_REACH * unit, wz, terrain);
               if (top === null || top < high - unit * 0.5) continue;
-              if (!fits(wx, top, wz, collision)) continue;
+              if (!fits(wx, top, wz, terrain)) continue;
               const d = (wx - position.x) ** 2 + (wz - position.z) ** 2;
               if (d >= near) continue;
               near = d;
@@ -1115,80 +835,52 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         return;
       }
 
-      const speed = (input.speed ?? (running ? RUN_SPEED : WALK_SPEED)) * unit * deltaSeconds;
-      const heldX = position.x;
-      const heldZ = position.z;
-      // 寄せている最中なら、揃うまで前へは進まない（GS-185）。
-      let slip: { x: number; z: number } | null = input.slide
-        ? null
-        : keepAligning(move.x * speed, move.z * speed, speed, collision);
-      if (!slip) {
-        slide('x', move.x * speed, collision);
-        slide('z', move.z * speed, collision);
-        if (position.x === heldX && position.z === heldZ) {
-          deflect(move.x * speed, move.z * speed, collision);
-        }
-        // それでも 1 ミリも動けないなら、通路の縁に当たっている（GS-116）。
-        // 半分以上かかっているマスの真ん中へ、直角に歩いて揃える。
-        if (position.x === heldX && position.z === heldZ) {
-          slip = laneSlip(move.x * speed, move.z * speed, speed, collision);
-        }
-      }
-      // 寄せる先も無いなら壁。**残った隙間ぶんだけ詰める**（GS-116）。
-      // 1 フレームぶん丸ごと進めないと止まる作りなので、これが無いと壁との間に隙間が残る。
-      if (position.x === heldX && position.z === heldZ) {
-        creep('x', move.x * speed, collision);
-        creep('z', move.z * speed, collision);
-      }
+      // 速さもキャラクターの大きさに合わせる（2026-10-11。マップの `CharacterScale`）。
+      // 歩き・走り・うろつき（`input.speed`）・イベントの歩きのどれも同じ倍率——小さい人はゆっくり進む。
+      const speed = (input.speed ?? (running ? RUN_SPEED : WALK_SPEED)) * size * unit * deltaSeconds;
 
-      // 通路へ寄せているあいだは**寄る方へ体を向ける**（GS-116）。真横へ滑って見えない。
-      // **滑らせているときは向きも足もそのまま**（GS-155）——飛ばされた人は前を向いたまま下がる。
-      if (!input.slide) {
-        facing = slip && input.yaw !== undefined ? facingForWorld(slip.x, slip.z, input.yaw) : facingFor(axis);
-      }
-      // 壁に押し当てているだけでも足踏みさせる。止まったように見えないため。
-      const walking = !input.slide && (axis.x !== 0 || axis.y !== 0);
-      if (walking) {
-        stepTime += deltaSeconds;
-        const per = running ? RUN_STEP_S : STEP_S;
-        while (stepTime >= per) {
-          stepTime -= per;
-          stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
+      {
+        // --- Rapier の体（GS-237 / GS-239）。壁に沿った滑り・坂・落下は Rapier に任せる。 ---
+        // 登れる段差は今までどおり `Climb` の範囲だけ（DEC-237 / DEC-256）。
+        const climb = terrain.climbAt(position.x / unit, position.y / unit, position.z / unit, STEP_UP);
+        // マスの揃え（GS-240）。1 マス幅の通路へ少しずれて入ろうとしたら、列の中央へ寄せる。
+        const nudge = input.slide
+          ? null
+          : laneNudge(position, move, speed, {
+              unit,
+              half: bodyHalfWidth,
+              fits: (wx, wy, wz, half) => terrain.fits(wx, wy, wz, half, bodyTall),
+            });
+        const moved = body.move(move.x * speed + (nudge?.x ?? 0), move.z * speed + (nudge?.z ?? 0), deltaSeconds, climb);
+        const stepX = moved.x - position.x;
+        const stepZ = moved.z - position.z;
+        position.set(moved.x, moved.y, moved.z);
+        onGround = moved.grounded;
+        if (!input.slide) {
+          // 寄せている間は**実際に動いた向き**を向く（GS-116 / GS-241）。前が塞がって横へ動いているのに
+          // 前を向いたままだと、横へ滑っているように見える。
+          facing =
+            nudge && input.yaw !== undefined && Math.hypot(stepX, stepZ) > 0.0001 * unit
+              ? facingForWorld(stepX, stepZ, input.yaw)
+              : facingFor(axis);
         }
-      } else {
-        stepTime = 0;
-        stepIndex = STAND;
-      }
-      refreshFrame();
-
-      // 接地中は少し上まで面を探す（坂を登る）。空中では今の足元から下だけ見る（DEC-210）。
-      const reach = onGround ? SLOPE_REACH * unit : 0;
-      const ground = footing(position.x, position.y + reach, position.z, collision);
-      const eps = 0.001 * unit;
-      // 接地中は少し下の面へも貼り付ける。下り坂で浮いては落ちるガタつきを消す。
-      const grabs =
-        ground !== null &&
-        (position.y <= ground + eps || (onGround && position.y - ground <= GROUND_SNAP * unit));
-      if (grabs) {
-        position.y = ground as number;
-        fallSpeed = 0;
-        onGround = true;
-      } else {
-        onGround = false;
-        fallSpeed = Math.min(fallSpeed + GRAVITY * unit * deltaSeconds, FALL_MAX * unit);
-        const next = position.y - fallSpeed * deltaSeconds;
-        if (ground !== null && next <= ground) {
-          position.y = ground;
-          fallSpeed = 0;
-          onGround = true;
+        const stepping = !input.slide && (axis.x !== 0 || axis.y !== 0);
+        if (stepping) {
+          stepTime += deltaSeconds;
+          const per = running ? RUN_STEP_S : STEP_S;
+          while (stepTime >= per) {
+            stepTime -= per;
+            stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
+          }
         } else {
-          position.y = Math.max(next, VOID_Y * unit);
+          stepTime = 0;
+          stepIndex = STAND;
         }
+        refreshFrame();
+        group.position.copy(position);
+        skin.setShadowBase(position.x, position.y, position.z);
+        layoutShadow();
       }
-
-      group.position.copy(position);
-      skin.setShadowBase(position.x, position.y, position.z);
-      layoutShadow();
     },
     setShadowField(solid, surface, top, selfSolid) {
       shadowSolid = solid;
@@ -1230,10 +922,11 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
     footLift,
     frame: () => frameUv,
     size: { width, height },
-    headPad: () => ((headPadPx.get(sheet.url) ?? 0) / tilePx) * unit,
+    boardFoot: () => boardFootAt.set(position.x, position.y + body.position.y - height / 2, position.z),
+    headPad: () => ((headPadPx.get(sheet.url) ?? 0) / tilePx) * unit * size,
     // 踏んだ判定も四角に合わせる（GS-116）。細いままだと、四角で壁の手前に止まったとき
     // 壁のマスに描いた起動場所（扉など）に届かなくなる。
-    radius: BODY_HALF,
+    radius: bodyHalf,
     dispose() {
       body.geometry.dispose();
       skin.dispose();

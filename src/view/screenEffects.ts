@@ -138,6 +138,34 @@ void main() {
 }
 `;
 
+/**
+ * その時間帯に出す画面エフェクト（GS-227）。`showIn` が無ければいつも出す。
+ * **時間帯なし（基準）ではすべて出す**——レイヤーの `ShowIn` と同じ決まり（DEC-448）。
+ */
+export function screenEffectsAtTime(list: readonly ScreenEffectDef[], time: string): ScreenEffectDef[] {
+  if (!time) return [...list];
+  return list.filter((entry) => {
+    const times = String(entry.showIn ?? '').split(',').map((part) => part.trim()).filter(Boolean);
+    return times.length === 0 || times.includes(time);
+  });
+}
+
+/**
+ * 時間帯を移るあいだの画面エフェクト（GS-227。`k` は 0..1）。両方に在る物（同じ id）は次の値で出し、
+ * 前だけの物は濃さ × (1 - k)、次だけの物は濃さ × k で出し入れする。
+ */
+export function blendScreenEffects(from: readonly ScreenEffectDef[], to: readonly ScreenEffectDef[], k: number): ScreenEffectDef[] {
+  const t = Math.min(1, Math.max(0, k));
+  const amountOf = (entry: ScreenEffectDef) =>
+    entry.amount ?? SCREEN_EFFECT_DEFAULTS[entry.kind as ScreenEffectKind]?.amount ?? 0;
+  const next = new Set(to.map((entry) => entry.id));
+  const before = new Set(from.map((entry) => entry.id));
+  return [
+    ...from.filter((entry) => !next.has(entry.id)).map((entry) => ({ ...entry, amount: amountOf(entry) * (1 - t) })),
+    ...to.map((entry) => (before.has(entry.id) ? entry : { ...entry, amount: amountOf(entry) * t })),
+  ];
+}
+
 export interface ScreenEffects {
   /** 一覧を差し替える。**毎フレーム渡してよい**（同じなら作り直さない）。 */
   set(list: ScreenEffectDef[]): void;

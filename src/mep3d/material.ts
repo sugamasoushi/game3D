@@ -1,5 +1,5 @@
 import { Color, ClampToEdgeWrapping, DataTexture, DoubleSide, FrontSide, LinearFilter, NoColorSpace, RGBAFormat, ShaderMaterial, Texture, UnsignedByteType, Vector2, Vector3, Vector4 } from 'three';
-import { blockShadowStrength, fillPointLightUniforms, lightDirection, MAX_POINT_LIGHTS, type PointLightUniformBuf } from './lighting';
+import { blockShadowStrength, fillPointLightUniforms, lightColor, lightDirection, MAX_POINT_LIGHTS, type PointLightUniformBuf } from './lighting';
 import { CAMERA_FX_DEFAULTS, fogColor } from './camera';
 import { createLightWallArrays, LIGHT_WALL_GLSL, LIGHT_WALL_UNIFORMS_GLSL } from './lightWalls';
 import { createOccluderArrays, emptyOccluderMap, MAX_OCCLUDERS, OCCLUDER_GLSL, OCCLUDER_UNIFORMS_GLSL } from './occluders';
@@ -58,15 +58,18 @@ uniform float mepActorCutoff;
 `;
 
 export const ACTOR_OCCLUDER_GLSL = /* glsl */ `
-bool mepActorBlocks(vec3 fromPos, vec3 toPos) {
+bool mepActorBlocks(vec3 fromPos, vec3 toPos, vec3 facePos) {
   if (mepActorOn < 0.5) return false;
   vec3 centre = mepActorFoot + vec3(0.0, mepActorSize.y * 0.5, 0.0);
   // 板は光源の方を向く。どの光源から見てもシルエットが正面に出る。
-  vec3 n = toPos - centre;
+  // 向きは光源の中心（\`facePos\`）で決める。面光源の断片ごとの出どころで決めると板が回る（DEC-469）。
+  vec3 n = facePos - centre;
   n.y = 0.0;
   float nl = length(n);
   if (nl < 0.0001) return false;
   n /= nl;
+  // 影の出どころを光源の方へ寄せる（DEC-470。ビルボードと同じ量）。光源を追い越さない。
+  centre += n * min(mepOccNudge, nl * 0.5);
   vec3 seg = toPos - fromPos;
   float denom = dot(seg, n);
   if (abs(denom) < 0.0001) return false;
@@ -134,6 +137,20 @@ ${SUN_ACTOR_INDICES.map(
   }`,
 ).join('\n')}
   return false;
+}
+`;
+
+/**
+ * 光の色（DEC-442）。明るさ（`shade`）のうち**環境光までを環境光の色**、超えたぶんを**日向の色**で照らす（空の光と太陽の光を足す形）。
+ * 影の中は環境光までしか残らないので環境光の色だけになり、日向は 2 色が混ざる。
+ * `lightAmbient` を先に宣言しておくこと。点光源（`pointLightRgb`）には掛けない。
+ */
+export const LIGHT_COLOR_GLSL = /* glsl */ `
+uniform vec3 lightAmbientColor;
+uniform vec3 lightSunColor;
+vec3 mepLightRgb(float shade) {
+  float base = min(shade, lightAmbient);
+  return lightAmbientColor * base + lightSunColor * max(shade - base, 0.0);
 }
 `;
 
@@ -207,9 +224,10 @@ vec3 pointLightRgb(vec3 N, vec3 worldPos) {
     float att = 1.0 - dist / range;
     att *= att;
     if (mepWallBlocks(worldPos, origin)) continue;
-    if (mepActorBlocks(worldPos, origin)) continue;
+    // 板（キャラ・ビルボード）は光源の中心へ向ける。面光源でも断片ごとに向きを変えない（DEC-469）。
+    if (mepActorBlocks(worldPos, origin, pointLightPos[i])) continue;
     // 面から少し浮かせて判定する。自分の面で影が付くのを防ぐ。
-    if (mepOccBlocks(i, worldPos + N * 0.08, origin)) continue;
+    if (mepOccBlocks(i, worldPos + N * 0.08, origin, pointLightPos[i])) continue;
     vec3 L = toL / max(dist, 0.0001);
     if (kind > 0.5 && kind < 1.5) {
       att *= smoothstep(pointLightExtra[i].y, pointLightExtra[i].z, dot(-L, nDir));
@@ -697,6 +715,7 @@ uniform float lightWrap;
 uniform float lightAmbient;
 uniform float lightIntensity;
 ${POINT_LIGHT_UNIFORMS_GLSL}
+${LIGHT_COLOR_GLSL}
 
 #ifndef MEP_BILLBOARD
 float faceShade(vec3 worldNormal) {
@@ -850,9 +869,9 @@ void main() {
     #endif
     // ずらすのは形の法線。法線マップで曲げた向きだと面から浮く。
     shade = mepSunShaded(shade, vWorldPos, geomN);
-    colour = albedo * tint * (vec3(shade) + pointLightRgb(N, vWorldPos));
+    colour = albedo * tint * (mepLightRgb(shade) + pointLightRgb(N, vWorldPos));
   #else
-    colour = albedo * tint * (vec3(vShade) + pointLightRgb(vec3(0.0, 1.0, 0.0), vShadowPos));
+    colour = albedo * tint * (mepLightRgb(vShade) + pointLightRgb(vec3(0.0, 1.0, 0.0), vShadowPos));
   #endif
   }
 
@@ -1045,6 +1064,8 @@ export function createTileMaterial(
       lightIntensity: { value: light.intensity },
       lightWrap: { value: light.wrap },
       lightBillboard: { value: light.billboard },
+      lightAmbientColor: { value: lightColor(light.ambientColor) },
+      lightSunColor: { value: lightColor(light.sunColor) },
       lightTime: { value: 0 },
       pointLightCount: { value: pointCount },
       pointLightPos: { value: lights.pos },
@@ -1068,6 +1089,7 @@ export function createTileMaterial(
       mepOccRows: { value: MAX_OCCLUDERS },
       mepOccSpan: { value: occluders.span },
       mepOccCutoff: { value: 0.5 },
+      mepOccNudge: { value: 0 },
       mepWallCount: { value: 0 },
       mepWallAxis: { value: walls.axis },
       mepWallBounds: { value: walls.bounds },

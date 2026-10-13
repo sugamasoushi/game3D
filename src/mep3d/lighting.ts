@@ -14,12 +14,15 @@ export const LIGHTING_DEFAULTS: Required<LightingDef> = {
   intensity: 0.45,
   wrap: 0,
   billboard: 0.95,
+  ambientColor: '#ffffff',
+  sunColor: '#ffffff',
   blockShadow: true,
   blockShadowStrength: 1,
   cloudShadow: false,
   cloudShadowAmount: 0.45,
   cloudShadowScale: 0.018,
   cloudShadowSpeed: 0.004,
+  pointShadowShift: 4,
 };
 
 /** ブロック影マスクを組むか。暗さは環境光で、直射を失うことが影。 */
@@ -61,7 +64,16 @@ export function shadowDirection(settings: Required<LightingDef>): Vector3 {
 
 /** 欠落を既定で埋める。光源のない旧ファイルも真っ黒にしない。 */
 export function resolveLighting(raw: LightingDef | undefined): Required<LightingDef> {
-  return { ...LIGHTING_DEFAULTS, ...(raw ?? {}) };
+  const out = { ...LIGHTING_DEFAULTS, ...(raw ?? {}) };
+  // 光の色（DEC-442）。壊れた値は白に戻す（黒だと画面が真っ暗になって理由が分からない）。
+  if (!/^#[0-9a-fA-F]{6}$/.test(out.ambientColor)) out.ambientColor = LIGHTING_DEFAULTS.ambientColor;
+  if (!/^#[0-9a-fA-F]{6}$/.test(out.sunColor)) out.sunColor = LIGHTING_DEFAULTS.sunColor;
+  return out;
+}
+
+/** 光の色をシェーダへ渡す形に（作業色空間＝リニア）。`out` があればそこへ書く。 */
+export function lightColor(hex: string, out: Color = new Color()): Color {
+  return out.set(hex);
 }
 
 /** 面から光へ向かう単位ベクトル。方位 0 が北（−Z）、仰角は地平から。 */

@@ -26,7 +26,7 @@
         { "type": "playSe", "key": "幽霊出現" },
         {
           "type": "place",
-          "target": "npc:pipo-charachip003a",
+          "target": "npc:elderly_male_ghost_01",
           "at": { "x": -3, "y": 5, "z": -4 },
           "face": "right",
           "appear": "glow",
@@ -38,14 +38,14 @@
         },
         {
           "type": "move",
-          "target": "npc:pipo-charachip003a",
+          "target": "npc:elderly_male_ghost_01",
           "dir": "up",
           "cells": 5,
           "wait": false
         },
         {
           "type": "hide",
-          "target": "npc:pipo-charachip003a",
+          "target": "npc:elderly_male_ghost_01",
           "vanish": "fade",
           "ms": 500,
           "remember": false

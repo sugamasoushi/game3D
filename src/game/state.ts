@@ -5,6 +5,7 @@
 //
 // 設定（`options.ts`）はここに**入れない**。あちらは端末の好みで、枠ごとに変わらない。
 
+import type { TimeClock } from './timeClock';
 import type { SaveData } from './save';
 import { SAVE_VERSION } from './save';
 import type { WalkDir } from './GameView';
@@ -29,6 +30,10 @@ export interface GameState {
   members: Map<string, MemberState>;
   /** 所持金。戦って増える（GS-60）。 */
   gold: number;
+  /** いまの時間帯（GS-222）。光のプリセットの id。'' は時間帯なし（マップの基準の光）。 */
+  time: string;
+  /** 時計（GS-222）。実時間で時間帯を進める。 */
+  clock: TimeClock;
 }
 
 /**
@@ -91,6 +96,8 @@ export function newState(): GameState {
     party: [],
     members: new Map(),
     gold: 0,
+    time: '',
+    clock: { running: false, ms: 0 },
   };
 }
 
@@ -133,6 +140,8 @@ export function toSave(state: GameState, progress: Progress): SaveData {
       ]),
     ),
     gold: state.gold,
+    time: state.time,
+    clock: { running: state.clock.running, ms: Math.round(state.clock.ms) },
     clear: { count: state.clear.count, lap: state.clear.lap, carry: { ...state.clear.carry } },
   };
 }
@@ -171,6 +180,9 @@ export function fromSave(data: SaveData): { state: GameState; progress: Progress
         ]),
       ),
       gold: data.gold ?? 0,
+      // 時間帯と時計（GS-222）。古い記録には無い——時間帯なし・止まった時計で始める（呼ぶ側が台帳の始まりで埋める）。
+      time: typeof data.time === 'string' ? data.time : '',
+      clock: { running: data.clock?.running === true, ms: Math.max(0, data.clock?.ms ?? 0) },
     },
     progress: { map: data.map, at: data.at, facing: data.facing },
   };

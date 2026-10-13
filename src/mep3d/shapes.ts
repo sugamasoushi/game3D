@@ -157,7 +157,9 @@ export function geometryFor(shape: Shape): BufferGeometry {
       geometry = rampGeometry(SLANT_HEIGHTS[shape.slice('floor_slant_'.length)], false);
       break;
     case 'floor_fold_ne':
-    case 'floor_fold_nw': {
+    case 'floor_fold_nw':
+    case 'floor_fold_in':
+    case 'floor_fold_in_flip': {
       const fold = shape.slice('floor_fold_'.length);
       geometry = foldGeometry(FOLD_HEIGHTS[fold], FOLD_SW_NE[fold]);
       break;
@@ -722,12 +724,20 @@ function polyGeometry(points: Array<[number, number]>, flipped: boolean): Buffer
 const FOLD_HEIGHTS: Record<string, number[]> = {
   ne: [0, 1, 0, 0],
   nw: [1, 0, 0, 0],
+  // 斜面入隅（ブロック `slope_corner_in` の上面と同じ隅）。低いのは南東だけ。
+  in: [1, 1, 0, 1],
+  // その左右反転（「上＋縦面（右）」に合わせる）。低いのは南西だけ。
+  in_flip: [1, 1, 1, 0],
 };
 
 /** 折れ面の尾根がどちらの対角線か。`ne` は南西—北東、`nw` は北西—南東。 */
 const FOLD_SW_NE: Record<string, boolean> = {
   ne: true,
   nw: false,
+  // 入隅は北西—南東で**谷折り**。ブロックの上面と同じ割り方（`slopedGeometry` の 0—2）。
+  in: false,
+  // 反転は谷も反転して北東—南西。
+  in_flip: true,
 };
 
 /**

@@ -5,10 +5,11 @@
 // で、そのあとフォグを混ぜる。ここも同じ式を使う。点光源とフォグの GLSL は
 // material.ts のチャンクを共有しているので、片方だけずれることはない。
 
-import { DoubleSide, ShaderMaterial, Vector2, Vector3, Vector4, type Texture } from 'three';
+import { Color, DoubleSide, ShaderMaterial, Vector2, Vector3, Vector4, type Texture } from 'three';
 import {
   FOG_GLSL,
   FOG_UNIFORMS_GLSL,
+  LIGHT_COLOR_GLSL,
   POINT_LIGHT_GLSL,
   POINT_LIGHT_UNIFORMS_GLSL,
   SPRITE_SHADOW_GLSL,
@@ -23,7 +24,7 @@ import {
 import { CAMERA_FX_DEFAULTS, fogColor } from './camera';
 import { createSunShadowUniforms, SUN_SHADOW_GLSL, SUN_SHADOW_UNIFORMS_GLSL } from './sunShadow';
 import { createLightWallArrays } from './lightWalls';
-import { blockShadowStrength, fillPointLightUniforms, resolveLighting } from './lighting';
+import { blockShadowStrength, fillPointLightUniforms, lightColor, resolveLighting } from './lighting';
 import { createOccluderArrays, emptyOccluderMap, MAX_OCCLUDERS } from './occluders';
 import { FADE_CELLS } from './shadowMask';
 import type { CameraFxDef, LightingDef, PointLightDef } from './types';
@@ -60,6 +61,7 @@ uniform float lightBillboard;
 uniform float lightAmbient;
 uniform float lightIntensity;
 ${POINT_LIGHT_UNIFORMS_GLSL}
+${LIGHT_COLOR_GLSL}
 ${SPRITE_SHADOW_UNIFORMS_GLSL}
 ${SUN_SHADOW_UNIFORMS_GLSL}
 ${SUN_ACTOR_UNIFORMS_GLSL}
@@ -98,7 +100,7 @@ void main() {
     float base = min(shade, lightAmbient);
     shade = max(shade - (shade - base) * min(lost, 1.0) - base * max(lost - 1.0, 0.0), 0.0);
   }
-  vec3 colour = texel.rgb * (vec3(shade) + pointLightRgb(vec3(0.0, 1.0, 0.0), vWorldPos));
+  vec3 colour = texel.rgb * (mepLightRgb(shade) + pointLightRgb(vec3(0.0, 1.0, 0.0), vWorldPos));
   // 旧方式のブロック影（L-3.12）。新方式が入のときは mepShadowOn が 0 なので何もしない。
   colour = mepBlockShadow(colour, vShadowPos);
   if (mepFogOn) {
@@ -259,6 +261,8 @@ export function createActorMaterial(
       lightBillboard: { value: light.billboard },
       lightAmbient: { value: light.ambient },
       lightIntensity: { value: light.intensity },
+      lightAmbientColor: { value: lightColor(light.ambientColor) },
+      lightSunColor: { value: lightColor(light.sunColor) },
       lightTime: { value: 0 },
       shadowBase: { value: new Vector3() },
       sunLift: { value: 1 },
@@ -298,6 +302,7 @@ export function createActorMaterial(
       mepOccRows: { value: MAX_OCCLUDERS },
       mepOccSpan: { value: occluders.span },
       mepOccCutoff: { value: 0.5 },
+      mepOccNudge: { value: 0 },
       mepWallCount: { value: 0 },
       mepWallAxis: { value: walls.axis },
       mepWallBounds: { value: walls.bounds },
@@ -338,6 +343,8 @@ export function createActorMaterial(
       material.uniforms.lightBillboard.value = next.billboard;
       material.uniforms.lightAmbient.value = next.ambient;
       material.uniforms.lightIntensity.value = next.intensity;
+      lightColor(next.ambientColor, material.uniforms.lightAmbientColor.value as Color);
+      lightColor(next.sunColor, material.uniforms.lightSunColor.value as Color);
       material.uniforms.mepShadowStrength.value = blockShadowStrength(next);
       material.uniforms.pointLightCount.value = fillPointLightUniforms(pointLights, unit, lights);
     },

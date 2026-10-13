@@ -1,6 +1,6 @@
 {
   "format": "mep3d-map",
-  "version": 2,
+  "version": 3,
   "name": "untitled",
   "grid": {
     "tilePx": 32,
@@ -129,7 +129,7 @@
         "shading": "lambert",
         "alphaTest": 0,
         "transparent": false,
-        "side": "front",
+        "side": "double",
         "depthWrite": true
       },
       {
@@ -6063,13 +6063,13 @@
   "editor": {
     "camera": {
       "target": [
-        6.404009694468574,
-        4.5835533637005055,
-        -4.231331105468797
+        3.0670085445115705,
+        4.125198027330475,
+        -0.4757179118354369
       ],
       "yaw": 0,
       "pitch": -23,
-      "distance": 28.36257380119352,
+      "distance": 25.526316421074167,
       "orthographic": false
     },
     "height": 0,
@@ -6149,12 +6149,11 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [
         {
-          "name": "Walkable",
-          "type": "boolean",
-          "value": true
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
         }
       ],
       "batches": [
@@ -14589,12 +14588,11 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [
         {
-          "name": "Walkable",
-          "type": "boolean",
-          "value": true
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
         }
       ],
       "batches": [
@@ -16521,14 +16519,7 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": true,
-      "properties": [
-        {
-          "name": "Collision",
-          "type": "boolean",
-          "value": true
-        }
-      ],
+      "properties": [],
       "batches": [
         {
           "id": "崖-wall-0",
@@ -19830,8 +19821,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "decoration-floor-0",
@@ -20086,8 +20082,13 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
-      "properties": [],
+      "properties": [
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
       "batches": [
         {
           "id": "タイルマップレイヤー_5-wall-0",
@@ -24055,7 +24056,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -24122,7 +24122,6 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": false,
       "properties": [],
       "batches": [],
       "objects": [
@@ -24171,17 +24170,16 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "collision": true,
       "properties": [
-        {
-          "name": "NoEntry",
-          "type": "boolean",
-          "value": true
-        },
         {
           "name": "Hidden",
           "type": "boolean",
           "value": true
+        },
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "block"
         }
       ],
       "batches": [
