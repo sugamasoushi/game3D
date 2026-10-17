@@ -59,6 +59,8 @@ export interface EnemyDef extends Stats {
   name: string;
   /** 絵の名前（拡張子なし）。無ければ絵なしで出す。 */
   image?: string;
+  /** 戦闘の絵の大きさの倍率（2026-10-17）。書かなければ 1（絵の高さから決めた大きさのまま）。 */
+  scale?: number;
   /** 倒したときに入る経験（GS-63）。 */
   exp?: number;
   /** 倒したときの取り分。 */
@@ -360,4 +362,24 @@ export function previewEffects(next: Record<string, EffectEntry>): void {
 export function enemyImage(id: string): string | null {
   const image = enemies[id]?.image;
   return image ? assetUrl(`${STAND_DIR}/${image}.png`) : null;
+}
+
+/** 敵の絵の大きさの倍率（2026-10-17）。書かない・0 以下・数でない値は 1。 */
+export function enemyScale(id: string): number {
+  const scale = enemies[id]?.scale;
+  return typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+/** 戦闘の舞台の絵の、何 px で 1 マスと見るか（GS-87）。 */
+export const STAGE_PX_PER_CELL = 190;
+
+/**
+ * 戦闘の舞台の板の高さ（マス。GS-87）。`fixed` が 0 より大きければそれ、
+ * 0 なら絵の高さから決める（190px で 1 マス）。それに倍率を掛ける。
+ * **上限・下限で収めない**（2026-10-17）——元の大きさ × 倍率だけにして、大きさは倍率で直す。
+ * 収めると、描き直した絵が思った大きさにならない。
+ */
+export function stageFigureCells(fixed: number, imagePx: number, scale = 1): number {
+  const cells = fixed > 0 ? fixed : imagePx / STAGE_PX_PER_CELL;
+  return cells * scale;
 }

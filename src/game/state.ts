@@ -11,10 +11,9 @@ import { SAVE_VERSION } from './save';
 import type { WalkDir } from './GameView';
 
 export interface GameState {
-  /**
-   * フラグ（GS-147）。**true＝まだ動ける／false＝もう動かない（済み）**。
-   * 読むときは必ず `switchOn()` を通す——**書いていなければ true**（旧作と同じ向き）。
-   */
+  /** 物語の段階（GS-254）。最後に済ませた段階の id。'' は何も済んでいない。本筋の進み具合はここだけ。 */
+  story: string;
+  /** フラグ。本筋と関係ない、その場かぎりの覚え。**書いていなければ false**（GS-254）。読むときは `switchOn()` を通す。 */
   switches: Map<string, boolean>;
   variables: Map<string, number>;
   /** セルフスイッチ。キーは `<マップ>/<イベント>/<名前>`。 */
@@ -37,17 +36,14 @@ export interface GameState {
 }
 
 /**
- * フラグを読む（GS-147）。**書いていなければ「まだ動ける」（true）**。
+ * フラグを読む。**書いていなければ false**（GS-254。セルフフラグと同じ向き）。
  *
- * 旧作（`EventFlagData.getFlag`）と同じ向き——`savedata.json` に書いていない物は
- * 実行可能、`false` と書いた物だけ止まる。イベントは**終わりに自分のフラグを `false`**にして
- * 「もう動かない」と覚える。
- *
- * **セルフフラグ（宝箱の「開けた」）はこの逆**で、未設定＝false（まだ開けていない）。
- * あちらは「済んだ覚え」で、こちらは「動いてよいか」。混ぜないこと。
+ * それまでは旧作と同じく「書いていなければ true＝まだ動ける」で、イベントが終わりに自分のフラグを
+ * false にして本筋の順番を表していた（GS-147）。読むたびに頭の中で反転させることになり、
+ * 順番は物語の段階（`story.ts`）が持つようにしたので、フラグは「起きたら立てる」覚えだけにした。
  */
 export function switchOn(state: Pick<GameState, 'switches'>, key: string): boolean {
-  return state.switches.get(key) ?? true;
+  return state.switches.get(key) ?? false;
 }
 
 /**
@@ -87,6 +83,7 @@ export interface Progress {
 /** はじめから。 */
 export function newState(): GameState {
   return {
+    story: '',
     switches: new Map(),
     variables: new Map(),
     self: new Map(),
@@ -128,6 +125,7 @@ export function toSave(state: GameState, progress: Progress): SaveData {
     map: progress.map,
     at: progress.at,
     facing: progress.facing,
+    story: state.story,
     switches: Object.fromEntries(state.switches),
     variables: Object.fromEntries(state.variables),
     self: Object.fromEntries(state.self),
@@ -146,9 +144,22 @@ export function toSave(state: GameState, progress: Progress): SaveData {
   };
 }
 
+/**
+ * 読んだ記録を、いま遊んでいる入れ物へ移す（つづきから）。
+ * **入れ物は差し替えず中身を移す**——イベントの道具立てが同じ入れ物を握っている。
+ * **`GameState` の欄は全部ここで移す**。画面の側で 1 つずつ書くと、欄を足したときに移し忘れる
+ * （物語の段階 `story` を移し忘れ、読み直すとイベントが始めからになっていた）。
+ */
+export function restoreState(target: GameState, loaded: GameState): void {
+  (Object.keys(loaded) as (keyof GameState)[]).forEach((key) => {
+    (target as unknown as Record<string, unknown>)[key] = loaded[key];
+  });
+}
+
 export function fromSave(data: SaveData): { state: GameState; progress: Progress } {
   return {
     state: {
+      story: typeof data.story === 'string' ? data.story : '',
       switches: new Map(Object.entries(data.switches ?? {})),
       variables: new Map(Object.entries(data.variables ?? {})),
       self: new Map(Object.entries(data.self ?? {})),

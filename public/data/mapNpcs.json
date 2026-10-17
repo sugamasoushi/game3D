@@ -1,7 +1,123 @@
 {
-  "infomation": "マップに置いた NPC の設定（2026-10-08）。マップの番号（maps.json のキー）→ 1 体の名前（マップの Id）→ 設定。standby は最初は出さない（イベントの「置き直す」で出る）、showWhen は出現条件（この条件を満たす間だけ出す。イベントの条件と同じ書き方。並べれば全部。イベントの起動条件とは結び付けない）、wander はうろつき（range 離れてよいマス・step 一度に歩くマス・ms 休む時間 [最短, 最長]・walkMs 一歩の時間。書かない項目は既定）、stepInPlace は常時その場で足踏み。書いていない NPC はいつでも出て立ち止まる。時間帯（ShowIn）はマップに書く。台帳エディタの「マップ構成」で編集する。",
+  "information": "マップに置いた NPC の設定（2026-10-08）。マップの id（maps.json のキー）→ 1 体の名前（マップの Id）→ 設定。standby は最初は出さない（イベントの「置き直す」で出る）、showWhen は出現条件（この条件を満たす間だけ出す。イベントの条件と同じ書き方。並べれば全部。イベントの起動条件とは結び付けない）、wander はうろつき（range 離れてよいマス・step 一度に歩くマス・ms 休む時間 [最短, 最長]・walkMs 一歩の時間。書かない項目は既定）、stepInPlace は常時その場で足踏み。書いていない NPC はいつでも出て立ち止まる。時間帯（ShowIn）はマップに書く。台帳エディタの「マップ構成」で編集する。",
   "maps": {
-    "0101": {
+    "cave": {
+      "slime": {
+        "wander": {
+          "range": 2
+        }
+      },
+      "slime2": {
+        "wander": {
+          "range": 2
+        }
+      },
+      "BOSS_GreatBear": {
+        "showWhen": [
+          {
+            "story": "lamy_visits",
+            "is": "done"
+          },
+          {
+            "story": "cave_hunt",
+            "is": "notDone"
+          }
+        ],
+        "wander": {
+          "range": 4,
+          "step": 2
+        }
+      }
+    },
+    "foothill_village": {
+      "adult_female_adventurer_01": {
+        "wander": {}
+      },
+      "adult_male_swordsman_male_01": {
+        "facing": "up"
+      },
+      "teen_female_01": {
+        "facing": "up"
+      },
+      "EldestSister": {
+        "facing": "left",
+        "stepMs": 300,
+        "stepInPlace": true
+      },
+      "BabySister": {
+        "facing": "right",
+        "stepMs": 400,
+        "stepInPlace": true
+      },
+      "EldestBrother": {
+        "route": {
+          "id": "npcMotion1",
+          "mode": "loop",
+          "walkMs": 300,
+          "start": 1
+        }
+      },
+      "BabyBrother": {
+        "route": {
+          "id": "npcMotion1",
+          "mode": "loop",
+          "walkMs": 300,
+          "start": 1
+        }
+      },
+      "teen_male_01": {
+        "facing": "up"
+      },
+      "elderly_hatake": {
+        "wander": {
+          "ms": [
+            3000,
+            3300
+          ]
+        }
+      },
+      "chiken1": {
+        "wander": {}
+      },
+      "chiken2": {
+        "wander": {}
+      },
+      "chiken3": {
+        "wander": {}
+      }
+    },
+    "forest_cave": {
+      "bat": {
+        "wander": {
+          "range": 2
+        }
+      }
+    },
+    "forest_mansion": {
+      "1": {
+        "wander": {}
+      },
+      "2": {
+        "wander": {}
+      },
+      "slime": {
+        "wander": {
+          "range": 2
+        }
+      },
+      "lamyNPC": {
+        "showWhen": [
+          {
+            "story": "meet_lamy",
+            "is": "done"
+          }
+        ],
+        "wander": {
+          "range": 2
+        }
+      }
+    },
+    "home": {
       "grandpaNpc": {
         "wander": {
           "range": 2
@@ -14,7 +130,7 @@
         }
       }
     },
-    "0102": {
+    "home_forest": {
       "slime": {
         "wander": {
           "range": 2
@@ -33,84 +149,10 @@
       "grandpaNpc": {
         "showWhen": [
           {
-            "switch": "EVENT010201",
-            "is": true
+            "story": "leave_home",
+            "is": "notDone"
           }
         ]
-      }
-    },
-    "0103": {
-      "1": {
-        "wander": {}
-      },
-      "2": {
-        "wander": {}
-      },
-      "slime": {
-        "wander": {
-          "range": 2
-        }
-      },
-      "lamyNPC": {
-        "standby": true,
-        "showWhen": [
-          {
-            "switch": "EVENT010301",
-            "is": false
-          }
-        ],
-        "wander": {
-          "range": 2
-        }
-      }
-    },
-    "0104": {
-      "bat": {
-        "wander": {
-          "range": 2
-        }
-      }
-    },
-    "0105": {
-      "slime": {
-        "wander": {
-          "range": 2
-        }
-      },
-      "slime2": {
-        "showWhen": [
-          {
-            "switch": "EVENT010401",
-            "is": false
-          },
-          {
-            "switch": "EVENT020101",
-            "is": true
-          }
-        ],
-        "wander": {
-          "range": 2
-        }
-      }
-    },
-    "0202": {
-      "middle_uncle_01": {
-        "stepInPlace": true
-      },
-      "child_male_03": {
-        "wander": {}
-      },
-      "child_female_04": {
-        "wander": {}
-      },
-      "adult_female_adventurer_01": {
-        "wander": {}
-      },
-      "adult_male_swordsman_male_01": {
-        "wander": {}
-      },
-      "teen_female_01": {
-        "stepInPlace": true
       }
     }
   }

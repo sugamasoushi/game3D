@@ -9,7 +9,7 @@
 // 読み込んだデータが勝手なことをできない（`eval` を使わない）。
 // 逃げ道の `script` も、動かすのは**先に TS 側で登録した関数**だけ。
 
-import type { ActorRef, BlockFace, EventCommand, EventDef, IfCondition, IfWhen, PixelOffset, PlaceAt, Step, TalkStyle } from './types';
+import type { ActorRef, BlockFace, EventCommand, EventDef, IfCondition, IfWhen, PixelOffset, PlaceAt, Step, StoryIs, TalkStyle } from './types';
 
 /** 分岐・共通イベントの呼び出し元も含めて実行を終了する合図。 */
 export class ReturnToTitle extends Error {
@@ -146,6 +146,10 @@ export interface EventContext {
   /** スイッチと変数。セーブに入る。 */
   getSwitch(key: string): boolean;
   setSwitch(key: string, value: boolean): void;
+  /** 物語の段階の条件を満たすか（GS-254。`story.ts` の `storyMeets`）。 */
+  storyMeets(step: string, is: StoryIs): boolean;
+  /** 物語の段階を済ませる（GS-254）。先へ進めるだけ。 */
+  storyDone(step: string): void;
   /** セルフスイッチ（GS-27）。動かしているイベント自身の覚え。 */
   getSelfSwitch(key: string): boolean;
   setSelfSwitch(key: string, value: boolean): void;
@@ -412,6 +416,10 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
     ctx.setSwitch(cmd.key, cmd.value);
   },
 
+  story: async (ctx, cmd) => {
+    ctx.storyDone(cmd.done);
+  },
+
   setSelfSwitch: async (ctx, cmd) => {
     ctx.setSelfSwitch(cmd.key, cmd.value);
   },
@@ -591,7 +599,8 @@ export function meets(ctx: EventContext, when: IfWhen): boolean {
 
 /** 条件 1 つ。 */
 function meetsOne(ctx: EventContext, when: IfCondition): boolean {
-  // フラグは `is` と突き合わせる（GS-147）。省けば「立っているとき」＝今までどおり。
+  if ('story' in when) return ctx.storyMeets(when.story, when.is);
+  // フラグは `is` と突き合わせる（GS-147）。省けば「立っているとき」。
   if ('switch' in when) return ctx.getSwitch(when.switch) === (when.is ?? true);
   if ('self' in when) return ctx.getSelfSwitch(when.self) === (when.is ?? true);
   if ('item' in when) return ctx.countItem(when.item) >= (when.count ?? 1);
@@ -613,13 +622,10 @@ export function timeMatches(now: string, spec: string): boolean {
     .includes(now);
 }
 
+/** 動かす条件（`when`）を満たすか。条件命令と同じ決まり（GS-254 でそろえた）。 */
 export function canRun(event: EventDef, ctx: EventContext): boolean {
   if (!event.when) return true;
-  return event.when.every((cond) => {
-    if (cond.time !== undefined) return timeMatches(ctx.getTime(), cond.time);
-    const now = cond.self !== undefined ? ctx.getSelfSwitch(cond.self) : ctx.getSwitch(cond.switch ?? '');
-    return now === (cond.is ?? true);
-  });
+  return meets(ctx, event.when);
 }
 
 /** イベント 1 本を動かす。条件を満たさなければ何もしない。 */

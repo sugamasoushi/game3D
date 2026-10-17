@@ -21,6 +21,7 @@ import {
   effectImage,
   effectList,
   enemyImage,
+  enemyScale,
   skillDef,
   type EffectDef,
 } from '../../game/battle/book';
@@ -69,6 +70,8 @@ const onScreen = (rect?: FigureRect | null): boolean =>
 const SHAKE_MS = 260;
 /** 3D の舞台に立たせる味方の立ち絵の高さ（マス。GS-87）。絵の大きさがまちまちなので揃える。 */
 const PARTY_FIGURE_CELLS = 2.2;
+/** 2D の敵の絵の倍率。1 なら何も足さない（元の大きさのまま）。 */
+const scaleStyle = (scale: number) => (scale === 1 ? undefined : { zoom: scale });
 
 /** 舞台の板が画面のどこにあるか（画素）。 */
 type FigureRect = { left: number; top: number; width: number; height: number };
@@ -391,8 +394,9 @@ export function BattleView({
         side: 'party' as const,
         image: characterStand(who.id) ?? characterIcon(who.id) ?? '',
         height: PARTY_FIGURE_CELLS,
+        scale: 1,
       })),
-      ...foes.map((foe) => ({ id: foe.id, side: 'enemy' as const, image: enemyImage(enemyIdOf(foe)) ?? '', height: 0 })),
+      ...foes.map((foe) => ({ id: foe.id, side: 'enemy' as const, image: enemyImage(enemyIdOf(foe)) ?? '', height: 0, scale: enemyScale(enemyIdOf(foe)) })),
     ].filter((figure) => figure.image);
     scene3d.show(stageSpec, figures);
     let raf = 0;
@@ -1028,7 +1032,8 @@ export function BattleView({
                 <span style={{ width: `${Math.max(0, (hpOf(foe) / foe.stats.hp) * 100)}%` }} />
               </div>
               <AilmentTags who={foe} />
-              {on3d ? null : src ? <img src={src} alt={foe.name} /> : <span className="battle-foe-name">{foe.name}</span>}
+              {/* 2D でも元の大きさ × 敵の倍率（`enemies.json` の `scale`）。 */}
+              {on3d ? null : src ? <img src={src} alt={foe.name} style={scaleStyle(enemyScale(enemyIdOf(foe)))} /> : <span className="battle-foe-name">{foe.name}</span>}
               {/* 技の絵（GS-83）。**敵の絵の真ん中**に重ねる。 */}
               {fx && fx.foe === foe.id ? <EffectSprite key={fx.seq} def={fx.def} /> : null}
             </div>

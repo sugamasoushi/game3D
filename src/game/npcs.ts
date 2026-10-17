@@ -4,7 +4,7 @@
 // 何を喋るかは同じオブジェクトの `Event` が指すイベント JSON、
 // 誰か（名前・絵）はキャラクターの台帳（`characterdata.json`）。3 つを別々に直せるようにしておく。
 //
-// **NPC になるのは、`NPC` / `SPRITE` という名前のオブジェクトレイヤーに置いた、`Character` を持つ物**（2026-10-08）。
+// **NPC になるのは、`NPC` という名前のオブジェクトレイヤーに置いた、`Character` を持つ物**（2026-10-08）。
 // レイヤー名で絞るのが要点——絵の目印として置いた物（出発点の見本など）まで動き出すと困る。
 //
 // **絵はキャラクターから引く**（2026-10-08）。`Character` → `characterdata.json` の `sheet`（画像）→ 区切りと立ち姿。
@@ -75,11 +75,6 @@ export interface NpcDef {
    */
   showWhen?: IfCondition[];
   /**
-   * **人ではなく物**（GS-133。`SPRITE` レイヤーに置いたもの）。
-   * うろつかず、話しかけてもこちらを向かない。宝箱・立て札など。
-   */
-  thing?: boolean;
-  /**
    * スイッチで変わる見た目（GS-133）。`poseIf` が入っているあいだ `pose` の静止コマにする。
    * **イベントに書かなくても、マップを読み直したときに勝手に戻る**——
    * 記録（スイッチ）から毎回導くので、見た目をセーブに入れなくてよい（GS-47 と同じ考え）。
@@ -122,12 +117,6 @@ const POSE_PROPERTY = 'Pose';
 const POSE_IF_PROPERTY = 'PoseIf';
 /** ここに置いた、キャラクター（`Character`）を持つ物は NPC になる、というレイヤー名（大文字小文字は問わない）。 */
 const NPC_LAYER = 'npc';
-/**
- * ここに置いた、キャラクターを持つ物は**物**になる、というレイヤー名（GS-133）。旧作の Tiled と同じ名前。
- * NPC と同じ板 1 枚だが、**人として扱わない**——うろつかないし、話しかけてもこちらを向かない。
- * 宝箱・立て札のような「そこに在るだけの物」用。
- */
-const SPRITE_LAYER = 'sprite';
 
 /** 向きの書き方はどちらでも受ける。絵の行の名前（north…）でも、画面基準（up…）でも。 */
 export const FACINGS: Record<string, WalkDir> = {
@@ -185,7 +174,7 @@ export const NPC_CAME = '出た';
  *   4. 台帳の `showWhen`（この条件を満たす間だけ。GS-230。イベントの条件と同じ書き方）
  *
  * どれも無ければいつでも出す。`meets` は条件の判定（記録を持っている画面が渡す）。
- * 渡さなければ、スイッチと覚えだけを `switchOn` で見る（変数・持ち物などは満たさない扱い）。
+ * 渡さなければ、スイッチと覚えだけを `switchOn` で見る（物語の段階・変数・持ち物などは満たさない扱い）。
  */
 export function npcShown(
   def: Pick<NpcDef, 'standby' | 'showWhen' | 'showIn'>,
@@ -246,15 +235,14 @@ export function readNpcs(map: MapDef, settings: Record<string, MapNpcDef> = {}):
     if (layer.kind !== 'object') continue;
     const layerName = (layer.name ?? '').trim().toLowerCase();
     const npcLayer = layerName === NPC_LAYER;
-    const thingLayer = layerName === SPRITE_LAYER;
     for (const object of layer.objects ?? []) {
       if ((object.plane ?? 'xz') !== 'xz') continue;
       // ゲームでは出さない物（GS-160。マップの `Hidden`）。レイヤーに付けたときと同じ言葉で、
       // **エディタには見えるがゲームには出ない**——置き場所の目印に使う。
       // 当たりや起動枠は今までどおり（`Hidden` は見た目の話。GS-57）。
       if (truthOf(object.properties, HIDDEN_PROPERTY)) continue;
-      // **`NPC` / `SPRITE` レイヤーの、キャラクターを持つ物**だけ（2026-10-08）。
-      if (!npcLayer && !thingLayer) continue;
+      // **`NPC` レイヤーの、キャラクターを持つ物**だけ（2026-10-08）。
+      if (!npcLayer) continue;
       const character = textOf(object.properties, CHARACTER_PROPERTY);
       if (!character) continue;
       const at = standAt(object);
@@ -279,13 +267,12 @@ export function readNpcs(map: MapDef, settings: Record<string, MapNpcDef> = {}):
         ...((numberOf(object.properties, OPACITY_PROPERTY) ?? 100) < 100
           ? { opacity: Math.max(0, numberOf(object.properties, OPACITY_PROPERTY) ?? 100) / 100 }
           : {}),
-        ...(thingLayer ? { thing: true } : {}),
         ...(textOf(object.properties, POSE_PROPERTY) ? { pose: textOf(object.properties, POSE_PROPERTY) } : {}),
         ...(textOf(object.properties, POSE_IF_PROPERTY) ? { poseIf: textOf(object.properties, POSE_IF_PROPERTY) } : {}),
         x: at.x,
         y: object.y ?? 0,
         z: at.z,
-        facing: FACINGS[textOf(object.properties, FACE_PROPERTY).toLowerCase()] ?? 'down',
+        facing: setting?.facing ?? FACINGS[textOf(object.properties, FACE_PROPERTY).toLowerCase()] ?? 'down',
       });
     }
   }

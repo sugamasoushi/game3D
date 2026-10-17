@@ -1,8 +1,8 @@
 {
-  "infomation": "マップの番号 → ファイル名と、そのマップの音・戦闘設定。MapMove などの行き先はこの番号で書く。マップ内に BattleStage=true の点があれば3D舞台となり、battleStage.formationsの候補から戦闘ごとに隊形を選ぶ。イベント戦闘は命令のformationで上書きできる。無ければ battleField の2D背景（未指定時は hill）を使う。",
+  "information": "マップの id（英小文字の名前。ファイル名は <id>.json で、file に同じ名前を書く）→ そのマップの音・戦闘設定。MapMove などの行き先はこの id で書く。マップ内に BattleStage=true の点があれば3D舞台となり、battleStage.formationsの候補から戦闘ごとに隊形を選ぶ。イベント戦闘は命令のformationで上書きできる。無ければ battleField の2D背景（未指定時は hill）を使う。",
   "maps": {
-    "0101": {
-      "file": "0101_home.json",
+    "home": {
+      "file": "home.json",
       "bgm": "field",
       "time": {
         "fallback": {
@@ -11,8 +11,8 @@
         }
       }
     },
-    "0102": {
-      "file": "0102_HomeForest.json",
+    "home_forest": {
+      "file": "home_forest.json",
       "bgm": "field",
       "bgs": "waterfall",
       "battleField": "hill",
@@ -27,34 +27,34 @@
         }
       }
     },
-    "0103": {
-      "file": "0103_ForestMantion.json",
+    "forest_mansion": {
+      "file": "forest_mansion.json",
       "battleField": "forestMansion",
       "bgm": "field"
     },
-    "0104": {
-      "file": "0104_ForestCave.json",
+    "forest_cave": {
+      "file": "forest_cave.json",
       "battleField": "forest",
       "bgm": "The_Cave"
     },
-    "0105": {
-      "file": "0105_Cave.json",
+    "cave": {
+      "file": "cave.json",
       "bgm": "The_Cave"
     },
-    "0106": {
-      "file": "0106_NextField.json",
+    "next_field": {
+      "file": "next_field.json",
       "bgm": "field"
     },
-    "0201": {
-      "file": "0201_Gensou.json",
+    "gensou": {
+      "file": "gensou.json",
       "battleField": "hill",
       "bgm": "Crystal_Cave"
     },
-    "0202": {
-      "file": "0202_FoothillVillage.json"
+    "foothill_village": {
+      "file": "foothill_village.json"
     },
-    "0301": {
-      "file": "0301_PurpleRingWastes.json"
+    "purple_ring_wastes": {
+      "file": "purple_ring_wastes.json"
     }
   }
 }

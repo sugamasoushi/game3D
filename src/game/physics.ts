@@ -29,6 +29,8 @@ const GROUND_PRESS = 0.01;
 const GROUND_PRESS_MOVING = 0.002;
 /** 置き直すときに浮かせる高さ（マス）。 */
 const TELEPORT_LIFT = 0.05;
+/** 足が離れてからも、足元の高さに合わせ続けるフレーム数（GS-253）。坂の頂上で 1 フレーム浮いても落ちない。 */
+const GROUND_GRACE = 2;
 /** 立ち止まってから、その場に留めるまでのフレーム数（GS-244）。着地の直後は床へ沈みきるまで動かす。 */
 const SETTLE_FRAMES = 10;
 /**
@@ -217,6 +219,8 @@ export function createPhysicsWorld(rapier: Rapier, map: MapDef): PhysicsWorld {
     let step = -1;
     /** 入力が無く接地しているフレームが続いた数（GS-244）。 */
     let still = 0;
+    /** 接地していないフレームが続いた数（GS-253）。置き直した直後は空中とみなす。 */
+    let airFrames = GROUND_GRACE + 1;
     const feet = { x: 0, y: 0, z: 0 };
     const person: Person = { feet, r, height };
     people.add(person);
@@ -240,6 +244,7 @@ export function createPhysicsWorld(rapier: Rapier, map: MapDef): PhysicsWorld {
         fallSpeed = 0;
         grounded = false;
         still = 0;
+        airFrames = GROUND_GRACE + 1;
       },
       move(dx, dz, dt, stepUp) {
         // 段差の自動の上り（`Climb` の範囲だけ。既定は 0 で上らない。DEC-256）。
@@ -255,8 +260,9 @@ export function createPhysicsWorld(rapier: Rapier, map: MapDef): PhysicsWorld {
         let dy = grounded ? -(moving ? GROUND_PRESS_MOVING : GROUND_PRESS) * unit : -fallSpeed * dt;
         // 坂では**足元の面に沿った向き**で動かす。水平に押すと Rapier が斜面へ削り、
         // 坂だけ横の速さが半分ほどに落ちる（今の体は坂でも横の速さが変わらない）。
-        // 面は**進む先の足元**で測る。体の真下で測ると、坂の入り口で足先が先に坂へ当たり、
+        // **上り**は面の傾きを**進む先の足元**で測る。体の真下で測ると、坂の入り口で足先が先に坂へ当たり、
         // 真下はまだ平らなので削られる（入り口だけ 3 分の 1 の速さになった）。
+        let climbing = false;
         if (grounded && moving) {
           const at = rigid.translation();
           const len = Math.hypot(dx, dz);
@@ -272,13 +278,46 @@ export function createPhysicsWorld(rapier: Rapier, map: MapDef): PhysicsWorld {
             const nx = hit.normal.x * sign;
             const ny = hit.normal.y * sign;
             const nz = hit.normal.z * sign;
-            if (ny > 0.2) dy = -(nx * dx + nz * dz) / ny - GROUND_PRESS_MOVING * unit;
+            if (ny > 0.2) {
+              const along = -(nx * dx + nz * dz) / ny;
+              if (along > 0) {
+                dy = along - GROUND_PRESS_MOVING * unit;
+                climbing = true;
+              }
+            }
+          }
+        }
+        // **下り・平ら**は**進む先の足元の高さ**へ合わせる（GS-253）。傾きから出すと、頂上の平らな所に
+        // まだ足がある間に下りを始めて平らな所に止められ、遅れたまま足が離れて浮いて落ちた
+        // （0106 を走って下ると最大 1.4 マス浮いた）。離れた直後（`GROUND_GRACE` フレーム）も同じに扱う。
+        // 上げるのは上れる坂の傾き（`SLOPE_CLIMB`）まで——段差を勝手に上らない（DEC-256）。
+        if (moving && !climbing && airFrames <= GROUND_GRACE) {
+          const at = rigid.translation();
+          const bottom = at.y - half - SKIN * unit;
+          const from = bottom + 0.4 * unit;
+          const down = (wx: number, wz: number) =>
+            world.castRayAndGetNormal(new rapier.Ray({ x: wx, y: from, z: wz }, { x: 0, y: -1, z: 0 }), (0.4 + SNAP) * unit, true, undefined, MAP_ONLY, collider);
+          const hit = down(at.x + dx, at.z + dz);
+          if (hit && hit.timeOfImpact > 0 && Math.abs(hit.normal.y) > 0.2) {
+            // 坂では足先（`FOOT_HALF`）の角が面に乗るので、体は面より少し上で止まる（45 度で 0.06）。
+            // そこを狙わないと、届かない下向きの分を Rapier が坂に沿った横の動きへ流し、下りだけ速くなった。
+            // 傾きは**今の足元**で測る——進む先で測ると、頂上の平らな所に居るうちから浮かせてしまう。
+            const below = down(at.x, at.z);
+            const ny = below ? Math.abs(below.normal.y) : 1;
+            const rest = ny > 0 ? FOOT_HALF * unit * (Math.sqrt(Math.max(0, 1 - ny * ny)) / ny) : 0;
+            const rise = from - hit.timeOfImpact + rest - bottom;
+            const run = Math.hypot(dx, dz);
+            if (rise <= run * Math.tan((SLOPE_CLIMB * Math.PI) / 180) + 0.001 * unit) {
+              dy = rise - GROUND_PRESS_MOVING * unit;
+              fallSpeed = 0;
+            }
           }
         }
         // Rapier には地形だけを見せる。人どうしは `clampByPeople`（GS-242）。
         controller.computeColliderMovement(collider, { x: dx, y: dy, z: dz }, undefined, MAP_ONLY);
         const moved = controller.computedMovement();
         grounded = controller.computedGrounded();
+        airFrames = grounded ? 0 : airFrames + 1;
         // 立ち止まって接地しているなら**その場から動かさない**（GS-244）。地面を見つけるための押し（`GROUND_PRESS`）を
         // Rapier が坂に沿った向きへ流すので、坂の上で 10 秒に 0.04 マスずつ滑り落ちていた。
         // 着地の直後（`SETTLE_FRAMES` まで）は動かす——すぐ留めると、接地とみなされた高さ（床から 0.01）に浮いたまま残る。

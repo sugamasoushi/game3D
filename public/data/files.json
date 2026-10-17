@@ -1,25 +1,23 @@
 {
-  "infomation": "置いてある物の一覧（DEC-374）。node tools/fileIndex.mjs で作り直す。",
+  "information": "置いてある物の一覧（DEC-374）。node tools/fileIndex.mjs で作り直す。",
   "normals": [
-    "assets/tilesets_normal/2ffdb342da8b7d2c_normal.png",
-    "assets/tilesets_normal/Chests_normal.png",
-    "assets/tilesets_normal/FantagyHouse_03_normal.png",
+    "assets/tilesets_normal/0201/FantagyHouse_03_normal.png",
+    "assets/tilesets_normal/Dwelling/2ffdb342da8b7d2c_normal.png",
+    "assets/tilesets_normal/Dwelling/city_inside_normal.png",
+    "assets/tilesets_normal/Dwelling/floors_normal.png",
+    "assets/tilesets_normal/Dwelling/walls_normal.png",
     "assets/tilesets_normal/Interior_normal.png",
-    "assets/tilesets_normal/WaterAndFire_normal.png",
-    "assets/tilesets_normal/city_inside_normal.png",
-    "assets/tilesets_normal/floors_normal.png",
-    "assets/tilesets_normal/terrain_normal.png",
-    "assets/tilesets_normal/walls_normal.png",
+    "assets/tilesets_normal/Storage/Chests_normal.png",
     "assets/tilesets_normal/water_and_fire_normal.png"
   ],
   "events": [
-    "0101_home",
-    "0102_HomeForest",
-    "0103_ForestMantion",
-    "0104_ForestCave",
-    "0105_Cave",
-    "0106_NextField",
-    "0201_Gensou",
-    "0202_FoothillVillage"
+    "cave",
+    "foothill_village",
+    "forest_cave",
+    "forest_mansion",
+    "gensou",
+    "home",
+    "home_forest",
+    "next_field"
   ]
 }

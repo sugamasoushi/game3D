@@ -1,5 +1,5 @@
 {
-  "infomation": "持ち物の台帳（GS-46 / GS-64 / GS-66 / GS-67）。id をキーに name と text。use を書くと「使える物」、equip を書くと「身に着ける物」（slot は weapon / armor、attack・guard・speed が増える）、price を書くと店で売り買いできる（売値は半分）。持っている数はセーブが持つ。書き方は note/01-イベントの書き方.md",
+  "information": "持ち物の台帳（GS-46 / GS-64 / GS-66 / GS-67）。id をキーに name と text。use を書くと「使える物」、equip を書くと「身に着ける物」（slot は weapon / armor、attack・guard・speed が増える）、price を書くと店で売り買いできる（売値は半分）。持っている数はセーブが持つ。書き方は note/01-イベントの書き方.md",
   "items": {
     "やくそう": {
       "name": "やくそう",

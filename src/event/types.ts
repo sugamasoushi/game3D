@@ -30,8 +30,13 @@ export type Step = 'up' | 'down' | 'left' | 'right';
 
 /** 会話の 1 かたまり。話者キーは `characterdata.json` を引く。 */
 export interface TalkLine {
-  /** 話者キー（`meina` など）。省略すると名前欄なし（地の文）。 */
+  /** 話者キー（`meina` など）。名前と顔アイコン（あれば）はここから。省略すると名前欄なし（地の文）。 */
   who?: string;
+  /**
+   * 吹き出しの相手（GS-251）。角が指すスプライト——マップの NPC の `Id` か `player`。
+   * 省略すると話者から決める（主人公・仲間はその人、ほかは話しかけた相手）。ウィンドウでは使わない。
+   */
+  at?: string;
   /** 行。旧作と同じく 1 メッセージ内の改行は配列で分ける。 */
   lines: string[];
 }
@@ -43,10 +48,14 @@ export interface TalkLine {
  */
 export type TalkStyle = 'window' | 'bubble';
 
-/** 条件命令（`if`）の条件 1 つ。フラグ／セルフフラグ／変数／持ち物／所持金のどれか。 */
+/** 物語の段階の条件の見方（GS-254）。`next` は次に起きるのがこの段階、`done` は済んだ、`notDone` はまだ。 */
+export type StoryIs = 'next' | 'done' | 'notDone';
+
+/** 条件命令（`if`）の条件 1 つ。物語の段階／フラグ／セルフフラグ／変数／持ち物／所持金／時間帯のどれか。 */
 export type IfCondition =
-  // フラグは**実行可能かどうか**（GS-147）。`is` を省くと「立っている（まだ動ける）とき」。
-  // 済んだかどうかで分けたいときは `is: false` と書く。
+  /** 物語の段階（GS-254。台帳 `data/story.json`）。 */
+  | { story: string; is: StoryIs }
+  // フラグ（GS-254 から**書いていなければ false**）。`is` を省くと「立っているとき」。
   | { switch: string; is?: boolean }
   | { self: string; is?: boolean }
   | { variable: string; op: '==' | '!=' | '>=' | '<=' | '>' | '<'; value: number }
@@ -297,8 +306,10 @@ export type EventCommand =
       ms?: number;
       wait?: boolean;
     }
-  /** スイッチ（真偽）。名前は文字列キー。 */
+  /** スイッチ（真偽）。名前は文字列キー。**書いていなければ false**（GS-254）。本筋の進み具合は `story` で持つ。 */
   | { type: 'setSwitch'; key: string; value: boolean }
+  /** 物語の段階を済ませる（GS-254）。**先へ進めるだけ**——済んだ段階より前なら何もしない。 */
+  | { type: 'story'; done: string }
   /** 変数（数値）。`op` 省略は代入。 */
   | { type: 'setVariable'; key: string; value: number; op?: 'set' | 'add' | 'sub' }
   /**
@@ -511,10 +522,10 @@ export interface EventDef {
   /** 起動の仕方。`action` は決定キー、`touch` は踏む、`auto` はマップに入ったら。 */
   trigger: 'action' | 'touch' | 'auto' | 'parallel';
   /**
-   * 動かす条件（全部満たしたときだけ動く）。省略は無条件。
-   * `time` は時間帯（GS-222。カンマ区切りでどれか）。書いたら `switch` / `self` は見ない。
+   * 動かす条件（全部満たしたときだけ動く）。省略は無条件。条件命令（`if`）と同じ書き方（GS-254 でそろえた）。
+   * 本筋のイベントは `{ story: "<段階>", is: "next" }` で守り、終わりに `{ type: "story", done: "<段階>" }`。
    */
-  when?: Array<{ switch?: string; self?: string; is?: boolean; time?: string }>;
+  when?: IfCondition[];
   /**
    * **マップに入るたびに戻る**（GS-233。元は宝箱の台帳の `respawn`。GS-180）。
    * 入るたびに、このイベントを起こす物の覚え（`self`）と、このイベントの「レイヤーの出し入れ」で
@@ -528,6 +539,11 @@ export interface EventDef {
    * 指すレイヤーを全部組まない（見た目も当たりも無い）。
    */
   chance?: number;
+  /**
+   * 話しかけても**こちらを向かない**（GS-252）。`npc` で結んだ話しかけのイベント（`action`）だけに効く。
+   * 省くと向く（GS-118）。
+   */
+  noTurn?: boolean;
   commands: EventCommand[];
 }
 

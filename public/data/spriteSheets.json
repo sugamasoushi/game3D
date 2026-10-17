@@ -1,5 +1,5 @@
 {
-  "infomation": "スプライトシート（コマに区切って使う画像）の台帳（GS-121）。キーは assets/spritesheet/ の中のファイル名。frameWidth / frameHeight は 1 コマの大きさ（px）、columns は横のコマ数（これで折り返す）、rows は縦の行数。footPx は足元の補正（足元が 1 コマの下端から何画素上にあるか。人の絵として立てるときだけ絵をそのぶん下げる。GS-52。省略は 0）。キャラの立ち姿（actors.json）も攻撃の絵（effects.json）も同じこの台帳を見る。台帳エディタの「スプライトシート」で編集する。",
+  "information": "スプライトシート（コマに区切って使う画像）の台帳（GS-121）。キーは assets/spritesheet/ の中のファイル名。frameWidth / frameHeight は 1 コマの大きさ（px）、columns は横のコマ数（これで折り返す）、rows は縦の行数。footPx は足元の補正（足元が 1 コマの下端から何画素上にあるか。人の絵として立てるときだけ絵をそのぶん下げる。GS-52。省略は 0）。キャラの立ち姿（actors.json）も攻撃の絵（effects.json）も同じこの台帳を見る。台帳エディタの「スプライトシート」で編集する。",
   "sheets": {
     "adult_female_adventurer_01.png": {
       "frameWidth": 64,
@@ -50,7 +50,8 @@
       "frameWidth": 32,
       "frameHeight": 32,
       "columns": 4,
-      "rows": 4
+      "rows": 4,
+      "footPx": 2
     },
     "elderly_male_ghost_01.png": {
       "frameWidth": 64,
@@ -262,6 +263,20 @@
       "columns": 3,
       "rows": 4,
       "footPx": 4
+    },
+    "soldier_junior.png": {
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 4
+    },
+    "GreatBear.png": {
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 12
     }
   }
 }

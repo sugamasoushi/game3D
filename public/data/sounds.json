@@ -1,5 +1,5 @@
 {
-  "infomation": "音の台帳。key → ファイルと音量。ここに 1 行足せば、イベントの playBgm / playSe から呼べる。",
+  "information": "音の台帳。key → ファイルと音量。ここに 1 行足せば、イベントの playBgm / playSe から呼べる。",
   "sounds": {
     "field": { "file": "おとぼけダンス(Silly_dance).mp3", "volume": 0.5, "loop": true },
     "opening": { "file": "opening.mp3", "volume": 0.5, "loop": true },

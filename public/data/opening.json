@@ -1,5 +1,5 @@
 {
-  "infomation": "オープニングの台帳（GS-126）。旧作 title/view/Opening.ts の並びをそのまま写した。時間はミリ秒。cuts は順に重なる（後のものが上）。",
+  "information": "オープニングの台帳（GS-126）。旧作 title/view/Opening.ts の並びをそのまま写した。時間はミリ秒。cuts は順に重なる（後のものが上）。",
   "version": 1,
   "bgm": "opening",
   "title": "ちょっとだけ RPG",

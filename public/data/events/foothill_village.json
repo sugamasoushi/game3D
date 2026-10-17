@@ -1,0 +1,294 @@
+{
+  "map": "foothill_village",
+  "events": [
+    {
+      "id": "ev_1",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "lines": ["今日はお魚とお肉よ", "さ、召し上がれ～", "（おままごと、飽きたなぁ）"],
+              "who": "child_female_02",
+              "at": "EldestSister"
+            },
+            {
+              "who": "child_female_04",
+              "lines": ["はぁ、おねえちゃんったら こども なんだから・・・", "はくさい が たりないわ！"],
+              "at": "BabySister"
+            }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "EldestSister",
+      "noTurn": true
+    },
+    {
+      "id": "ev_2",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "child_female_04", "lines": ["おねえちゃん には りょうり のイロハを", "おしえてあげないとダメね！"] }],
+          "style": "bubble"
+        }
+      ],
+      "npc": "BabySister",
+      "noTurn": true
+    },
+    {
+      "id": "ev_3",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "child_male_01", "lines": ["へへ～俺の方が速いもんね～！"] }],
+          "style": "bubble"
+        }
+      ],
+      "npc": "EldestBrother",
+      "noTurn": true
+    },
+    {
+      "id": "ev_4",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "child_male_03", "lines": ["まってよぉ～！"] }],
+          "style": "bubble"
+        }
+      ],
+      "npc": "BabyBrother",
+      "noTurn": true
+    },
+    {
+      "id": "ev_5",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "middle_aunt_01",
+              "lines": ["いらっしゃい", "新鮮な野菜売ってるんだけど", "何故か今は やくそう 1個 しかないわ！"],
+              "at": "VegetableSeller"
+            }
+          ],
+          "style": "bubble"
+        },
+        { "type": "shop", "items": ["やくそう"], "sell": true }
+      ],
+      "npc": "VegetableSeller"
+    },
+    {
+      "id": "ev_6",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "elderly_male_01", "lines": ["道具屋じゃあ！", "商品が無いんじゃあ泣"], "at": "Tool Seller" }],
+          "style": "bubble"
+        }
+      ],
+      "npc": "Tool Seller"
+    },
+    {
+      "id": "ev_7",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "elderly_female_01",
+              "lines": ["最近は人の出入りが減ってしまったねぇ・・・"],
+              "at": "elderly_female_01"
+            }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "elderly_female_01"
+    },
+    {
+      "id": "ev_8",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "teen_female_01",
+              "lines": ["はぁ、最近つまらないなぁ", "王都に行きたいなぁ", ""],
+              "at": "teen_female_01"
+            }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "teen_female_01",
+      "noTurn": true
+    },
+    {
+      "id": "ev_9",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "teen_male_01", "lines": ["う～ん、ちょっと高いな・・・"], "at": "teen_male_01" }],
+          "style": "bubble"
+        }
+      ],
+      "npc": "teen_male_01",
+      "noTurn": true
+    },
+    {
+      "id": "ev_10",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "adult_male_swordsman_male_01",
+              "lines": ["中々良い品揃えだな", "", "備蓄が少ないから", "多めに買っていくか"],
+              "at": "adult_male_swordsman_male_01"
+            }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "noTurn": true,
+      "npc": "adult_male_swordsman_male_01"
+    },
+    {
+      "id": "ev_11",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "adult_female_adventurer_01",
+              "lines": ["う～ん、噂と違って平素な村ね"],
+              "at": "adult_female_adventurer_01"
+            },
+            { "who": "meina", "lines": ["昔は賑わってたらしいけど", "ここ6～7年くらいはこんな感じだったよ？"], "at": "player" },
+            {
+              "who": "adult_female_adventurer_01",
+              "lines": ["あ、そうなのね", "でも落ち着ける良い村だわ"],
+              "at": "adult_female_adventurer_01"
+            },
+            { "who": "meina", "lines": ["（人は減ってるんだけどね・・・）"], "at": "player" }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "adult_female_adventurer_01"
+    },
+    {
+      "id": "ev_12",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "middle_uncle_01", "lines": ["いらっしゃいいらっしゃい！", "良いもの売ってるよ！"], "at": "Butcher" }],
+          "style": "bubble"
+        }
+      ],
+      "npc": "Butcher"
+    },
+    {
+      "id": "ClickTalk_Map0202",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "middle_uncle_01", "lines": ["いらっしゃい！", "今は肉が安いよ！"], "at": "Butcher" }],
+          "style": "bubble"
+        }
+      ]
+    },
+    {
+      "id": "ev_14",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "elderly_male_01",
+              "lines": ["ふむ、順調に育っておるな", "", "ワシも水だけで生きていけんかのぉ"],
+              "at": "elderly_hatake"
+            }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "elderly_hatake",
+      "noTurn": true
+    },
+    {
+      "id": "ev_15",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [{ "who": "soldier_junior", "lines": ["ここはリッカ村だ", "あ～暇だなぁ"], "at": "soldier_junior01" }],
+          "style": "bubble"
+        }
+      ],
+      "npc": "soldier_junior01"
+    },
+    {
+      "id": "ev_16",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "soldier_junior",
+              "lines": ["zzz・・・はっ！", "", "寝てないぞ！"],
+              "at": "soldier_junior02"
+            }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "soldier_junior02"
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_1",
+      "to": [
+        {
+          "map": "next_field",
+          "at": { "x": -9, "y": 6, "z": 5 },
+          "px": { "x": 0, "z": -6 },
+          "face": "down"
+        }
+      ]
+    }
+  ]
+}

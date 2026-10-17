@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createGameView, STAGE_COMMAND_FIGURE, type GameStatus, type GameView, type WalkDir } from '../game/GameView';
 import { START_MAP, assetUrl, mapUrl } from '../game/assets';
-import { mapEntryOf, entryForFile, loadMapIndex } from '../game/mapIndex';
+import { mapEntryOf, entryForFile, knownSaveMapId, loadMapIndex } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
 import { loadItemBook } from '../game/items';
@@ -38,6 +38,7 @@ import { createEventBridge, type EventBridge } from '../game/uiEventContext';
 import { readEventSpots, spotAhead, spotUnder, type EventSpot, type Landing } from '../game/eventSpots';
 import { pickMapMove } from '../game/mapMoves';
 import { readNpcs, npcShown, type NpcDef, TIME_PREFIX } from '../game/npcs';
+import { facesOnTalk } from '../game/talkTurn';
 import { layerKey, readSwitchLayers, switchLayerShown, type SwitchLayer } from '../game/layerSwitch';
 import { applyEventVisit, forgetRespawn, NO_VISIT, rollEventVisit, type EventVisit } from '../game/eventVisit';
 import { canRun, meets, runCommands, ReturnToTitle, timeMatches } from '../event/interpreter';
@@ -52,7 +53,8 @@ import { CameraIllustrationLayer } from './CameraIllustrationLayer';
 import { SettingsMenu } from './SettingsMenu';
 import { TitleScreen } from './TitleScreen';
 import { PwaInstall } from './PwaInstall';
-import { fromSave, newState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
+import { fromSave, newState, restoreState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
+import { loadStoryBook, storyMeets, storyOrder } from '../game/story';
 import { advanceClock, loadTimeSettings, timeSettings } from '../game/timeClock';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
 import { canWalk, useUi } from './store';
@@ -97,8 +99,6 @@ const DEBUG_ENEMIES = ['enemy02', 'enemy00', 'enemy01'];
 const GAME_OVER_FADE_MS = 1600;
 /** 遊んだ秒を数える間隔（ミリ秒）。 */
 const CLOCK_MS = 1000;
-/** セーブに書くマップ番号。台帳の番号が分からなければファイル名。 */
-const mapNumber = (file: string) => file.replace(/\.json$/i, '').split('_')[0];
 
 export default function GameCanvas() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -166,12 +166,6 @@ export default function GameCanvas() {
   const eventsRef = useRef<Map<string, EventDef>>(new Map());
   /** NPC の名前 → 話しかけたときのイベント id（GS-16）。 */
   const npcTalkRef = useRef<Map<string, string>>(new Map());
-  /**
-   * 人ではなく**物**（GS-136。`SPRITE` レイヤーに置いたもの。宝箱・立て札など）。
-   * 「話せるよ」の合図は出さない——**物は話し相手ではない**ので、頭の上に吹き出しが
-   * 浮くと人のように見えてしまう。調べられること自体は変わらない。
-   */
-  const npcThingRef = useRef<Set<string>>(new Set());
   /** いま立っている起動場所。**出るまで二度と起こさない**ための控え。 */
   const steppingRef = useRef('');
   const mapRef = useRef('');
@@ -465,7 +459,9 @@ export default function GameCanvas() {
   };
   /** マップを組む前に呼ぶ（GS-195）。 */
   const readEventsAhead = async (file: string) => {
-    eventBookRef.current = { file, events: await fetchEvents(file) };
+    // 物語の段階の台帳（GS-254）も一緒に。条件は同期で見るので、マップのイベントより先に読んでおく（2 回目からは読まない）。
+    const [events] = await Promise.all([fetchEvents(file), loadStoryBook()]);
+    eventBookRef.current = { file, events };
   };
   /**
    * スイッチを聞く口。3D 側（`GameView`）にも同じ物を渡す。
@@ -480,7 +476,7 @@ export default function GameCanvas() {
       if (!now) return true;
       return key.slice(TIME_PREFIX.length).split(',').map((part) => part.trim()).includes(now);
     }
-    // 通しのフラグは**書いていなければ「まだ動ける」**（GS-147）。
+    // 通しのフラグは**書いていなければ false**（GS-254）。
     if (!key.startsWith('self:')) return switchOn(stateRef.current, key);
     if (!owner) return false;
     return stateRef.current.self.get(selfKey(mapKey(mapRef.current), `@${owner}`, key.slice(5))) ?? false;
@@ -494,6 +490,7 @@ export default function GameCanvas() {
   const npcMeetsRef = useRef((when: IfCondition[], owner: string, ignoreTime = false): boolean => {
     const state = stateRef.current;
     return when.every((one) => {
+      if ('story' in one) return storyMeets(storyOrder(), state.story, one.story, one.is);
       if ('switch' in one) return switchOn(state, one.switch) === (one.is ?? true);
       if ('self' in one) return (state.self.get(selfKey(mapKey(mapRef.current), `@${owner}`, one.self)) ?? false) === (one.is ?? true);
       if ('item' in one) return (state.items.get(one.item) ?? 0) >= (one.count ?? 1);
@@ -636,7 +633,7 @@ export default function GameCanvas() {
       await new Promise((done) => window.setTimeout(done, DOOR_FADE_MS));
     }
     try {
-      // 行き先は番号（`0102`）でもファイル名でも書ける。台帳で引き当てる。
+      // 行き先はマップの id（`home_forest`）。台帳で引き当てる（`.json` 付きのファイル名でもよい）。
       const entry = await mapEntryOf(map);
       const file = entry.file;
       await readEventsAhead(file);
@@ -707,7 +704,7 @@ export default function GameCanvas() {
   const adopt = useCallback(
     async (file: string) => {
       mapRef.current = file;
-      setDebugMapAt(mapNumber(file));
+      setDebugMapAt(knownSaveMapId(file));
       // 戦闘の背景は台帳から（GS-79）。台帳は 1 回読んで使い回すので、ここは待っても速い。
       const mapEntry = await entryForFile(file);
       battleFieldRef.current = mapEntry?.battleField ?? 'hill';
@@ -753,7 +750,6 @@ export default function GameCanvas() {
         npcShown(npc, (key) => switchOnRef.current(key, npc.id), (when) => npcMeetsRef.current(when, npc.id)),
       );
       npcTalkRef.current = new Map(npcList.map((npc) => [npc.id, npc.event]));
-      npcThingRef.current = new Set(npcList.filter((npc) => npc.thing).map((npc) => npc.id));
       // 敵シンボル（GS-76）。`EnemyData` を書いた NPC だけ。マップが変われば作り直す。
       symbolsRef.current = new Map(
         npcList.filter((npc) => npc.enemy).map((npc) => [npc.id, npc.enemy as string]),
@@ -863,13 +859,19 @@ export default function GameCanvas() {
         // `carry.owner` は起こした物の `Id`（GS-233）。下書きを試すときに覚えの宛先を手で渡せる。
         play: (event, npc = '', carry = {}) => playRef.current(event, npc, carry),
         // フラグを確認のために書き換える（GS-206。イベントエディタの「フラグ（確認用）」）。
-        // 書いてあるフラグだけ返す——書いていなければ true（`switchOn`）。`null` で書いていない状態へ戻す。
+        // 書いてあるフラグだけ返す——書いていなければ false（`switchOn`）。`null` で書いていない状態へ戻す。
         // **ゲームの記録（遊んでいる間の状態）だけ**を変える。イベント JSON は触らない。
         flags: () => Object.fromEntries(stateRef.current.switches),
         setFlag: (key, value) => {
           if (value === null) stateRef.current.switches.delete(key);
           else stateRef.current.switches.set(key, value);
           // フラグで出る人（`showWhen`。GS-230）を見直す。
+          checkNpcShownRef.current();
+        },
+        // 物語の段階を確認のために合わせる（GS-254。イベントエディタの「段階（確認用）」）。記録だけを変える。
+        story: () => stateRef.current.story,
+        setStory: (step) => {
+          stateRef.current.story = step;
           checkNpcShownRef.current();
         },
         // マップ移動を試す（GS-211。イベントエディタの「マップ移動」）。**踏んだときと同じ決め方・同じ道**で移る。
@@ -894,7 +896,7 @@ export default function GameCanvas() {
           view.unstageBattle();
           cameraPreviewRef.current = true;
           autoPendingRef.current = false;
-          await Promise.all([loadBattleBook(), loadCharacterBook(), loadIllustrations()]);
+          await Promise.all([loadBattleBook(), loadCharacterBook(), loadIllustrations(), loadStoryBook()]);
           resetParty(stateRef.current);
           useUi.getState().setPhase('play');
           useUi.getState().setFade(0, 0);
@@ -1162,7 +1164,6 @@ export default function GameCanvas() {
           const bound = [...eventsRef.current.values()].filter((entry) => entry.npc === def.id).pop();
           const eventId = bound?.id ?? def.event;
           if (eventId) npcTalkRef.current.set(def.id, eventId);
-          if (def.thing) npcThingRef.current.add(def.id);
           if (def.enemy) symbolsRef.current.set(def.id, def.enemy);
         }
         continue;
@@ -1267,8 +1268,8 @@ export default function GameCanvas() {
       if (who && talk && talk.trigger === 'action' && runnableRef.current(talk, who)) {
         const def = npcDefsRef.current.find((npc) => npc.id === who);
         // 話しかけられた人はこちらを向く（GS-118）。イベントが `turn` で向きを指すなら、
-        // そちらが後から上書きする。**物（宝箱など）は向かない**（GS-133）。
-        if (!def?.thing) view.faceNpcToPlayer(who);
+        // そちらが後から上書きする。**`noTurn` のイベントは向かない**（GS-252）。
+        if (facesOnTalk(talk)) view.faceNpcToPlayer(who);
         void play(talk, who, { owner: def?.id });
         return;
       }
@@ -1382,23 +1383,15 @@ export default function GameCanvas() {
       const data = await readSave(slot);
       if (!data) return;
       const { state, progress } = fromSave(data);
-      // **入れ物は差し替えず中身を移す**——イベントの道具立てが同じ入れ物を握っている。
-      stateRef.current.switches = state.switches;
-      stateRef.current.variables = state.variables;
-      stateRef.current.self = state.self;
-      stateRef.current.clear = state.clear;
-      stateRef.current.playSeconds = state.playSeconds;
-      stateRef.current.items = state.items;
+      // **入れ物は差し替えず中身を移す**——イベントの道具立てが同じ入れ物を握っている。欄は全部 `restoreState` が移す。
+      restoreState(stateRef.current, state);
       // 時間帯と時計（GS-222）。持っていない古い記録は台帳の「はじめから」で埋める。
       const times = await loadTimeSettings();
-      stateRef.current.time = data.time !== undefined ? state.time : times.start;
-      stateRef.current.clock = data.clock ? { ...state.clock } : { running: times.clock, ms: 0 };
+      if (data.time === undefined) stateRef.current.time = times.start;
+      if (!data.clock) stateRef.current.clock = { running: times.clock, ms: 0 };
       viewRef.current?.setTime(stateRef.current.time, 0);
       // 仲間（GS-60）。**版 2 までの記録には無い**ので、台帳から入れ直す。
       await loadBattleBook();
-      stateRef.current.party = state.party;
-      stateRef.current.members = state.members;
-      stateRef.current.gold = state.gold;
       ensureParty(stateRef.current);
       useUi.getState().setPhase('play');
       useUi.getState().setMenu(false);
@@ -1421,9 +1414,6 @@ export default function GameCanvas() {
     if (!at) return [];
     const out: TalkMark[] = [];
     for (const [npc, eventId] of npcTalkRef.current) {
-      // 物（宝箱・立て札など）には出さない（GS-136）。合図の役目は「話しかけられる」を
-      // 伝えることで、**物は話し相手ではない**。
-      if (npcThingRef.current.has(npc)) continue;
       const event = eventsRef.current.get(eventId);
       if (!event || event.trigger !== 'action') continue;
       const spot = view.npcAt(npc);
@@ -1447,7 +1437,7 @@ export default function GameCanvas() {
     await writeSave(
       slot,
       toSave(stateRef.current, {
-        map: mapNumber(mapRef.current),
+        map: knownSaveMapId(mapRef.current),
         at: { x: Math.floor(at.x), y: Math.floor(at.y), z: Math.floor(at.z) },
         facing: view.playerFacing() ?? 'down',
       }),

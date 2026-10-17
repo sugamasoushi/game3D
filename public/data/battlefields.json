@@ -1,5 +1,5 @@
 {
-  "infomation": "2D戦闘背景。マップ内に BattleStage=true の点があれば3D舞台が優先され、この絵は使わない。BattleStageが無い場合は maps.json の battleField がこのキーを指し、未指定時は hill を使う。images は assets/img/background/ の中のファイル名で、奥から手前の順に重ねる。",
+  "information": "2D戦闘背景。マップ内に BattleStage=true の点があれば3D舞台が優先され、この絵は使わない。BattleStageが無い場合は maps.json の battleField がこのキーを指し、未指定時は hill を使う。images は assets/img/background/ の中のファイル名で、奥から手前の順に重ねる。",
   "battlefields": {
     "hill": {
       "name": "丘",

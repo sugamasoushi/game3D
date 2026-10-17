@@ -1,5 +1,5 @@
 {
-  "infomation": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/CharaStand の名前（拡張子なし）。hp/mp は満タンの値。倒すと exp と gold が入る。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
+  "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/CharaStand の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は 190px で 1 マス）に掛ける）。hp/mp は満タンの値。倒すと exp と gold が入る。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
   "enemies": {
     "enemy00": {
       "name": "ラミア娘",

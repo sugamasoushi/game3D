@@ -10,6 +10,7 @@
 // 1 体の名前はマップの `Id`（マップエディタが置いたときに書く。同じキャラクターの 2 体目からは番号付き）。
 
 import { assetUrl } from './assets';
+import type { NpcRouteMotion } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { knownMapKeyForFile } from './mapIndex';
 
@@ -41,6 +42,12 @@ export const WANDER_DEFAULT: Required<WanderDef> = {
 
 /** 1 体ぶんの設定。 */
 export interface MapNpcDef {
+  /** 立ち止まり・常時足踏みの配置時の向き。省略時はマップの Face。 */
+  facing?: 'up' | 'down' | 'left' | 'right';
+  /** 常時足踏みの1コマの時間（ms）。省略時は画像の歩行設定。 */
+  stepMs?: number;
+  /** マップに置いた NpcMotion の点を順にたどる。 */
+  route?: NpcRouteMotion;
   /**
    * **最初は出さない**（GS-157）。イベントの「置き直す」で出すまで居ない。
    * 「イベントで初めて現れる人」はこれ 1 つで足りる——イベント名は要らない。

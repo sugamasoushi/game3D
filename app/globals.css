@@ -1124,6 +1124,18 @@ body {
   background: rgba(60, 60, 160, 0.8);
 }
 
+/*
+ * 選んでいる所は自分で描く。ブラウザ既定の `:focus-visible` の枠に頼ると、
+ * 本編でマウスやゲームパッドを使ってからタイトルへ戻ったとき、`focus()` しても枠が出ない
+ * （最後の操作がキーでないと「見せなくてよい」と判断される）。メニュー（GS-206）と同じく `:focus` で描く。
+ */
+.title-menu button:focus {
+  outline: none;
+  border-color: #ffd479;
+  background: rgba(255, 212, 121, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 212, 121, 0.55);
+}
+
 .title-menu button:disabled {
   opacity: 0.4;
   cursor: default;
@@ -1163,6 +1175,8 @@ body {
 .title-menu button.title-manual:focus-visible,
 .title-menu button.title-manual:focus {
   outline: none;
+  background: none;
+  box-shadow: none;
   filter: drop-shadow(0 0 6px #ffd84a);
 }
 
@@ -1880,8 +1894,8 @@ body {
   filter: grayscale(1);
 }
 
+/* 元の大きさのまま出し、敵の倍率（`enemies.json` の `scale`）だけ掛ける。上限は付けない（2026-10-17）。 */
 .battle-foe img {
-  max-height: 320px;
   image-rendering: pixelated;
 }
 

@@ -87,6 +87,14 @@ export type Shape =
   | 'floor_gable_quarter'
   // 丸い床（DEC-371）。円はマスの中心、半円は北の面に平らな側を乗せる（半円柱と同じ足あと）。
   | 'floor_circle'
+  /**
+   * 2×2 の円を 4 つに割った 1/4 の床（DEC-480）。半径 1 マスで、井戸・円柱の 2×2 の部品（`well_q_*`）の外形と同じ。
+   * 名前は**円のどこに来るか**（`nw` は北西の 1/4。円の中心はマスの南東の角）。R で回すと絵も回るので向きは形状で分ける。
+   */
+  | 'floor_quarter_nw'
+  | 'floor_quarter_ne'
+  | 'floor_quarter_se'
+  | 'floor_quarter_sw'
   | 'floor_round'
   /**
    * 折れ面（DEC-352 / DEC-353）。**チップを対角線で山折りにした 1 枚**。
@@ -108,6 +116,11 @@ export type Shape =
   | 'floor_fold_in_flip'
   | 'ceil'
   /** 天井の直角二等辺三角形。床と同じ並び。 */
+  /** 1/4 の円の天井（DEC-480）。並びは `floor_quarter_*` と同じ。 */
+  | 'ceil_quarter_nw'
+  | 'ceil_quarter_ne'
+  | 'ceil_quarter_se'
+  | 'ceil_quarter_sw'
   | 'ceil_tri_nw'
   | 'ceil_tri_ne'
   | 'ceil_tri_se'
@@ -211,12 +224,44 @@ export type Shape =
    */
   | 'billboard_deep'
   | 'billboard_fixed_deep'
+  /** `billboard_fixed_deep` の 2 枚版（DEC-481）。間隔は 1/2 マス。どちらも縦向きの面として描く（`isStackedBoardShape`）。 */
+  | 'billboard_fixed_deep2'
   /** 斜面。−Z 辺が上がる。 */
   | 'slope'
   /** 屋根の外隅。1 隅が上がる。 */
   | 'slope_corner'
   /** 屋根の内隅。3 隅が上がる。 */
   | 'slope_corner_in'
+  /**
+   * 立体の部品（DEC-479）。**1 マスに 1 つ**で、上と側面のチップを持つ（底面は作らない）。
+   * 高さは厚み（`thickness`）の Y の絶対値（1〜32px）。マスの床にそろえ、上から削る。回さない（向きは形状で分ける）。
+   * `cylinder` / `well` は 1 マスに収まる円柱・井戸（半径 0.5 マス）。
+   */
+  | 'cylinder'
+  | 'well'
+  /**
+   * 2×2 の円柱を 4 つに割った部品（DEC-479）。名前は**円のどこに来るか**（`nw` は北西の 1/4。外側の角も北西）。
+   * 円の中心は 4 マスの真ん中、半径 1 マス。直角・直線はブロックで代用する。
+   */
+  | 'cylinder_q_nw'
+  | 'cylinder_q_ne'
+  | 'cylinder_q_se'
+  | 'cylinder_q_sw'
+  /** 2×2 の井戸を 4 つに割った部品（DEC-479）。並びは `cylinder_q_*` と同じ。壁の厚みは `WELL_WALL`（8px）。 */
+  | 'well_q_nw'
+  | 'well_q_ne'
+  | 'well_q_se'
+  | 'well_q_sw'
+  /** 井戸の直角（DEC-479）。L 字の壁で、名前は**外側の角**。1/4 と直線につながる。 */
+  | 'well_corner_nw'
+  | 'well_corner_ne'
+  | 'well_corner_se'
+  | 'well_corner_sw'
+  /** 井戸の直線（DEC-479）。名前は**沿う辺**（`w` は西の辺に沿う壁。外側が西）。 */
+  | 'well_line_n'
+  | 'well_line_e'
+  | 'well_line_s'
+  | 'well_line_w'
   | 'mesh';
 export type Encoding = 'b64' | 'json';
 export type CellEncoding = 'abs' | 'delta';
@@ -227,7 +272,12 @@ export const ROTATION_MASK = 0b11;
 
 /** ブロックは回転しない。壁・床・斜面・板は R で回す（DEC-42）。 */
 export function shapeRotates(shape: Shape): boolean {
-  return shape !== 'box';
+  return shape !== 'box' && !isSolidPieceShape(shape);
+}
+
+/** 立体の部品（円柱・井戸とその 1/4・直角・直線。DEC-479）か。回さない。高さは厚みの Y から読む。 */
+export function isSolidPieceShape(shape: Shape | string): boolean {
+  return shape.startsWith('cylinder') || shape.startsWith('well');
 }
 
 export function shapeRotation(shape: Shape, rf: number): number {
@@ -264,7 +314,15 @@ export function isDiagWallShape(shape: Shape | string): boolean {
  * 平らな板は表裏が同じなので辺へ平行移動で足りるが、曲がった面はそれでは向きが変わらない。
  */
 export function isCentreWallShape(shape: Shape | string): boolean {
-  return isDiagWallShape(shape) || shape === 'wall_round' || shape === 'wall_cylinder';
+  return isDiagWallShape(shape) || shape === 'wall_round' || shape === 'wall_cylinder' || isStackedBoardShape(shape);
+}
+
+/**
+ * 奥に 2 枚・3 枚重ねた縦の板（DEC-205 / DEC-481）。**縦向きの面として描く**（マスの中心に立ち R で回る壁の仲間）。
+ * 名前の `billboard_` は保存済みのマップとの互換のため残している。当たりは持たない（`hitRules`）。
+ */
+export function isStackedBoardShape(shape: Shape | string): boolean {
+  return shape === 'billboard_fixed_deep' || shape === 'billboard_fixed_deep2';
 }
 
 /** 壁の仲間。辺の壁と、マスの中心に据える壁（対角・半円柱）。 */
@@ -279,8 +337,7 @@ export function isBillboardShape(shape: Shape | string): boolean {
     shape === 'billboard_fixed' ||
     shape === 'billboard_flat' ||
     shape === 'billboard_flat_follow' ||
-    shape === 'billboard_deep' ||
-    shape === 'billboard_fixed_deep'
+    shape === 'billboard_deep'
   );
 }
 
@@ -294,8 +351,7 @@ export function billboardStandsUpright(shape: Shape | string): boolean {
   return (
     shape === 'billboard' ||
     shape === 'billboard_fixed' ||
-    shape === 'billboard_deep' ||
-    shape === 'billboard_fixed_deep'
+    shape === 'billboard_deep'
   );
 }
 
@@ -340,8 +396,8 @@ export interface TilesetDef {
 export interface MaterialDef {
   id: string;
   tex: string;
-  /** `tiles` はアトラス／単色。`invisible` は描かない（当たり用）。省略時 tiles。 */
-  kind?: 'tiles' | 'solid' | 'invisible';
+  /** `tiles` はアトラス／単色。省略時 tiles。描かない `invisible`（透明ボックス）は 3D Map Editor DEC-475 でやめた。 */
+  kind?: 'tiles' | 'solid';
   shading: 'unlit' | 'lambert';
   alphaTest: number;
   transparent: boolean;
@@ -1147,7 +1203,7 @@ export interface EditorStateDef {
     shape?: Shape;
     rotation?: number;
     color?: string;
-    paint?: 'chip' | 'color' | 'invisible' | 'prefab';
+    paint?: 'chip' | 'color' | 'placeholder' | 'prefab';
     edgeEnabled?: boolean;
     edgeColor?: string;
     offset?: [number, number, number];

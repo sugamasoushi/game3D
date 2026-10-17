@@ -1,0 +1,38 @@
+{
+  "map": "next_field",
+  "events": [
+    {
+      "id": "village_blocked",
+      "kind": "scenario",
+      "trigger": "touch",
+      "commands": [
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["今は村に用は無いかな"] }],
+          "style": "window"
+        },
+        { "type": "portrait", "slot": "right" },
+        { "type": "move", "target": "player", "dir": "down", "cells": 1 }
+      ],
+      "when": [{ "story": "ending", "is": "notDone" }]
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_2",
+      "to": [{ "map": "forest_mansion", "at": { "x": -22, "y": 2, "z": 27 }, "px": { "x": 0, "y": 6, "z": 0 } }]
+    },
+    {
+      "object": "obj_1",
+      "to": [
+        {
+          "map": "foothill_village",
+          "at": { "x": -4, "y": 0, "z": 25 },
+          "px": { "x": 0, "z": 6 },
+          "face": "up"
+        }
+      ]
+    }
+  ]
+}

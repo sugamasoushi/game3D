@@ -1,10 +1,10 @@
-// マップの台帳（GS-17 / GS-21）。番号 → ファイル名と、そのマップの音。
+// マップの台帳（GS-17 / GS-21）。id → ファイル名と、そのマップの音。
 //
-// マップは `0101_home.json` のように**番号＋名前**で置く（旧作と同じ並べ方）。
-// 行き先は番号だけで書きたい（`MapMove = "0102"`）ので、ここで引き当てる。
+// マップの id は英小文字の名前（`home`・`forest_mansion`）で、ファイル名は `<id>.json`（GS-254。
+// それまでは `0101_home.json` のような番号＋名前で、行き先を番号で書いていた）。行き先は id で書く（`MapMove = "home_forest"`）。
 // 静的書き出しではフォルダの中身を数えられないので、**台帳を 1 枚持つ**。
 //
-// 番号を使わないなら、ファイル名をそのまま書いてもよい（台帳に無ければ `<名前>.json` を試す）。
+// 台帳に無い名前は、そのまま `<名前>.json` を試す（音は無し）。
 
 import { assetUrl } from './assets';
 
@@ -93,7 +93,20 @@ export function knownMapKeyForFile(file: string): string | null {
   return Object.entries(loaded).find(([, entry]) => entry.file === file)?.[0] ?? null;
 }
 
-/** ファイル名から台帳の番号（`0102`）を逆に引く。台帳に無ければ null。NPC の設定（`mapNpcs.json`）を引くのに使う。 */
+/**
+ * セーブに書くマップの id。台帳の id（`home_forest`）、台帳に無ければ `.json` を外したファイル名。
+ * **`_` で切らない**——id の `_` は名前の一部（番号＋名前のファイル名だった頃の切り方で `home` になっていた）。
+ */
+export function saveMapId(maps: Record<string, MapEntry>, file: string): string {
+  return Object.entries(maps).find(([, entry]) => entry.file === file)?.[0] ?? file.replace(/\.json$/i, '');
+}
+
+/** 読み終えた台帳で `saveMapId` を引く。**台帳を読み終えてから**呼ぶ。 */
+export function knownSaveMapId(file: string): string {
+  return saveMapId(loaded, file);
+}
+
+/** ファイル名から台帳の id（`home_forest`）を逆に引く。台帳に無ければ null。NPC の設定（`mapNpcs.json`）を引くのに使う。 */
 export async function mapKeyForFile(file: string): Promise<string | null> {
   const index = await loadMapIndex();
   return Object.entries(index).find(([, entry]) => entry.file === file)?.[0] ?? null;

@@ -1,5 +1,5 @@
 {
-  "infomation": "はじめの仲間と数値（GS-63）。キーは characterdata.json の人。hp/mp は「レベル 1 の」満タンの値で、いま減っている量はセーブが持つ。level が 1 上がるごとに growth のぶん増える。learn はレベル → そこで覚える技。levelUp は次のレベルに要る経験の出し方。 equip は はじめから身に着けている物（GS-67）。 party に載っていない人は「まだ仲間ではない」（GS-70。イベントの party 命令で入る）。",
+  "information": "はじめの仲間と数値（GS-63）。キーは characterdata.json の人。hp/mp は「レベル 1 の」満タンの値で、いま減っている量はセーブが持つ。level が 1 上がるごとに growth のぶん増える。learn はレベル → そこで覚える技。levelUp は次のレベルに要る経験の出し方。 equip は はじめから身に着けている物（GS-67）。 party に載っていない人は「まだ仲間ではない」（GS-70。イベントの party 命令で入る）。",
   "party": [
     "meina"
   ],

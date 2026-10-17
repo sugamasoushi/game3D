@@ -579,7 +579,9 @@ void main() {
     // 32 でマスいっぱい。大きいと面から出たぶんを描かず、小さいと余りをチップで繰り返す。
     // **繰り返しの印は値に畳む**——1 倍未満の軸へ 8.0 を足して合図にする（varying を増やせないため）。
     // 単色は縁（vEdge）が面 UV を見るので触らない。
-    if (vSolid < 0.5) {
+    // 立体の部品（DEC-479）は chipStretch に高さを入れているので、ここは通さない（下で貼る）。
+    float roundSolid = mod(floor(chipSides.w / 256.0 + 0.001), 2.0);
+    if (vSolid < 0.5 && roundSolid < 0.5) {
       float byteAt = mod(slot, 3.0);
       float divisor = exp2(8.0 * byteAt);
       float packU = slot < 2.5 ? chipStretch.x : chipStretch.y;
@@ -606,6 +608,14 @@ void main() {
         if (lo.y < -0.001 || hi.y > 1.001) faceUv.y += 8.0 - floor(lo.y);
         vFaceUv = faceUv;
       }
+    }
+    // 立体の部品（DEC-479）。UV は形がチップの枚数で持っている（弧は長さに合わせて 2 枚など）ので、
+    // 0..1 に留めずに繰り返す。側面は高さ（chipStretch.x。0..1）を掛けて**下で切る**（上はそろえる）。
+    // 印の 8.0 は引き延ばしと同じ（DEC-415）。
+    if (roundSolid > 0.5 && vSolid < 0.5) {
+      float height = chipStretch.x > 0.0 ? chipStretch.x : 1.0;
+      vFaceUv = uv + 8.0;
+      if (abs(normal.y) < 0.5) vFaceUv.y = uv.y * height + 8.0;
     }
     if (hx > 0.001 || hy > 0.001 || hz > 0.001) {
       if (hx < 0.001) hx = 1.0;

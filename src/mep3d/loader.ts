@@ -2,22 +2,23 @@
 
 import {
   ClampToEdgeWrapping,
-  DoubleSide,
+  DataTexture,
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
   LinearFilter,
   Matrix4,
   Mesh,
-  MeshBasicMaterial,
   MeshDepthMaterial,
   NearestFilter,
   NoColorSpace,
   Quaternion,
+  RGBAFormat,
   SRGBColorSpace,
   ShaderMaterial,
   Texture,
   TextureLoader,
+  UnsignedByteType,
   Vector2,
   Vector3,
   Vector4,
@@ -79,6 +80,8 @@ const SOLID_SHAPES = new Set<string>([
 const PLANE_CROP_BIT = 128;
 /** 環境光を上向き面として受ける目印（DEC-125）。隠す面（0..5）と切り取り（128）の隙間。 */
 const SHADE_UP_BIT = 64;
+/** 立体の部品の目印（DEC-479）。シェーダはこれを見て chipStretch を高さとして読む。 */
+const ROUND_SOLID_BIT = 256;
 /** 隠す面のビットだけ数えるためのマスク。 */
 const HIDE_FACE_MASK = 0x3f;
 
@@ -102,7 +105,7 @@ type SolidCell = {
   offset: [number, number, number];
   shadowOffset: [number, number, number];
 };
-import { FLAT_PLATE, LAYER_DEPTH_STEP, OFFSET_STEPS, applyWallPose, boxFootprint, boxHeight, geometryFor, offsetFor, offsetInCells, offsetStepsFor, plateCornerHeights, plateHalves, plateHeight, readThickness, rotatePlate, slopeCornerHeights } from './shapes';
+import { FLAT_PLATE, LAYER_DEPTH_STEP, OFFSET_STEPS, applyWallPose, boxFootprint, boxHeight, geometryFor, offsetFor, offsetInCells, offsetStepsFor, plateCornerHeights, plateHalves, plateHeight, readThickness, rotatePlate, slopeCornerHeights, solidPieceHeight } from './shapes';
 import {
   ROTATION_MASK,
   billboardFacesCamera,
@@ -151,13 +154,11 @@ import {
   type TextureDef,
   type TilesetDef,
 } from './types';
-import { isContainerKind } from './types';
+import { isContainerKind, isSolidPieceShape } from './types';
 
 interface LoadOptions {
   /** `textures[].src` の解決基点。省略時はページ。 */
   assetBase?: string;
-  /** `invisible` を薄いゴーストで出す。ゲームは出さない。エディタ用。 */
-  previewInvisible?: boolean;
   /**
    * 前のシーンから受け取る持ち物（DEC-275）。**アセットが同じものでないと使えない。**
    * 渡すとテクスチャの読み直しとシェーダの作り直しが起きなくなる。
@@ -564,7 +565,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     const wallInfo = new Map<string, SolidCell>();
     const visual = new Set<string>();
     for (const batch of layer.batches) {
-      if (materialsById.get(batch.mat)?.kind === 'invisible') continue;
       const coords = decodeCells(batch);
       const flags = decodeRotationFlags(batch);
       const protoIndices = decodeProtoIndices(batch);
@@ -619,7 +619,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     for (const batch of layer.batches) {
       const corners = plateCornerHeights(batch.shape);
       if (!corners) continue;
-      if (materialsById.get(batch.mat)?.kind === 'invisible') continue;
       const coords = decodeCells(batch);
       const flags = decodeRotationFlags(batch);
       for (let i = 0; i < batch.count; i += 1) {
@@ -799,7 +798,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     const walls = new Map<string, number>();
     const diags = new Map<string, boolean>();
     for (const batch of layer.batches) {
-      if (materialsById.get(batch.mat)?.kind === 'invisible') continue;
       if (batch.shape === 'wall') {
         // **どの辺に立っているかを覚える**（DEC-375）。マスごと塞ぐと、板の無い側でも影が折れる。
         const coords = decodeCells(batch);
@@ -972,7 +970,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     const boards = new Set<string>();
     for (const batch of layer.batches) {
       if (!isBillboardFlat(batch.shape)) continue;
-      if (materialsById.get(batch.mat)?.kind === 'invisible') continue;
       collectCells([batch], boards);
     }
     boardByLayer.set(layer.id, boards);
@@ -1004,7 +1001,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       const floors = new Map<string, Float32Array>();
       for (const batch of layer.batches) {
         if (!isFloorShape(batch.shape)) continue;
-        if (materialsById.get(batch.mat)?.kind === 'invisible') continue;
         const cells = decodeCells(batch);
         const flags = shapeRotates(batch.shape) ? decodeRotationFlags(batch) : null;
         const protoIndices = decodeProtoIndices(batch);
@@ -1338,7 +1334,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       for (const batch of layer.batches) {
         if (!isBillboardShape(batch.shape)) continue;
         const def = materialsById.get(batch.mat);
-        if (!def || def.kind === 'invisible') continue;
+        if (!def) continue;
         const texture = textures.get(def.tex);
         const image = texture?.image as (CanvasImageSource & { width?: number; height?: number }) | undefined;
         if (!image || !image.width || !image.height) continue;
@@ -1553,19 +1549,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
   let drawCalls = 0;
   let tiles = 0;
   let hiddenFaces = 0;
-  let ghostMaterial: MeshBasicMaterial | null = null;
-  const ghostMaterialOf = (): Material => {
-    if (!ghostMaterial) {
-      ghostMaterial = sharedGhost ??= new MeshBasicMaterial({
-        color: 0x9ed1ff,
-        transparent: true,
-        opacity: 0.38,
-        depthWrite: false,
-        side: DoubleSide,
-      });
-    }
-    return ghostMaterial;
-  };
 
   for (const layer of map.layers) {
     const layerGroup = new Group();
@@ -1584,7 +1567,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     for (const batch of layer.batches) {
       if (batch.shape !== 'box') continue;
       const def = materialsById.get(batch.mat);
-      if (!def || def.kind === 'invisible' || def.transparent) continue;
+      if (!def || def.transparent) continue;
       const coords = decodeCells(batch);
       const protoIndices = decodeProtoIndices(batch);
       for (let i = 0; i < batch.count; i += 1) {
@@ -1636,11 +1619,11 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
    * **`faceHideAt`（接地面除去）は入れていない**——隣のレイヤーの都合まで見ると
    * 使い回しがほぼ効かなくなる。消したときに隣へ穴が残るのは承知のうえ。
    */
-  const batchSignature = (layer: LayerDef, depth: number, see: boolean, ghost: boolean, batch: BatchDef): string => {
+  const batchSignature = (layer: LayerDef, depth: number, see: boolean, batch: BatchDef): string => {
     const attr = (value: string | number[] | undefined): string =>
       typeof value === 'string' ? value : (value ?? []).join(',');
     return [
-      layer.id, depth, see ? 1 : 0, ghost ? 1 : 0,
+      layer.id, depth, see ? 1 : 0,
       batch.shape, batch.mat, batch.ts, batch.mode, batch.count, batch.enc, batch.cellEnc,
       batch.anim ? JSON.stringify(batch.anim) : '',
       batch.protos.join('|'),
@@ -1673,10 +1656,9 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
           materialFor(m, t, bb, w, c, ff, ld, true)
       : materialFor;
     for (const batch of layer.batches) {
-      const ghost = materialsById.get(batch.mat)?.kind === 'invisible';
       // ビルボードは同じレイヤーの他のセルを見て広がりを決めるので、使い回さない（DEC-276）。
       const reusable = !billboardFacesCamera(batch.shape);
-      const sig = reusable ? batchSignature(layer, layerDepth, seeLayer, ghost, batch) : '';
+      const sig = reusable ? batchSignature(layer, layerDepth, seeLayer, batch) : '';
       const kept = reusable ? carried?.meshes.get(sig) : undefined;
       if (kept) {
         carried?.meshes.delete(sig);
@@ -1693,27 +1675,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
         rememberSwaps(layer, kept);
         continue;
       }
-      if (ghost) {
-        if (!options.previewInvisible) continue;
-        const mesh = buildBatch(batch, {
-          unit,
-          layerDepth,
-          protosById,
-          materialFor: () => ghostMaterialOf(),
-          offsetSteps,
-          spreadOf: billboardFacesCamera(batch.shape) ? spreadOf(batch, layer, unit) : undefined,
-          faceHideAt,
-        });
-        layerGroup.add(mesh.object);
-        drawCalls += 1;
-        tiles += batch.count;
-        hiddenFaces += mesh.hiddenFaces;
-        if (reusable) {
-          meshCache.set(sig, { object: mesh.object, hiddenFaces: mesh.hiddenFaces, count: batch.count, animated: null, cellAt: mesh.cellAt, swapChip: mesh.swapChip });
-        }
-        continue;
-      }
-
       const mesh = buildBatch(batch, {
         unit,
         layerDepth,
@@ -2462,6 +2423,7 @@ function buildBatch(
 
   // 面 1 枚の形は厚みを持てないので、厚みを「切り取り」として使う（DEC-96）。
   const cropsFace = cropsFaceShape(batch.shape);
+  const roundSolid = isSolidPieceShape(batch.shape);
   const shapeOffset = offsetFor(batch.shape);
   // 重なりのずらしは深度だけ（DEC-123）。頂点を動かすと、レイヤーが深いほど
   // 絵が 1px ずれて見えた（プレハブは新しいレイヤーに入るので目立つ）。
@@ -2491,10 +2453,21 @@ function buildBatch(
       thickAttr[i * 3] = thickX < 0 ? -hx : hx;
     }
 
+    // 立体の部品（DEC-479）は高さぶん縦に縮め、マスの床にそろえる（上から削る）。
+    const pieceHeight = roundSolid ? solidPieceHeight(proto?.thickness) : 1;
+    if (roundSolid) {
+      scale.set(context.unit, context.unit * pieceHeight, context.unit);
+      stretchAttr[i * 4] = pieceHeight;
+    }
+
     if (isEdgeWallShape(batch.shape)) {
       applyWallPose(rotation, offset, quaternion);
       offset.multiplyScalar(context.unit);
       offset.add(lift.copy(layerLift).applyQuaternion(quaternion));
+    } else if (roundSolid) {
+      quaternion.identity();
+      offset.set(0, (pieceHeight - 1) / 2, 0).multiplyScalar(context.unit);
+      offset.add(layerLift);
     } else {
       quaternion.setFromAxisAngle(UP, (-rotation * Math.PI) / 2);
       offset.copy(shapeOffset).multiplyScalar(context.unit).applyQuaternion(quaternion);
@@ -2523,6 +2496,7 @@ function buildBatch(
     if (cropsFace) sides[i * 4 + 3] = PLANE_CROP_BIT;
     // 上向きの明るさ（DEC-125）。面の向きに関わらず、光は真上から受けたことにする。
     if (shadeUpOf(proto)) sides[i * 4 + 3] |= SHADE_UP_BIT;
+    if (roundSolid) sides[i * 4 + 3] |= ROUND_SOLID_BIT;
     if (batch.shape === 'box') {
       faceAnchorAttr[i] = packFaceAnchorAttr(proto?.faceAnchor);
       faceFitAttr[i] = packFaceFitAttr(proto?.faceFit);
@@ -2696,12 +2670,6 @@ function emitMaskOf(proto: ProtoDef | undefined): number {
   }
   return 0;
 }
-
-/**
- * `invisible` のゴースト（DEC-277）。中身が固定なのでモジュールで持ち回す。
- * シーンごとに作ると、組み直しのたびにプログラムのリンクが 1 本増える。
- */
-let sharedGhost: MeshBasicMaterial | null = null;
 
 /** チップ端を 0.01 テクセル内側へ。隣チップの 1px 線が出ないように。 */
 const UV_INSET_TEXELS = 0.01;
@@ -3029,12 +2997,29 @@ function layerEffectivelyVisible(layers: LayerDef[], layer: LayerDef): boolean {
   return true;
 }
 
+/**
+ * 読めない絵の代わりに貼る色（3D Map Editor DEC-475）。エディタの仮チップと同じ薄い青。
+ * 絵が 1 枚読めないだけでマップごと開けなくなるのをやめ、そのチップを薄い青で描く。
+ */
+export const MISSING_TEXTURE_RGB: readonly [number, number, number] = [0x9e, 0xd1, 0xff];
+
+function missingTexture(): Texture {
+  const [r, g, b] = MISSING_TEXTURE_RGB;
+  return new DataTexture(new Uint8Array([r, g, b, 255]), 1, 1, RGBAFormat, UnsignedByteType);
+}
+
 async function loadTextures(defs: TextureDef[], assetBase: string): Promise<Map<string, Texture>> {
   const loader = new TextureLoader();
   const entries = await Promise.all(
     defs.map(async (def) => {
       const url = def.data ?? new URL(def.src, assetBase).href;
-      const texture = await loader.loadAsync(url);
+      let texture: Texture;
+      try {
+        texture = await loader.loadAsync(url);
+      } catch (cause) {
+        console.warn(`絵を読めないので薄い青で描きます: ${def.src}`, cause);
+        texture = missingTexture();
+      }
       texture.colorSpace = SRGBColorSpace;
       texture.flipY = false;
       const filter = def.filter === 'linear' ? LinearFilter : NearestFilter;

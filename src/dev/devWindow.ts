@@ -22,6 +22,10 @@ export interface PreviewWindow {
   play(event: EventDef, npc?: string, carry?: { owner?: string }): Promise<void>;
   flags(): Record<string, boolean>;
   setFlag(key: string, value: boolean | null): void;
+  /** 物語の段階（GS-254）。最後に済ませた段階の id（'' は何も済んでいない）。 */
+  story(): string;
+  /** 物語の段階を確認のために合わせる（GS-254）。**戻すこともできる**（命令の `story` と違い、確かめるための口）。 */
+  setStory(step: string): void;
   mapMove(destinations: string[], def?: MapMoveDef): Promise<string>;
 }
 

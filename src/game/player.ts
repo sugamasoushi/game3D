@@ -139,6 +139,10 @@ export interface PlayerInput {
    * 絵が 1 コマも変わらない（歩いているように見えない）。
    */
   speed?: number;
+  /** その場の足踏み用のコマ時間。移動速度とは独立。 */
+  stepMs?: number;
+  /** 設定された経路を直線で進む。通路への自動寄せを使わない。 */
+  exactRoute?: boolean;
   /**
    * 向きも足も**動かさずに**運ぶ（GS-155）。殴られて後ろへ飛ぶ、氷の上を滑る、など。
    * 位置だけが動き、絵は立ち止まったまま——「歩いて下がった」と「飛ばされた」は別物。
@@ -819,7 +823,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         facing = 'north';
         if (axis.y !== 0) {
           stepTime += deltaSeconds;
-          const per = running ? RUN_STEP_S : STEP_S;
+          const per = input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S;
           while (stepTime >= per) {
             stepTime -= per;
             stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
@@ -847,14 +851,14 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         // 登れる段差は今までどおり `Climb` の範囲だけ（DEC-237 / DEC-256）。
         const climb = terrain.climbAt(position.x / unit, position.y / unit, position.z / unit, STEP_UP);
         // マスの揃え（GS-240 / GS-245）。1 マス幅の通路へずれて入ろうとしたら、列の中央に着くまで横だけ動かす。
-        const lane = input.slide
+        const lane = input.slide || input.exactRoute
           ? { x: move.x * speed, z: move.z * speed, aligning: false }
           : aligner.step(position, move, speed, {
               unit,
               half: bodyHalfWidth,
               fits: (wx, wy, wz, half) => terrain.fits(wx, wy, wz, half, bodyTall),
             });
-        if (input.slide) aligner.reset();
+        if (input.slide || input.exactRoute) aligner.reset();
         const moved = body.move(lane.x, lane.z, deltaSeconds, climb);
         position.set(moved.x, moved.y, moved.z);
         onGround = moved.grounded;
@@ -868,7 +872,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         const stepping = !input.slide && (axis.x !== 0 || axis.y !== 0);
         if (stepping) {
           stepTime += deltaSeconds;
-          const per = running ? RUN_STEP_S : STEP_S;
+          const per = input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S;
           while (stepTime >= per) {
             stepTime -= per;
             stepIndex = (stepIndex + 1) % WALK_PATTERN.length;

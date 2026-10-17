@@ -1,0 +1,226 @@
+{
+  "map": "forest_mansion",
+  "events": [
+    {
+      "id": "meet_lamy",
+      "trigger": "touch",
+      "when": [{ "story": "meet_lamy", "is": "next" }],
+      "commands": [
+        { "type": "story", "done": "meet_lamy" },
+        { "type": "playSe", "key": "punch" },
+        {
+          "type": "place",
+          "target": "npc:lamyNPC",
+          "at": { "x": "player", "y": "player", "z": 7 },
+          "face": "down"
+        },
+        { "type": "shot", "id": "impact", "wait": false },
+        { "type": "turn", "target": "player", "to": "up" },
+        {
+          "type": "move",
+          "target": "player",
+          "dir": "down",
+          "cells": 3,
+          "relative": false,
+          "speed": 10,
+          "slide": true
+        },
+        { "type": "shot", "id": "event010201_camera01" },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["痛っ！！", "・・・何？"] },
+            { "who": "lamyNPC", "lines": ["誰だお前！？", "この家は私が住んでるんだ！！", "返さないからな！"] },
+            { "who": "meina", "lines": ["ごめんごめん！帰るから！"] }
+          ]
+        },
+        { "type": "move", "target": "player", "dir": "down", "cells": 1 },
+        {
+          "type": "message",
+          "talk": [{ "who": "lamyNPC", "lines": ["ふんっ・・・取り返すこともしないなんて弱っちいの。", "ま、あたしに勝てるわけないしね！"] }]
+        },
+        { "type": "move", "target": "player", "dir": "up", "cells": 2, "speed": 15 },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["あ\"？"] }, { "who": "lamyNPC", "lines": ["へぁ？"] }]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "battle", "enemies": ["enemy00"] },
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamyNPC", "lines": ["ごめんなさい！！", "ゆるしてぇ！！泣"] },
+            { "who": "meina", "lines": ["あ、ごめん。", "・・・なんか思ったより弱いけど、ラミア族だよね？"] },
+            { "who": "lamyNPC", "lines": ["う、うるさいな・・・。", "あんたが強いだけだ！"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left", "hide": true },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "shot", "id": "event010201_camera02" }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "mansion_return",
+      "trigger": "touch",
+      "when": [{ "story": "mansion_return", "is": "next" }],
+      "commands": [
+        { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        {
+          "type": "message",
+          "talk": [
+            { "who": "meina", "lines": ["なんか変わったラミア族だったな。"] },
+            { "who": "meina", "lines": ["お腹すいたし、そろそろ帰ろうかな。"] }
+          ]
+        },
+        { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "story", "done": "mansion_return" },
+        { "type": "fade", "to": "out", "ms": 400 },
+        {
+          "type": "transfer",
+          "map": "home",
+          "at": { "x": 5, "y": 0, "z": 3 },
+          "face": "up",
+          "px": { "x": 0, "z": -6 }
+        },
+        { "type": "fade", "to": "in", "ms": 400 }
+      ],
+      "kind": "scenario"
+    },
+    {
+      "id": "man0001",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            { "lines": ["この辺で不思議な家を見なかった？"] },
+            { "who": "meina", "lines": ["近辺に住んでるけどそんなもの無いよ？", "そもそも住んでる人が殆どいないし"] },
+            { "lines": ["おかしいな・・・", "情報は誤りだったかな"] }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "1"
+    },
+    {
+      "id": "woman0001",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "story": "lamy_visits", "is": "done" },
+          "then": [
+            {
+              "type": "message",
+              "talk": [
+                { "lines": ["あの建物には何かいるから", "気を付けなよ"] },
+                { "who": "lamy", "lines": ["マジで！？", "あたし危なかったんだ"] },
+                { "who": "meina", "lines": ["あんたの事だよ・・・"] }
+              ],
+              "style": "bubble"
+            }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                { "lines": ["あの古城から不気味な声が・・・"] },
+                { "who": "meina", "lines": ["なんか言ってた？"] },
+                { "lines": ["「ついに雨風を凌げる！」て聞こえた"] },
+                { "who": "meina", "lines": ["なんだ、ただのホームレスか"] }
+              ],
+              "style": "bubble"
+            }
+          ]
+        }
+      ],
+      "npc": "2"
+    },
+    {
+      "id": "talk_lamyNPC",
+      "kind": "talk",
+      "trigger": "action",
+      "when": [{ "story": "meet_lamy", "is": "done" }],
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            { "who": "lamy", "lines": ["あぁもう！どっかいけ！", "私はお腹すいてんだ！！"] },
+            { "who": "meina", "lines": ["元気だなぁ"] }
+          ],
+          "style": "bubble"
+        }
+      ],
+      "npc": "lamyNPC"
+    },
+    {
+      "id": "click010301",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            { "lines": ["木です"] },
+            { "who": "meina", "lines": ["ｷｬｱｱｱｱｱｱｱ!!", "ｼｬﾍﾞｯﾀｱｱｱｱｱｱ!!!!"] },
+            { "who": "noName", "lines": ["気にするなって", "ふふっ・・・"] },
+            { "who": "meina", "lines": ["（真顔）"] }
+          ],
+          "style": "bubble"
+        }
+      ]
+    },
+    {
+      "id": "Chest_Map0103",
+      "kind": "click",
+      "trigger": "action",
+      "respawn": true,
+      "chance": 0.5,
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "開けた" },
+          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
+          "else": [
+            { "type": "playSe", "key": "chest" },
+            { "type": "getItem", "random": ["やくそう", "おにぎり", "ばんそうこう"], "count": [1, 2] },
+            { "type": "layer", "id": "Chest_Map0103_閉", "shown": false },
+            { "type": "layer", "id": "Chest_Map0103_開", "shown": true },
+            { "type": "setSelfSwitch", "key": "開けた", "value": true },
+            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] }
+          ]
+        }
+      ]
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_2",
+      "to": [{ "map": "home_forest", "at": { "x": -5, "y": 3, "z": 14 }, "face": "up" }]
+    },
+    {
+      "object": "obj_3",
+      "to": [{ "map": "forest_cave", "at": { "x": -21, "y": 0, "z": 1 }, "face": "right" }]
+    },
+    {
+      "object": "obj_4",
+      "to": [
+        {
+          "map": "gensou",
+          "when": [{ "story": "lamy_visits", "is": "done" }, { "switch": "seen_gensou", "is": false }],
+          "at": { "x": 5, "y": 5, "z": -3 },
+          "face": "left"
+        },
+        { "map": "next_field", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }
+      ]
+    }
+  ]
+}

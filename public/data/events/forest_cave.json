@@ -1,0 +1,14 @@
+{
+  "map": "forest_cave",
+  "events": [],
+  "mapMoves": [
+    {
+      "object": "obj_3",
+      "to": [{ "map": "forest_mansion", "at": { "x": 16, "y": 0, "z": 19 }, "face": "left" }]
+    },
+    {
+      "object": "obj_5",
+      "to": [{ "map": "cave", "at": { "x": -1, "y": 0, "z": 14 }, "face": "up" }]
+    }
+  ]
+}

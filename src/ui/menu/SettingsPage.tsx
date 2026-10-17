@@ -175,6 +175,7 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
             {devSwitch('オープニングを飛ばす', 'skipOpening', '読み直すたびに待たない')}
             {devSwitch('BGM を鳴らさない', 'muteBgm', '環境音（滝など）も止まる')}
             {devSwitch('効果音を鳴らさない', 'muteSe', '文字送り・決定・技の音')}
+            {devSwitch('3D の戦闘で味方の板を出す', 'battlePartyFigures', '次の戦闘から効く。敵はいつも出る')}
           </ul>
         </>
       ) : null}

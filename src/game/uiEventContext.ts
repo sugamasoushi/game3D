@@ -21,7 +21,9 @@ import { closeComic, openComic, readComic, turnComic } from '../ui/comic';
 import { playBgm, playSe, stopBgm } from './audio';
 import { PORTRAIT_MS, useUi } from '../ui/store';
 import { PLAYER_CHARACTER, type CharacterBook } from './characters';
+import { talkAnchor } from './talkAnchor';
 import { CLEAR_SWITCH, markCleared } from './omake';
+import { advanceStory, storyMeets, storyOrder } from './story';
 
 /** 立ち絵の置き場所（GS-20）。絵は `assets/img/CharaStand/<名前>.png`。 */
 const STAND_DIR = 'assets/img/CharaStand';
@@ -238,23 +240,14 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     return name ? { url: src(name), owner: spec.who } : null;
   };
 
-  /**
-   * 吹き出しを誰の頭の上に出すか（GS-23）。
-   * 主人公が喋っていればプレイヤー、それ以外は**話しかけた相手**。
-   * 話し相手が分からない場面（踏む・入ったら動くイベント）は吹き出しにできないので、
-   * 下のウィンドウへ落とす。
-   */
-  const bubbleAnchor = (who?: string): string => {
-    if (who === PLAYER_CHARACTER) return 'player';
-    // 隊列の仲間（GS-201）。先頭ならプレイヤー、付いて歩いていればその仲間の上。
-    // 以前は仲間の声も**話しかけた相手の上**に出ていた（0103 の woman0001 で lamy）。
-    if (who) {
-      const role = options.getView()?.partyRole(who);
-      if (role === 'leader') return 'player';
-      if (role === 'follower') return `follower:${who}`;
-    }
-    return self || '';
-  };
+  /** 吹き出しを誰の頭の上に出すか（GS-23 / GS-251。決め方は `talkAnchor`）。 */
+  const bubbleAnchor = (line: { who?: string; at?: string }): string =>
+    talkAnchor(line, {
+      self,
+      player: PLAYER_CHARACTER,
+      hasNpc: (id) => options.getView()?.hasNpc(id) ?? false,
+      partyRole: (who) => options.getView()?.partyRole(who) ?? null,
+    });
 
   /** 1 メッセージ出して、読み終わるまで待つ。 */
   const showTalk = (
@@ -317,8 +310,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
 
     async message(talk, _face, style, hold) {
       for (const line of talk) {
-        // 吹き出しは喋る人の頭の上（GS-23）。相手が分からなければウィンドウで出す。
-        const anchor = style === 'bubble' ? bubbleAnchor(line.who) : '';
+        // 吹き出しは相手（`at`）か喋る人の頭の上（GS-23 / GS-251）。決まらなければウィンドウで出す。
+        const anchor = style === 'bubble' ? bubbleAnchor(line) : '';
         const icon = anchor ? iconOf(line.who) : undefined;
         // 顔アイコンが描ける状態になってから吹き出しを出す（GS-198）。
         if (icon) await readyImages([icon]);
@@ -688,12 +681,18 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     playBgm: (key, volume) => playBgm(key, volume ?? 1),
     stopBgm: (fade) => stopBgm(fade ?? 0),
 
-    // 書いていないフラグは**まだ動ける**（GS-147）。旧作と同じ向き。
+    // 書いていないフラグは false（GS-254）。
     getSwitch: (key) => switchOn(options.state, key),
     setSwitch: (key, value) => {
       options.state.switches.set(key, value);
       // クリアは端末に覚える（GS-212）。クリアのイベントはこの後すぐタイトルへ戻り、枠には書かれない。
       if (key === CLEAR_SWITCH && value) markCleared();
+      options.onSwitch?.();
+    },
+    // 物語の段階（GS-254）。台帳は遊ぶ前に読んである（`loadStoryBook`）。
+    storyMeets: (step, is) => storyMeets(storyOrder(), options.state.story, step, is),
+    storyDone: (step) => {
+      options.state.story = advanceStory(storyOrder(), options.state.story, step);
       options.onSwitch?.();
     },
     // セルフスイッチは**そのイベントの覚え**（GS-27）。宛先が無いときは false のまま。

@@ -1,5 +1,5 @@
 {
-  "infomation": "キャラクターの台帳。キーはイベントの話者・マップの NPC（`Character`）・仲間（party.json）が指す名前。name は表示名、kind は player（仲間として操作する）か npc（操作しない）、sheet はフィールドの絵（画像のファイル名。spriteSheets.json と actors.json のキー。無ければフィールドに出ない。同じ画像を何人で使ってもよい）。icon / normal / talk / smile / unger / menu は会話とメニューの絵（拡張子なしの名前）。台帳エディタの「キャラクター」「イラスト」で編集する。",
+  "information": "キャラクターの台帳。キーはイベントの話者・マップの NPC（`Character`）・仲間（party.json）が指す名前。name は表示名、kind は player（仲間として操作する）か npc（操作しない）、sheet はフィールドの絵（画像のファイル名。spriteSheets.json と actors.json のキー。無ければフィールドに出ない。同じ画像を何人で使ってもよい）。icon / normal / talk / smile / unger / menu は会話とメニューの絵（拡張子なしの名前）。台帳エディタの「キャラクター」「イラスト」で編集する。",
   "noName": {
     "name": "noName",
     "kind": "npc",
@@ -146,5 +146,20 @@
     "name": "男の子2",
     "kind": "npc",
     "sheet": "child_male_01.png"
+  },
+  "chiken": {
+    "name": "鶏",
+    "kind": "npc",
+    "sheet": "chicken_walk.png"
+  },
+  "soldier_junior": {
+    "name": "兵士",
+    "kind": "npc",
+    "sheet": "soldier_junior.png"
+  },
+  "GreatBear": {
+    "name": "グレートベア",
+    "kind": "npc",
+    "sheet": "GreatBear.png"
   }
 }

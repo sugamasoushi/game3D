@@ -28,6 +28,45 @@ export function isTimePreset(id: string): boolean {
   return PRESET_DEFAULTS.some((entry) => entry.id === id);
 }
 
+/**
+ * プリセットの id の決まり（3D Map Editor DEC-435）。空白なし、32 文字まで。
+ * マップエディタの入力と、Game Checker のマップの検査が同じ物を使う。
+ */
+export const PRESET_ID_MAX = 32;
+export function presetIdProblem(id: string): string | null {
+  if (!id) return 'id を入れてください';
+  if (/\s/.test(id)) return 'id に空白は使えません';
+  if (id.length > PRESET_ID_MAX) return `id は ${PRESET_ID_MAX} 文字までです`;
+  return null;
+}
+
+/**
+ * 光の値の範囲。マップエディタの欄（「環境光源」「フィールドエフェクト」「光のプリセット」）の範囲で、
+ * Game Checker もマップの `lighting`・`camera`・`lightingPresets` をこれで検査する。**欄を広げたらここを直す。**
+ */
+export const PRESET_LIMITS = {
+  azimuth: [0, 359],
+  elevation: [10, 80],
+  ambient: [0, 5],
+  intensity: [0, 5],
+  wrap: [0, 1],
+  billboard: [0, 5],
+  lights: [0, 2],
+  blockShadowStrength: [0, 2],
+  cloudShadowAmount: [0, 2],
+  cloudShadowScale: [0.004, 0.08],
+  cloudShadowSpeed: [0, 0.04],
+  fogNear: [0, 80],
+  fogFar: [1, 200],
+  fogMax: [0, 1],
+  skyGain: [0, 3],
+} as const;
+
+/** 光の色（`#rrggbb`）。 */
+export const PRESET_COLOR = /^#[0-9a-fA-F]{6}$/;
+/** 霧の色はマップの `camera.fogColor` と同じく `#` 無しの 6 桁。 */
+export const PRESET_FOG_COLOR = /^[0-9a-fA-F]{6}$/;
+
 /** 出し分けのプロパティ名（DEC-439 / DEC-446）。 */
 export const SHOW_IN_PROPERTY = 'ShowIn';
 

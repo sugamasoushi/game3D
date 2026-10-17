@@ -1,5 +1,5 @@
 {
-  "infomation": "技の台帳（GS-60 / GS-69）。kind は「特技」か「魔法」、type は attack / guard / avoid / ailment / cure。効き目の数は value、当たったときの音は se。ailment は与える状態異常（chance は当たる見込み 0〜1）、cure は消す状態異常。",
+  "information": "技の台帳（GS-60 / GS-69）。kind は「特技」か「魔法」、type は attack / guard / avoid / ailment / cure。効き目の数は value、当たったときの音は se。ailment は与える状態異常（chance は当たる見込み 0〜1）、cure は消す状態異常。",
   "skills": {
     "special01": {
       "name": "防御",

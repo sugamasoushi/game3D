@@ -70,7 +70,7 @@ writeFileSync(
   OUT,
   `${JSON.stringify(
     {
-      infomation: '置いてある物の一覧（DEC-374）。node tools/fileIndex.mjs で作り直す。',
+      information: '置いてある物の一覧（DEC-374）。node tools/fileIndex.mjs で作り直す。',
       normals,
       events,
     },

@@ -15,21 +15,15 @@ import type { WalkDir } from './GameView';
 import { CLEAR_SWITCH } from './omake';
 
 /** セーブの形の版（GS-27）。形を変えたらここを上げ、読む側で古い版を判別する。 */
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 /**
- * 読める版（GS-46）。**上げても古い記録を捨てない。**
- *
- * 版を上げるたびに前の記録が消えると、遊んでいる人は「更新したら最初から」になる。
- * 足りない欄は `fromSave` が既定で埋めるので、**足しただけの版はそのまま読める**。
+ * 読める版（GS-46）。**欄を足しただけなら古い版も読む**——足りない欄は `fromSave` が既定で埋める。
  * 読めなくなる変え方（欄の意味を変えるなど）をしたときだけ、ここから外す。
  *
- *   1 …… 持ち物が無い版
- *   2 …… 持ち物（`items`）を足した版
- *   3 …… 仲間の数値（`party` / `members` / `gold`）を足した版
- *   4 …… 装備（`members[].equip`）を足した版
- *   5 …… 状態異常（`members[].ailments`）を足した版
+ *   6 …… マップの id を名前にし（`0101` → `home`）、本筋の進み具合を物語の段階（`story`）で持つ版（GS-254）。
+ *        スイッチの向きも変えた（書いていなければ false）。**5 までの記録は読まない**（場所もスイッチも意味が変わった）。
  */
-const READABLE = new Set([1, 2, 3, 4, 5]);
+const READABLE = new Set([6]);
 
 /** その記録は読めるか。 */
 export function readableSave(version: number): boolean {
@@ -55,11 +49,13 @@ export interface SaveData {
   savedAt: number;
   /** 遊んだ秒。 */
   playSeconds: number;
-  /** どこに居たか。マップは台帳の番号（`0101`）、位置はマス。 */
+  /** どこに居たか。マップは台帳の id（`home`）、位置はマス。 */
   map: string;
   at: { x: number; y: number; z: number };
   facing: WalkDir;
-  /** スイッチ・変数・セルフスイッチ。キーは文字列。 */
+  /** 物語の段階（GS-254）。最後に済ませた段階の id。'' は何も済んでいない。 */
+  story: string;
+  /** スイッチ・変数・セルフスイッチ。キーは文字列。スイッチは書いていなければ false（GS-254）。 */
   switches: Record<string, boolean>;
   variables: Record<string, number>;
   /**

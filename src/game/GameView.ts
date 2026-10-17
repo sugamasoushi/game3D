@@ -56,9 +56,11 @@ import { PartyTrail } from './partyTrail';
 import { actorSheet, loadActorBook, sheetOf } from './actors';
 import { characterBookReady, characterSheet, PLAYER_CHARACTER } from './characters';
 import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from './mapNpcs';
+import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
 import { heavyOn } from './quality';
+import { battlePartyFiguresShown } from './devMode';
 import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
@@ -74,7 +76,7 @@ import {
 } from './cameraCues';
 import { createBattleCameraPlayer, type BattleCamera } from './battle/battleCamera';
 import { entryForFile, mapKeyForFile, type MapEntry } from './mapIndex';
-import { battleFormationSlots, chooseBattleFormation } from './battle/book';
+import { battleFormationSlots, chooseBattleFormation, stageFigureCells } from './battle/book';
 
 /** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
 const APPEAR_MS = 1200;
@@ -174,13 +176,15 @@ export interface BattleStageSpec {
 
 /**
  * 戦闘の舞台に立たせる 1 人（GS-87）。立ち絵の板として置く。
- * `height` はマス。0 なら絵の高さから決める（190px で 1 マス、0.9〜3.2）。
+ * `height` はマス。0 なら絵の高さから決める（190px で 1 マス。上限・下限なし）。
+ * `scale` はそのあとに掛ける倍率（敵は `enemies.json` の `scale`。2026-10-17）。
  */
 export interface BattleFigure {
   id: string;
   side: 'party' | 'enemy';
   image: string;
   height: number;
+  scale: number;
 }
 
 /** 舞台の板の見せ方（GS-87）。立ち上がり（偽→真）で動きが始まる。 */
@@ -454,8 +458,6 @@ export interface GameView {
 const STAGE_LOOK_Y = 1.2;
 /** 見る先を敵の列から味方の列へどれだけ寄せるか（0＝敵、1＝味方。GS-90）。 */
 const STAGE_FOCUS_PARTY = 0.3;
-/** 敵の板の大きさを絵の高さから決めるときの比（px / マス）。 */
-const STAGE_PX_PER_CELL = 190;
 /** 仰け反り・攻めかかり（旧作 `leanBack` / `attackTween` と同じ長さ）。 */
 const STAGE_LEAN_S = 0.2;
 const STAGE_LEAN_CELLS = 0.5;
@@ -699,6 +701,7 @@ export function createGameView(
   };
   /** マップに立っている NPC（GS-16）。作りはプレイヤーと同じで、入力の代わりにイベントが動かす。 */
   interface NpcActor {
+    route?: { path: NpcRoute; motion: NpcRouteMotion; state: RouteState };
     def: NpcDef;
     actor: Player;
     walk: ScriptWalk | null;
@@ -712,6 +715,7 @@ export function createGameView(
      * うろつきとは**両立しない**（踏んでいるあいだうろつきは入らない）。
      */
     stepping?: boolean;
+    stepMs?: number;
     wander: Required<WanderDef> | null;
     /** いまうろついている最中（GS-50）。マスではなく距離で進む。 */
     wandering: {
@@ -1161,6 +1165,7 @@ export function createGameView(
       // 条件で隠していた人を、イベントの `place` がその場に出せる。
       // 景色（`built`）はこのマップのものを掴んでおく。読み直せば新しい手に入れ替わる。
       const scenery = built;
+      const motionRoutes = readNpcRoutes(map);
       const build = (def: NpcDef): boolean => {
         if (!scenery) return false;
         if (npcs.has(def.id)) {
@@ -1204,17 +1209,19 @@ export function createGameView(
         // 見た目をスイッチから導く（GS-133）。**マップを読み直しても開いたまま**になる。
         if (def.pose && def.poseIf && switchOn(def.poseIf, def.id)) actor.pose(def.pose);
         // 動き（2026-10-08）。**マップ＋1 体（`Id`）ごと**に NPC の設定の台帳（`mapNpcs.json`）が持つ。
-        // 書いていなければ立ち止まる。**物（`SPRITE` レイヤー）はうろつかない**——宝箱が歩き回ると困る（GS-133）。
+        // 書いていなければ立ち止まる。
         const motion = npcSettings[def.id] ?? null;
-        const wander = def.thing ? null : wanderWithDefaults(motion);
+        const wander = wanderWithDefaults(motion);
+        const path = motion?.route ? motionRoutes.find((r) => r.id === motion.route!.id) : undefined;
         npcs.set(def.id, {
           def,
           actor,
           walk: null,
-          // 常時の足踏み（GS-169）。**物（`SPRITE` レイヤー）でも踏める**——
-          // 揺れる旗や回る風車のように「その場で動いている物」に使えるので止めない。
+          // 常時の足踏み（GS-169）。
           ...(motion?.stepInPlace ? { stepping: true } : {}),
+          ...(motion?.stepMs !== undefined ? { stepMs: motion.stepMs } : {}),
           wander,
+          ...(path && motion?.route ? { route: { path, motion: motion.route, state: createRouteState(path, motion.route.start) } } : {}),
           wandering: null,
           // 最初の 1 歩をばらけさせる。全員が同じ拍子で動き出すと機械じみて見える。
           wanderIn: wander ? Math.random() * (wander.ms[1] / 1000) : 0,
@@ -1741,6 +1748,7 @@ export function createGameView(
    * **軸だけ渡して進む向きは渡さない**。向きも軸で決まるので、こちらを向かせたまま踏める。
    */
   interface March {
+    stepMs?: number;
     /**
      * 踏んでいるあいだ向く方。**null は「今の向きのまま」**（GS-169）——
      * 毎フレーム絵の向きから軸を出すので、途中で `turn` されたらそちらを向いて踏み続ける。
@@ -1803,17 +1811,17 @@ export function createGameView(
    * その場で足踏みを始める（GS-168）。歩数は**その絵の踏み替え時間**で秒に直す。
    * すでに踏んでいれば打ち切って新しいほうを採る（歩きと同じ扱い）。
    */
-  const beginMarch = (who: Walker, actor: Player, dir: WalkDir | null, steps: number, run: boolean): Promise<void> => {
+  const beginMarch = (who: Walker, actor: Player, dir: WalkDir | null, steps: number, run: boolean, stepMs?: number): Promise<void> => {
     who.march?.resolve();
     // 歩数 0 以下は**止めるまでずっと**（GS-169）。終わりが無いので**約束はその場で解く**
     // ——待たせると、止めるまでイベントがそこから進まない。
     if (steps <= 0) {
-      who.march = { dir, left: Infinity, run, resolve: () => {} };
+      who.march = { dir, left: Infinity, run, stepMs, resolve: () => {} };
       return Promise.resolve();
     }
     const count = Math.max(1, Math.trunc(steps));
     return new Promise<void>((resolve) => {
-      who.march = { dir, left: count * actor.stepSeconds(run), run, resolve };
+      who.march = { dir, left: count * (stepMs !== undefined ? stepMs / 1000 : actor.stepSeconds(run)), run, stepMs, resolve };
     });
   };
 
@@ -2121,15 +2129,20 @@ export function createGameView(
         // 常時の足踏み（GS-169）。**踏んでいなければ踏み直す**だけ。
         // 歩きやイベントの足踏みに割り込まれても、終わった次のフレームで戻る。
         // 向きは渡さない（null）——`turn` で振り向かせたらそちらを向いて踏み続ける。
-        if (npc.stepping && !npc.march && !npc.walk) void beginMarch(npc, npc.actor, null, 0, false);
+        if (npc.stepping && !npc.march && !npc.walk) void beginMarch(npc, npc.actor, null, 0, false, npc.stepMs);
         // うろつきの判断は**動かす前**に。止める指示がその場で効く（GS-50）。
-        advanceWander(npc, dt, unit);
+        if (!npc.route) advanceWander(npc, dt, unit);
+        const routeMove = npc.route && !npc.walk && !npc.march ? routeInput(
+          npc.route.path, npc.route.motion, npc.route.state,
+          { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit }, dt,
+          pauseNpcRoute(playable, eventBusy)) : null;
         const npcMarch = npc.march ?? null;
         const npcAxis = npcMarch
           ? marchAxis(npcMarch, npc.actor)
           : npc.walk
             ? npc.walk.axis
-            : (npc.wandering?.axis ?? STILL);
+            : routeMove ? (routeMove.speed > 0 ? DIR_AXIS[screenDirOf(routeMove.move.x, routeMove.move.z)] : STILL)
+              : (npc.wandering?.axis ?? STILL);
         // NPC の体（GS-239）。最初に動かすときに作る。大きさはキャラクターの大きさに合わせる（`radius` は半幅 0.5×倍率）。
         let npcBody = npcBodies.get(npc.def.id);
         if (!npcBody) {
@@ -2137,25 +2150,31 @@ export function createGameView(
           npcBody = collision.createBody(BODY_WIDTH_HALF * npcScale, BODY_TALL_CELLS * npcScale);
           npcBodies.set(npc.def.id, npcBody);
         }
+        // 経路の自動移動は会話中も人に衝突する。イベント命令の移動は従来どおり。
+        collision.setCharactersSolid(!!routeMove || !eventBusy);
         npc.actor.update(
           dt,
           {
-            move: npcMarch ? { x: 0, z: 0 } : moveVector(npcAxis),
+            move: npcMarch ? { x: 0, z: 0 } : routeMove ? routeMove.move : moveVector(npcAxis),
             axis: npcAxis,
-            running: npc.walk?.run ?? false,
+            running: npcMarch?.run ?? npc.walk?.run ?? (npc.route ? npc.route.motion.walkMs < 500 : false),
+            ...(npcMarch?.stepMs !== undefined ? { stepMs: npcMarch.stepMs } : {}),
             yaw: rig.yaw,
             ...(npc.walk?.slide ? { slide: true } : {}),
             // うろつきは歩きよりずっと遅い（GS-50）。イベントの歩きは今までの速さのまま。
             ...(npc.walk ? {} : npc.wandering ? { speed: npc.wandering.speed } : {}),
+            ...(routeMove ? { speed: routeMove.speed / (npc.actor.radius / 0.5), exactRoute: true } : {}),
           },
           collision,
           npcBody,
         );
+        collision.setCharactersSolid(!eventBusy);
         advanceWalk(npc, npc.actor, dt, unit);
         if (npcMarch) advanceMarch(npc, dt);
         // 置き場所が悪くて落ちても消えないように、置いた所へ戻す。
         if (npc.actor.position.y <= VOID_DEPTH * unit) {
           npc.actor.placeAt(npc.home.x, npc.home.y, npc.home.z);
+          if (npc.route) npc.route.state = createRouteState(npc.route.path, npc.route.motion.start);
         }
       }
       // 奈落まで落ちたら出発点へ戻す。マップの外へ出ても操作不能にならないため（GC-10）。
@@ -2530,6 +2549,7 @@ export function createGameView(
       npc.actor.placeAt(spot.x, spot.y, spot.z);
       // うろつきの起点も移す（GS-48）。移さないと、置いたそばから元の場所へ帰ろうとする。
       npc.home.copy(npc.actor.position);
+      if (npc.route) npc.route.state = createRouteState(npc.route.path, npc.route.motion.start);
       if (face) npc.actor.face(DIR_FACE[face]);
       return true;
     },
@@ -2985,7 +3005,7 @@ export function createGameView(
           }
           texture.colorSpace = SRGBColorSpace;
           const img = texture.image as { width: number; height: number };
-          const cells = def.height > 0 ? def.height : Math.min(3.2, Math.max(0.9, img.height / STAGE_PX_PER_CELL));
+          const cells = stageFigureCells(def.height, img.height, def.scale);
           // 戦闘の絵にもマップのキャラクターの大きさを掛ける（2026-10-11）。
           figure.height = cells * unit * characterScaleOf(mapDef?.properties);
           figure.width = (figure.height * img.width) / img.height;
@@ -2994,7 +3014,9 @@ export function createGameView(
           material.map = texture;
           material.needsUpdate = true;
           shadow.scale.set(figure.width * 0.9, figure.width * 0.35, 1);
-          mesh.visible = true;
+          // 味方の板を出すかは開発中のつまみ（GS-247。既定は出さない）。敵はいつも出す。
+          // 出さなくても大きさは決めて枠を測る。
+          mesh.visible = def.side === 'enemy' || battlePartyFiguresShown();
         });
       }
       // 見る先（GS-90）。**敵の列寄り**——味方は手前の下の方に入り、敵が画面の真ん中に来る
@@ -3013,7 +3035,8 @@ export function createGameView(
     },
     figureRect(id) {
       const figure = stage?.figures.get(id);
-      if (!figure || !figure.mesh.visible) return null;
+      // 絵が来る前は大きさが無い。板を出さないとき（GS-247）も枠は測る。
+      if (!figure || figure.width <= 0) return null;
       const camera = rig.active();
       const yawR = (renderedYaw * Math.PI) / 180;
       // 左端へ寄せた板（GS-103）や演出で動かした板にも枠を合わせる。横と奥は表示中の位置、高さは床基準。

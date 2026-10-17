@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry, Quaternion, Vector3 } from 'three';
-import { isCeilShape, isEdgeWallShape, isFloorShape, type Shape } from './types';
+import { isCeilShape, isEdgeWallShape, isFloorShape, isSolidPieceShape, type Shape } from './types';
 
 /**
  * 各形状の単位ジオメトリ。UV は [0,1]。表は反時計回り（DEC-26。Godot 版とは一致しない）。
@@ -123,6 +123,17 @@ export function geometryFor(shape: Shape): BufferGeometry {
   if (hit) return hit;
 
   let geometry: BufferGeometry;
+  if (isSolidPieceShape(shape)) {
+    geometry = solidPieceGeometry(shape);
+    cache.set(shape, geometry);
+    return geometry;
+  }
+  const quarterPlate = /^(floor|ceil)_quarter_(nw|ne|se|sw)$/.exec(shape);
+  if (quarterPlate) {
+    geometry = quarterPlateGeometry(quarterPlate[2], quarterPlate[1] === 'ceil');
+    cache.set(shape, geometry);
+    return geometry;
+  }
   switch (shape) {
     case 'floor':
       geometry = floorGeometry(false);
@@ -294,6 +305,9 @@ export function geometryFor(shape: Shape): BufferGeometry {
     case 'billboard_fixed_deep':
       geometry = spriteStackGeometry(SPRITE_STACK_COPIES, SPRITE_STACK_GAP);
       break;
+    case 'billboard_fixed_deep2':
+      geometry = spriteStackGeometry(2, 1 / 2);
+      break;
     case 'billboard_flat':
     case 'billboard_flat_follow':
       geometry = floorGeometry(false);
@@ -429,7 +443,8 @@ export function overlayNormal(shape: Shape): Vector3 {
     shape === 'billboard' ||
     shape === 'billboard_fixed' ||
     shape === 'billboard_deep' ||
-    shape === 'billboard_fixed_deep'
+    shape === 'billboard_fixed_deep' ||
+    shape === 'billboard_fixed_deep2'
   ) {
     return new Vector3(0, 0, 1);
   }
@@ -603,6 +618,215 @@ function roundFloorGeometry(half: boolean, shift = 0): BufferGeometry {
     if (i > 0) indices.push(0, i, i + 1);
   }
   return build(positions, normals, uvs, indices);
+}
+
+/** 井戸の壁の厚み（DEC-479）。1/4・直角・直線・1 マスの井戸で同じにしないと継ぎ目でずれる。8px。 */
+export const WELL_WALL = 8 / OFFSET_STEPS;
+
+/** 1/4 の弧の分割。1 マスの円は 4 倍。 */
+const PIECE_ARC_SEGMENTS = 12;
+
+type V3 = [number, number, number];
+
+/**
+ * 立体の部品を組む（DEC-479）。三角形の巻き順は**法線に合わせて自動で決める**——
+ * 向きの違う部品（北西・南東など）を同じ手順で組むと、鏡写しの所で表裏が入れ替わるため。
+ */
+class PieceBuilder {
+  positions: number[] = [];
+  normals: number[] = [];
+  uvs: number[] = [];
+  indices: number[] = [];
+
+  vertex(p: V3, n: V3, uv: [number, number]): number {
+    this.positions.push(p[0], p[1], p[2]);
+    this.normals.push(n[0], n[1], n[2]);
+    this.uvs.push(uv[0], uv[1]);
+    return this.positions.length / 3 - 1;
+  }
+
+  /** 三角形 1 枚。`facing` を表にする。 */
+  tri(a: number, b: number, c: number, facing: V3): void {
+    const at = (i: number): V3 => [this.positions[i * 3], this.positions[i * 3 + 1], this.positions[i * 3 + 2]];
+    const [pa, pb, pc] = [at(a), at(b), at(c)];
+    const u: V3 = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]];
+    const v: V3 = [pc[0] - pa[0], pc[1] - pa[1], pc[2] - pa[2]];
+    const cross: V3 = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const dot = cross[0] * facing[0] + cross[1] * facing[1] + cross[2] * facing[2];
+    if (dot >= 0) this.indices.push(a, b, c);
+    else this.indices.push(a, c, b);
+  }
+
+  /** 上向きの面（凸の多角形を扇で割る）。UV は床と同じ真上からの写し。 */
+  top(points: Array<[number, number]>): void {
+    const ids = points.map(([x, z]) => this.vertex([x, HALF, z], [0, 1, 0], [x + 0.5, z + 0.5]));
+    for (let i = 1; i + 1 < ids.length; i += 1) this.tri(ids[0], ids[i], ids[i + 1], [0, 1, 0]);
+  }
+
+  /** 上向きの帯（外側と内側の点を同じ数だけ並べる）。井戸の縁。 */
+  band(outer: Array<[number, number]>, inner: Array<[number, number]>): void {
+    const o = outer.map(([x, z]) => this.vertex([x, HALF, z], [0, 1, 0], [x + 0.5, z + 0.5]));
+    const n = inner.map(([x, z]) => this.vertex([x, HALF, z], [0, 1, 0], [x + 0.5, z + 0.5]));
+    for (let i = 0; i + 1 < o.length; i += 1) {
+      this.tri(o[i], o[i + 1], n[i], [0, 1, 0]);
+      this.tri(n[i], o[i + 1], n[i + 1], [0, 1, 0]);
+    }
+  }
+
+  /**
+   * 縦の壁（点を並べた線を上下へ伸ばす）。`normals` は点ごとの外向き。
+   * チップは**外から見て正立**し、横は `chips` 枚（線の長さに合わせて呼ぶ側が決める）、縦は上が 0。
+   */
+  wall(points: Array<[number, number]>, normals: Array<[number, number]>, chips: number): void {
+    // 外から見て右が u の増える向きになるよう、線の向きを見て u を振る。外から見た右は (nz, −nx)。
+    const [x0, z0] = points[0];
+    const [x1, z1] = points[1];
+    const [nx, nz] = normals[0];
+    const rightward = (x1 - x0) * nz - (z1 - z0) * nx >= 0;
+    const last = points.length - 1;
+    const top: number[] = [];
+    const bottom: number[] = [];
+    points.forEach(([x, z], i) => {
+      const t = i / last;
+      const u = (rightward ? t : 1 - t) * chips;
+      const [px, pz] = normals[i];
+      top.push(this.vertex([x, HALF, z], [px, 0, pz], [u, 0]));
+      bottom.push(this.vertex([x, -HALF, z], [px, 0, pz], [u, 1]));
+    });
+    for (let i = 0; i < last; i += 1) {
+      const facing: V3 = [normals[i][0] + normals[i + 1][0], 0, normals[i][1] + normals[i + 1][1]];
+      this.tri(top[i], bottom[i], top[i + 1], facing);
+      this.tri(top[i + 1], bottom[i], bottom[i + 1], facing);
+    }
+  }
+
+  build(): BufferGeometry {
+    return build(this.positions, this.normals, this.uvs, this.indices);
+  }
+}
+
+/** 弧の上の点（中心 `c`、半径 `r`、角度は `from` から `to` まで）。外向きの法線も返す。 */
+function arc(c: [number, number], r: number, from: number, to: number, segments: number): {
+  points: Array<[number, number]>;
+  normals: Array<[number, number]>;
+} {
+  const points: Array<[number, number]> = [];
+  const normals: Array<[number, number]> = [];
+  for (let i = 0; i <= segments; i += 1) {
+    const a = from + ((to - from) * i) / segments;
+    const nx = Math.cos(a);
+    const nz = Math.sin(a);
+    points.push([c[0] + nx * r, c[1] + nz * r]);
+    normals.push([nx, nz]);
+  }
+  return { points, normals };
+}
+
+/** 弧の長さに合わせたチップの枚数（1 枚が 1 マスに近くなるよう丸める）。 */
+function arcChips(r: number, sweep: number): number {
+  return Math.max(1, Math.round(r * sweep));
+}
+
+/** 向き（`nw` など）→ その角の X・Z の符号。北は −Z、西は −X。 */
+const CORNER_SIGN: Record<string, [number, number]> = { nw: [-1, -1], ne: [1, -1], se: [1, 1], sw: [-1, 1] };
+/** 辺（`n` など）→ 外向きの法線。 */
+const EDGE_NORMAL: Record<string, [number, number]> = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
+
+const inward = (list: Array<[number, number]>): Array<[number, number]> => list.map(([x, z]) => [-x, -z]);
+
+/**
+ * 立体の部品の形（DEC-479）。マスの中（−0.5..0.5）に収め、**底面は作らない**。
+ * 高さは描画・当たりが行列で縮める（`solidPieceHeight`）。
+ */
+function solidPieceGeometry(shape: Shape): BufferGeometry {
+  const b = new PieceBuilder();
+  const wall = WELL_WALL;
+  if (shape === 'cylinder' || shape === 'well') {
+    const full = Math.PI * 2;
+    const outer = arc([0, 0], HALF, 0, full, PIECE_ARC_SEGMENTS * 4);
+    b.wall(outer.points, outer.normals, arcChips(HALF, full));
+    if (shape === 'cylinder') {
+      b.top(outer.points);
+    } else {
+      const inner = arc([0, 0], HALF - wall, 0, full, PIECE_ARC_SEGMENTS * 4);
+      b.wall(inner.points, inward(inner.normals), arcChips(HALF - wall, full));
+      b.band(outer.points, inner.points);
+    }
+    return b.build();
+  }
+  const quarter = /^(cylinder|well)_q_(nw|ne|se|sw)$/.exec(shape);
+  if (quarter) {
+    // 円の中心は外側の角の向かいの角。弧は中心から外側の角へ向かう 90 度。
+    const [sx, sz] = CORNER_SIGN[quarter[2]];
+    const c: [number, number] = [-sx * HALF, -sz * HALF];
+    const mid = Math.atan2(sz, sx);
+    const from = mid - Math.PI / 4;
+    const to = mid + Math.PI / 4;
+    const outer = arc(c, 1, from, to, PIECE_ARC_SEGMENTS);
+    b.wall(outer.points, outer.normals, arcChips(1, Math.PI / 2));
+    if (quarter[1] === 'cylinder') {
+      b.top([c, ...outer.points]);
+    } else {
+      const inner = arc(c, 1 - wall, from, to, PIECE_ARC_SEGMENTS);
+      b.wall(inner.points, inward(inner.normals), arcChips(1 - wall, Math.PI / 2));
+      b.band(outer.points, inner.points);
+    }
+    return b.build();
+  }
+  const line = /^well_line_(n|e|s|w)$/.exec(shape);
+  if (line) {
+    // 沿う辺の外向き n。壁は辺から内へ `wall` の幅。t は辺に沿う向き。
+    const [nx, nz] = EDGE_NORMAL[line[1]];
+    const [tx, tz] = [-nz, nx];
+    const at = (depth: number, along: number): [number, number] => [nx * (HALF - depth) + tx * along, nz * (HALF - depth) + tz * along];
+    b.wall([at(0, -HALF), at(0, HALF)], [[nx, nz], [nx, nz]], 1);
+    b.wall([at(wall, -HALF), at(wall, HALF)], [[-nx, -nz], [-nx, -nz]], 1);
+    b.top([at(0, -HALF), at(0, HALF), at(wall, HALF), at(wall, -HALF)]);
+    return b.build();
+  }
+  const corner = /^well_corner_(nw|ne|se|sw)$/.exec(shape);
+  if (corner) {
+    // 外側の角 (sx, sz) を挟む 2 辺に沿う L 字の壁。
+    const [sx, sz] = CORNER_SIGN[corner[1]];
+    const ox = sx * HALF;
+    const oz = sz * HALF;
+    const ix = sx * (HALF - wall);
+    const iz = sz * (HALF - wall);
+    // 外壁: X の辺（法線 sx,0）と Z の辺（法線 0,sz）。
+    b.wall([[ox, -oz], [ox, oz]], [[sx, 0], [sx, 0]], 1);
+    b.wall([[-ox, oz], [ox, oz]], [[0, sz], [0, sz]], 1);
+    // 内壁: 内側の角で折れる 2 枚。
+    b.wall([[ix, -oz], [ix, iz]], [[-sx, 0], [-sx, 0]], 1);
+    b.wall([[-ox, iz], [ix, iz]], [[0, -sz], [0, -sz]], 1);
+    // 縁: X の辺に沿う帯と、残りの Z の辺に沿う帯（角を二重に塗らない）。
+    b.top([[ox, -oz], [ox, oz], [ix, oz], [ix, -oz]]);
+    b.top([[-ox, oz], [ix, oz], [ix, iz], [-ox, iz]]);
+    return b.build();
+  }
+  return b.build();
+}
+
+/**
+ * 1/4 の円の床・天井（DEC-480）。円の中心は外側の角の向かいの角、半径 1 マス（2×2 の井戸の外形と同じ）。
+ * 高さ 0 の板で、置く高さ（マスの底・天）は `offsetFor` が床・天井と同じに決める。UV は床と同じ真上からの写し。
+ */
+function quarterPlateGeometry(corner: string, ceiling: boolean): BufferGeometry {
+  const b = new PieceBuilder();
+  const [sx, sz] = CORNER_SIGN[corner];
+  const c: [number, number] = [-sx * HALF, -sz * HALF];
+  const mid = Math.atan2(sz, sx);
+  const edge = arc(c, 1, mid - Math.PI / 4, mid + Math.PI / 4, PIECE_ARC_SEGMENTS);
+  const normal: V3 = [0, ceiling ? -1 : 1, 0];
+  const ids = [c, ...edge.points].map(([x, z]) => b.vertex([x, 0, z], normal, [x + 0.5, z + 0.5]));
+  for (let i = 1; i + 1 < ids.length; i += 1) b.tri(ids[0], ids[i], ids[i + 1], normal);
+  return b.build();
+}
+
+/** 立体の部品の高さ（マス。0..1）。厚みの Y の絶対値（1〜32px）。省略はマスいっぱい（DEC-479）。 */
+export function solidPieceHeight(
+  raw: number | [number, number] | [number, number, number] | undefined,
+): number {
+  return Math.min(OFFSET_STEPS, Math.abs(readThickness(raw)[0])) / OFFSET_STEPS;
 }
 
 /**

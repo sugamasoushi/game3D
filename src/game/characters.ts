@@ -43,7 +43,7 @@ export interface CharacterEntry {
   talk?: string;
 }
 
-/** `infomation` のような**人ではない行**も混じるので、値は string も受ける。 */
+/** `information` のような**人ではない行**も混じるので、値は string も受ける。 */
 export type CharacterBook = Record<string, CharacterEntry | string>;
 
 let book: CharacterBook = {};
@@ -75,7 +75,7 @@ export function characterSheet(who: string): string | null {
   return character(who)?.sheet || null;
 }
 
-/** 1 人ぶん。人ではない行（`infomation`）は null。 */
+/** 1 人ぶん。人ではない行（`information`）は null。 */
 export function character(who: string): CharacterEntry | null {
   const entry = book[who];
   return entry && typeof entry === 'object' ? entry : null;

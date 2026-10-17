@@ -1,5 +1,5 @@
 {
-  "infomation": "攻撃の絵（GS-83 / GS-121）。技の effect がこのキーを指す。書かなければ normal（素手と同じ絵）。image は assets/spritesheet/ の中のファイル名で、1 コマの大きさ・横のコマ数・縦の行数は spriteSheets.json が持つ。frames は [最初, 最後] のコマ番号（左上から右へ、columns で折り返す）、fps は 1 秒にめくるコマ数。scale は [始め, 終わり] で scaleMs ごとに伸ばす（yoyo なら行って戻る）。ms は絵を出しておく時間。se は出したときに鳴らす音。戦闘演出エディタで編集する。",
+  "information": "攻撃の絵（GS-83 / GS-121）。技の effect がこのキーを指す。書かなければ normal（素手と同じ絵）。image は assets/spritesheet/ の中のファイル名で、1 コマの大きさ・横のコマ数・縦の行数は spriteSheets.json が持つ。frames は [最初, 最後] のコマ番号（左上から右へ、columns で折り返す）、fps は 1 秒にめくるコマ数。scale は [始め, 終わり] で scaleMs ごとに伸ばす（yoyo なら行って戻る）。ms は絵を出しておく時間。se は出したときに鳴らす音。戦闘演出エディタで編集する。",
   "effects": {
     "normal": {
       "name": "打撃",

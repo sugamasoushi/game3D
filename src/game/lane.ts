@@ -3,18 +3,23 @@
 // ほぼ縦か横に歩いていて、**前が塞がっている**のに**今居るマスの列の中央なら進める**とき、
 // 横（進む向きと直角）へ中央まで寄せる量を返す。寄せる動きも Rapier の体で動かすので壁には食い込まない。
 // 1 マス幅の通路へ少しずれて入ろうとしたとき、引っかからずに吸い込まれる。
-// 広い所（今の横位置のまま進める所）と、横が開いた壁の端では何もしない（GS-246）。人は見ない（地形だけ）。
+// 通路の入り口に限らず、**当たりのある地形の角すべて**で寄せる（壁の端・家具の角も。GS-249。ユーザーと決めた）。
+// 広い所（今の横位置のまま進める所）と、壁の面の少しの凸凹（`LANE_PASS`）では何もしない。人は見ない（地形だけ）。
 
 /** 前を見る距離（マス。体の半径の外側）。 */
 const LANE_PROBE = 0.25;
 /**
- * 列の中央から先へ**通り抜けられるか**を見る距離（マス。体の半径の外側。GS-246）。
+ * 列の中央から先へ**入っていけるか**を見る距離（マス。体の半径の外側。GS-246 / GS-248）。
  * `LANE_PROBE` だけで見ると、壁が少し凸凹しているだけの所（中央の方が少し先まで行ける）を通路と取り違え、
- * 何も無い壁ぎわで寄せた（0101 の西の壁）。
+ * 何も無い壁ぎわで寄せた（0101 の西の壁）。1 マスにすると、奥行き 1 マスの窪み（0101 のマップ移動の出口。
+ * 中央へ寄せれば 1 マス進めて出口に触れる）で寄せなかったので半マス。
  */
-const LANE_PASS = 1;
-/** 「ほぼ縦か横に歩いている」とみなす割合。斜め歩きでは寄せない。 */
-const LANE_AXIS = 0.7;
+const LANE_PASS = 0.5;
+/**
+ * 「ほぼ縦か横に歩いている」とみなす割合。斜め歩きでは寄せない。
+ * 0.7 だと真斜め（0.707）も通り、壁ぎわで斜めに入れると横へ寄せて絵が画面側を向いた（GS-250）。
+ */
+const LANE_AXIS = 0.8;
 /** 前を見る・寄せる先を見るときに体を浮かせる高さ（マス）。坂の上りを「塞がっている」と取り違えないため。 */
 const LANE_LIFT = 0.25;
 /**
@@ -58,15 +63,15 @@ export function laneNudge(
   const at = (m: number, cross: number, half: number) =>
     alongX ? query.fits(m, y, cross, half) : query.fits(cross, y, m, half);
   // 今の横位置のまま（少し太らせても）進めるなら寄せない。
-  if (at(main + dir * reach, side, query.half + LANE_MARGIN)) return null;
-  // 列の中央なら進め（1 マス先まで通り抜けられ）、そこまで横へ動ける。
+  // 太らせるのは**今の場所で太らせても重ならないときだけ**（GS-250）。横の壁に沿って歩いていると、
+  // 太らせた体が横の壁に触れて「前が塞がっている」と取り違え、壁から離れる向きへ寄せた。
+  const wide = at(main, side, query.half + LANE_MARGIN) ? query.half + LANE_MARGIN : query.half;
+  if (at(main + dir * reach, side, wide)) return null;
+  // 列の中央なら進め（半マス先まで入っていけ）、そこまで横へ動ける。
   const pass = (query.half + LANE_PASS) * unit;
   if (!at(main + dir * reach, center, query.half) || !at(main + dir * pass, center, query.half) || !at(main, center, query.half)) {
     return null;
   }
-  // **1 マス幅の通路の入り口だけ**（GS-246）。隣の列も前へ進めるなら、横が開いた壁の端に引っかかっただけ——
-  // 寄せずに角で止める（0101 の部屋の仕切りの端で、何も無い所へ回り込んだ）。
-  if (at(main + dir * reach, center - unit, query.half) || at(main + dir * reach, center + unit, query.half)) return null;
   const step = Math.sign(offset) * Math.min(Math.abs(offset), speed);
   return alongX ? { x: 0, z: step } : { x: step, z: 0 };
 }

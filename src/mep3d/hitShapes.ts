@@ -19,10 +19,12 @@ import {
   offsetInCells,
   offsetStepsFor,
   readThickness,
+  solidPieceHeight,
 } from './shapes';
 import { chipRoleOf, layerHitOf, type HitRole } from './hitRules';
 import {
   isEdgeWallShape,
+  isSolidPieceShape,
   ROTATION_MASK,
   shapeRotates,
   type AssetsDef,
@@ -85,7 +87,8 @@ function pushGeometry(soup: Soup, geometry: BufferGeometry, matrix: Matrix4): vo
  * 厚みが無ければ null（マスいっぱい）。
  */
 function boxRange(proto: ProtoDef | undefined): [number, number, number, number, number, number] | null {
-  const [tx, ty, tz] = readThickness(proto?.thickness);
+  // 厚みは [Y, Z, X] の順（`readThickness`）。描画（`loader.ts`）と同じ読み順にする。
+  const [ty, tz, tx] = readThickness(proto?.thickness);
   const cx = boxHeight(tx);
   const cy = boxHeight(ty);
   const cz = boxHeight(tz);
@@ -164,6 +167,17 @@ export function buildHitMeshes(map: MapDef): HitMesh[] {
             (ox + range[0]) * unit, (oy + range[1]) * unit, (oz + range[2]) * unit,
             (ox + range[3]) * unit, (oy + range[4]) * unit, (oz + range[5]) * unit,
           );
+          continue;
+        }
+        // 立体の部品（DEC-479）は描画と同じく高さぶん縦に縮め、マスの床にそろえる。
+        if (isSolidPieceShape(batch.shape)) {
+          const height = solidPieceHeight(proto?.thickness);
+          offset.set(0, (height - 1) / 2, 0);
+          if (proto?.offset) offset.add(offsetInCells(proto.offset, offsetSteps, scratch));
+          position.set(cx + 0.5, cy + 0.5, cz + 0.5).add(offset).multiplyScalar(unit);
+          quaternion.identity();
+          matrix.compose(position, quaternion, scratch.set(unit, unit * height, unit));
+          pushGeometry(soups[role], geometry as BufferGeometry, matrix);
           continue;
         }
         const rotation = shapeRotates(batch.shape) ? (flags[i] ?? 0) & ROTATION_MASK : 0;

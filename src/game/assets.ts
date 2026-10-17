@@ -17,4 +17,4 @@ export function mapUrl(name: string): string {
 }
 
 /** 最初に開くマップ。旧作の「家」に当たる（GS-02）。 */
-export const START_MAP = '0101_home.json';
+export const START_MAP = 'home.json';
