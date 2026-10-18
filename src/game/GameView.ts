@@ -1037,6 +1037,9 @@ export function createGameView(
       // 目を閉じたレイヤーは形を作らない（DEC-270）。ゲームは目を戻さないので素直に省ける。
       // 法線マップは**台帳で決める**（DEC-374）。無い絵を取りに行かせない——
       // 開発サーバの 404 が高くつく（実測 32 秒 → 0.5 秒）。
+      // 書き割りの絵（背景）は板が後から読むので、組むのと並べて先に取りに行き、出す前に待つ。
+      // 待たないと、暗転が明けた瞬間に背景だけ抜けて見える（通信の遅い本番で出た）。
+      const backdropReady = preloadBackdrop(shown.view?.backdrop?.src ?? '');
       const next = await buildMep3DScene(shown, shown.assets as AssetsDef, {
         skipHidden: true,
         hasFile: files.has,
@@ -1290,6 +1293,9 @@ export function createGameView(
         ...(player ? [player.ready] : []),
         ...[...npcs.values()].map(({ actor }) => actor.ready),
         ...(mapModels ? [mapModels.waitUntilReady()] : []),
+        // 背景（書き割りの絵と空のパノラマ）も揃えてから出す。
+        backdropReady,
+        sky.ready(),
       ]);
       if (gen !== buildGen) return;
       // 組んでいるあいだに時間帯が変わっていたら（開発用のボタン・時計・イベント。GS-226）、いまの時間帯へ移す。

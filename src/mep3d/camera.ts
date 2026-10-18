@@ -74,6 +74,8 @@ export function skyUrl(sky: string | undefined): string {
 
 type SkyBinder = {
   apply(raw: CameraFxDef | undefined, workColor?: string): void;
+  /** 最後に頼んだパノラマを読み終えるまで待つ（読めなくても解く）。読み込み中でなければすぐ解く。 */
+  ready(): Promise<void>;
   dispose(): void;
 };
 
@@ -83,6 +85,8 @@ export function createSkyBinder(scene: Scene): SkyBinder {
   let gen = 0;
   let url = '';
   let texture: Texture | null = null;
+  /** 読み込み中のパノラマ。マップを出す前に待てるよう、届くか諦めるまで持っておく。 */
+  let pending: Promise<void> | null = null;
 
   const paintColor = (fx: Required<CameraFxDef>, raw: CameraFxDef | undefined, workColor?: string) => {
     if (texture) {
@@ -120,9 +124,18 @@ export function createSkyBinder(scene: Scene): SkyBinder {
       }
       const id = ++gen;
       if (!texture) paintColor(fx, raw, workColor);
+      let settle = () => {};
+      const waiting = new Promise<void>((resolve) => {
+        settle = () => {
+          if (pending === waiting) pending = null;
+          resolve();
+        };
+      });
+      pending = waiting;
       loader.load(
         next,
         (tex) => {
+          settle();
           if (id !== gen) {
             tex.dispose();
             return;
@@ -137,10 +150,14 @@ export function createSkyBinder(scene: Scene): SkyBinder {
         },
         undefined,
         () => {
+          settle();
           if (id !== gen) return;
           paintColor(fx, raw, workColor);
         },
       );
+    },
+    ready() {
+      return pending ?? Promise.resolve();
     },
     dispose() {
       gen += 1;
