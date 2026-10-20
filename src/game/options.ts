@@ -26,12 +26,6 @@ export interface Options {
    */
   charMs: number;
   /**
-   * 流れる文字（`scroll`）の速さの倍率（GS-144）。**大きいほどゆっくり。**
-   * イベント側の `speed`（1 行ぶんの時間）に掛ける——読む速さは人によって違うので、
-   * 「話ごとの速さの差」は台帳、「その人に合う速さ」はここで持つ。
-   */
-  scrollScale: number;
-  /**
    * 描画モード（GS-173）。`auto` は端末から見当を付ける（スマホ・PWA は低負荷）。
    * **重い絵を出すかどうかの入口はここ 1 つ**——判断そのものは `quality.ts`。
    */
@@ -50,7 +44,6 @@ export interface Options {
 /** 既定の設定。セーブが無い状態はこれ。 */
 export const DEFAULT_OPTIONS: Options = {
   charMs: 40,
-  scrollScale: 1,
   // 既定は自動（GS-173）。**端末を見て決める**ので、スマホは初めから低負荷で始まる。
   drawMode: 'auto',
   virtualPad: 'auto',
@@ -99,7 +92,6 @@ export function loadOptions(): void {
     if (!saved) return;
     setOptions({
       charMs: sane(saved.charMs, DEFAULT_OPTIONS.charMs, 5, 200),
-      scrollScale: sane(saved.scrollScale, DEFAULT_OPTIONS.scrollScale, 0.5, 4),
       drawMode: saneDrawMode(saved.drawMode),
       virtualPad: saneVirtualPad(saved.virtualPad),
       masterVolume: sane(saved.masterVolume, DEFAULT_OPTIONS.masterVolume, 0, 1),

@@ -12,7 +12,7 @@ import type * as gameOptions from '../game/options';
 import type { BattleOutcome } from '../game/battle/flow';
 import type { EffectDef, EffectEntry } from '../game/battle/book';
 import type { CameraCueBook } from '../game/cameraCues';
-import type { GameView, STAGE_COMMAND_FIGURE } from '../game/GameView';
+import type { GameView, RestageOptions, RestageResult } from '../game/GameView';
 import type { EventBridge } from '../game/uiEventContext';
 import type { EventDef, MapMoveDef } from '../event/types';
 import type { useUi } from '../ui/store';
@@ -57,6 +57,20 @@ export interface BattleEffectEditorWindow {
   clearBackdrop(): void;
   /** 戦闘中（背景の戦闘を含む）なら先頭の敵へ絵を出す。戦闘中でなければ偽。 */
   playEffect(def: EffectDef): boolean;
+  /** 戦闘の舞台の台帳（`battleStages.json`）の下書きで差し替える（2026-10-19 / BPE-30）。次に舞台を組むときから効く。 */
+  setStages(next: unknown): void;
+  /** 隊形の台帳（`battleFormations.json`）の下書きで差し替える。 */
+  setFormations(next: unknown): void;
+  /**
+   * 出している背景の舞台を組み直す（下書きのマス・隊形・構図を当て直し、戦闘開始の構図を流し直す）。
+   * `formation` は見る隊形、`party` / `enemy` は立たせる人数（今の面子の絵をくり返して使う）、`showParty` は味方の板を見せるか。
+   * 床の無い所に立った人を返す。3D の舞台を出していなければ null。
+   */
+  restage(options: RestageOptions): RestageResult | null;
+  /** 戦闘のマスの線を出す・消す。 */
+  showCells(on: boolean): void;
+  /** 戦闘開始の構図を流し直す。返すのは長さ（ミリ秒）。 */
+  replayStart(): number;
 }
 
 export interface DevWindow {
@@ -73,8 +87,6 @@ export interface DevWindow {
   __ui: typeof useUi;
 
   // ── Console で試すための口（エディタは使っていない）。 ──
-  /** コマンド選択中の味方を左端へ立たせる値（GS-103）。書き換えてその場で試す。 */
-  __stageCommandFigure: typeof STAGE_COMMAND_FIGURE;
   __audio: typeof audio;
   __options: typeof gameOptions;
   /** 開発中のつまみ（GS-126）。`__dev.setDevOptions({ muteBgm: false })`。 */

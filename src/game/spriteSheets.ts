@@ -4,7 +4,7 @@
 // 画像の名前だけを書いて、1 コマの大きさ・横のコマ数・縦の行数はここから引く——
 // 同じ画像をキャラと攻撃の両方で使っても、区切りを二度書かずに済む。
 //
-// 画像の置き場は `assets/spritesheet/` の 1 か所（GS-121）。
+// 画像の置き場は `assets/spritesheet/` の 1 か所（GS-121）。その中はフォルダに分けてよく、台帳のキーはそこからの道（GS-258）。
 
 import { assetUrl } from './assets';
 
@@ -49,9 +49,10 @@ export function spriteSheet(file: string): SpriteSheetDef | null {
   return sheets[file] ?? null;
 }
 
-/** 画像の URL。名前はファイル名だけ（置き場は 1 か所）。 */
+/** 画像の URL。名前は `assets/spritesheet/` からの道（フォルダの中なら `chara/meina_01.png`。GS-258）。 */
 export function sheetUrl(file: string): string {
-  return assetUrl(`${SHEET_DIR}/${file}`);
+  // 絵はフォルダに分けてよい（GS-258。`chara/meina_01.png`）。`/` は残して 1 段ずつ符号化する。
+  return assetUrl(`${SHEET_DIR}/${file.split('/').map(encodeURIComponent).join('/')}`);
 }
 
 /** 台帳の中身（編集用の入口から差し替えるときだけ使う）。 */

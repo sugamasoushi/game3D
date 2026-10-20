@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "information": "戦闘の舞台（3D）。2026-10-19 / BPE-30。戦闘開始の構図（旧 BATTLE_START_CAMERA）・コマンド選択の構図（command。今は再生しない）・左端の板（commandFigure。旧 STAGE_COMMAND_FIGURE）・敵の数の最大（maxEnemies。台帳エディタのお供はこの範囲）・戦闘のマス（grid。正方形。1 マス = フィールドの 1 マス × CharacterScale。原点は舞台の点〈マップエディタ〉。across／depth は使える番号の範囲）。構図（start 戦闘開始・command コマンド選択）は欄ごとの専用の構図で、BattleStage から直接カメラを決める（2026-10-19）: キーの x／y／z は見る点（BattleStage の床から右・上・手前〈負で奥〉）、distance／height はカメラの位置（見る点から手前へ水平の距離・床からの高さ）。長さはマス。フィールドのカメラは向きだけ使う。拡縮はマップの CharacterScale プロパティに準ずる（全部共通）。default に共通の値、maps.<マップのid> に差し替える項目だけを書く。編集は戦闘演出エディタの「舞台」タブ。",
+  "default": {
+    "start": {
+      "name": "戦闘開始",
+      "duration": 1000,
+      "hold": true,
+      "keys": [
+        { "at": 0, "yaw": 0, "x": 0, "y": 1, "z": -1, "distance": 8.5, "height": 4.5 },
+        { "at": 500, "yaw": 0, "x": 0, "y": 1, "z": -6, "distance": 9, "height": 2 }
+      ]
+    },
+    "command": null,
+    "commandFigure": { "x": 0.1, "depth": 2, "scale": 1, "moveS": 0.25, "offsetX": 0, "offsetY": 0, "offsetZ": 0 },
+    "maxEnemies": 3,
+    "grid": {
+      "across": [-4, 4],
+      "depth": [-4, 4]
+    }
+  },
+  "maps": {}
+}

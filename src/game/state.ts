@@ -156,6 +156,16 @@ export function restoreState(target: GameState, loaded: GameState): void {
   });
 }
 
+/**
+ * はじめから（GS-265）。遊んでいる入れ物を**欄ごと全部** `newState()` に戻す。
+ * 欄を 1 つずつ書いて戻していたころは物語の段階（`story`）が漏れ、
+ * セーブ → タイトル → はじめからで、済ませたイベント（breakfast）が動かなかった。
+ * 仲間・時間帯は台帳から入れ直すので、呼んだ側がこの後で埋める。
+ */
+export function resetState(target: GameState): void {
+  restoreState(target, newState());
+}
+
 export function fromSave(data: SaveData): { state: GameState; progress: Progress } {
   return {
     state: {

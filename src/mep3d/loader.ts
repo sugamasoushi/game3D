@@ -105,7 +105,7 @@ type SolidCell = {
   offset: [number, number, number];
   shadowOffset: [number, number, number];
 };
-import { FLAT_PLATE, LAYER_DEPTH_STEP, OFFSET_STEPS, applyWallPose, boxFootprint, boxHeight, geometryFor, offsetFor, offsetInCells, offsetStepsFor, plateCornerHeights, plateHalves, plateHeight, readThickness, rotatePlate, slopeCornerHeights, solidPieceHeight } from './shapes';
+import { FLAT_PLATE, LAYER_DEPTH_STEP, OFFSET_STEPS, applyWallPose, boxFootprint, boxHeight, geometryFor, offsetFor, offsetInCells, offsetStepsFor, plateCornerHeights, plateHeight, readThickness, rotatePlate, slopeCornerHeights, solidPieceHeight } from './shapes';
 import {
   ROTATION_MASK,
   billboardFacesCamera,
@@ -555,32 +555,16 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
   let nearFadeDist = 4;
 
   const solidByLayer = new Map<string, Map<string, SolidCell>>();
-  /** 壁チップ。マスを埋めないので `solidByLayer` とは別に持つ（DEC-76）。 */
-  const wallSolidByLayer = new Map<string, Map<string, SolidCell>>();
   const visualSolidByLayer = new Map<string, Set<string>>();
   const visualScratch = new Vector3();
   for (const layer of map.layers) {
     if (isContainerKind(layer.kind) || layer.kind === 'object') continue;
     const solidInfo = new Map<string, SolidCell>();
-    const wallInfo = new Map<string, SolidCell>();
     const visual = new Set<string>();
     for (const batch of layer.batches) {
       const coords = decodeCells(batch);
       const flags = decodeRotationFlags(batch);
       const protoIndices = decodeProtoIndices(batch);
-      if (batch.shape === 'wall') {
-        for (let i = 0; i < batch.count; i += 1) {
-          const proto = protosById.get(batch.protos[protoIndices[i]]);
-          wallInfo.set(`${coords[i * 3]},${coords[i * 3 + 1]},${coords[i * 3 + 2]}`, {
-            shape: 'wall',
-            rotation: (flags[i] ?? 0) & ROTATION_MASK,
-            thickness: readThickness(proto?.thickness),
-            offset: proto?.offset ?? [0, 0, 0],
-            shadowOffset: proto?.shadowOffset ?? [0, 0, 0],
-          });
-        }
-        continue;
-      }
       if (!SOLID_SHAPES.has(batch.shape)) continue;
       for (let i = 0; i < batch.count; i += 1) {
         const x = coords[i * 3];
@@ -601,182 +585,8 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       }
     }
     solidByLayer.set(layer.id, solidInfo);
-    wallSolidByLayer.set(layer.id, wallInfo);
     visualSolidByLayer.set(layer.id, visual);
   }
-
-  /**
-   * 面 1 枚の板（屋根・庇・棚板）。マスを埋めないので固体には入らないが、絵としては光を遮る（DEC-127）。
-   * 地面と同じ高さの板（普通の床）は自分の影で自分を暗くするだけなので入れない。
-   */
-  const plateByLayer = new Map<
-    string,
-    Array<{ x: number; y: number; z: number; plate: number[]; rotation: number; shape: Shape }>
-  >();
-  for (const layer of map.layers) {
-    if (isContainerKind(layer.kind) || layer.kind === 'object') continue;
-    const plates: Array<{ x: number; y: number; z: number; plate: number[]; rotation: number; shape: Shape }> = [];
-    for (const batch of layer.batches) {
-      const corners = plateCornerHeights(batch.shape);
-      if (!corners) continue;
-      const coords = decodeCells(batch);
-      const flags = decodeRotationFlags(batch);
-      for (let i = 0; i < batch.count; i += 1) {
-        plates.push({
-          x: coords[i * 3],
-          y: coords[i * 3 + 1],
-          z: coords[i * 3 + 2],
-          plate: corners,
-          rotation: (flags[i] ?? 0) & ROTATION_MASK,
-          shape: batch.shape,
-        });
-      }
-    }
-    plateByLayer.set(layer.id, plates);
-  }
-
-  /**
-   * 方向光のブロック影を投げる柱。`Shade` を切ったレイヤーは投げない（DEC-78）。
-   * 受ける側は素通しにしない。影を作らないだけで、影は落ちてくる。
-   */
-  /**
-   * 影をまとめるプレハブレイヤー（DEC-130 / DEC-131）。
-   * 親をたどって、一番内側のプレハブレイヤーの id を返す。無ければ空。
-   */
-  const layerById = new Map(map.layers.map((entry) => [entry.id, entry]));
-  const silhouetteGroupOf = (layer: LayerDef): string => {
-    let parent = layer.parent ? layerById.get(layer.parent) : undefined;
-    while (parent) {
-      if (parent.kind === 'prefab') return parent.id;
-      parent = parent.parent ? layerById.get(parent.parent) : undefined;
-    }
-    return '';
-  };
-
-  /**
-   * 方向光の影を投げる柱。プレハブは**チップの角を全部投影して外周 1 枚にまとめる**（DEC-130）。
-   * 足元（XZ）の形で伸ばす切り替え（DEC-135）は削除した（DEC-213）。
-   */
-  const visibleColumns = (): MaskColumn[] => {
-    // プレハブの足元（XZ）。マスごとに一番高い所と一番低い所を持つ。
-    const feet = new Map<string, Map<string, { top: number; bottom: number }>>();
-    const addFoot = (key: string, x: number, z: number, bottom: number, top: number) => {
-      let foot = feet.get(key);
-      if (!foot) {
-        foot = new Map();
-        feet.set(key, foot);
-      }
-      const at = `${x},${z}`;
-      const found = foot.get(at);
-      if (found) {
-        found.top = Math.max(found.top, top);
-        found.bottom = Math.min(found.bottom, bottom);
-      } else {
-        foot.set(at, { top, bottom });
-      }
-    };
-    // まとめるグループごとに分ける。印が無いものは "" にまとめて今まで通り。
-    const buckets = new Map<string, { solid: Map<string, SolidCell>; wall: Map<string, SolidCell>; plates: MaskColumn[] }>();
-    const bucketOf = (key: string) => {
-      const found = buckets.get(key);
-      if (found) return found;
-      const made = { solid: new Map<string, SolidCell>(), wall: new Map<string, SolidCell>(), plates: [] as MaskColumn[] };
-      buckets.set(key, made);
-      return made;
-    };
-    for (const layer of map.layers) {
-      if (isContainerKind(layer.kind)) continue;
-      if (!layerEffectivelyVisible(map.layers, layer)) continue;
-      if (!layerCastsShade(layer)) continue;
-      const inPrefab = silhouetteGroupOf(layer);
-      // プレハブの中身は 1 個の平面図として集める。
-      // 足元の形（DEC-135）はこれがそのまま影になり、外周（DEC-130）でも地面の基準に使う（DEC-137）。
-      if (inPrefab) {
-        for (const key of solidByLayer.get(layer.id)?.keys() ?? []) {
-          const [x, y, z] = key.split(',').map(Number);
-          addFoot(inPrefab, x, z, y, y + 1);
-        }
-        for (const key of wallSolidByLayer.get(layer.id)?.keys() ?? []) {
-          const [x, y, z] = key.split(',').map(Number);
-          addFoot(inPrefab, x, z, y, y + 1);
-        }
-        for (const entry of plateByLayer.get(layer.id) ?? []) {
-          addFoot(inPrefab, entry.x, entry.z, entry.y + Math.min(...entry.plate), entry.y + Math.max(...entry.plate));
-        }
-      }
-      const { solid: solidInfo, wall: wallInfo, plates } = bucketOf(inPrefab);
-      for (const [key, value] of solidByLayer.get(layer.id) ?? []) solidInfo.set(key, value);
-      // 面 1 枚（縦向き面・上向き面）は、単体では影を落とさない（DEC-134）。
-      // 地面や崖はこれで作るので、影を出すと地形が地形の影で汚れる。
-      // プレハブレイヤーの中身は「1 個の物」なので、面もシルエットに参加する。
-      if (!inPrefab) continue;
-      for (const [key, value] of wallSolidByLayer.get(layer.id) ?? []) wallInfo.set(key, value);
-      for (const entry of plateByLayer.get(layer.id) ?? []) {
-        const low = entry.y + Math.min(...entry.plate);
-        // 地面そのものは影を落とさない（自分の影で自分を暗くするだけ）。
-        // その列で一番低い面から 1 マス以上高い板＝屋根・庇・棚だけ投げる（DEC-129）。
-        if (low < lowestSurfaceAt(entry.x, entry.z) + 0.95) continue;
-        // 棟・谷は折れ目で 2 枚に割る。平らな近似だと隣の坂と継ぎ目が空く（DEC-128）。
-        const halves = plateHalves(entry.shape, entry.rotation);
-        if (halves) {
-          for (const half of halves) {
-            plates.push({
-              cell: { x: entry.x, y: entry.y, z: entry.z },
-              foot: {
-                x0: entry.x + half.foot.x0,
-                z0: entry.z + half.foot.z0,
-                x1: entry.x + half.foot.x1,
-                z1: entry.z + half.foot.z1,
-              },
-              height: entry.y + Math.max(...half.corners),
-              bottom: entry.y + Math.min(...half.corners),
-              plate: half.corners,
-              castOnly: true,
-            });
-          }
-          continue;
-        }
-        plates.push({
-          cell: { x: entry.x, y: entry.y, z: entry.z },
-          height: entry.y + Math.max(...entry.plate),
-          bottom: low,
-          plate: entry.plate,
-          rotation: entry.rotation,
-          castOnly: true,
-        });
-      }
-    }
-    // プレハブの影を敷く地面。1 個の物なので 1 つに揃える（DEC-136）。
-    // マスごとに足元を探すと、屋根のマスは屋根の下＝家の中を地面と見なして、影が屋根に出る。
-    // 基準は一番低いマス（＝土台）。そこから下へ探した地面へ、影を 1 枚だけ敷く。
-    const groundOf = new Map<string, number>();
-    for (const [key, foot] of feet) {
-      let base = Infinity;
-      let baseAt = '';
-      for (const [at, span] of foot) {
-        if (span.bottom >= base) continue;
-        base = span.bottom;
-        baseAt = at;
-      }
-      const [baseX, baseZ] = baseAt ? baseAt.split(',').map(Number) : [0, 0];
-      groundOf.set(key, Number.isFinite(base) ? groundUnder(baseX, baseZ, base) : 0);
-    }
-
-    const out: MaskColumn[] = [];
-    for (const [key, bucket] of buckets) {
-      const list = [...solidVolumes(bucket.solid), ...wallVolumes(bucket.wall), ...bucket.plates];
-      if (key) {
-        const ground = groundOf.get(key);
-        for (const column of list) {
-          column.silhouette = key;
-          // 外周でまとめるときも地面は 1 つ。バラバラだと段ごとに影が浮く（DEC-137）。
-          if (ground !== undefined) column.groundY = ground;
-        }
-      }
-      out.push(...list);
-    }
-    return out;
-  };
 
   /**
    * 縦の壁チップ。マスを埋める形ではないので `solidByLayer` には入らないが、
@@ -861,7 +671,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
    * 帯にすれば、影は板の面でだけ折れて、それ以外はそのまま地面を進む。
    *
    * 向きが分からない（`dirX` も `dirZ` も 0）ときはマスごと塞ぐ——地面の高さを
-   * 探すだけの呼び出し（`lowestSurfaceAt` など）は今までと同じ答えのままにする。
+   * 探すだけの呼び出し（`groundUnder` など）は今までと同じ答えのままにする。
    */
   const edgeBlocks = (side: number, fx: number, fz: number, dirX: number, dirZ: number): boolean => {
     if (dirX === 0 && dirZ === 0) return true;
@@ -1067,19 +877,6 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
    * 影を受ける地面の高さ（DEC-126）。遮る物の足元から下へ探す。
    * 箱・斜面・壁は天面（y + 1）、上向き面はマスの底（y）、横板はその少し上。
    */
-  /**
-   * その列で一番低い面（DEC-129）。板が「地面そのもの」か「浮いている屋根」かの目安。
-   * 地面のチップは自分の高さがここと同じなので影を落とさない。屋根は 1 マス以上高い。
-   */
-  const lowestSurfaceAt = (x: number, z: number): number => {
-    for (let y = 0; y <= 64; y += 1) {
-      if (visibleSolidAt(x, y, z)) return y + 1;
-      if (visibleFloorAt(x, y, z)) return y;
-      if (visibleBoardAt(x, y, z)) return y;
-    }
-    return 0;
-  };
-
   const groundUnder = (x: number, z: number, fromY: number): number => {
     const start = Math.max(0, Math.floor(fromY));
     // 足元と同じマスに床チップがあれば、それが地面。
@@ -1846,7 +1643,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     const shown = viewLighting();
     // 新方式のときは旧方式の塗り（床影・面影・影マスク）を出さない（DEC-145）。
     if (!sunShadowOn && blockShadowsOn(shown)) {
-      const columns = visibleColumns();
+      const columns = shadeColumns();
       const away = shadowDirection(shown);
       const length = blockShadowLength(shown);
       const lengthOf = (column: MaskColumn) => columnSunShadowLength(column, length, shown, lightWalls);
@@ -2841,59 +2638,6 @@ function solidVolumes(info: Map<string, SolidCell>): MaskColumn[] {
       shape: 'box',
       rotation: 0,
     });
-  }
-  return volumes;
-}
-
-/** 壁チップの厚み（マス）。板 1 枚なので絵の厚みは無いが、影を作るには幅が要る。 */
-const WALL_FOOT = 2 / OFFSET_STEPS;
-
-/**
- * 壁チップの足跡。板はマスの縁に立つので、その縁から**マスの内側へ**伸ばした細い帯にする。
- * 縁をまたがせると、影のシルエットがマスより 1/32 マス（＝1px）外へはみ出す（DEC-142）。
- */
-function wallFoot(x: number, z: number, rotation: number): { x0: number; z0: number; x1: number; z1: number } {
-  const width = WALL_FOOT;
-  const r = ((rotation % 4) + 4) % 4;
-  if (r === 0) return { x0: x, z0: z + 1 - width, x1: x + 1, z1: z + 1 };
-  if (r === 1) return { x0: x + 1 - width, z0: z, x1: x + 1, z1: z + 1 };
-  if (r === 2) return { x0: x, z0: z, x1: x + 1, z1: z + width };
-  return { x0: x, z0: z, x1: x + width, z1: z + 1 };
-}
-
-/**
- * 壁チップの柱（DEC-76）。板だが絵としては光を遮るので、ブロック影と影マスクへ入れる。
- * 縦に続く同じ向きの壁は 1 本にまとめる。切ると継ぎ目に筋が出る。
- * 形は `box` として渡す。中身は「薄い箱」そのものなので、投影も受けも既存の式でよい。
- */
-function wallVolumes(info: Map<string, SolidCell>): MaskColumn[] {
-  const visited = new Set<string>();
-  const volumes: MaskColumn[] = [];
-  const shift = new Vector3();
-  for (const [key, cell] of info) {
-    if (visited.has(key)) continue;
-    const [x, y, z] = key.split(',').map(Number);
-    const joins = (at: string): boolean => {
-      const other = info.get(at);
-      return Boolean(other) && other?.rotation === cell.rotation && !hasNudge(cell.offset);
-    };
-    let lo = y;
-    let hi = y;
-    while (joins(`${x},${lo - 1},${z}`)) lo -= 1;
-    while (joins(`${x},${hi + 1},${z}`)) hi += 1;
-    for (let yy = lo; yy <= hi; yy += 1) visited.add(`${x},${yy},${z}`);
-    const column: MaskColumn = {
-      cell: { x, y: hi, z },
-      height: hi + 1,
-      bottom: lo,
-      shape: 'box',
-      rotation: 0,
-      foot: wallFoot(x, z, cell.rotation),
-      castOnly: true,
-    };
-    nudgeColumn(column, cell.offset, shift);
-    nudgeColumn(column, cell.shadowOffset, shift);
-    volumes.push(column);
   }
   return volumes;
 }

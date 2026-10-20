@@ -3,7 +3,7 @@
   "items": {
     "やくそう": {
       "name": "やくそう",
-      "text": "HP が 30 もどる。",
+      "text": "HP が 30 回復する。",
       "price": 20,
       "use": {
         "where": "both",
@@ -13,7 +13,7 @@
     },
     "おにぎり": {
       "name": "おにぎり",
-      "text": "HP が 全部 もどる。",
+      "text": "HP が 全回復する。",
       "price": 60,
       "use": {
         "where": "both",
@@ -23,7 +23,7 @@
     },
     "ばんそうこう": {
       "name": "ばんそうこう",
-      "text": "MP が 20 もどる。",
+      "text": "MP が 20 回復する。",
       "price": 30,
       "use": {
         "where": "both",
@@ -82,6 +82,17 @@
         "slot": "armor",
         "guard": 5,
         "speed": -1
+      }
+    },
+    "ターケマーツ": {
+      "name": "ターケマーツ",
+      "text": "HP と MP が 20 全回復する。",
+      "price": 900,
+      "use": {
+        "where": "both",
+        "hp": "full",
+        "mp": "full",
+        "say": "これぞ山の恵み。。。"
       }
     }
   }

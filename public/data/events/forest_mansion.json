@@ -41,7 +41,7 @@
           "type": "message",
           "talk": [{ "who": "lamyNPC", "lines": ["ふんっ・・・取り返すこともしないなんて弱っちいの。", "ま、あたしに勝てるわけないしね！"] }]
         },
-        { "type": "move", "target": "player", "dir": "up", "cells": 2, "speed": 15 },
+        { "type": "move", "target": "player", "dir": "up", "cells": 1, "speed": 15 },
         {
           "type": "message",
           "talk": [{ "who": "meina", "lines": ["あ\"？"] }, { "who": "lamyNPC", "lines": ["へぁ？"] }]
@@ -171,7 +171,7 @@
           "talk": [
             { "lines": ["木です"] },
             { "who": "meina", "lines": ["ｷｬｱｱｱｱｱｱｱ!!", "ｼｬﾍﾞｯﾀｱｱｱｱｱｱ!!!!"] },
-            { "who": "noName", "lines": ["気にするなって", "ふふっ・・・"] },
+            { "lines": ["気にするなって", "ふふっ・・・"] },
             { "who": "meina", "lines": ["（真顔）"] }
           ],
           "style": "bubble"
@@ -199,12 +199,34 @@
           ]
         }
       ]
+    },
+    {
+      "id": "luckey",
+      "kind": "object",
+      "trigger": "touch",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "meina",
+              "lines": ["おおっ！！", "こんなところにターケマーツが生えてる！！", "じいちゃん喜ぶぞ～♪"],
+              "at": "player"
+            }
+          ],
+          "style": "bubble"
+        },
+        { "type": "getItem", "id": "ターケマーツ", "count": 1 },
+        { "type": "message", "talk": [{ "lines": ["ターケマーツ を 見つけた！"] }], "style": "window" },
+        { "type": "setSelfSwitch", "key": "ターケマーツフラグ", "value": true }
+      ],
+      "when": [{ "self": "ターケマーツフラグ", "is": false }]
     }
   ],
   "mapMoves": [
     {
       "object": "obj_2",
-      "to": [{ "map": "home_forest", "at": { "x": -5, "y": 3, "z": 14 }, "face": "up" }]
+      "to": [{ "map": "ashcrown", "at": { "x": -5, "y": 3, "z": 14 }, "face": "up" }]
     },
     {
       "object": "obj_3",
@@ -219,7 +241,18 @@
           "at": { "x": 5, "y": 5, "z": -3 },
           "face": "left"
         },
-        { "map": "next_field", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }
+        { "map": "gald_peaks_road", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }
+      ]
+    },
+    {
+      "object": "obj_5",
+      "to": [
+        {
+          "map": "old_haulage_road",
+          "at": { "x": 1, "y": 4, "z": -13 },
+          "px": { "x": 0, "z": 6 },
+          "face": "down"
+        }
       ]
     }
   ]

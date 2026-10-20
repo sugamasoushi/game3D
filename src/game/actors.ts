@@ -9,7 +9,7 @@
 // 行が無い画像も、区切りさえあれば既定の並び（下・左・右・上）で出せる。
 
 import { assetUrl } from './assets';
-import { ACTOR_SHEET, type ActorSheet, type Facing } from './player';
+import type { ActorSheet, Facing } from './player';
 import { loadSpriteSheets, sheetUrl, spriteSheet } from './spriteSheets';
 
 /** `actors.json` の 1 行（キーは画像のファイル名）。 */
@@ -64,15 +64,4 @@ export function actorSheet(book: ActorBook, sheet: string): ActorSheet | null {
     ...(cut.footPx !== undefined ? { footPx: cut.footPx } : {}),
     ...(entry?.poses ? { poses: entry.poses } : {}),
   };
-}
-
-/**
- * 画像から絵を引く。**知らない画像でも黙って落とさない**——
- * 既定のシートで出して、コンソールに書いておく。姿が違うことには気づけるが、キャラが消えると原因を探しにくい。
- */
-export function sheetOf(book: ActorBook, sheet: string): ActorSheet {
-  const found = actorSheet(book, sheet);
-  if (found) return found;
-  console.warn(`[actors] 画像の区切りが台帳（spriteSheets.json）にありません: ${sheet}（既定の絵で出す）`);
-  return ACTOR_SHEET;
 }

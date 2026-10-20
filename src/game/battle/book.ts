@@ -98,21 +98,30 @@ export interface BattleFieldDef {
   sky?: string;
 }
 
-/** BattleStageを原点とする、カメラ基準の初期位置（マス）。 */
+/**
+ * 舞台に立つ 1 人の位置（2026-10-19 / BPE-30）。**戦闘のマスの番号**（整数）で書く。
+ * マスの大きさと原点は戦闘の舞台の台帳（`battleStages.json` の `grid`。マップごと）が決める——フィールドのマスとは関係ない。
+ * 前後関係は `row` で決まる（手前ほど後に描く）。同じ列なら並び順。
+ */
 export interface BattleFormationSlot {
-  /** カメラから見た左右。右が正。 */
-  across: number;
-  /** カメラから見た奥行き。手前が正。 */
-  depth: number;
-  /** その地点の床から持ち上げる高さ。 */
+  /** カメラから見た横のマス。右が正。 */
+  col: number;
+  /** カメラから見た奥のマス。手前が正（味方は正、敵は負に置く）。 */
+  row: number;
+  /** その地点の床（地形の起伏に沿う）から持ち上げる高さ（フィールドのマス × CharacterScale）。浮かせるときだけ書く。 */
   height?: number;
 }
 
-/** 人数ごとのスロットを持つ再利用可能な戦闘隊形。 */
+/**
+ * 戦闘隊形（2026-10-19。**人数によらず共通の並び**）。陣営ごとに 6 人までの枠を並べ、N 人のときは前から N 個を使う。
+ * `center` が偽でなければ、使う枠を横の真ん中へ寄せる（列の平均を舞台の点へ。マスの番号のまま整数でずらす）——
+ * 1 人でも 4 人でも同じ並びのまま真ん中に立つ。
+ */
 export interface BattleFormationDef {
   name?: string;
-  party?: Record<string, BattleFormationSlot[]>;
-  enemy?: Record<string, BattleFormationSlot[]>;
+  center?: boolean;
+  party?: BattleFormationSlot[];
+  enemy?: BattleFormationSlot[];
 }
 
 /**
@@ -298,7 +307,7 @@ export function battleFieldList(): Array<{ id: string; name: string }> {
 }
 
 /**
- * 指定人数の初期位置。人数とスロット数が一致しない定義は使わない。
+ * 指定人数の初期位置。並びの前から `count` 個（足りなければ null）。`center` なら横の真ん中へ寄せる。
  * 配列順が `party:1` / `enemy:1` の意味的な対象番号になる。
  */
 export function battleFormationSlots(
@@ -307,11 +316,21 @@ export function battleFormationSlots(
   count: number,
 ): BattleFormationSlot[] | null {
   if (!id || count < 1) return null;
-  const slots = formations[id]?.[side]?.[String(count)];
-  if (!Array.isArray(slots) || slots.length !== count) return null;
-  if (!slots.every((slot) => Number.isFinite(slot.across) && Number.isFinite(slot.depth)
+  const formation = formations[id];
+  const list = formation?.[side];
+  if (!Array.isArray(list) || list.length < count) return null;
+  const slots = list.slice(0, count);
+  if (!slots.every((slot) => Number.isInteger(slot.col) && Number.isInteger(slot.row)
     && (slot.height === undefined || Number.isFinite(slot.height)))) return null;
-  return slots.map((slot) => ({ ...slot }));
+  const shift = formation?.center === false ? 0 : centerShift(slots);
+  return slots.map((slot) => ({ ...slot, col: slot.col + shift }));
+}
+
+/** 横の真ん中へ寄せる量（マスの番号。列の平均の逆を整数に丸める）。 */
+export function centerShift(slots: Array<{ col: number }>): number {
+  if (!slots.length) return 0;
+  const mean = slots.reduce((sum, slot) => sum + slot.col, 0) / slots.length;
+  return -Math.round(mean) || 0;
 }
 
 /** イベント指定を優先し、それ以外はマップ候補からランダムに1つ選ぶ。最後は台帳のdefault。 */
@@ -327,6 +346,14 @@ export function chooseBattleFormation(
     return available[index];
   }
   return defaultFormation;
+}
+
+/** 隊形の台帳を戦闘演出エディタの下書きで差し替える（2026-10-19 / BPE-30。開発中だけ）。次に舞台を組むときから効く。 */
+export function previewFormations(next: unknown): void {
+  const book = next as { default?: string; formations?: Record<string, BattleFormationDef> } | null;
+  if (!book?.formations || typeof book.formations !== 'object') return;
+  formations = book.formations;
+  defaultFormation = book.default && formations[book.default] ? book.default : Object.keys(formations)[0] ?? '';
 }
 
 /** 攻撃の絵 1 つ（GS-83）。**台帳に無ければ null**——絵なしで仰け反りだけ見せる。 */

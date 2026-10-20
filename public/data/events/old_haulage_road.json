@@ -1,0 +1,41 @@
+{
+  "map": "old_haulage_road",
+  "events": [
+    {
+      "id": "案内看板_リッカ村",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [{ "type": "message", "talk": [{ "lines": ["リッカ村"] }], "style": "window" }]
+    },
+    {
+      "id": "立入看板_紫環災域",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [{ "type": "message", "talk": [{ "lines": ["立入禁止"] }], "style": "window" }]
+    }
+  ],
+  "mapMoves": [
+    {
+      "object": "obj_3",
+      "to": [
+        {
+          "map": "forest_mansion",
+          "at": { "x": -9, "y": 0, "z": 26 },
+          "px": { "x": 0, "z": -6 },
+          "face": "up"
+        }
+      ]
+    },
+    {
+      "object": "obj_1",
+      "to": [
+        {
+          "map": "rikka_village",
+          "at": { "x": -4, "y": 0, "z": 25 },
+          "px": { "x": 0, "z": -7 },
+          "face": "up"
+        }
+      ]
+    }
+  ]
+}

@@ -192,16 +192,45 @@ export function createCuePlayer() {
     shot: createCameraShots().frame(),
     illustrations: [],
   });
+  /**
+   * 戦闘のあいだ控えておく保持の状態（2026-10-20 / GS-263）。戦闘のカメラは舞台の構図だけで決めるので、
+   * 戦闘の前に保持していた演出は外し、戦闘の後に戻す。
+   */
+  let suspended: { current: CameraCue | null; before: CameraCueState | null; last: CameraCueState | null } | null = null;
   return {
     play(cue: CameraCue) {
+      // 戦闘中は流さない（戦闘のカメラへ重ねない）。
+      if (suspended) return;
       before = last ? { ...last } : null;
       current = structuredClone(cue);
       time = 0;
       paused = false;
     },
+    /** 控えも捨てる（ゲームオーバー・マップの読み込み）。 */
     stop() {
       current = null; before = null; last = null;
       time = 0; paused = false;
+      suspended = null;
+    },
+    /**
+     * 演出を外して控える。**残すのは保持の状態だけ**——保持の演出はそのまま、
+     * 流れている途中の非保持の演出（揺れなど）は捨てて、戻る先（直前の保持の状態）を残す。
+     */
+    suspend() {
+      if (suspended) return;
+      suspended = current?.hold
+        ? { current, before, last }
+        : { current: null, before: null, last: current ? before : last };
+      current = null; before = null; last = null;
+      time = 0; paused = false;
+    },
+    /** 控えた状態へ戻す。保持の演出は**終わった時点の状態**で戻す（流し直さない）。 */
+    resume() {
+      if (!suspended) return;
+      ({ current, before, last } = suspended);
+      suspended = null;
+      time = current?.duration ?? 0;
+      paused = false;
     },
     pause(value: boolean) { paused = value; },
     seek(ms: number) { time = Math.max(0, Math.min(ms, current?.duration ?? 0)); paused = true; },

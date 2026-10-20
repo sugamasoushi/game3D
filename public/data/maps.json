@@ -2,7 +2,7 @@
   "information": "マップの id（英小文字の名前。ファイル名は <id>.json で、file に同じ名前を書く）→ そのマップの音・戦闘設定。MapMove などの行き先はこの id で書く。マップ内に BattleStage=true の点があれば3D舞台となり、battleStage.formationsの候補から戦闘ごとに隊形を選ぶ。イベント戦闘は命令のformationで上書きできる。無ければ battleField の2D背景（未指定時は hill）を使う。",
   "maps": {
     "home": {
-      "file": "home.json",
+      "file": "ashcrown/home.json",
       "bgm": "field",
       "time": {
         "fallback": {
@@ -11,8 +11,8 @@
         }
       }
     },
-    "home_forest": {
-      "file": "home_forest.json",
+    "ashcrown": {
+      "file": "ashcrown/ashcrown.json",
       "bgm": "field",
       "bgs": "waterfall",
       "battleField": "hill",
@@ -28,21 +28,21 @@
       }
     },
     "forest_mansion": {
-      "file": "forest_mansion.json",
+      "file": "forest_mansion/forest_mansion.json",
       "battleField": "forestMansion",
       "bgm": "field"
     },
     "forest_cave": {
-      "file": "forest_cave.json",
+      "file": "forest_mansion/forest_cave.json",
       "battleField": "forest",
       "bgm": "The_Cave"
     },
-    "cave": {
-      "file": "cave.json",
+    "blue_echo_cave": {
+      "file": "forest_mansion/blue_echo_cave.json",
       "bgm": "The_Cave"
     },
-    "next_field": {
-      "file": "next_field.json",
+    "gald_peaks_road": {
+      "file": "forest_mansion/gald_peaks_road.json",
       "bgm": "field"
     },
     "gensou": {
@@ -50,11 +50,14 @@
       "battleField": "hill",
       "bgm": "Crystal_Cave"
     },
-    "foothill_village": {
-      "file": "foothill_village.json"
+    "rikka_village": {
+      "file": "rikka/rikka_village.json"
     },
     "purple_ring_wastes": {
-      "file": "purple_ring_wastes.json"
+      "file": "violet_scar/purple_ring_wastes.json"
+    },
+    "old_haulage_road": {
+      "file": "forest_mansion/old_haulage_road.json"
     }
   }
 }

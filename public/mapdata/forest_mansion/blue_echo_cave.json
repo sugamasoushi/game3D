@@ -334,17 +334,17 @@
   "editor": {
     "camera": {
       "target": [
-        0.47527062913489093,
-        1.6095861383589165,
-        -3.4830850139094203
+        -0.20311869699782825,
+        2.566332025971531,
+        -0.0729737128877801
       ],
       "yaw": 0,
       "pitch": -19,
-      "distance": 10.048689722320056,
+      "distance": 16.021680131846743,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "オブジェクトレイヤー_2",
+    "activeLayer": "decoration",
     "brush": {
       "shape": "floor",
       "rotation": 0,
@@ -429,7 +429,7 @@
         {
           "name": "Hit",
           "type": "string",
-          "value": "nowall"
+          "value": "block"
         }
       ],
       "batches": [
@@ -5406,6 +5406,29 @@
             [
               0,
               0
+            ]
+          ]
+        },
+        {
+          "id": "obj_2",
+          "name": "戦闘位置",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "BattleStage",
+              "type": "boolean",
+              "value": true
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              0.5,
+              -1.5
             ]
           ]
         },

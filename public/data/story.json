@@ -1,12 +1,51 @@
 {
   "information": "物語の段階（GS-254）。並びがそのまま順番。記録は最後に済ませた段階の id だけを持つ。イベントの条件は { \"story\": \"<段階>\", \"is\": \"next\" | \"done\" | \"notDone\" }（next は次に起きるのがこの段階）、済ませる命令は { \"type\": \"story\", \"done\": \"<段階>\" }（先へ進めるだけ）。label はエディタに出す名前で、ゲームは読まない。本筋と関係ない覚えはスイッチで持つ。",
+  "chapters": [
+    {
+      "from": "breakfast",
+      "label": "序章 出会い"
+    },
+    {
+      "from": "short_story_001",
+      "label": "１章　旅立ちに備えて"
+    }
+  ],
   "steps": [
-    { "id": "breakfast", "label": "朝ごはん・狩りに行く" },
-    { "id": "leave_home", "label": "森でじいちゃんと話す（または散策に出る）" },
-    { "id": "meet_lamy", "label": "屋敷でラミィに会う" },
-    { "id": "mansion_return", "label": "屋敷から帰る" },
-    { "id": "lamy_visits", "label": "ラミィが家に押しかける" },
-    { "id": "cave_hunt", "label": "洞窟で狩り" },
-    { "id": "ending", "label": "旅立ちを決める（クリア）" }
+    {
+      "id": "breakfast",
+      "label": "朝ごはん・狩りに行く"
+    },
+    {
+      "id": "leave_home",
+      "label": "森でじいちゃんと話す（または散策に出る）"
+    },
+    {
+      "id": "meet_lamy",
+      "label": "屋敷でラミィに会う"
+    },
+    {
+      "id": "mansion_return",
+      "label": "屋敷から帰る"
+    },
+    {
+      "id": "lamy_visits",
+      "label": "ラミィが家に押しかける"
+    },
+    {
+      "id": "cave_hunt",
+      "label": "洞窟で狩り"
+    },
+    {
+      "id": "ending",
+      "label": "旅立ちを決める（クリア）"
+    },
+    {
+      "id": "short_story_001",
+      "label": "道中話"
+    },
+    {
+      "id": "commotion_entering_village",
+      "label": "ラミィ入村騒ぎ"
+    }
   ]
 }

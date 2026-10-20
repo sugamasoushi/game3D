@@ -70,7 +70,7 @@
       "commands": [
         {
           "type": "scroll",
-          "speed": 500,
+          "speed": 800,
           "dim": 0.5,
           "lines": [
             "昔々（？）",
@@ -241,7 +241,7 @@
             { "who": "lamy", "lines": ["お～！腕が鳴るね！"] }
           ]
         },
-        { "type": "message", "talk": [{ "lines": ["ラミィが仲間になった！！"] }], "hold": 1500 },
+        { "type": "telop", "lines": ["ラミィが仲間になった！！"], "dim": 0.5, "click": false, "hold": 1000 },
         { "type": "party", "op": "join", "who": "lamy" },
         {
           "type": "message",
@@ -271,7 +271,7 @@
         { "type": "fade", "to": "in", "ms": 400 },
         { "type": "shot", "id": "pan01" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
         {
           "type": "message",
           "talk": [
@@ -379,7 +379,7 @@
   "mapMoves": [
     {
       "object": "obj_3",
-      "to": [{ "map": "home_forest", "at": { "x": 6, "y": 10, "z": -1 }, "face": "down" }]
+      "to": [{ "map": "ashcrown", "at": { "x": 6, "y": 10, "z": -1 }, "face": "down" }]
     }
   ]
 }

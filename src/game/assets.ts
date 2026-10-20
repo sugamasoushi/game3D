@@ -11,10 +11,13 @@ export function assetUrl(path: string): string {
   return `${BASE}/${path.replace(/^\/+/, '')}`;
 }
 
-/** マップ JSON。名前は拡張子まで（`home.json`）。 */
+/**
+ * マップ JSON。名前は `public/mapdata/` からの道で拡張子まで（`home.json`・`village/home.json`）。
+ * フォルダ分け（GS-257）があるので、`/` は区切りのまま残して 1 段ずつ符号化する。
+ */
 export function mapUrl(name: string): string {
-  return assetUrl(`mapdata/${encodeURIComponent(name)}`);
+  return assetUrl(`mapdata/${name.split('/').map(encodeURIComponent).join('/')}`);
 }
 
-/** 最初に開くマップ。旧作の「家」に当たる（GS-02）。 */
-export const START_MAP = 'home.json';
+/** 最初に開くマップの id（GS-02）。ファイルは台帳（`maps.json`）から引く——フォルダへ移しても変えなくてよい（GS-257）。 */
+export const START_MAP_ID = 'home';

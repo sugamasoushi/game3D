@@ -78,6 +78,11 @@ const ID_PROPERTY = 'Id';
  * 宝箱もここに置く（GS-233）。見た目はタイルのプレハブで、開け閉めはイベントの「レイヤーの出し入れ」。
  */
 const CLICK_LAYER = 'clickevent';
+/**
+ * 物から呼ぶイベント（イベントエディタの「その他」）を置くレイヤー名（GS-264）。EVENT と同じく、`Event` が無ければ
+ * **`Id` がイベント id**。踏む（`touch`）か、触れて決定キー（`action`）かはイベントの `trigger` が決める。
+ */
+const OTHER_LAYER = 'otherevent';
 /** 行き先マップを書くプロパティ名。値は `gensou,next_field` のようにカンマ区切りのマップ id（GS-211 / GS-254）。 */
 const MAP_MOVE_PROPERTY = 'MapMove';
 /**
@@ -148,15 +153,16 @@ export function readEventSpots(map: MapDef): EventSpot[] {
     const layerName = (layer.name ?? '').trim().toLowerCase();
     const eventLayer = layerName === EVENT_LAYER;
     const clickLayer = layerName === CLICK_LAYER;
+    const otherLayer = layerName === OTHER_LAYER;
     const moveLayer = inMapMoveLayer(map, layer);
     for (const object of layer.objects ?? []) {
       if ((object.plane ?? 'xz') !== 'xz') continue;
       // キャラクター（NPC。2026-10-08 に `Npc` から変えた）は踏み台にしない。
       // NPC の `Event` は「話しかけたとき」に動くもので、床の起動場所ではない。
       if (textOf(object.properties, CHARACTER_PROPERTY)) continue;
-      // `Event` が在ればそれ。無ければ EVENT / CLICKEVENT レイヤーの物は **`Id`**（GS-233）。
+      // `Event` が在ればそれ。無ければ EVENT / CLICKEVENT / OTHEREVENT レイヤーの物は **`Id`**（GS-233 / GS-264）。
       const owner = textOf(object.properties, ID_PROPERTY);
-      const event = textOf(object.properties, EVENT_PROPERTY) || (eventLayer || clickLayer ? owner : '');
+      const event = textOf(object.properties, EVENT_PROPERTY) || (eventLayer || clickLayer || otherLayer ? owner : '');
       // 点は入口にしない（着地の目印。`default` も MAPMOVE に置く）。
       const mapMoves =
         moveLayer && object.kind !== 'point' ? parseMapMoves(textOf(object.properties, MAP_MOVE_PROPERTY)) : [];

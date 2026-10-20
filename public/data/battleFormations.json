@@ -1,248 +1,26 @@
 {
   "version": 1,
-  "information": "3D戦闘舞台の初期隊形。BattleStageを原点とし、acrossはカメラから見た横、depthは手前が正、heightは床からの高さ（すべてマス）。人数ごとの配列順が party:1 / enemy:1 などの対象番号になる。通常戦闘はmaps.jsonの候補からランダム選択、イベント戦闘はbattle命令のformationを優先し、候補なしではdefaultを使う。standardは配置方式検討中の仮データ。",
+  "information": "3D戦闘舞台の隊形（2026-10-19 から人数によらず共通の並び。BPE-30）。party / enemy は 6 人までの枠の並びで、N 人のときは前から N 個を使い、center が偽でなければ横の真ん中へ寄せる。col はカメラから見た横（右が正）、row は奥（手前が正）の戦闘のマスの番号、height は床（地形の起伏に沿う）からの高さ（浮かせるときだけ）。マスの大きさは battleStages.json の grid（マップごと）。前後関係は row（手前ほど後に描く）、同じ列なら並び順。並びの順が party:1 / enemy:1 などの対象番号になる。通常戦闘はmaps.jsonの候補からランダム選択、イベント戦闘はbattle命令のformationを優先し、候補なしではdefaultを使う。編集は戦闘演出エディタの「舞台」タブ。",
   "default": "standard",
   "formations": {
     "standard": {
-      "name": "仮・横一列",
-      "party": {
-        "1": [
-          {
-            "across": 0,
-            "depth": 3,
-            "height": 0
-          }
-        ],
-        "2": [
-          {
-            "across": -1.3,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 1.3,
-            "depth": 3,
-            "height": 0
-          }
-        ],
-        "3": [
-          {
-            "across": -3,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 0,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 3,
-            "depth": 3,
-            "height": 0
-          }
-        ],
-        "4": [
-          {
-            "across": -3.9,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": -1.3,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 1.3,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 3.9,
-            "depth": 3,
-            "height": 0
-          }
-        ],
-        "5": [
-          {
-            "across": -5.2,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": -2.6,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 0,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 2.6,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 5.2,
-            "depth": 3,
-            "height": 0
-          }
-        ],
-        "6": [
-          {
-            "across": -6.5,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": -3.9,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": -1.3,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 1.3,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 3.9,
-            "depth": 3,
-            "height": 0
-          },
-          {
-            "across": 6.5,
-            "depth": 3,
-            "height": 0
-          }
-        ]
-      },
-      "enemy": {
-        "1": [
-          {
-            "across": 0,
-            "depth": -3,
-            "height": 0
-          }
-        ],
-        "2": [
-          {
-            "across": -1.1,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 1.1,
-            "depth": -3,
-            "height": 0
-          }
-        ],
-        "3": [
-          {
-            "across": -2.2,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 0,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 2.2,
-            "depth": -3,
-            "height": 0
-          }
-        ],
-        "4": [
-          {
-            "across": -3.3,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": -1.1,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 1.1,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 3.3,
-            "depth": -3,
-            "height": 0
-          }
-        ],
-        "5": [
-          {
-            "across": -4.4,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": -2.2,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 0,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 2.2,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 4.4,
-            "depth": -3,
-            "height": 0
-          }
-        ],
-        "6": [
-          {
-            "across": -5.5,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": -3.3,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": -1.1,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 1.1,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 3.3,
-            "depth": -3,
-            "height": 0
-          },
-          {
-            "across": 5.5,
-            "depth": -3,
-            "height": 0
-          }
-        ]
-      }
+      "party": [
+        { "col": -2, "row": 3 },
+        { "col": 0, "row": 3 },
+        { "col": 2, "row": 3 },
+        { "col": -2, "row": 4 },
+        { "col": 0, "row": 4 },
+        { "col": 2, "row": 4 }
+      ],
+      "enemy": [
+        { "col": -2, "row": -3 },
+        { "col": 0, "row": -3 },
+        { "col": 2, "row": -3 },
+        { "col": -2, "row": -4 },
+        { "col": 0, "row": -4 },
+        { "col": 2, "row": -4 }
+      ],
+      "name": "規定"
     }
   }
 }

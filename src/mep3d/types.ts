@@ -20,6 +20,12 @@ export type Shape =
    */
   | 'floor_ramp_n'
   | 'floor_ramp_s'
+  /** 東・北へ上る坂をつなぐ北東の隅坂と、その左右反転（西・北）の北西の隅坂。 */
+  | 'floor_ramp_corner_ne'
+  | 'floor_ramp_corner_nw'
+  /** 逆三角形。上辺の対角線から南西／南東の低い頂点へ下る三角面。 */
+  | 'floor_ramp_corner_ne_inverse'
+  | 'floor_ramp_corner_nw_inverse'
   /**
    * 2 マスにまたがる板（緩い坂）。2 マスで 1 マス上がる（DEC-93）。
    * `lo` が低いほう、`hi` が高いほう。既定は東へ上る。向きは R で回す。
@@ -403,6 +409,11 @@ export interface MaterialDef {
   transparent: boolean;
   side: 'front' | 'double';
   depthWrite: boolean;
+  /**
+   * カラーの面の不透明度（0..1。3D Map Editor DEC-499）。`transparent` が立っているときだけ効く。
+   * 省くと 1。チップの面には効かない（チップは絵のアルファのまま）。
+   */
+  opacity?: number;
 }
 
 export interface AnimationDef {
@@ -825,11 +836,10 @@ export interface PropertyDef {
 }
 
 /**
- * `tile` は景色。`object` は自由形状。`group` と `prefab` は入れ子。
- * `prefab` は中身を「1 個の物」として扱う（影は 1 枚のシルエットにまとまる。DEC-131）。
- */
-/**
- * レイヤーの種類。`model` は**3D モデル**（DEC-288）——読み込んだ 3D を
+ * レイヤーの種類。`tile` は景色。`object` は自由形状。`group` は入れ子。
+ * プレハブを置いたときもグループに入る（入れ物の `prefab` はやめた）。
+ *
+ * `model` は**3D モデル**（DEC-288）——読み込んだ 3D を
  * **1 枚に 1 つ**置くだけで、セルもオブジェクトも持たない（DEC-292）。
  * 見た目だけなので当たり判定にも出ない。
  *
@@ -837,11 +847,11 @@ export interface PropertyDef {
  * オブジェクトレイヤーと同じで、**束ねる仕組みはレイヤーに一本化**してある——
  * 光源の側に別のグループを持たせない。
  */
-export type LayerKind = 'tile' | 'object' | 'group' | 'prefab' | 'model' | 'light';
+export type LayerKind = 'tile' | 'object' | 'group' | 'model' | 'light';
 
 /** 入れ物のレイヤー。自分ではチップもオブジェクトも持たない。 */
 export function isContainerKind(kind: LayerKind): boolean {
-  return kind === 'group' || kind === 'prefab';
+  return kind === 'group';
 }
 
 /** オブジェクトの形状。点は形を変えない。四角・円は軸平行。 */

@@ -1,5 +1,5 @@
 {
-  "map": "home_forest",
+  "map": "ashcrown",
   "events": [
     {
       "id": "leave_home",
@@ -12,7 +12,7 @@
         {
           "type": "place",
           "target": "npc:grandpaNpc",
-          "at": { "x": -6, "y": 10, "z": -1 },
+          "at": { "x": "player", "y": 10, "z": 0 },
           "face": "left"
         },
         {
@@ -79,11 +79,9 @@
           "type": "move",
           "target": "npc:grandpaNpc",
           "to": { "x": 6, "y": 10, "z": -1 },
-          "first": "leftRight",
-          "wait": false
+          "first": "leftRight"
         },
         { "type": "shot", "id": "event010201_camera02" },
-        { "type": "wait", "ms": 600 },
         { "type": "hide", "target": "npc:grandpaNpc" },
         { "type": "story", "done": "leave_home" }
       ],

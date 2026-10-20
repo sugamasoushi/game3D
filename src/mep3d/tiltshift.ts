@@ -90,7 +90,11 @@ interface TiltShiftPass {
   /** ぼけが実際に効いているか。 */
   readonly enabled: boolean;
   /** シーンを描く。オンならぼけを通す。 */
-  render(renderer: WebGLRenderer, scene: Scene, camera: Camera): void;
+  /**
+   * 描く。`sharpLayer` を渡すと、その層（three.js の `layers`）の物は**ぼかさない**——ほかを描いてぼかした後、
+   * 深度は残したまま重ねて描く（地形に隠れる見え方は保つ）。ゲームの戦闘の板が使う（2026-10-19）。
+   */
+  render(renderer: WebGLRenderer, scene: Scene, camera: Camera, sharpLayer?: number): void;
   /** 描画先をキャンバスに合わせる。リサイズから呼ぶ。 */
   setSize(width: number, height: number, pixelRatio?: number): void;
   /** 設定だけ差し替える。パスは組み直さない。 */
@@ -127,6 +131,9 @@ export function createTiltShiftPass(settings?: CameraFxDef): TiltShiftPass {
     toneMapped: false,
   });
 
+  // 画面いっぱいの板。深度は見ず書かない（ぼかさない層を後から重ねるとき、残した深度を壊さない）。
+  material.depthTest = false;
+  material.depthWrite = false;
   const quad = new Mesh(new PlaneGeometry(2, 2), material);
   quad.frustumCulled = false;
   const quadScene = new Scene();
@@ -182,19 +189,37 @@ export function createTiltShiftPass(settings?: CameraFxDef): TiltShiftPass {
       veilMaterial.uniforms.veilAlpha.value = veilAlpha;
     },
 
-    render(renderer: WebGLRenderer, scene: Scene, camera: Camera) {
+    render(renderer: WebGLRenderer, scene: Scene, camera: Camera, sharpLayer?: number) {
       const size = renderer.getSize(new Vector2());
       if (size.x !== width || size.y !== height || renderer.getPixelRatio() !== ratio) {
         this.setSize(size.x, size.y, renderer.getPixelRatio());
       }
 
       renderer.setRenderTarget(null);
+      const mask = camera.layers.mask;
+      if (sharpLayer !== undefined) camera.layers.disable(sharpLayer);
       renderer.render(scene, camera);
       if (fx.tilt) {
         copyCanvasToTarget(renderer, target);
         renderer.setRenderTarget(null);
+        // ぼかさない層を重ねるときは、深度を消さずに残す（地形に隠れるように）。
+        const clearedQuad = renderer.autoClear;
+        if (sharpLayer !== undefined) renderer.autoClear = false;
         renderer.render(quadScene, quadCamera);
+        renderer.autoClear = clearedQuad;
       }
+      if (sharpLayer !== undefined) {
+        const clearedSharp = renderer.autoClear;
+        renderer.autoClear = false;
+        camera.layers.set(sharpLayer);
+        // 背景（空の絵など）は 1 回目に描いてある。2 回目にも描くと、ぼかした絵を上から塗りつぶしてしまう。
+        const background = scene.background;
+        scene.background = null;
+        renderer.render(scene, camera);
+        scene.background = background;
+        renderer.autoClear = clearedSharp;
+      }
+      camera.layers.mask = mask;
       if (veilAlpha <= 0.002) return;
       // **消さずに重ねる**。`render` は既定で画面を消すので、その間だけ止める。
       const cleared = renderer.autoClear;

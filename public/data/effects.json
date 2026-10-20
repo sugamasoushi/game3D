@@ -3,7 +3,7 @@
   "effects": {
     "normal": {
       "name": "打撃",
-      "image": "pipo-btleffect002.png",
+      "image": "Effects/pipo-btleffect002.png",
       "frames": [0, 8],
       "fps": 30,
       "scale": [1, 2],
@@ -14,7 +14,7 @@
     },
     "fire": {
       "name": "火の玉",
-      "image": "flames32.png",
+      "image": "Effects/flames32.png",
       "frames": [0, 7],
       "fps": 10,
       "scale": [1, 2],
@@ -25,7 +25,7 @@
     },
     "wind": {
       "name": "風の刃",
-      "image": "pipo-btleffect161.png",
+      "image": "Effects/pipo-btleffect161.png",
       "frames": [0, 9],
       "fps": 30,
       "ms": 400,

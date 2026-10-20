@@ -5706,7 +5706,7 @@
       "fogFar": 91,
       "fogMax": 0.68,
       "skyGain": 1,
-      "backdrop": "rikka-village-morning-wide.png"
+      "backdrop": "rikka/rikka-village-morning-wide.png"
     },
     {
       "id": "day",
@@ -5733,7 +5733,7 @@
       "fogFar": 91,
       "fogMax": 0.68,
       "skyGain": 1,
-      "backdrop": "rikka-village-day-wide.png"
+      "backdrop": "rikka/rikka-village-day-wide.png"
     },
     {
       "id": "evening",
@@ -5760,7 +5760,7 @@
       "fogFar": 91,
       "fogMax": 0.68,
       "skyGain": 1,
-      "backdrop": "rikka-village-evening-wide.png"
+      "backdrop": "rikka/rikka-village-evening-wide.png"
     },
     {
       "id": "night",
@@ -5787,7 +5787,7 @@
       "fogFar": 91,
       "fogMax": 0.68,
       "skyGain": 1,
-      "backdrop": "rikka-village-night-wide.png"
+      "backdrop": "rikka/rikka-village-night-wide.png"
     }
   ],
   "camera": {
@@ -5796,7 +5796,7 @@
   },
   "view": {
     "backdrop": {
-      "src": "exec-23153c5e-f3b2-47e3-bf92-8a09985b378c.png",
+      "src": "rikka/rikka-village-day-wide.png",
       "y": -18.5,
       "shape": "cylinder",
       "count": 3,
@@ -5806,9 +5806,9 @@
   "editor": {
     "camera": {
       "target": [
-        -3.4900240319159814,
-        2.109003373384536,
-        24.43151067964126
+        -4.538471216090112,
+        2.1090033733845317,
+        7.315623983865148
       ],
       "yaw": 0,
       "pitch": -20,
@@ -27823,7 +27823,7 @@
     {
       "id": "wood_small_house",
       "name": "道具屋",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "建物",
       "visible": true,
       "opacity": 1,
@@ -27833,7 +27833,7 @@
     {
       "id": "wood_small_house_2",
       "name": "武器屋",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "建物",
       "visible": true,
       "opacity": 1,
@@ -27843,7 +27843,7 @@
     {
       "id": "wood_small_house_3",
       "name": "民家",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "建物",
       "visible": true,
       "opacity": 1,
@@ -27853,7 +27853,7 @@
     {
       "id": "wood_house_3",
       "name": "宿屋",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "建物",
       "visible": true,
       "opacity": 1,
@@ -27863,7 +27863,7 @@
     {
       "id": "wood_house",
       "name": "肉屋",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "建物",
       "visible": true,
       "opacity": 1,
@@ -27873,7 +27873,7 @@
     {
       "id": "big_house",
       "name": "村長",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "建物",
       "visible": true,
       "opacity": 1,
@@ -27883,7 +27883,7 @@
     {
       "id": "wood_house_2",
       "name": "民家",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "建物",
       "visible": true,
       "opacity": 1,
@@ -30857,7 +30857,7 @@
     {
       "id": "workdesk",
       "name": "WorkDesk",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "グループ_2",
       "visible": true,
       "opacity": 1,
@@ -30977,7 +30977,7 @@
     {
       "id": "workdesk_2_2",
       "name": "WorkDesk 2",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "グループ_2",
       "visible": true,
       "opacity": 1,
@@ -31092,7 +31092,7 @@
     {
       "id": "workdesk_4",
       "name": "WorkDesk 4",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "グループ_2",
       "visible": true,
       "opacity": 1,
@@ -31207,7 +31207,7 @@
     {
       "id": "workdesk_5",
       "name": "WorkDesk 5",
-      "kind": "prefab",
+      "kind": "group",
       "parent": "グループ_2",
       "visible": true,
       "opacity": 1,
@@ -44522,7 +44522,7 @@
       "objects": [
         {
           "id": "obj_1",
-          "name": "0106",
+          "name": "旧運搬道",
           "kind": "rect",
           "visible": true,
           "guides": true,
@@ -44531,7 +44531,7 @@
             {
               "name": "MapMove",
               "type": "string",
-              "value": "next_field"
+              "value": "old_haulage_road"
             }
           ],
           "space": "solid",

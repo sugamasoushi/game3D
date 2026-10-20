@@ -1,38 +1,65 @@
 {
   "information": "スプライトシート（コマに区切って使う画像）の台帳（GS-121）。キーは assets/spritesheet/ の中のファイル名。frameWidth / frameHeight は 1 コマの大きさ（px）、columns は横のコマ数（これで折り返す）、rows は縦の行数。footPx は足元の補正（足元が 1 コマの下端から何画素上にあるか。人の絵として立てるときだけ絵をそのぶん下げる。GS-52。省略は 0）。キャラの立ち姿（actors.json）も攻撃の絵（effects.json）も同じこの台帳を見る。台帳エディタの「スプライトシート」で編集する。",
   "sheets": {
-    "adult_female_adventurer_01.png": {
-      "frameWidth": 64,
-      "frameHeight": 64,
-      "columns": 3,
-      "rows": 4,
-      "footPx": 4
-    },
-    "adult_female_adventurer_02.png": {
-      "frameWidth": 64,
-      "frameHeight": 64,
-      "columns": 3,
-      "rows": 4,
-      "footPx": 4
-    },
-    "adult_male_swordsman_male_01.png": {
-      "frameWidth": 64,
-      "frameHeight": 64,
-      "columns": 3,
-      "rows": 4,
-      "footPx": 4
-    },
-    "bat.png": {
+    "Animals/bat.png": {
       "frameWidth": 32,
       "frameHeight": 32,
       "columns": 3,
       "rows": 4
     },
-    "blackCat.png": {
+    "Animals/blackCat.png": {
       "frameWidth": 32,
       "frameHeight": 32,
       "columns": 3,
       "rows": 4
+    },
+    "Animals/chicken_walk.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": 4,
+      "footPx": 2
+    },
+    "Animals/whiteCat.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 3,
+      "rows": 4
+    },
+    "Battler/adult_female_adventurer_01.png": {
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 4
+    },
+    "Battler/adult_female_adventurer_02.png": {
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 4
+    },
+    "Battler/adult_male_swordsman_male_01.png": {
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 4
+    },
+    "Battler/elderly_male_warrior_01.png": {
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 4
+    },
+    "Battler/soldier_junior.png": {
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 4
     },
     "bubble.png": {
       "frameWidth": 32,
@@ -40,18 +67,23 @@
       "columns": 3,
       "rows": 1
     },
-    "Chests.png": {
+    "Effects/flames32.png": {
       "frameWidth": 32,
-      "frameHeight": 32,
+      "frameHeight": 48,
       "columns": 4,
       "rows": 3
     },
-    "chicken_walk.png": {
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "columns": 4,
-      "rows": 4,
-      "footPx": 2
+    "Effects/pipo-btleffect002.png": {
+      "frameWidth": 120,
+      "frameHeight": 120,
+      "columns": 9,
+      "rows": 1
+    },
+    "Effects/pipo-btleffect161.png": {
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "columns": 5,
+      "rows": 2
     },
     "elderly_male_ghost_01.png": {
       "frameWidth": 64,
@@ -60,223 +92,197 @@
       "rows": 4,
       "footPx": 4
     },
-    "enemy02.png": {
+    "elderly_village_chief_01.png": {
+      "frameWidth": 64,
+      "frameHeight": 64,
+      "columns": 3,
+      "rows": 4
+    },
+    "FieldObjects/Chests.png": {
+      "frameWidth": 32,
+      "frameHeight": 32,
+      "columns": 4,
+      "rows": 3
+    },
+    "NormalEnemy/enemy02.png": {
       "frameWidth": 32,
       "frameHeight": 32,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "flames32.png": {
-      "frameWidth": 32,
-      "frameHeight": 48,
-      "columns": 4,
-      "rows": 3
+    "NormalEnemy/GreatBear.png": {
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "columns": 3,
+      "rows": 4,
+      "footPx": 12
     },
-    "lamy_01.png": {
+    "PlayerParty/lamy_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "lamy_02.png": {
+    "PlayerParty/lamy_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 3
     },
-    "lamy_32_40.png": {
+    "PlayerParty/lamy_32_40.png": {
       "frameWidth": 32,
       "frameHeight": 40,
       "columns": 3,
       "rows": 4
     },
-    "meina_01.png": {
+    "PlayerParty/meina_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "meina_02.png": {
+    "PlayerParty/meina_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "meina_03.png": {
+    "PlayerParty/meina_03.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "meina2_32_40.png": {
+    "PlayerParty/meina2_32_40.png": {
       "frameWidth": 32,
       "frameHeight": 40,
       "columns": 3,
       "rows": 4
     },
-    "pipo-btleffect002.png": {
-      "frameWidth": 120,
-      "frameHeight": 120,
-      "columns": 9,
-      "rows": 1
-    },
-    "pipo-btleffect161.png": {
-      "frameWidth": 192,
-      "frameHeight": 192,
-      "columns": 5,
-      "rows": 2
-    },
-    "whiteCat.png": {
-      "frameWidth": 32,
-      "frameHeight": 32,
-      "columns": 3,
-      "rows": 4
-    },
-    "child_female_01.png": {
+    "VillagePeople/child_female_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "child_female_02.png": {
+    "VillagePeople/child_female_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "child_female_03.png": {
+    "VillagePeople/child_female_03.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "child_female_04.png": {
+    "VillagePeople/child_female_04.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "child_male_01.png": {
+    "VillagePeople/child_male_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "child_male_02.png": {
+    "VillagePeople/child_male_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "child_male_03.png": {
+    "VillagePeople/child_male_03.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "child_male_04.png": {
+    "VillagePeople/child_male_04.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "elderly_female_01.png": {
+    "VillagePeople/elderly_female_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "elderly_female_cane_01.png": {
+    "VillagePeople/elderly_female_cane_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "elderly_male_01.png": {
+    "VillagePeople/elderly_male_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "elderly_male_cane_01.png": {
+    "VillagePeople/elderly_male_cane_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "elderly_male_cane_02.png": {
+    "VillagePeople/elderly_male_cane_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "elderly_male_warrior_01.png": {
+    "VillagePeople/middle_aunt_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "middle_aunt_01.png": {
+    "VillagePeople/middle_uncle_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "middle_uncle_01.png": {
+    "VillagePeople/teen_female_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
     },
-    "teen_female_01.png": {
+    "VillagePeople/teen_male_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
       "footPx": 4
-    },
-    "teen_male_01.png": {
-      "frameWidth": 64,
-      "frameHeight": 64,
-      "columns": 3,
-      "rows": 4,
-      "footPx": 4
-    },
-    "soldier_junior.png": {
-      "frameWidth": 64,
-      "frameHeight": 64,
-      "columns": 3,
-      "rows": 4,
-      "footPx": 4
-    },
-    "GreatBear.png": {
-      "frameWidth": 128,
-      "frameHeight": 128,
-      "columns": 3,
-      "rows": 4,
-      "footPx": 12
     }
   }
 }

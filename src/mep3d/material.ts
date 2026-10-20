@@ -699,6 +699,7 @@ vec2 chipFaceUv(vec2 raw) {
 const fragmentShader = /* glsl */ `
 uniform sampler2D map;
 uniform float alphaCutoff;
+uniform float solidAlpha;   // カラーの面の不透明度（DEC-499）。混ぜる材質だけ
 uniform vec3 tint;
 varying vec2 vChipUv;
 varying vec4 vChipRect;
@@ -807,6 +808,9 @@ void main() {
   float alpha = 1.0;
   if (vSolid > 0.5) {
     albedo = vSolidColor;
+    #ifdef MEP_BLEND
+      alpha = solidAlpha;
+    #endif
   } else {
     vec4 texel = texture2D(map, chipUv);
     if (texel.a < alphaCutoff) discard;
@@ -1061,6 +1065,8 @@ export function createTileMaterial(
       normalMapOn: { value: options.normalMap ? 1 : 0 },
       // 混ぜるなら**完全に透明な画素だけ**捨てる。0.5 で切ると薄い所が消えてしまう。
       alphaCutoff: { value: blend ? 0.004 : (def.alphaTest ?? 0.5) },
+      // カラーの面の不透明度（3D Map Editor DEC-499）。混ぜない材質では使わない。
+      solidAlpha: { value: Math.min(1, Math.max(0, def.opacity ?? 1)) },
       tint: { value: new Color(1, 1, 1) },
       atlasCols: { value: options.atlas.cols },
       atlasOrigin: { value: options.atlas.origin },

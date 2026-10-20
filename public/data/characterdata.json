@@ -1,17 +1,9 @@
 {
   "information": "キャラクターの台帳。キーはイベントの話者・マップの NPC（`Character`）・仲間（party.json）が指す名前。name は表示名、kind は player（仲間として操作する）か npc（操作しない）、sheet はフィールドの絵（画像のファイル名。spriteSheets.json と actors.json のキー。無ければフィールドに出ない。同じ画像を何人で使ってもよい）。icon / normal / talk / smile / unger / menu は会話とメニューの絵（拡張子なしの名前）。台帳エディタの「キャラクター」「イラスト」で編集する。",
-  "noName": {
-    "name": "noName",
-    "kind": "npc",
-    "icon": "",
-    "normal": "",
-    "smile": "",
-    "unger": ""
-  },
   "meina": {
     "name": "メイナ",
     "kind": "player",
-    "sheet": "meina_01.png",
+    "sheet": "PlayerParty/meina_01.png",
     "icon": "Icon_20250609",
     "normal": "20250609",
     "smile": "",
@@ -22,7 +14,7 @@
   "grandpa": {
     "name": "じいちゃん",
     "kind": "player",
-    "sheet": "chicken_walk.png",
+    "sheet": "Animals/chicken_walk.png",
     "icon": "Icon_20240622_鶏",
     "normal": "20240622_鶏",
     "smile": "",
@@ -31,7 +23,7 @@
   "lamy": {
     "name": "ラミィ",
     "kind": "player",
-    "sheet": "lamy_01.png",
+    "sheet": "PlayerParty/lamy_01.png",
     "icon": "Icon_20240908",
     "normal": "20240908",
     "smile": "20240907_3",
@@ -42,7 +34,7 @@
   "lamyNPC": {
     "name": "ラミア娘",
     "kind": "npc",
-    "sheet": "lamy_01.png",
+    "sheet": "PlayerParty/lamy_01.png",
     "icon": "Icon_20240908",
     "normal": "20240908",
     "smile": "20240907_3",
@@ -52,7 +44,7 @@
   "blackCat": {
     "name": "黒猫",
     "kind": "npc",
-    "sheet": "blackCat.png",
+    "sheet": "Animals/blackCat.png",
     "icon": "",
     "normal": "",
     "smile": "",
@@ -61,7 +53,7 @@
   "whiteCat": {
     "name": "白猫",
     "kind": "npc",
-    "sheet": "whiteCat.png",
+    "sheet": "Animals/whiteCat.png",
     "icon": "",
     "normal": "",
     "smile": "",
@@ -70,27 +62,27 @@
   "grandpaNpc": {
     "name": "じいちゃん",
     "kind": "npc",
-    "sheet": "chicken_walk.png"
+    "sheet": "Animals/chicken_walk.png"
   },
   "slime": {
     "name": "スライム",
     "kind": "npc",
-    "sheet": "enemy02.png"
+    "sheet": "NormalEnemy/enemy02.png"
   },
   "bat": {
     "name": "コウモリ",
     "kind": "npc",
-    "sheet": "bat.png"
+    "sheet": "Animals/bat.png"
   },
   "adult_female_adventurer_01": {
     "name": "女冒険者",
     "kind": "npc",
-    "sheet": "adult_female_adventurer_01.png"
+    "sheet": "Battler/adult_female_adventurer_01.png"
   },
   "adult_male_swordsman_male_01": {
     "name": "男冒険者",
     "kind": "npc",
-    "sheet": "adult_male_swordsman_male_01.png"
+    "sheet": "Battler/adult_male_swordsman_male_01.png"
   },
   "elderly_male_ghost_01": {
     "name": "謎のじいさん",
@@ -100,66 +92,71 @@
   "child_male_03": {
     "name": "男の子",
     "kind": "npc",
-    "sheet": "child_male_03.png"
+    "sheet": "VillagePeople/child_male_03.png"
   },
   "child_female_04": {
     "name": "女の子",
     "kind": "npc",
-    "sheet": "child_female_04.png"
+    "sheet": "VillagePeople/child_female_04.png"
   },
   "elderly_female_01": {
     "name": "おばあさん",
     "kind": "npc",
-    "sheet": "elderly_female_01.png"
+    "sheet": "VillagePeople/elderly_female_01.png"
   },
   "elderly_male_01": {
     "name": "おじいさん",
     "kind": "npc",
-    "sheet": "elderly_male_01.png"
+    "sheet": "VillagePeople/elderly_male_01.png"
   },
   "middle_aunt_01": {
     "name": "おばさん",
     "kind": "npc",
-    "sheet": "middle_aunt_01.png"
+    "sheet": "VillagePeople/middle_aunt_01.png"
   },
   "middle_uncle_01": {
     "name": "おじさん",
     "kind": "npc",
-    "sheet": "middle_uncle_01.png"
+    "sheet": "VillagePeople/middle_uncle_01.png"
   },
   "teen_female_01": {
     "name": "女性",
     "kind": "npc",
-    "sheet": "teen_female_01.png"
+    "sheet": "VillagePeople/teen_female_01.png"
   },
   "teen_male_01": {
     "name": "男性",
     "kind": "npc",
-    "sheet": "teen_male_01.png"
+    "sheet": "VillagePeople/teen_male_01.png"
   },
   "child_female_02": {
     "name": "女の子2",
     "kind": "npc",
-    "sheet": "child_female_01.png"
+    "sheet": "VillagePeople/child_female_01.png"
   },
   "child_male_01": {
     "name": "男の子2",
     "kind": "npc",
-    "sheet": "child_male_01.png"
+    "sheet": "VillagePeople/child_male_01.png"
   },
   "chiken": {
     "name": "鶏",
     "kind": "npc",
-    "sheet": "chicken_walk.png"
+    "sheet": "Animals/chicken_walk.png"
   },
   "soldier_junior": {
     "name": "兵士",
     "kind": "npc",
-    "sheet": "soldier_junior.png"
+    "sheet": "Battler/soldier_junior.png"
   },
   "GreatBear": {
     "name": "グレートベア",
     "kind": "npc",
-    "sheet": "GreatBear.png"
+    "sheet": "NormalEnemy/GreatBear.png"
+  },
+  "elderly_Vvllage_chief": {
+    "name": "村長",
+    "kind": "npc",
+    "sheet": "elderly_village_chief_01.png"
   }
 }

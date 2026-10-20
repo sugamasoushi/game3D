@@ -71,7 +71,7 @@
     },
     {
       "object": "obj_7",
-      "to": [{ "map": "next_field", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }]
+      "to": [{ "map": "gald_peaks_road", "at": { "x": 17, "y": 11, "z": 3 }, "face": "left" }]
     },
     {
       "object": "obj_1",

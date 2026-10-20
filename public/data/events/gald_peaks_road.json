@@ -1,5 +1,5 @@
 {
-  "map": "next_field",
+  "map": "gald_peaks_road",
   "events": [
     {
       "id": "village_blocked",
@@ -9,7 +9,7 @@
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         {
           "type": "message",
-          "talk": [{ "who": "meina", "lines": ["今は村に用は無いかな"] }],
+          "talk": [{ "who": "meina", "lines": ["う、崖になってる・・・", "通れそうにないな"] }],
           "style": "window"
         },
         { "type": "portrait", "slot": "right" },
@@ -21,13 +21,19 @@
   "mapMoves": [
     {
       "object": "obj_2",
-      "to": [{ "map": "forest_mansion", "at": { "x": -22, "y": 2, "z": 27 }, "px": { "x": 0, "y": 6, "z": 0 } }]
+      "to": [
+        {
+          "map": "forest_mansion",
+          "at": { "x": -22, "y": 2, "z": 27 },
+          "px": { "x": 0, "y": 6, "z": 0 }
+        }
+      ]
     },
     {
       "object": "obj_1",
       "to": [
         {
-          "map": "foothill_village",
+          "map": "rikka_village",
           "at": { "x": -4, "y": 0, "z": 25 },
           "px": { "x": 0, "z": 6 },
           "face": "up"

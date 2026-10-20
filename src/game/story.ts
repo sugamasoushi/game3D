@@ -20,8 +20,21 @@ export interface StoryStep {
   label: string;
 }
 
+/**
+ * 章（2026-10-19）。段階の並びを、続いた段階ごとに見出しで区切る。**エディタだけが読む**（台帳エディタの一覧・
+ * イベントエディタの選択肢）。ゲームは読まない。並びは変えないので、章を足しても消しても本筋の順番は同じ。
+ */
+export interface StoryChapter {
+  /** 章が始まる段階の id。次の章の `from` の前までがこの章。 */
+  from: string;
+  /** 章の名前。 */
+  label: string;
+}
+
 /** 台帳 `data/story.json`。 */
 export interface StoryFile {
+  /** 章。段階の並びの順に書く。最初の章より前の段階は章なし。 */
+  chapters?: StoryChapter[];
   steps: StoryStep[];
 }
 

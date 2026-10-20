@@ -67,6 +67,36 @@ export interface MapNpcDef {
    * 踏んでいるあいだ**うろつきは入らない**。
    */
   stepInPlace?: boolean;
+  /**
+   * **敵シンボルのお供**（GS-255）。マップの `EnemyData` を持つ 1 体にだけ書く。触って戦うとき、
+   * 1 行ずつ `chance` で抽選し、当たった敵を触った相手の後ろに並べる（触った相手が `enemy:1`）。
+   * フィールドに出るのはシンボル 1 体だけ。イベント戦闘（`battle` 命令）には効かない。
+   */
+  companions?: CompanionDef[];
+}
+
+/** お供 1 体ぶんの枠（GS-255）。 */
+export interface CompanionDef {
+  /** 敵の台帳（`enemies.json`）のキー。 */
+  enemy: string;
+  /** 出る見込み（0 より大きく 1 以下）。行ごとに別々に抽選する。 */
+  chance: number;
+}
+
+/** 敵は全部で何体まで（触った相手を入れて）。隊形の台帳の人数の枠（1〜6）に合わせる。 */
+export const MAX_FOES = 6;
+
+/**
+ * お供を抽選する（GS-255）。上の行から順に `random() < chance` で当たりを決め、当たった敵のキーを並べて返す。
+ * 触った相手と合わせて `MAX_FOES` を超える分は出さない。
+ */
+export function rollCompanions(list: CompanionDef[] | undefined, random: () => number = Math.random): string[] {
+  const out: string[] = [];
+  for (const one of list ?? []) {
+    if (out.length >= MAX_FOES - 1) break;
+    if (random() < one.chance) out.push(one.enemy);
+  }
+  return out;
 }
 
 /** `mapNpcs.json` の中身。マップの番号（`maps.json` のキー）→ 1 体の名前（`Id`）→ 設定。 */

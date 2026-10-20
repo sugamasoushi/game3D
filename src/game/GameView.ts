@@ -53,7 +53,7 @@ import {
 import { createInput } from './input';
 import { BODY_TALL_CELLS, BODY_WIDTH_HALF, createPlayer, type Facing, type Player } from './player';
 import { PartyTrail } from './partyTrail';
-import { actorSheet, loadActorBook, sheetOf } from './actors';
+import { actorSheet, loadActorBook } from './actors';
 import { characterBookReady, characterSheet, PLAYER_CHARACTER } from './characters';
 import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from './mapNpcs';
 import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
@@ -64,6 +64,7 @@ import { battlePartyFiguresShown } from './devMode';
 import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
+import { coreCells, overlaps, symbolTouching } from './symbolTouch';
 import { withoutHiddenLayers } from './hiddenLayers';
 import { backdropLoaded, preloadBackdrop } from '../mep3d/backdrop';
 import { readSwitchLayers, switchLayerShown, withStartHiddenBuilt } from './layerSwitch';
@@ -74,9 +75,11 @@ import {
   type CameraCueState,
   type CameraIllustrationSample,
 } from './cameraCues';
-import { createBattleCameraPlayer, type BattleCamera } from './battle/battleCamera';
+import { battleCameraPose, battleCameraStartView, createBattleCameraPlayer, type BattleCamera, type BattleCameraView } from './battle/battleCamera';
 import { entryForFile, mapKeyForFile, type MapEntry } from './mapIndex';
+import { mapUrl } from './assets';
 import { battleFormationSlots, chooseBattleFormation, stageFigureCells } from './battle/book';
+import { battleStageBook, battleStageSettingsOf, loadBattleStages, stageCellOffset, type BattleStageSettings } from './battle/stage';
 
 /** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
 const APPEAR_MS = 1200;
@@ -97,7 +100,7 @@ const PLAY_DISTANCE = 18;
 const SPAWN_OBJECT = 'default';
 /**
  * その人のフィールドの絵（画像のファイル名。2026-10-08）。キャラクターの `sheet` から引く。
- * 台帳に無い人・絵の無い人は空（`sheetOf` が既定の絵で出してコンソールに書く）。
+ * 台帳に無い人・絵の無い人は空（引けなければ NPC・仲間は置かず、先頭は透明で出してコンソールに書く）。
  */
 const sheetKeyOf = (who: string): string => characterSheet(who) ?? '';
 /**
@@ -106,11 +109,6 @@ const sheetKeyOf = (who: string): string => characterSheet(who) ?? '';
  */
 /** 話しかけられる高さの差（マス）。上の階に居る相手には届かせない。 */
 const TALK_RISE = 1.5;
-/**
- * 敵シンボルに触れたと見なす、体の端と相手のマスとの隙間（マス。GS-209）。
- * 当たりで止まると隙間はほぼ 0。浮動小数のずれと、うろつく相手が離れかけた瞬間のぶんだけ見る。
- */
-const SYMBOL_TOUCH = 0.1;
 /** これより下へ落ちたら出発点へ戻す（マス）。 */
 const VOID_DEPTH = -30;
 /** 遮りを調べる体の高さ（背丈に対する割合。DEC-252）。足元寄り・胸・頭。 */
@@ -174,6 +172,22 @@ export interface BattleStageSpec {
   formation: string;
 }
 
+/** 舞台の組み直し（`restageBattle`）の指定。書かない物は今のまま。 */
+export interface RestageOptions {
+  /** 見る隊形（`battleFormations.json` のキー）。 */
+  formation?: string;
+  /** 立たせる人数。今の面子の絵をくり返して使う（エディタで人数ごとの並びを見るため）。 */
+  party?: number;
+  enemy?: number;
+  /** 味方の板を見せる（ふだんは開発中のつまみ `battlePartyFigures` しだい）。 */
+  showParty?: boolean;
+}
+
+/** 組み直した結果。床の無い所に立った人（陣営と、その陣営の何人目か。0 始まり）。 */
+export interface RestageResult {
+  floorless: Array<{ side: 'party' | 'enemy'; index: number }>;
+}
+
 /**
  * 戦闘の舞台に立たせる 1 人（GS-87）。立ち絵の板として置く。
  * `height` はマス。0 なら絵の高さから決める（190px で 1 マス。上限・下限なし）。
@@ -199,7 +213,7 @@ export interface FigurePose {
   lunge?: boolean;
   /** 倒れた（うすく暗くなる）。 */
   gone?: boolean;
-  /** コマンドを選んでいる味方（画面の左端へ立つ。GS-103）。位置は `STAGE_COMMAND_FIGURE`。 */
+  /** コマンドを選んでいる味方（画面の左端へ立つ。GS-103）。位置は戦闘の舞台の台帳の `commandFigure`（`battle/stage.ts`）。 */
   commanding?: boolean;
 }
 
@@ -267,6 +281,18 @@ export interface GameView {
    * 舞台を片づけると止まる。返すのは長さ（ミリ秒）。
    */
   playBattleCamera(camera: BattleCamera): number;
+  /**
+   * 戦闘開始の構図を流す（2026-10-19 / BPE-30）。構図は戦闘の舞台の台帳（`battleStages.json`）のこのマップの `start`。
+   * 長さはマップの `CharacterScale` に合わせる。舞台が無い・構図が無ければ 0。
+   */
+  playBattleStart(): number;
+  /** 戦闘のマスの線を出す・消す（戦闘演出エディタの舞台タブ）。舞台が無ければ何もしない。 */
+  showStageCells(on: boolean): void;
+  /**
+   * 出している舞台を組み直す（戦闘演出エディタの舞台タブ。2026-10-19 / BPE-30）。下書きのマス・隊形を当て直して、
+   * 戦闘開始の構図を流し直す。舞台が無ければ偽。
+   */
+  restageBattle(options: RestageOptions): RestageResult | null;
   /** エディタが次のキーへ引き継ぐ、直前の演出状態。場面の既定値だけなら null。 */
   cameraCueState(): CameraCueState | null;
   seekCameraCue(ms: number): void;
@@ -330,9 +356,8 @@ export interface GameView {
    */
   npcInFront(): string | null;
   /**
-   * その NPC に触れているか（GS-209。敵シンボル用）。**マスで数える**——体が四角になって（GS-116）
-   * 相手のマスの手前で止まるので、中心どうしの距離では届かない。
-   * 同じマスに居るか、どちらかが相手の方を向いて体の端が相手のマスに接しているとき true。
+   * その NPC に触れているか（GS-209。敵シンボル用）。中身は `symbolTouch.ts`。
+   * 同じマスに居るか、どちらかが相手の方を向いて体の端が相手のマスに接しているとき true（角どうしでも）。
    * 隣の列をすれ違うだけ（向いていない）では触れない。
    */
   npcTouching(id: string): boolean;
@@ -405,6 +430,7 @@ export interface GameView {
   /**
    * 画面を押したマスを知らせる先（GS-167）。`null` で止める。
    * 高さは**主人公の立っている面**で見る（床の上のマスを拾う）。
+   * 待っている間は、マウスの下のマスに色を付ける（2026-10-20 / Event Editor EE-87）。
    */
   setCellPicker(handler: ((cell: { x: number; y: number; z: number }) => void) | null): void;
   /**
@@ -447,17 +473,18 @@ export interface GameView {
 }
 
 /**
- * 戦闘の舞台（GS-94 / GS-95）。場所は床向きの点の `BattleStage=true`、並びは `battleFormations.json`。
+ * 戦闘の舞台（GS-94 / GS-95）。場所は床向きの点の `BattleStage=true`、並びは `battleFormations.json`（戦闘のマスの番号）。
  * カメラの既定はフィールドのまま（水平角 0・仰角そのまま・寄せ 1）で、角度や寄せは
- * 戦闘開始のカメラ（`battle/battleCamera.ts` の `BATTLE_START_CAMERA`。GS-104）が決める。
+ * 戦闘開始の構図（戦闘の舞台の台帳 `battleStages.json`。マップごと。2026-10-19 / BPE-30）が決める。
  * 戦闘演出の割り当て（`battlePresentation.json`）は 2026-10-06 に消した。イベントの `battle.camera` は GS-98 で廃止。
  * マップ台帳の基準カメラ（`battleStage.camera`）は GS-97 で廃止した。
  * マップの点のプロパティ（旧 `StageYaw` など。GS-89）は廃止した。
  */
-/** 見る高さ（マス）。胸のあたり。 */
-const STAGE_LOOK_Y = 1.2;
-/** 見る先を敵の列から味方の列へどれだけ寄せるか（0＝敵、1＝味方。GS-90）。 */
-const STAGE_FOCUS_PARTY = 0.3;
+/*
+ * 舞台のカメラは**構図だけで決まる**（2026-10-19 / BPE-30。`battle/battleCamera.ts`）。BattleStage の床を基準に、
+ * 見る点（右・上・手前）とカメラの距離・高さ（マス）。旧 GS-90 の「敵の列と味方の列の間（敵寄り 3 割）を見る」と
+ * 見る高さ 1.2 マスは、既定の構図の値に置き直してやめた。
+ */
 /** 仰け反り・攻めかかり（旧作 `leanBack` / `attackTween` と同じ長さ）。 */
 const STAGE_LEAN_S = 0.2;
 const STAGE_LEAN_CELLS = 0.5;
@@ -472,24 +499,22 @@ const STAGE_LUNGE_GROW = 0.06;
 /** 呼吸（GS-88 / GS-90）。縦に 1.0% を 2.6 秒で 1 往復——「止まっていない」と分かる程度に留める。 */
 const STAGE_BREATH = 0.01;
 const STAGE_BREATH_S = 2.6;
-/**
- * コマンド選択中の味方の板を、画面の左端へ立たせる（GS-103）。**見た目はこの値で調整する。**
+/*
+ * コマンド選択中の味方の板を画面の左端へ立たせる値（GS-103）は、戦闘の舞台の台帳の `commandFigure`
+ * （`battle/stage.ts`。2026-10-19 / BPE-30。旧 `STAGE_COMMAND_FIGURE`）。マップごとに差し替えられる。
  * カメラから `depth` マス前の床の高さに置き、画面の横位置が `x` になるよう横へずらす。
- * カメラの位置と向きから決めるので、戦闘開始の演出でカメラが動いていても同じ見え方になる。
  * 左端にいるあいだは**ほかの板や地形より手前に描く**（奥行きで敵に隠れない）。
- * - `x`: 板の中心の横位置。画面の幅に対する割合（0 が左端、1 が右端）。左端で切れるときは大きくする。
- * - `depth`: カメラからの距離（マス）。小さいほど大きく、画面の下の方に立つ（2.5 で画面の高さくらい）。
- * - `scale`: 板の大きさの倍率（1 で絵のまま）。距離を変えずに大きさだけ変えたいときに使う。
- * - `moveS`: 隊形の位置と左端を行き来する秒数（0 で瞬時）。
- * - `offsetX` / `offsetY` / `offsetZ`: **位置の微調整（マス）**（GS-108）。上の値で決めた位置から、
- *   カメラから見て `offsetX` 右へ（負で左）、`offsetY` 上へ（負で下）、`offsetZ` 奥へ（負で手前）ずらす。
- *   影は床に残したまま、横と奥だけ一緒に動く。奥へずらすと遠くなるので少し小さく見える。
- * 開発中はブラウザの Console で `__stageCommandFigure.depth = 3` のように書き換えると、その場で試せる
- * （読み直すと元に戻る。決めた値はここへ書く）。
  */
-export const STAGE_COMMAND_FIGURE = { x: 0.10, depth: 2, scale: 1, moveS: 0.25, offsetX: 0, offsetY: 0, offsetZ: 0 };
-/** 左端の板を描く順番。地形・ほかの板（0）より後に描いて手前に見せる。 */
-const STAGE_COMMAND_RENDER_ORDER = 10;
+/** 左端の板を描く順番。地形・隊形の板（`STAGE_ROW_ORDER` の前後）より後に描いて手前に見せる。 */
+const STAGE_COMMAND_RENDER_ORDER = 5000;
+/**
+ * 舞台の板を描く順（2026-10-19 / BPE-30）。**前後関係は戦闘のマスの列（`row`）で決める**——手前の列ほど後に描く。
+ * 同じ列なら並び順（味方→敵、隊形の順）。順番 = `STAGE_ROW_ORDER` + 列 × `STAGE_ROW_STEP` + 何人目か。
+ */
+const STAGE_ROW_ORDER = 1000;
+/** 舞台の板とマスの線を置く描画の層（three.js の `layers`）。チルトシフトのぼかしの後に描く（2026-10-19）。 */
+const STAGE_SHARP_LAYER = 1;
+const STAGE_ROW_STEP = 16;
 /** 隊列を描く順の始まり（GS-190）。同じ場所に重なったときだけ効く（深度が同じなら後に描いた方が上）。 */
 const PARTY_RENDER_ORDER = 50;
 /**
@@ -559,6 +584,12 @@ export function createGameView(
   const battleCameraPlayer = createBattleCameraPlayer();
   let renderedIllustrations: CameraIllustrationSample[] = [];
   let battleSetup: MapEntry['battleStage'];
+  /** 舞台の組み直しで味方の板を見せるか（戦闘演出エディタ。2026-10-19）。 */
+  let stagePartyShown = false;
+  /** 組み直しのもとにする面子（はじめに舞台を組んだときの物）。人数を変えても絵はここからくり返す。 */
+  let stageOriginal: BattleFigure[] = [];
+  /** いまのマップの id（`maps.json` のキー）。戦闘の舞台の台帳（`battleStages.json` の `maps`）を引く。台帳に無ければ null。 */
+  let mapKey: string | null = null;
   let renderedYaw = 0;
   /** 画面エフェクト（DEC-389）。マップの一覧をそのまま出す。 */
   const screenEffects = createScreenEffects();
@@ -801,12 +832,6 @@ export function createGameView(
    * 倍率 1（半幅 0.5）なら中心が居るマス 1 つ——今までどおり。倍率 2 なら 2 マス。
    * 人どうしの当たり・話しかけ・触れたの判定は、みなこの範囲で数える。
    */
-  const coreCells = (center: number, half: number): [number, number] => {
-    const inner = Math.max(0, half - 0.5);
-    if (inner === 0) return [Math.floor(center), Math.floor(center)];
-    return [Math.floor(center - inner + 1e-6), Math.floor(center + inner - 1e-6)];
-  };
-  const overlaps = (a: [number, number], b: [number, number]) => a[0] <= b[1] && b[0] <= a[1];
   let mapDef: MapDef | null = null;
   // 配置光源の間引き（GS-173）は `shownLights` が持つ。低負荷モードでは空——光も光の玉も出さない。
   /**
@@ -1002,7 +1027,7 @@ export function createGameView(
     status.map = name;
     report();
     try {
-      const response = await fetch(`/mapdata/${encodeURIComponent(name)}`, { cache: 'no-store' });
+      const response = await fetch(mapUrl(name), { cache: 'no-store' });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
       const raw = (await response.json()) as MapDef;
       // 入るたびに変わる宝箱（GS-180）を先に決める。描画にも当たりにもこのマップを使う。
@@ -1018,8 +1043,10 @@ export function createGameView(
       // どちらも 1 回読んだら使い回すので、マップごとの待ちは無い。
       // 絵はキャラクターから引く（2026-10-08）ので、キャラクターの台帳も待つ。
       // NPC の設定（2026-10-08。マップ＋1 体。出し方と動き）も一緒に待つ。引くのはこのマップの番号（`maps.json` のキー）。
-      const [book, files] = await Promise.all([loadActorBook(), loadFileIndex(), characterBookReady(), loadMapNpcs()]);
-      const npcSettings = mapNpcSettings(await mapKeyForFile(name));
+      // 戦闘の舞台の台帳（2026-10-19 / BPE-30）も 1 回読んで使い回す。
+      const [book, files] = await Promise.all([loadActorBook(), loadFileIndex(), characterBookReady(), loadMapNpcs(), loadBattleStages()]);
+      mapKey = (await mapKeyForFile(name)) ?? null;
+      const npcSettings = mapNpcSettings(mapKey);
       followerBook = book;
       if (typeof map.assets === 'string') {
         throw new Error('assets が外部ファイル参照。エディタが書いた 1 ファイル形式のみ読める（DEC-04）');
@@ -1120,7 +1147,13 @@ export function createGameView(
       // 隊列の入れ替えで先頭が変わったときは、次にマップを読んだときから変わる。
       // キャラクターの大きさ（2026-10-11。マップの `CharacterScale`）は絵にも当たりにも掛ける。
       const characterScale = characterScaleOf(map.properties);
-      player = createPlayer(unit, tilePx, sheetOf(book, sheetKeyOf(options.party?.()[0] ?? PLAYER_CHARACTER)), { scale: characterScale });
+      // 絵が台帳に無ければ**透明な板で立たせる**（既定の絵は持たない）。主人公は居ないと歩けないので消しはしない。
+      // 仲間の絵の区切りは Game Checker（`checks/characters.test.ts`）が見るので、ふつうは起きない。
+      const leader = sheetKeyOf(options.party?.()[0] ?? PLAYER_CHARACTER);
+      const leaderSheet = actorSheet(book, leader);
+      if (!leaderSheet) console.warn(`[actors] 先頭のキャラクターの絵の区切りが台帳（spriteSheets.json）にありません: ${leader || '（sheet が無い）'}（透明で出す）`);
+      player = createPlayer(unit, tilePx, leaderSheet ?? { url: '', cols: 1, rows: 1, framePx: [tilePx, tilePx] }, { scale: characterScale });
+      if (!leaderSheet) player.setLook(0, 0);
       // Rapier の体（GS-239 / GS-241）。マス目に揃った四角い柱。置き場所は最初の `update` で合わせる。
       playerBody = collision.createBody(BODY_WIDTH_HALF * characterScale, BODY_TALL_CELLS * characterScale);
       const marker = markerObject(map, SPAWN_OBJECT);
@@ -1182,7 +1215,11 @@ export function createGameView(
           console.warn(`[npc] フィールドの絵（sheet）が無いキャラクター: ${def.character}（${def.id} は置かない）`);
           return false;
         }
-        const plain = sheetOf(book, sheetKey);
+        const plain = actorSheet(book, sheetKey);
+        if (!plain) {
+          console.warn(`[npc] 絵の区切りが台帳（spriteSheets.json）にありません: ${sheetKey}（${def.id} は置かない）`);
+          return false;
+        }
         const sheet =
           def.scale && def.scale !== 1
             ? {
@@ -1450,13 +1487,24 @@ export function createGameView(
     commandK: number;
     /** 左端で持ち上げた高さ（ワールド。`offsetY` の反映ぶん。GS-108）。画面上の枠の高さに足す。 */
     commandLift: number;
+    /** 隊形の位置にいるときの描く順（戦闘のマスの列で決める。2026-10-19 / BPE-30）。 */
+    order: number;
   }
   let stage: {
-    focus: Vector3;
+    /** BattleStage の床（ワールド）。構図の見る点とカメラの高さの基準。 */
+    floor: Vector3;
+    /** いまの構図の値（BattleStage から。マス）。構図を流していないあいだは最後の値のまま。 */
+    view: BattleCameraView;
     figures: Map<string, StageFigure>;
     saved: { yaw: number; pitch: number; distance: number };
     /** マップに書いた舞台（GS-89）。カメラと並べ方はこの値で決まる。 */
     spec: BattleStageSpec;
+    /** このマップの戦闘の舞台の値（`battleStages.json`。2026-10-19 / BPE-30）。舞台を組んだときに決める。 */
+    settings: BattleStageSettings;
+    /** 戦闘のマスの線（戦闘演出エディタの舞台タブだけで出す）。 */
+    cells: Group | null;
+    /** 床の無い所に立った人（地形の外・穴の上）。戦闘演出エディタが知らせる。 */
+    floorless: Array<{ side: 'party' | 'enemy'; index: number }>;
     /** 戦いのあいだ隠したフィールドの敵（GS-88）。片付けたら出し直す。 */
     hiddenNpcs: string[];
     /** カメラエディタの仮配置だけに出す1マス間隔の破線。 */
@@ -1516,9 +1564,69 @@ export function createGameView(
     return axes;
   };
 
+  /**
+   * 戦闘のマスの線（2026-10-19 / BPE-30）。舞台の点を原点に、カメラから見た横・奥へ、マスの境目を引く。
+   * 高さは舞台の点の床（線は地形に隠れないよう前に描く）。戦闘演出エディタの舞台タブだけで出す。
+   */
+  const createStageCells = (current: NonNullable<typeof stage>, unit: number): Group => {
+    const { grid } = current.settings;
+    const scale = characterScaleOf(mapDef?.properties);
+    const at = current.spec.at;
+    const camYaw = ((current.saved.yaw + current.spec.yaw) * Math.PI) / 180;
+    const right = { x: Math.cos(camYaw), z: -Math.sin(camYaw) };
+    const toward = { x: Math.sin(camYaw), z: Math.cos(camYaw) };
+    const floor = standExact(at.x, at.y, at.z, unit).y + 0.03 * unit;
+    const point = (col: number, row: number): [number, number, number] => {
+      const { across, depth } = stageCellOffset({ col, row }, scale);
+      return [(at.x + right.x * across + toward.x * depth) * unit, floor, (at.z + right.z * across + toward.z * depth) * unit];
+    };
+    const [c0, c1] = [grid.across[0] - 0.5, grid.across[1] + 0.5];
+    const [r0, r1] = [grid.depth[0] - 0.5, grid.depth[1] + 0.5];
+    // 線（LineSegments）は太さが 1 画素で、チルトシフトのぼかしで消えてしまう。**床に寝かせた細い帯**（三角形 2 枚ずつ）で引く（2026-10-19）。
+    const strips = (segments: Array<[[number, number, number], [number, number, number]]>, width: number, color: number, opacity: number, order: number) => {
+      const half = width * scale * unit / 2;
+      const points: number[] = [];
+      for (const [a, b] of segments) {
+        const dx = b[0] - a[0];
+        const dz = b[2] - a[2];
+        const length = Math.hypot(dx, dz) || 1;
+        const ox = (-dz / length) * half;
+        const oz = (dx / length) * half;
+        const y = a[1] + 0.005 * unit;
+        points.push(a[0] + ox, y, a[2] + oz, b[0] + ox, y, b[2] + oz, b[0] - ox, y, b[2] - oz);
+        points.push(a[0] + ox, y, a[2] + oz, b[0] - ox, y, b[2] - oz, a[0] - ox, y, a[2] - oz);
+      }
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute(points, 3));
+      const mesh = new Mesh(geometry, new MeshBasicMaterial({ color, transparent: true, opacity, side: DoubleSide, depthTest: false, depthWrite: false }));
+      mesh.renderOrder = order;
+      return mesh;
+    };
+    // マスの境目（白）。
+    const borders: Array<[[number, number, number], [number, number, number]]> = [];
+    for (let col = c0; col <= c1 + 1e-6; col += 1) borders.push([point(col, r0), point(col, r1)]);
+    for (let row = r0; row <= r1 + 1e-6; row += 1) borders.push([point(c0, row), point(c1, row)]);
+    // 中心線（番号 0 の列と行の真ん中を通る十字。真ん中は舞台の点）は色を変え、太くして強く見せる（2026-10-19）。
+    const center: Array<[[number, number, number], [number, number, number]]> = [[point(0, r0), point(0, r1)], [point(c0, 0), point(c1, 0)]];
+    const group = new Group();
+    group.add(strips(borders, 0.04, 0xffffff, 0.55, STAGE_ROW_ORDER - 2), strips(center, 0.1, 0xffa62b, 0.9, STAGE_ROW_ORDER - 1));
+    return group;
+  };
+  const removeStageCells = () => {
+    if (!stage?.cells) return;
+    scene.remove(stage.cells);
+    for (const child of stage.cells.children) {
+      const shape = child as LineSegments | Mesh;
+      shape.geometry.dispose();
+      (shape.material as LineBasicMaterial | MeshBasicMaterial).dispose();
+    }
+    stage.cells = null;
+  };
+
   const unstage = () => {
     if (!stage) return;
-    cuePlayer.stop();
+    // 戦闘の前に保持していたイベントの演出へ戻す（舞台を組むときに控えた。2026-10-20 / GS-263）。
+    cuePlayer.resume();
     battleCameraPlayer.stop();
     for (const figure of stage.figures.values()) disposeFigure(figure);
     if (stage.grid) {
@@ -1533,6 +1641,7 @@ export function createGameView(
       if (Array.isArray(stage.axes.material)) stage.axes.material.forEach((material) => material.dispose());
       else stage.axes.material.dispose();
     }
+    removeStageCells();
     // 隠していたフィールドの敵を出し直す（GS-88）。倒して消えた相手は npcs に居ないので出ない。
     for (const id of stage.hiddenNpcs) {
       const npc = npcs.get(id);
@@ -1550,15 +1659,35 @@ export function createGameView(
     rig.apply();
   };
 
+  /**
+   * 舞台のカメラを構図の値から置く（2026-10-19）。見る点 = BattleStage の床 ＋ 右・上・手前、
+   * カメラ = 見る点から手前へ水平に `distance`、床から高さ `height`。向きはフィールドの向き ＋ `yaw`。
+   * 右・手前の向きはフィールドの向き（構図の yaw で回る前）で決める——隊形のマスと同じ軸。
+   */
+  const applyStageCamera = (current: NonNullable<typeof stage>) => {
+    const unit = collision?.unit || 1;
+    const view = current.view;
+    // 拡縮はマップの CharacterScale に準ずる（全部の構図で共通。2026-10-19）。
+    const k = characterScaleOf(mapDef?.properties) * unit;
+    const baseYaw = current.saved.yaw + current.spec.yaw;
+    const yawR = (baseYaw * Math.PI) / 180;
+    const pose = battleCameraPose(view, k);
+    rig.yaw = baseYaw + view.yaw;
+    rig.pitch = pose.pitch;
+    rig.distance = pose.distance;
+    rig.target.set(
+      current.floor.x + (Math.cos(yawR) * view.x + Math.sin(yawR) * view.z) * k,
+      current.floor.y + pose.up,
+      current.floor.z + (-Math.sin(yawR) * view.x + Math.cos(yawR) * view.z) * k,
+    );
+    rig.apply();
+  };
+
   /** 舞台のカメラと板を 1 フレームぶん進める。**追従の後**に呼ぶ（上書きする）。 */
   const applyStage = () => {
     if (!stage) return;
     const unit = collision?.unit || 1;
-    rig.yaw = stage.saved.yaw + stage.spec.yaw;
-    rig.pitch = stage.spec.pitch;
-    rig.distance = stage.saved.distance * stage.spec.zoom;
-    rig.target.copy(stage.focus);
-    rig.apply();
+    applyStageCamera(stage);
     const yawR = (rig.yaw * Math.PI) / 180;
     for (const figure of stage.figures.values()) {
       const pose = figure.pose;
@@ -1595,7 +1724,7 @@ export function createGameView(
    */
   const applyCommandFigures = (dt: number) => {
     if (!stage) return;
-    const look = STAGE_COMMAND_FIGURE;
+    const look = stage.settings.commandFigure;
     const unit = collision?.unit || 1;
     const camera = rig.active();
     camera.updateMatrixWorld();
@@ -1610,7 +1739,7 @@ export function createGameView(
       // 左端にいるあいだは手前に重ねて描く。戻り切ったら元の描き方へ。
       const front = figure.commandK > 0;
       figure.material.depthTest = !front;
-      figure.mesh.renderOrder = front ? STAGE_COMMAND_RENDER_ORDER : 0;
+      figure.mesh.renderOrder = front ? STAGE_COMMAND_RENDER_ORDER : figure.order;
       figure.commandLift = 0;
       if (!front) continue;
       // カメラから前へ depth マス、高さは隊形の足元のまま。そこを画面へ写し、横位置だけ x に替えて戻す。
@@ -2052,23 +2181,39 @@ export function createGameView(
    * 画面を押したマスを拾う（GS-167）。**主人公の立っている高さの床**へ線を飛ばして当てる。
    * 拾い先が入っていないときは何もしない——ふだんの操作（会話送り）と取り合わない。
    */
-  const pickCellFromEvent = (event: PointerEvent) => {
-    if (!cellPicker || !player || !collision) return;
+  const cellUnder = (event: PointerEvent): { x: number; y: number; z: number } | null => {
+    if (!player || !collision) return null;
     const unit = collision.unit || 1;
     const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
+    if (!rect.width || !rect.height) return null;
     pickNdc.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
     pickRay.setFromCamera(pickNdc, rig.active());
     // 床は主人公の足下の高さ。`constant` は原点からの距離なので符号を反転して入れる。
     pickPlane.constant = -player.position.y;
-    if (!pickRay.ray.intersectPlane(pickPlane, pickHit)) return;
-    cellPicker({
+    if (!pickRay.ray.intersectPlane(pickPlane, pickHit)) return null;
+    return {
       x: Math.floor(pickHit.x / unit),
       y: Math.round(player.position.y / unit),
       z: Math.floor(pickHit.z / unit),
-    });
+    };
   };
+  const pickCellFromEvent = (event: PointerEvent) => {
+    if (!cellPicker) return;
+    const cell = cellUnder(event);
+    if (cell) cellPicker(cell);
+  };
+  /**
+   * 拾うのを待っている間は、**マウスの下のマスに色を付ける**（2026-10-20 / Event Editor EE-87）。
+   * 押す前にどのマスが入るか見えるように。拾ったマスと同じ求め方なので、色の付いたマスがそのまま入る。
+   */
+  const hoverCellFromEvent = (event: PointerEvent) => {
+    if (!cellPicker) return;
+    editorGrid.setHover(cellUnder(event), collision?.unit || 1);
+  };
+  const clearHoverCell = () => editorGrid.setHover(null, 1);
   canvas.addEventListener('pointerdown', pickCellFromEvent);
+  canvas.addEventListener('pointermove', hoverCellFromEvent);
+  canvas.addEventListener('pointerleave', clearHoverCell);
 
   observer.observe(canvas);
   // ResizeObserver はタブが隠れているあいだ配送されない。取りこぼすと描画バッファが
@@ -2163,7 +2308,9 @@ export function createGameView(
             ...(npc.walk?.slide ? { slide: true } : {}),
             // うろつきは歩きよりずっと遅い（GS-50）。イベントの歩きは今までの速さのまま。
             ...(npc.walk ? {} : npc.wandering ? { speed: npc.wandering.speed } : {}),
-            ...(routeMove ? { speed: routeMove.speed / (npc.actor.radius / 0.5), exactRoute: true } : {}),
+            ...(routeMove ? { speed: routeMove.speed / (npc.actor.radius / 0.5) } : {}),
+            // NPC はマス単位で動くので角での寄せ（`lane.ts`）は使わない（2026-10-20）。
+            noLane: true,
           },
           collision,
           npcBody,
@@ -2206,16 +2353,12 @@ export function createGameView(
     // 演出は描画する間だけリグへ重ねる。次の歩行・場面には持ち越さない。
     // 重ねる相手は場面のカメラ（フィールド・戦闘の舞台）だけ。マップ台帳の基準の演出は持たない（GS-97）。
     const baseCamera = { yaw: rig.yaw, pitch: rig.pitch, distance: rig.distance, target: rig.target.clone() };
-    // 戦闘用のカメラ（GS-105）。舞台のカメラへ先に重ね、イベント用の演出はその上に重ねる。
-    const battleCamera = stage ? battleCameraPlayer.update(dt, rig.pitch) : null;
-    if (battleCamera) {
-      const unit = mapDef?.grid?.unit ?? 1;
-      rig.yaw += battleCamera.yaw;
-      rig.pitch = battleCamera.pitch;
-      rig.distance *= battleCamera.distance;
-      rig.target.add(new Vector3(battleCamera.x * unit, battleCamera.y * unit, battleCamera.z * unit));
-      rig.apply();
-      for (const figure of stage?.figures.values() ?? []) figure.mesh.rotation.y = rig.yaw * Math.PI / 180;
+    // 戦闘用のカメラ（GS-105）。構図を進め、その値で舞台のカメラを置き直す（イベント用の演出はその上に重ねる）。
+    const battleCamera = stage ? battleCameraPlayer.update(dt) : null;
+    if (stage && battleCamera) {
+      stage.view = battleCamera;
+      applyStageCamera(stage);
+      for (const figure of stage.figures.values()) figure.mesh.rotation.y = rig.yaw * Math.PI / 180;
     }
     // イベント用のカメラ演出（GS-115 で戦闘の板を動かす・注視する機能は削除）。
     // 場面の基準（マス。GS-167）。`cell` のキーはここからの差に直して重ねる。
@@ -2240,6 +2383,7 @@ export function createGameView(
     renderedYaw = rig.yaw;
     tilt.update({
       ...mapDef?.camera,
+      // 戦闘中の ON/OFF は構図のキーが決める（ぼかしの位置・強さはマップのまま。舞台の板とマスの線はぼかさない）。
       ...(battleCamera?.tilt === undefined ? {} : { tilt: battleCamera.tilt }),
       ...(cue?.tilt === undefined ? {} : { tilt: cue.tilt }),
     });
@@ -2282,7 +2426,8 @@ export function createGameView(
     applyCameraShot(rig.active(), shot, mapDef?.grid?.unit ?? 1);
     advanceTimeShift(dt);
     tilt.setVeil(shot.veil, shot.veilAlpha);
-    tilt.render(renderer, scene, rig.active());
+    // 舞台の板（敵味方のイラスト）とマスの線はチルトシフトでぼかさない（2026-10-19）。ぼかした後に重ねて描く。
+    tilt.render(renderer, scene, rig.active(), stage ? STAGE_SHARP_LAYER : undefined);
     // 画面エフェクト（DEC-389）。**一番上**に重ねる（絵ができてから貼る 1 枚）。
     screenEffects.render(renderer, dt);
     renderedFrames += 1;
@@ -2627,6 +2772,42 @@ export function createGameView(
       battleCameraPlayer.play(camera);
       return camera.duration;
     },
+    playBattleStart() {
+      if (!stage) return 0;
+      return this.playBattleCamera(stage.settings.start);
+    },
+    restageBattle(options) {
+      if (!stage) return null;
+      const cells = !!stage.cells;
+      if (options.showParty !== undefined) stagePartyShown = options.showParty;
+      const pick = (side: 'party' | 'enemy', count: number | undefined): BattleFigure[] => {
+        let from = stageOriginal.filter((one) => one.side === side);
+        if (count === undefined) return from;
+        // 仲間がまだいない（はじめからの前など）ときは、敵の絵を味方の場所に立たせて並びだけ見せる。
+        if (!from.length && side === 'party') from = stageOriginal.filter((one) => one.side === 'enemy').map((one) => ({ ...one, id: `party:${one.id}`, side: 'party' as const }));
+        if (!from.length) return [];
+        return Array.from({ length: Math.max(0, Math.min(12, count)) }, (_, index) => {
+          const base = from[index % from.length];
+          return index < from.length ? base : { ...base, id: `${base.id}#${index + 1}` };
+        });
+      };
+      const figures = [...pick('party', options.party), ...pick('enemy', options.enemy)];
+      const spec = { ...stage.spec, ...(options.formation ? { formation: options.formation } : {}) };
+      const original = stageOriginal;
+      this.stageBattle(spec, figures);
+      stageOriginal = original;
+      if (cells) this.showStageCells(true);
+      this.playBattleStart();
+      return { floorless: stage ? stage.floorless.slice() : [] };
+    },
+    showStageCells(on) {
+      if (!stage) return;
+      removeStageCells();
+      if (!on) return;
+      stage.cells = createStageCells(stage, collision?.unit || 1);
+      for (const child of stage.cells.children) child.layers.set(STAGE_SHARP_LAYER);
+      scene.add(stage.cells);
+    },
     cameraCueState: () => cuePlayer.state(),
     seekCameraCue: (ms) => cuePlayer.seek(ms),
     pauseCameraCue: (paused) => cuePlayer.pause(paused),
@@ -2801,32 +2982,9 @@ export function createGameView(
       if (!npc || !player || !collision) return false;
       const unit = collision.unit || 1;
       if (Math.abs(npc.actor.position.y - player.position.y) / unit > TALK_RISE) return false;
-      const me = { x: player.position.x / unit, z: player.position.z / unit };
-      const it = { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit };
-      // 体の芯のマス（2026-10-11。キャラクターの大きさで広がる。倍率 1 なら居るマス 1 つ）。
-      type Core = { x: [number, number]; z: [number, number] };
-      const core = (at: { x: number; z: number }, half: number): Core => ({ x: coreCells(at.x, half), z: coreCells(at.z, half) });
-      const mine = core(me, player.radius);
-      const its = core(it, npc.actor.radius);
-      if (overlaps(mine.x, its.x) && overlaps(mine.z, its.z)) return true;
-      /**
-       * `from` の体（半幅 `half` の四角。GS-116）が、向いている先で `to` のマスに接しているか。
-       * 横は中心がそのマスの幅に入っていること（角をかすめるだけでは触れない）。
-       */
-      const touches = (from: { x: number; z: number }, half: number, facing: WalkDir, to: Core) => {
-        const aim = moveVector(DIR_AXIS[facing]);
-        const alongX = Math.abs(aim.x) >= Math.abs(aim.z);
-        const sign = Math.sign(alongX ? aim.x : aim.z);
-        const pos = alongX ? from.x : from.z;
-        const side = coreCells(alongX ? from.z : from.x, half);
-        const [lo, hi] = alongX ? to.x : to.z;
-        if (!overlaps(side, alongX ? to.z : to.x)) return false;
-        const gap = sign > 0 ? lo - (pos + half) : pos - half - (hi + 1);
-        return gap <= SYMBOL_TOUCH && gap > -(hi - lo + 1);
-      };
-      return (
-        touches(me, player.radius, FACE_DIR[player.facingNow()], its) ||
-        touches(it, npc.actor.radius, FACE_DIR[npc.actor.facingNow()], mine)
+      return symbolTouching(
+        { at: { x: player.position.x / unit, z: player.position.z / unit }, half: player.radius, aim: moveVector(DIR_AXIS[FACE_DIR[player.facingNow()]]) },
+        { at: { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit }, half: npc.actor.radius, aim: moveVector(DIR_AXIS[FACE_DIR[npc.actor.facingNow()]]) },
       );
     },
     playerAt() {
@@ -2879,6 +3037,8 @@ export function createGameView(
     shownTime: () => shownTimeId,
     setCellPicker(handler) {
       cellPicker = handler;
+      // やめたら色も消す。拾い終わった（拾い先が null にされた）ときも同じ。
+      if (!handler) clearHoverCell();
     },
     setCameraFollow(on) {
       cameraFollow = on;
@@ -2914,14 +3074,25 @@ export function createGameView(
     },
     stageBattle(spec, figures, debugGrid = false) {
       unstage();
+      stageOriginal = figures.slice();
       if (!collision) return;
+      // **イベント用の演出は戦闘のあいだ外す**（2026-10-20 / GS-263）。保持の演出が残ると、
+      // 舞台のカメラの後に重なって見下ろす角度・距離・見る点を上書きする（meet_lamy の仰角 -30）。
+      cuePlayer.suspend();
       const unit = collision.unit || 1;
       const at = spec.at;
+      // このマップの戦闘の舞台（マス・構図・左端の板・チルトシフト。2026-10-19 / BPE-30）。
+      const settings = battleStageSettingsOf(battleStageBook(), mapKey);
+      const characterScale = characterScaleOf(mapDef?.properties);
       stage = {
-        focus: new Vector3(),
+        floor: new Vector3(),
+        view: battleCameraStartView(settings.start),
         figures: new Map(),
         saved: { yaw: rig.yaw, pitch: rig.pitch, distance: rig.distance },
         spec,
+        settings,
+        cells: null,
+        floorless: [],
         hiddenNpcs: [],
         grid: debugGrid ? createStageGrid(at, unit) : null,
         axes: debugGrid ? createStageAxes(at, unit) : null,
@@ -2937,7 +3108,7 @@ export function createGameView(
         current.hiddenNpcs.push(id);
       }
       // 立ち位置（GS-95）。人数別スロットは隊形台帳だけを正本とする。
-      // across/depth はカメラ基準なので、マップの向きによらず画面上で同じ隊形になる。
+      // 戦闘のマス（2026-10-19 / BPE-30）はカメラ基準なので、マップの向きによらず画面上で同じ隊形になる。
       const camYaw = ((rig.yaw + spec.yaw) * Math.PI) / 180;
       const right = { x: Math.cos(camYaw), z: -Math.sin(camYaw) };
       const toward = { x: Math.sin(camYaw), z: Math.cos(camYaw) };
@@ -2953,19 +3124,19 @@ export function createGameView(
       for (const side of ['party', 'enemy'] as const) if (count[side] > 0 && !formation[side]) {
         console.warn(`[battle-formation] ${spec.formation || '（未指定）'} に ${side} ${count[side]}人の配置がありません`);
       }
-      const partySum = new Vector3();
-      const enemySum = new Vector3();
-      for (const def of figures) {
+      for (const [order, def] of figures.entries()) {
         const index = seen[def.side]++;
         const slot = formation[def.side]?.[index];
-        const across = slot?.across ?? 0;
-        const depth = slot?.depth ?? 0;
+        const row = slot?.row ?? 0;
+        const { across, depth } = stageCellOffset({ col: slot?.col ?? 0, row }, characterScale);
         const cx = at.x + right.x * across + toward.x * depth;
         const cz = at.z + right.z * across + toward.z * depth;
-        const spot = standOn(cx, at.y, cz, unit);
-        // 高さだけ床から取り、横と奥は**マスに丸めない**（丸めると列ががたつく）。
-        const base = new Vector3(cx * unit, spot.y + (slot?.height ?? 0) * unit, cz * unit);
-        (def.side === 'party' ? partySum : enemySum).add(base);
+        // 高さは**その位置の地形の床**（起伏に沿う）。フィールドのマスには寄せない。
+        const spot = standExact(cx, at.y, cz, unit);
+        const fx = Math.floor(cx);
+        const fz = Math.floor(cz);
+        if (collision.surfaceUnder(fx, fz, (Math.floor(at.y) + 1) * unit, cx - fx, cz - fz) === null) current.floorless.push({ side: def.side, index });
+        const base = new Vector3(cx * unit, spot.y + (slot?.height ?? 0) * characterScale * unit, cz * unit);
         const material = new MeshBasicMaterial({ transparent: true, alphaTest: 0.05, side: DoubleSide });
         const mesh = new Mesh(new PlaneGeometry(1, 1), material);
         mesh.visible = false;
@@ -2993,7 +3164,11 @@ export function createGameView(
           breathPhase: Math.random() * Math.PI * 2,
           commandK: 0,
           commandLift: 0,
+          // 前後関係は戦闘のマスの列（手前ほど後に描く）。同じ列なら並び順。
+          order: STAGE_ROW_ORDER + row * STAGE_ROW_STEP + Math.min(order, STAGE_ROW_STEP - 1),
         };
+        mesh.renderOrder = figure.order;
+        mesh.layers.set(STAGE_SHARP_LAYER);
         current.figures.set(def.id, figure);
         scene.add(mesh);
         scene.add(shadow);
@@ -3016,22 +3191,16 @@ export function createGameView(
           shadow.scale.set(figure.width * 0.9, figure.width * 0.35, 1);
           // 味方の板を出すかは開発中のつまみ（GS-247。既定は出さない）。敵はいつも出す。
           // 出さなくても大きさは決めて枠を測る。
-          mesh.visible = def.side === 'enemy' || battlePartyFiguresShown();
+          mesh.visible = def.side === 'enemy' || stagePartyShown || battlePartyFiguresShown();
         });
       }
-      // 見る先（GS-90）。**敵の列寄り**——味方は手前の下の方に入り、敵が画面の真ん中に来る
-      // （味方の肩越しに敵を見る形）。両方の真ん中を見ると、手前の味方が奥の敵を隠していた。
-      const partyAt = count.party > 0 ? partySum.divideScalar(count.party) : null;
-      const enemyAt = count.enemy > 0 ? enemySum.divideScalar(count.enemy) : null;
-      const middle =
-        enemyAt && partyAt
-          ? enemyAt.clone().lerp(partyAt, STAGE_FOCUS_PARTY)
-          : (enemyAt ?? partyAt ?? new Vector3(at.x * unit, at.y * unit, at.z * unit));
-      current.focus.set(middle.x, middle.y + STAGE_LOOK_Y * unit, middle.z);
+      // カメラの基準は BattleStage の床（2026-10-19）。見る点とカメラの位置は構図が決める（`applyStageCamera`）。
+      current.floor.set(at.x * unit, standExact(at.x, at.y, at.z, unit).y, at.z * unit);
       if (player) player.group.visible = false;
     },
     unstageBattle() {
       unstage();
+      stagePartyShown = false;
     },
     figureRect(id) {
       const figure = stage?.figures.get(id);
@@ -3081,6 +3250,8 @@ export function createGameView(
       for (const waiter of renderWaiters) waiter.resolve();
       renderWaiters.clear();
       canvas.removeEventListener('pointerdown', pickCellFromEvent);
+      canvas.removeEventListener('pointermove', hoverCellFromEvent);
+      canvas.removeEventListener('pointerleave', clearHoverCell);
       editorGrid.dispose();
       unstage();
       buildGen += 1;

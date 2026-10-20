@@ -5,8 +5,8 @@
 // イベントの起動（どこに立ったら何が動くか）もここが受け持つ（GS-14）。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createGameView, STAGE_COMMAND_FIGURE, type GameStatus, type GameView, type WalkDir } from '../game/GameView';
-import { START_MAP, assetUrl, mapUrl } from '../game/assets';
+import { createGameView, type GameStatus, type GameView, type WalkDir } from '../game/GameView';
+import { START_MAP_ID, assetUrl, mapUrl } from '../game/assets';
 import { mapEntryOf, entryForFile, knownSaveMapId, loadMapIndex } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
@@ -14,8 +14,8 @@ import { loadItemBook } from '../game/items';
 import { characterName, loadCharacterBook } from '../game/characters';
 import { loadIllustrations } from '../game/illustrations';
 import { startGamepad } from '../game/gamepad';
-import { chooseBattleFormation, loadBattleBook, previewEffects, type EffectDef, type EffectEntry } from '../game/battle/book';
-import { BATTLE_START_CAMERA } from '../game/battle/battleCamera';
+import { chooseBattleFormation, loadBattleBook, previewEffects, previewFormations, type EffectDef, type EffectEntry } from '../game/battle/book';
+import { previewBattleStages } from '../game/battle/stage';
 import { battleSettings } from '../game/battle/settings';
 import type { BattlePresentationContext, BattlePresentationHook } from '../game/battle/presentation';
 import { ensureParty, joinParty, resetParty, revive } from '../game/battle/party';
@@ -43,7 +43,7 @@ import { layerKey, readSwitchLayers, switchLayerShown, type SwitchLayer } from '
 import { applyEventVisit, forgetRespawn, NO_VISIT, rollEventVisit, type EventVisit } from '../game/eventVisit';
 import { canRun, meets, runCommands, ReturnToTitle, timeMatches } from '../event/interpreter';
 import type { EventCommand, EventDef, EventFile, IfCondition } from '../event/types';
-import { mapNpcSettingsForFile } from '../game/mapNpcs';
+import { mapNpcSettingsForFile, rollCompanions } from '../game/mapNpcs';
 import type { MapDef } from '../mep3d/types';
 import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
@@ -53,7 +53,7 @@ import { CameraIllustrationLayer } from './CameraIllustrationLayer';
 import { SettingsMenu } from './SettingsMenu';
 import { TitleScreen } from './TitleScreen';
 import { PwaInstall } from './PwaInstall';
-import { fromSave, newState, restoreState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
+import { fromSave, newState, resetState, restoreState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
 import { loadStoryBook, storyMeets, storyOrder } from '../game/story';
 import { advanceClock, loadTimeSettings, timeSettings } from '../game/timeClock';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
@@ -77,8 +77,12 @@ const TALK_MARK_SHOW = 3.5;
 const TALK_MARK_NEAR = 1.6;
 /** 入口をくぐるときの暗転（ミリ秒）。CSS の `.fade` の遷移と同じ長さにする。 */
 const DOOR_FADE_MS = 400;
-/** マップ名（`home.json` → `home`）。 */
-const mapKey = (file: string) => file.replace(/\.json$/i, '');
+/**
+ * マップの名前（台帳の id。`village/home.json` → `home`）。イベントのファイル・その物の覚え・レイヤーの覚えはこれで引く。
+ * **ファイル名から作らない**——フォルダ分け（GS-257）でファイルの道と id が別になった。台帳に無ければ `.json` を外したファイル名。
+ * 台帳を読み終えてから呼ぶ（イベントを読む前に `loadMapIndex` を待つ）。
+ */
+const mapKey = (file: string) => knownSaveMapId(file);
 /** 画面に出るのを待つ（GS-28）。React が描いた次の frame まで。 */
 const painted = () =>
   new Promise<void>((done) => {
@@ -218,14 +222,14 @@ export default function GameCanvas() {
   const battle = useUi((s) => s.battle);
   /**
    * 戦闘画面の契機の受け口。攻撃アクション等のアニメーション演出の契機に使う（Battle Presentation Editor BPE-14）。
-   * カメラ演出の割り当ては凍結した。**戦闘開始だけはコードの値でカメラを動かす**（`BATTLE_START_CAMERA`。GS-104）——
-   * カメラエディタの台帳（イベント用）は引かない。
+   * カメラ演出の割り当ては凍結した。**戦闘開始は戦闘の舞台の台帳の構図でカメラを動かす**（`battleStages.json` の `start`。
+   * マップごと。2026-10-19 / BPE-30）——カメラエディタの台帳（イベント用）は引かない。
    */
   const presentBattle = useCallback((hook: BattlePresentationHook, context: BattlePresentationContext = {}) => {
     window.dispatchEvent(new CustomEvent('battle-presentation', { detail: { hook, key: hook, cue: '', subject: context.subject ?? '' } }));
     if (hook === 'battle.start') {
       try {
-        return viewRef.current?.playBattleCamera(BATTLE_START_CAMERA) ?? 0;
+        return viewRef.current?.playBattleStart() ?? 0;
       } catch (error) {
         console.warn(`[battle-presentation] ${hook}:`, error);
         return 0;
@@ -450,6 +454,7 @@ export default function GameCanvas() {
   const eventBookRef = useRef<{ file: string; events: EventFile | null }>({ file: '', events: null });
   /** そのマップのイベントを読む。無いマップは台帳で分かるので取りに行かない（DEC-374）。 */
   const fetchEvents = async (file: string): Promise<EventFile | null> => {
+    await loadMapIndex();
     const name = mapKey(file);
     const index = await loadFileIndex();
     if (!index.hasEvents(name)) return null;
@@ -841,7 +846,6 @@ export default function GameCanvas() {
     // 開発中だけ外へ出す口。一覧と型は `dev/devWindow.ts`（2026-10-06）。
     if (DEV_WINDOW) {
       expose('__game', view);
-      expose('__stageCommandFigure', STAGE_COMMAND_FIGURE);
       expose('__audio', audio);
       expose('__options', gameOptions);
       expose('__dev', dev);
@@ -954,6 +958,15 @@ export default function GameCanvas() {
           return view.battleStage(battleFormationRef.current) ? '3d' : '2d';
         },
         clearBackdrop,
+        // 戦闘の舞台（2026-10-19 / BPE-30）。下書きの台帳を差し替え、出している背景の舞台を組み直す。
+        setStages: (next: unknown) => previewBattleStages(next),
+        setFormations: (next: unknown) => previewFormations(next),
+        restage(options) {
+          if (!battleBackdropRef.current) return null;
+          return view.restageBattle(options);
+        },
+        showCells: (on: boolean) => view.showStageCells(on),
+        replayStart: () => view.playBattleStart(),
         playEffect(def: EffectDef) {
           if (!useUi.getState().battle) return false;
           window.dispatchEvent(new CustomEvent('battle-effect-preview', { detail: { def } }));
@@ -1106,7 +1119,9 @@ export default function GameCanvas() {
     viewRef.current?.removeNpc(near);
     // **負けたらゲームオーバー**（`canLose` は false）。話の途中ではないので、
     // 続きを書いた人も居ない——`GameOver` はここで受け止めて終わりにする。
-    void startBattleRef.current([enemy], false).catch((error) => {
+    // お供（GS-255）。台帳 `mapNpcs.json` のこの 1 体の `companions` を行ごとに抽選し、触った相手の後ろに並べる。
+    const companions = rollCompanions(mapNpcSettingsForFile(mapRef.current)[near]?.companions);
+    void startBattleRef.current([enemy, ...companions], false).catch((error) => {
       if (!(error instanceof GameOver)) throw error;
     });
   }, []);
@@ -1345,14 +1360,9 @@ export default function GameCanvas() {
   /** はじめから（GS-27）。記録を新しくして出発点のマップへ。 */
   const startNew = useCallback(async () => {
     autoPendingRef.current = false;
-    const fresh = newState();
-    stateRef.current.switches = fresh.switches;
-    stateRef.current.variables = fresh.variables;
-    stateRef.current.self = fresh.self;
-    stateRef.current.clear = fresh.clear;
-    // 持ち物も戻す。**戻し忘れると**「つづきから」の後の「はじめから」に前の荷物が残る。
-    stateRef.current.items = fresh.items;
-    stateRef.current.playSeconds = 0;
+    // 記録は**欄ごと全部**戻す（GS-265）。1 つずつ戻すと、欄を足したときに戻し忘れる
+    // （物語の段階が残り、済ませたイベントが動かなかった）。入れ物は差し替えない——イベントの道具立てが握っている。
+    resetState(stateRef.current);
     // 仲間を台帳のとおりに（GS-60）。台帳を読み終える前に押されても揃うよう待つ。
     await loadBattleBook();
     resetParty(stateRef.current);
@@ -1365,11 +1375,13 @@ export default function GameCanvas() {
     useUi.getState().setPhase('play');
     // **読み込みのあいだは黒のまま**（GS-28）。一瞬で覆い、オープニングの暗幕へそのまま渡す。
     useUi.getState().setFade(1, 0);
-    const entry = await entryForFile(START_MAP);
-    if (entry) applyMapSound(entry);
-    await readEventsAhead(START_MAP);
-    await viewRef.current?.load(START_MAP);
-    await adoptRef.current(START_MAP);
+    // 最初のマップは id で決め、ファイルは台帳から引く（フォルダ分け GS-257）。
+    const entry = await mapEntryOf(START_MAP_ID);
+    const startFile = entry.file;
+    applyMapSound(entry);
+    await readEventsAhead(startFile);
+    await viewRef.current?.load(startFile);
+    await adoptRef.current(startFile);
     checkSpotsRef.current();
     await painted();
     useUi.getState().setFade(0, DOOR_FADE_MS);

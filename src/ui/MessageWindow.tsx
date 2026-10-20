@@ -336,9 +336,9 @@ export function MessageWindow({
     }
     const from = back.clientHeight;
     const lineH = Number.parseFloat(window.getComputedStyle(text).lineHeight) || 40;
-    // 遊ぶ人の好み（設定の「流れる文字」）を掛ける。**流し始めに 1 回だけ読む**——
-    // 流している間は設定を開けないので、途中で速さが変わることはない。
-    const ms = scrollMs(from, text.offsetHeight, lineH, scroll.speed * options.scrollScale);
+    // 速さは台帳の `speed` そのまま。遊ぶ人の設定では変えない（会話の「文字送り」とは別物で、
+    // 紛らわしかったので設定から外した）。
+    const ms = scrollMs(from, text.offsetHeight, lineH, scroll.speed);
     // 前置き（GS-186）。前置きは真ん中、残りは画面の下の縁から。**運ぶ距離は残りが上へ抜け切るまで**——
     // 速さの物差し（1 行ぶんの時間）は今までと同じ。
     const lead = scrollLeadRef.current;

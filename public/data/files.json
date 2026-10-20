@@ -11,13 +11,14 @@
     "assets/tilesets_normal/water_and_fire_normal.png"
   ],
   "events": [
-    "cave",
-    "foothill_village",
+    "ashcrown",
+    "blue_echo_cave",
     "forest_cave",
     "forest_mansion",
+    "gald_peaks_road",
     "gensou",
     "home",
-    "home_forest",
-    "next_field"
+    "old_haulage_road",
+    "rikka_village"
   ]
 }

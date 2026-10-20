@@ -23,10 +23,6 @@ import { stopBgm, stopBgs } from '../../game/audio';
 const CHAR_MIN = 10;
 const CHAR_MAX = 100;
 
-/** 流れる文字の目盛り（％。GS-144）。100 が台帳どおり、大きいほどゆっくり。 */
-const SCROLL_MIN = 50;
-const SCROLL_MAX = 400;
-
 /** `extra` は「既定に戻す」と同じ行に並べる物（タイトルから開いたときの「とじる」）。 */
 export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
   // 設定は React の外（`options`）に居るので、画面用に写しを持つ。
@@ -100,22 +96,6 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
             onChange={(event) => change({ charMs: CHAR_MIN + CHAR_MAX - Number(event.currentTarget.value) })}
           />
           <span className="menu-value">{now.charMs}ms</span>
-        </li>
-        <li>
-          {/* 流れる文字（オープニングやエンドロール）の速さ（GS-144）。文字送りとは別物。 */}
-          <span className="menu-label">流れる文字</span>
-          {/* ここは**大きいほどゆっくり**。左が速いのは文字送りと同じなので裏返さない。 */}
-          <input
-            className="menu-range"
-            type="range"
-            min={SCROLL_MIN}
-            max={SCROLL_MAX}
-            step={10}
-            value={Math.round(now.scrollScale * 100)}
-            data-pick
-            onChange={(event) => change({ scrollScale: Number(event.currentTarget.value) / 100 })}
-          />
-          <span className="menu-value">×{now.scrollScale.toFixed(1)}</span>
         </li>
         <li>
           {/*

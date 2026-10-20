@@ -4900,17 +4900,17 @@
   "editor": {
     "camera": {
       "target": [
-        -2.5400401399842543,
-        8.526200738327741,
-        5.8805182022671865
+        -0.9109524524246917,
+        7.009948286973138,
+        -0.5467917696221747
       ],
       "yaw": 0,
       "pitch": -15,
-      "distance": 8.345137614500887,
+      "distance": 6.86108442912395,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "オブジェクトレイヤー_4",
+    "activeLayer": "objects",
     "brush": {
       "shape": "floor",
       "rotation": 0,
@@ -13833,8 +13833,8 @@
           "y": 5.96875,
           "points": [
             [
-              -2.635776840564834,
-              -0.5103708113641101
+              -2.5,
+              -1.5
             ]
           ]
         },
@@ -14583,6 +14583,29 @@
               1
             ]
           ]
+        },
+        {
+          "id": "obj_6",
+          "name": "点",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "BattleStage",
+              "type": "boolean",
+              "value": true
+            }
+          ],
+          "space": "plane",
+          "y": 5,
+          "points": [
+            [
+              -2.5,
+              -0.5
+            ]
+          ]
         }
       ]
     },
@@ -14643,7 +14666,7 @@
             {
               "name": "MapMove",
               "type": "string",
-              "value": "next_field"
+              "value": "gald_peaks_road"
             }
           ],
           "space": "solid",

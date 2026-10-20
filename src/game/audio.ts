@@ -13,7 +13,7 @@ import { onOptionsChanged, options } from './options';
 
 /** 台帳の 1 行。 */
 export interface SoundDef {
-  /** `public/assets/sound/` の中のファイル名。日本語のままでよい。 */
+  /** `public/assets/sound/` からの道（フォルダの中なら `bgm/field.mp3`。GS-259）。日本語のままでよい。 */
   file: string;
   /** 台帳が決める既定の音量（0〜1）。イベント側で上書きできる。 */
   volume?: number;
@@ -58,7 +58,8 @@ export function loadSoundBook(): Promise<void> {
   return pending;
 }
 
-const urlOf = (file: string): string => assetUrl(`${SOUND_DIR}/${encodeURIComponent(file)}`);
+// 音はフォルダに分けてよい（GS-259。`bgm/field.mp3`）。`/` は残して 1 段ずつ符号化する。
+export const urlOf = (file: string): string => assetUrl(`${SOUND_DIR}/${file.split('/').map(encodeURIComponent).join('/')}`);
 
 function audioContext(): AudioContext | null {
   if (effectContext || typeof window === 'undefined' || !window.AudioContext) return effectContext;

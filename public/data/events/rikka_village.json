@@ -1,5 +1,5 @@
 {
-  "map": "foothill_village",
+  "map": "rikka_village",
   "events": [
     {
       "id": "ev_1",
@@ -281,14 +281,7 @@
   "mapMoves": [
     {
       "object": "obj_1",
-      "to": [
-        {
-          "map": "next_field",
-          "at": { "x": -9, "y": 6, "z": 5 },
-          "px": { "x": 0, "z": -6 },
-          "face": "down"
-        }
-      ]
+      "to": [{ "map": "old_haulage_road", "at": { "x": -17, "y": 0, "z": -14 }, "face": "down" }]
     }
   ]
 }

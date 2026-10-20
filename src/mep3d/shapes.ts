@@ -147,6 +147,18 @@ export function geometryFor(shape: Shape): BufferGeometry {
     case 'floor_ramp_s':
       geometry = rampGeometry(RAMP_HEIGHTS[shape.slice('floor_ramp_'.length)], false);
       break;
+    case 'floor_ramp_corner_ne':
+      geometry = foldGeometry([0, 1, 0, 0], false, 0);
+      break;
+    case 'floor_ramp_corner_nw':
+      geometry = foldGeometry([1, 0, 0, 0], true, 0);
+      break;
+    case 'floor_ramp_corner_ne_inverse':
+      geometry = foldGeometry([1, 1, 1, 0], false, 1);
+      break;
+    case 'floor_ramp_corner_nw_inverse':
+      geometry = foldGeometry([1, 1, 0, 1], true, 1);
+      break;
     case 'floor_ramp2_lo':
     case 'floor_ramp2_hi':
     case 'floor_ramp2_lo_flip':
@@ -981,7 +993,8 @@ const FOLD_SW_NE: Record<string, boolean> = {
  * UV は真上から見た足跡のまま（隅の x/z は動かないので `quadUvs` がそれ）。
  * だから絵は引き伸ばされず、**折り目で曲がって**見える。
  */
-function foldGeometry(heights: number[], swNe: boolean): BufferGeometry {
+// faceIndex 指定時は接続坂の斜め三角面だけを作り、水平な半分は作らない。
+function foldGeometry(heights: number[], swNe: boolean, faceIndex?: 0 | 1): BufferGeometry {
   const [nw, ne, se, sw] = heights;
   const corner: Array<[number, number, number]> = [
     [-HALF, nw, -HALF],
@@ -1001,7 +1014,7 @@ function foldGeometry(heights: number[], swNe: boolean): BufferGeometry {
   const a = new Vector3();
   const b = new Vector3();
   const n = new Vector3();
-  for (const face of faces) {
+  for (const face of faceIndex === undefined ? faces : [faces[faceIndex]]) {
     const [i0, i1, i2] = face;
     const p0 = corner[i0];
     const p1 = corner[i1];

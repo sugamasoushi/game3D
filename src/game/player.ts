@@ -68,17 +68,6 @@ export interface ActorSheet {
 }
 
 /**
- * 既定のシート。横 3 コマ（歩き）× 縦 4 行（向き）。
- * 行は上から **下・左・右・上**。1 コマ 32×40 px（チップ 32px に対して身長 1.25 マス）。
- */
-export const ACTOR_SHEET: ActorSheet = {
-  url: '/assets/spritesheet/meina2_32_40.png',
-  cols: 3,
-  rows: 4,
-  framePx: [32, 40],
-};
-
-/**
  * 歩きのコマ順。3 コマなら真ん中が止まり絵で行って戻る、それ以外は順に回す。
  * 旧作の spritetype 0304 / 0404 と同じ考え方（GS-16）。
  */
@@ -141,8 +130,12 @@ export interface PlayerInput {
   speed?: number;
   /** その場の足踏み用のコマ時間。移動速度とは独立。 */
   stepMs?: number;
-  /** 設定された経路を直線で進む。通路への自動寄せを使わない。 */
-  exactRoute?: boolean;
+  /**
+   * マスの揃え（`lane.ts`。角での自動寄せ）を使わない。**NPC は全部これ**（2026-10-20）——
+   * NPC はうろつき・イベントの歩き・経路のどれもマス単位で動くので角を考えなくてよく、
+   * 寄せると寄せている間だけ絵が横を向いた（home の grandpaNpc）。プレイヤーだけが寄せる。
+   */
+  noLane?: boolean;
   /**
    * 向きも足も**動かさずに**運ぶ（GS-155）。殴られて後ろへ飛ぶ、氷の上を滑る、など。
    * 位置だけが動き、絵は立ち止まったまま——「歩いて下がった」と「飛ばされた」は別物。
@@ -292,7 +285,7 @@ function measureHeadPad(image: CanvasImageSource & { width: number; height: numb
  * 動く速さ（歩き・走り・うろつき・はしご）にも同じ倍率を掛ける。
  * 1 マス幅の通路に入れるかは設定者の責任（1 より大きいと入れない通路が出る）。
  */
-export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = ACTOR_SHEET, { scale = 1 }: { scale?: number } = {}): Player {
+export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ scale = 1 }: { scale?: number } = {}): Player {
   const size = Number.isFinite(scale) && scale > 0 ? scale : 1;
   /** 体の大きさ（マス）。倍率を掛けたもの。 */
   const bodyHalfWidth = BODY_WIDTH_HALF * size;
@@ -851,14 +844,14 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet = A
         // 登れる段差は今までどおり `Climb` の範囲だけ（DEC-237 / DEC-256）。
         const climb = terrain.climbAt(position.x / unit, position.y / unit, position.z / unit, STEP_UP);
         // マスの揃え（GS-240 / GS-245）。1 マス幅の通路へずれて入ろうとしたら、列の中央に着くまで横だけ動かす。
-        const lane = input.slide || input.exactRoute
+        const lane = input.slide || input.noLane
           ? { x: move.x * speed, z: move.z * speed, aligning: false }
           : aligner.step(position, move, speed, {
               unit,
               half: bodyHalfWidth,
               fits: (wx, wy, wz, half) => terrain.fits(wx, wy, wz, half, bodyTall),
             });
-        if (input.slide || input.exactRoute) aligner.reset();
+        if (input.slide || input.noLane) aligner.reset();
         const moved = body.move(lane.x, lane.z, deltaSeconds, climb);
         position.set(moved.x, moved.y, moved.z);
         onGround = moved.grounded;
