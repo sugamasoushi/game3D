@@ -3,7 +3,7 @@
   "version": 3,
   "name": "untitled",
   "grid": {
-    "tilePx": 32,
+    "tilePx": 48,
     "unit": 1,
     "width": 64,
     "depth": 56
@@ -36,106 +36,106 @@
       {
         "id": "tex_walls",
         "src": "assets/tilesets/Dwelling/walls.png",
-        "w": 2048,
-        "h": 3072,
+        "w": 3072,
+        "h": 4608,
         "filter": "nearest"
       },
       {
         "id": "tex_hipped_shingle_roof_a",
         "src": "assets/tilesets/Dwelling/Hipped Shingle Roof A.png",
-        "w": 960,
-        "h": 480,
+        "w": 1440,
+        "h": 720,
         "filter": "nearest"
       },
       {
         "id": "tex_roof_trim",
         "src": "assets/tilesets/Dwelling/Roof Trim.png",
-        "w": 1536,
-        "h": 288,
+        "w": 2304,
+        "h": 432,
         "filter": "nearest"
       },
       {
         "id": "tex_windows_doors",
         "src": "assets/tilesets/Dwelling/windows_doors.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_village_village_objects",
         "src": "assets/tilesets/outside_objects/outside_objects.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_village_woodshop",
         "src": "assets/tilesets/Dwelling/woodshop.png",
-        "w": 512,
-        "h": 512,
+        "w": 768,
+        "h": 768,
         "filter": "nearest"
       },
       {
         "id": "tex_village_trees",
         "src": "assets/tilesets/Nature/trees-green.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_grass_summer_",
         "src": "assets/tilesets/Mountain/Grass (Summer).png",
-        "w": 96,
-        "h": 320,
+        "w": 144,
+        "h": 480,
         "filter": "nearest"
       },
       {
         "id": "tex_palisade-160x96",
         "src": "assets/tilesets/outside_objects/palisade-160x96.png",
-        "w": 160,
-        "h": 96,
+        "w": 240,
+        "h": 144,
         "filter": "nearest"
       },
       {
         "id": "tex_plants",
         "src": "assets/tilesets/Nature/plants.png",
-        "w": 512,
-        "h": 1024,
+        "w": 768,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_storage_barrels",
         "src": "assets/tilesets/Storage/Barrels.png",
-        "w": 160,
-        "h": 64,
+        "w": 240,
+        "h": 96,
         "filter": "nearest"
       },
       {
         "id": "tex_outside_objects_lpc-hanging-signs",
         "src": "assets/tilesets/outside_objects/lpc-hanging-signs.png",
-        "w": 128,
-        "h": 128,
+        "w": 192,
+        "h": 192,
         "filter": "nearest"
       },
       {
         "id": "tex_terrain-v7",
         "src": "assets/tilesets/terrain-v7.png",
-        "w": 1024,
-        "h": 2048,
+        "w": 1536,
+        "h": 3072,
         "filter": "nearest"
       },
       {
         "id": "tex_collision",
         "src": "assets/tilesets/collision.png",
-        "w": 32,
-        "h": 32,
+        "w": 48,
+        "h": 48,
         "filter": "nearest"
       },
       {
         "id": "tex_outside_objects_lpc-well",
         "src": "assets/tilesets/outside_objects/lpc-well.png",
-        "w": 256,
-        "h": 256,
+        "w": 384,
+        "h": 384,
         "filter": "nearest"
       }
     ],
@@ -144,7 +144,7 @@
         "id": "walls",
         "tex": "tex_walls",
         "mat": "mat_walls",
-        "tile": 32,
+        "tile": 48,
         "cols": 64,
         "rows": 96,
         "margin": 0,
@@ -154,7 +154,7 @@
         "id": "hipped_shingle_roof_a",
         "tex": "tex_hipped_shingle_roof_a",
         "mat": "mat_hipped_shingle_roof_a",
-        "tile": 32,
+        "tile": 48,
         "cols": 30,
         "rows": 15,
         "margin": 0,
@@ -164,7 +164,7 @@
         "id": "roof_trim",
         "tex": "tex_roof_trim",
         "mat": "mat_roof_trim",
-        "tile": 32,
+        "tile": 48,
         "cols": 48,
         "rows": 9,
         "margin": 0,
@@ -174,7 +174,7 @@
         "id": "windows_doors",
         "tex": "tex_windows_doors",
         "mat": "mat_windows_doors",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -184,7 +184,7 @@
         "id": "village_village_objects",
         "tex": "tex_village_village_objects",
         "mat": "mat_village_village_objects",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -194,7 +194,7 @@
         "id": "village_woodshop",
         "tex": "tex_village_woodshop",
         "mat": "mat_village_woodshop",
-        "tile": 32,
+        "tile": 48,
         "cols": 16,
         "rows": 16,
         "margin": 0,
@@ -204,7 +204,7 @@
         "id": "village_trees",
         "tex": "tex_village_trees",
         "mat": "mat_village_trees",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -214,7 +214,7 @@
         "id": "grass_summer_",
         "tex": "tex_grass_summer_",
         "mat": "mat_grass_summer_",
-        "tile": 32,
+        "tile": 48,
         "cols": 3,
         "rows": 10,
         "margin": 0,
@@ -224,7 +224,7 @@
         "id": "palisade-160x96",
         "tex": "tex_palisade-160x96",
         "mat": "mat_palisade-160x96",
-        "tile": 32,
+        "tile": 48,
         "cols": 5,
         "rows": 3,
         "margin": 0,
@@ -234,7 +234,7 @@
         "id": "plants",
         "tex": "tex_plants",
         "mat": "mat_plants",
-        "tile": 32,
+        "tile": 48,
         "cols": 16,
         "rows": 32,
         "margin": 0,
@@ -244,7 +244,7 @@
         "id": "storage_barrels",
         "tex": "tex_storage_barrels",
         "mat": "mat_storage_barrels",
-        "tile": 32,
+        "tile": 48,
         "cols": 5,
         "rows": 2,
         "margin": 0,
@@ -254,7 +254,7 @@
         "id": "outside_objects_lpc-hanging-signs",
         "tex": "tex_outside_objects_lpc-hanging-signs",
         "mat": "mat_outside_objects_lpc-hanging-signs",
-        "tile": 32,
+        "tile": 48,
         "cols": 4,
         "rows": 4,
         "margin": 0,
@@ -264,7 +264,7 @@
         "id": "terrain-v7",
         "tex": "tex_terrain-v7",
         "mat": "mat_terrain-v7",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 64,
         "margin": 0,
@@ -274,7 +274,7 @@
         "id": "collision",
         "tex": "tex_collision",
         "mat": "mat_collision",
-        "tile": 32,
+        "tile": 48,
         "cols": 1,
         "rows": 1,
         "margin": 0,
@@ -284,7 +284,7 @@
         "id": "outside_objects_lpc-well",
         "tex": "tex_outside_objects_lpc-well",
         "mat": "mat_outside_objects_lpc-well",
-        "tile": 32,
+        "tile": 48,
         "cols": 8,
         "rows": 8,
         "margin": 0,
@@ -451,6 +451,17 @@
         "transparent": false,
         "side": "double",
         "depthWrite": true
+      },
+      {
+        "id": "solid_a50",
+        "tex": "solid",
+        "kind": "tiles",
+        "shading": "lambert",
+        "alphaTest": 0,
+        "transparent": true,
+        "side": "double",
+        "depthWrite": false,
+        "opacity": 0.5
       }
     ],
     "protos": [
@@ -905,22 +916,6 @@
         "thickness": 16
       },
       {
-        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_s_lo",
-        "name": "hipped_shingle_roof_a #137 floor_ramp2_s_lo",
-        "shape": "floor_ramp2_s_lo",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 137
-      },
-      {
-        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_s_hi",
-        "name": "hipped_shingle_roof_a #137 floor_ramp2_s_hi",
-        "shape": "floor_ramp2_s_hi",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 137
-      },
-      {
         "id": "p_walls_4114_wall_tri2_b_tip_flip",
         "name": "walls #4114 wall_tri2_b_tip_flip",
         "shape": "wall_tri2_b_tip_flip",
@@ -973,118 +968,6 @@
         "mat": "mat_walls",
         "ts": "walls",
         "tile": 4113
-      },
-      {
-        "id": "p_roof_trim_142_wall_o0_2_0",
-        "name": "roof_trim #142 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 142,
-        "base": "p_roof_trim_142_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_94_wall_o0_2_0",
-        "name": "roof_trim #94 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 94,
-        "base": "p_roof_trim_94_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_93_wall_o0_2_0",
-        "name": "roof_trim #93 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 93,
-        "base": "p_roof_trim_93_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_91_wall_o0_2_0",
-        "name": "roof_trim #91 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 91,
-        "base": "p_roof_trim_91_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_138_wall_o0_2_0",
-        "name": "roof_trim #138 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 138,
-        "base": "p_roof_trim_138_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_90_wall_o0_2_0",
-        "name": "roof_trim #90 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 90,
-        "base": "p_roof_trim_90_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_92_wall_o0_2_0",
-        "name": "roof_trim #92 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 92,
-        "base": "p_roof_trim_92_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_44_wall_o0_2_0",
-        "name": "roof_trim #44 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 44,
-        "base": "p_roof_trim_44_wall",
-        "offset": [
-          0,
-          2,
-          0
-        ]
       },
       {
         "id": "p_windows_doors_205_wall",
@@ -5335,6 +5218,197 @@
           5,
           8
         ]
+      },
+      {
+        "id": "wall_c45c5c_a50",
+        "shape": "wall",
+        "mat": "solid_a50",
+        "tile": 0,
+        "faces": {
+          "top": -12868701,
+          "bottom": -12868701,
+          "front": -12868701,
+          "back": -12868701,
+          "left": -12868701,
+          "right": -12868701
+        }
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip_t-32_16_32",
+        "name": "hipped_shingle_roof_a #137 floor_ramp2_lo_flip",
+        "shape": "floor_ramp2_lo_flip",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 137,
+        "base": "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_135_floor_ramp2_hi_t-32_16_32",
+        "name": "hipped_shingle_roof_a #135 floor_ramp2_hi",
+        "shape": "floor_ramp2_hi",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 135,
+        "base": "p_hipped_shingle_roof_a_135_floor_ramp2_hi",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_135_floor_ramp2_lo_t-32_16_32",
+        "name": "hipped_shingle_roof_a #135 floor_ramp2_lo",
+        "shape": "floor_ramp2_lo",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 135,
+        "base": "p_hipped_shingle_roof_a_135_floor_ramp2_lo",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip_t-32_16_32",
+        "name": "hipped_shingle_roof_a #137 floor_ramp2_hi_flip",
+        "shape": "floor_ramp2_hi_flip",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 137,
+        "base": "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_136_floor_ridge_quarter_t-32_16_32",
+        "name": "hipped_shingle_roof_a #136 floor_ridge_quarter",
+        "shape": "floor_ridge_quarter",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 136,
+        "base": "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_44_wall_o0_2_16",
+        "name": "roof_trim #44 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 44,
+        "base": "p_roof_trim_44_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_92_wall_o0_2_16",
+        "name": "roof_trim #92 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 92,
+        "base": "p_roof_trim_92_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_93_wall_o0_2_16",
+        "name": "roof_trim #93 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 93,
+        "base": "p_roof_trim_93_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_94_wall_o0_2_16",
+        "name": "roof_trim #94 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 94,
+        "base": "p_roof_trim_94_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_91_wall_o0_2_16",
+        "name": "roof_trim #91 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 91,
+        "base": "p_roof_trim_91_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_90_wall_o0_2_16",
+        "name": "roof_trim #90 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 90,
+        "base": "p_roof_trim_90_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_142_wall_o0_2_16",
+        "name": "roof_trim #142 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 142,
+        "base": "p_roof_trim_142_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_138_wall_o0_2_16",
+        "name": "roof_trim #138 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 138,
+        "base": "p_roof_trim_138_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
       }
     ]
   },
@@ -5351,7 +5425,7 @@
     "cloudShadowAmount": 0.45,
     "cloudShadowScale": 0.018,
     "cloudShadowSpeed": 0.004,
-    "pointShadowShift": 3
+    "pointShadowShift": 5
   },
   "pointLights": [
     {
@@ -5806,30 +5880,31 @@
   "editor": {
     "camera": {
       "target": [
-        -4.538471216090112,
-        2.1090033733845317,
-        7.315623983865148
+        0.8326868655328634,
+        3.5507287260201212,
+        8.925059276557244
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 11.099916034478092,
+      "distance": 11.277990709674587,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "オブジェクトレイヤー_5",
+    "activeLayer": "オブジェクトレイヤー_2",
     "brush": {
       "shape": "wall",
       "rotation": 0,
-      "color": "#1a1a1a",
-      "tileset": "village_village_objects",
-      "tile": 750,
-      "paint": "chip",
+      "chipTurn": 0,
+      "color": "#c45c5c",
+      "tileset": "walls",
+      "tile": 4109,
+      "paint": "prefab",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
         0,
-        5,
-        8
+        0,
+        0
       ],
       "thickness": [
         -32,
@@ -5838,7 +5913,7 @@
       ],
       "faceAnchor": "bl",
       "faceFit": "clip",
-      "prefabId": "Table01"
+      "prefabId": "Wood_Small_House"
     },
     "prefabs": [
       "house",
@@ -27821,7 +27896,7 @@
       "batches": []
     },
     {
-      "id": "wood_small_house",
+      "id": "wood_small_house_4",
       "name": "道具屋",
       "kind": "group",
       "parent": "建物",
@@ -27831,7 +27906,7 @@
       "batches": []
     },
     {
-      "id": "wood_small_house_2",
+      "id": "wood_small_house_2_2",
       "name": "武器屋",
       "kind": "group",
       "parent": "建物",
@@ -27841,7 +27916,7 @@
       "batches": []
     },
     {
-      "id": "wood_small_house_3",
+      "id": "wood_small_house_3_2",
       "name": "民家",
       "kind": "group",
       "parent": "建物",
@@ -34358,3336 +34433,6 @@
       ]
     },
     {
-      "id": "壁_3",
-      "name": "壁 3",
-      "kind": "tile",
-      "parent": "wood_small_house",
-      "visible": true,
-      "opacity": 1,
-      "properties": [],
-      "batches": [
-        {
-          "id": "壁_3-wall-0",
-          "shape": "wall",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4109_wall",
-            "p_walls_4111_wall",
-            "p_walls_4110_wall",
-            "p_walls_3981_wall",
-            "p_walls_3982_wall",
-            "p_walls_3983_wall",
-            "p_walls_4108_wall",
-            "p_walls_3980_wall",
-            "p_walls_3981_wall_t16"
-          ],
-          "count": 21,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              0,
-              0,
-              10,
-              3,
-              0,
-              10,
-              1,
-              0,
-              10,
-              0,
-              1,
-              10,
-              1,
-              1,
-              10,
-              3,
-              1,
-              10,
-              -1,
-              0,
-              10,
-              -1,
-              1,
-              10,
-              -1,
-              0,
-              10,
-              -1,
-              0,
-              9,
-              -1,
-              0,
-              8,
-              -1,
-              1,
-              8,
-              -1,
-              1,
-              9,
-              -1,
-              1,
-              10,
-              3,
-              0,
-              10,
-              3,
-              0,
-              9,
-              3,
-              0,
-              8,
-              3,
-              1,
-              8,
-              3,
-              1,
-              9,
-              3,
-              1,
-              10,
-              2,
-              1,
-              10
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              6,
-              0,
-              2,
-              4,
-              3,
-              7,
-              6,
-              0,
-              2,
-              4,
-              3,
-              7,
-              8
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              3,
-              3,
-              3,
-              3,
-              3,
-              3,
-              1,
-              1,
-              1,
-              1,
-              1,
-              1,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "壁_3-floor_ramp2_s_lo-1",
-          "shape": "floor_ramp2_s_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_lo"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              3,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              1
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "壁_3-floor_ramp2_s_hi-2",
-          "shape": "floor_ramp2_s_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_hi"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              1
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "壁_3-floor_ridge_quarter-3",
-          "shape": "floor_ridge_quarter",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              1,
-              3,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "壁_3-floor_ramp2_hi-4",
-          "shape": "floor_ramp2_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              0,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "壁_3-floor_ramp2_lo-5",
-          "shape": "floor_ramp2_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -1,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "装飾（朝昼夜）_4",
-      "name": "装飾（朝昼） 4",
-      "kind": "tile",
-      "parent": "wood_small_house",
-      "visible": true,
-      "opacity": 1,
-      "overlay": true,
-      "properties": [
-        {
-          "name": "ShowIn",
-          "type": "string",
-          "value": "morning,day"
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "装飾（朝昼夜）_4-wall-0",
-          "shape": "wall",
-          "mat": "mat_roof_trim",
-          "ts": "roof_trim",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_roof_trim_142_wall_o0_2_0",
-            "p_roof_trim_94_wall_o0_2_0",
-            "p_roof_trim_93_wall_o0_2_0",
-            "p_roof_trim_91_wall_o0_2_0",
-            "p_roof_trim_138_wall_o0_2_0",
-            "p_roof_trim_90_wall_o0_2_0",
-            "p_roof_trim_92_wall_o0_2_0",
-            "p_roof_trim_44_wall_o0_2_0"
-          ],
-          "count": 8,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              3,
-              1,
-              11,
-              3,
-              2,
-              11,
-              2,
-              2,
-              11,
-              0,
-              2,
-              11,
-              -1,
-              1,
-              11,
-              -1,
-              2,
-              11,
-              1,
-              2,
-              11,
-              1,
-              3,
-              11
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "装飾（朝昼夜）_4-wall-1",
-          "shape": "wall",
-          "mat": "mat_windows_doors",
-          "ts": "windows_doors",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_windows_doors_714_wall",
-            "p_windows_doors_746_wall",
-            "p_windows_doors_205_wall",
-            "p_windows_doors_237_wall"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              1,
-              10,
-              2,
-              0,
-              10,
-              0,
-              1,
-              10,
-              0,
-              0,
-              10
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "装飾（夕）_4",
-      "name": "装飾（夕夜） 4",
-      "kind": "tile",
-      "parent": "wood_small_house",
-      "visible": true,
-      "opacity": 1,
-      "overlay": true,
-      "properties": [
-        {
-          "name": "ShowIn",
-          "type": "string",
-          "value": "evening,night"
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "装飾（夕）_4-wall-0",
-          "shape": "wall",
-          "mat": "mat_roof_trim",
-          "ts": "roof_trim",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_roof_trim_142_wall_o0_2_0",
-            "p_roof_trim_94_wall_o0_2_0",
-            "p_roof_trim_93_wall_o0_2_0",
-            "p_roof_trim_91_wall_o0_2_0",
-            "p_roof_trim_138_wall_o0_2_0",
-            "p_roof_trim_90_wall_o0_2_0",
-            "p_roof_trim_92_wall_o0_2_0",
-            "p_roof_trim_44_wall_o0_2_0"
-          ],
-          "count": 8,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              3,
-              1,
-              11,
-              3,
-              2,
-              11,
-              2,
-              2,
-              11,
-              0,
-              2,
-              11,
-              -1,
-              1,
-              11,
-              -1,
-              2,
-              11,
-              1,
-              2,
-              11,
-              1,
-              3,
-              11
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "装飾（夕）_4-wall-1",
-          "shape": "wall",
-          "mat": "mat_windows_doors",
-          "ts": "windows_doors",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_windows_doors_714_wall",
-            "p_windows_doors_746_wall",
-            "p_windows_doors_215_wall",
-            "p_windows_doors_247_wall"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              1,
-              10,
-              2,
-              0,
-              10,
-              0,
-              1,
-              10,
-              0,
-              0,
-              10
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "屋根_3",
-      "name": "屋根 3",
-      "kind": "tile",
-      "parent": "wood_small_house",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "屋根_3-floor_ramp2_s_lo-0",
-          "shape": "floor_ramp2_s_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_lo"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              3,
-              2,
-              10,
-              3,
-              2,
-              9,
-              3,
-              2,
-              8
-            ],
-            "proto": [
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              1,
-              1,
-              1
-            ],
-            "gid": [
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-floor_ramp2_s_hi-1",
-          "shape": "floor_ramp2_s_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_hi"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              2,
-              10,
-              2,
-              2,
-              9,
-              2,
-              2,
-              8
-            ],
-            "proto": [
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              1,
-              1,
-              1
-            ],
-            "gid": [
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-floor_ridge_quarter-2",
-          "shape": "floor_ridge_quarter",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              1,
-              3,
-              10,
-              1,
-              3,
-              9,
-              1,
-              3,
-              8,
-              1,
-              3,
-              11
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-floor_ramp2_hi-3",
-          "shape": "floor_ramp2_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              0,
-              2,
-              10,
-              0,
-              2,
-              9,
-              0,
-              2,
-              8,
-              0,
-              2,
-              11
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-floor_ramp2_lo-4",
-          "shape": "floor_ramp2_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -1,
-              2,
-              10,
-              -1,
-              2,
-              9,
-              -1,
-              2,
-              8,
-              -1,
-              2,
-              11
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              688,
-              688,
-              688,
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-wall_tri2_b_tip_flip-5",
-          "shape": "wall_tri2_b_tip_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4114_wall_tri2_b_tip_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              3,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-wall_tri2_b_base_flip-6",
-          "shape": "wall_tri2_b_base_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall_tri2_b_base_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-wall_tri2_b_tip-7",
-          "shape": "wall_tri2_b_tip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4112_wall_tri2_b_tip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -1,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-wall_tri2_b_base-8",
-          "shape": "wall_tri2_b_base",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall_tri2_b_base"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              0,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-wall_gable_quarter-9",
-          "shape": "wall_gable_quarter",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4049_wall_gable_quarter_o0_-16_0"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              1,
-              3,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-wall-10",
-          "shape": "wall",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              1,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-floor_ramp2_lo_flip-11",
-          "shape": "floor_ramp2_lo_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              3,
-              2,
-              11
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        },
-        {
-          "id": "屋根_3-floor_ramp2_hi_flip-12",
-          "shape": "floor_ramp2_hi_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              2,
-              11
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              688
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "壁_4",
-      "name": "壁 4",
-      "kind": "tile",
-      "parent": "wood_small_house_2",
-      "visible": true,
-      "opacity": 1,
-      "properties": [],
-      "batches": [
-        {
-          "id": "壁_4-wall-0",
-          "shape": "wall",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4109_wall",
-            "p_walls_4111_wall",
-            "p_walls_4110_wall",
-            "p_walls_3981_wall",
-            "p_walls_3982_wall",
-            "p_walls_3983_wall",
-            "p_walls_4108_wall",
-            "p_walls_3980_wall",
-            "p_walls_3981_wall_t16"
-          ],
-          "count": 21,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              6,
-              0,
-              10,
-              9,
-              0,
-              10,
-              7,
-              0,
-              10,
-              6,
-              1,
-              10,
-              7,
-              1,
-              10,
-              9,
-              1,
-              10,
-              5,
-              0,
-              10,
-              5,
-              1,
-              10,
-              5,
-              0,
-              10,
-              5,
-              0,
-              9,
-              5,
-              0,
-              8,
-              5,
-              1,
-              8,
-              5,
-              1,
-              9,
-              5,
-              1,
-              10,
-              9,
-              0,
-              10,
-              9,
-              0,
-              9,
-              9,
-              0,
-              8,
-              9,
-              1,
-              8,
-              9,
-              1,
-              9,
-              9,
-              1,
-              10,
-              8,
-              1,
-              10
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              6,
-              0,
-              2,
-              4,
-              3,
-              7,
-              6,
-              0,
-              2,
-              4,
-              3,
-              7,
-              8
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              3,
-              3,
-              3,
-              3,
-              3,
-              3,
-              1,
-              1,
-              1,
-              1,
-              1,
-              1,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "壁_4-floor_ramp2_s_lo-1",
-          "shape": "floor_ramp2_s_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_lo"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              9,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              1
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "壁_4-floor_ramp2_s_hi-2",
-          "shape": "floor_ramp2_s_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_hi"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              8,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              1
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "壁_4-floor_ridge_quarter-3",
-          "shape": "floor_ridge_quarter",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              7,
-              3,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "壁_4-floor_ramp2_hi-4",
-          "shape": "floor_ramp2_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              6,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "壁_4-floor_ramp2_lo-5",
-          "shape": "floor_ramp2_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              5,
-              2,
-              7
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "装飾（朝昼夜）_5",
-      "name": "装飾（朝昼） 5",
-      "kind": "tile",
-      "parent": "wood_small_house_2",
-      "visible": true,
-      "opacity": 1,
-      "overlay": true,
-      "properties": [
-        {
-          "name": "ShowIn",
-          "type": "string",
-          "value": "morning,day"
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "装飾（朝昼夜）_5-wall-0",
-          "shape": "wall",
-          "mat": "mat_roof_trim",
-          "ts": "roof_trim",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_roof_trim_142_wall_o0_2_0",
-            "p_roof_trim_94_wall_o0_2_0",
-            "p_roof_trim_93_wall_o0_2_0",
-            "p_roof_trim_91_wall_o0_2_0",
-            "p_roof_trim_138_wall_o0_2_0",
-            "p_roof_trim_90_wall_o0_2_0",
-            "p_roof_trim_92_wall_o0_2_0",
-            "p_roof_trim_44_wall_o0_2_0"
-          ],
-          "count": 8,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              9,
-              1,
-              11,
-              9,
-              2,
-              11,
-              8,
-              2,
-              11,
-              6,
-              2,
-              11,
-              5,
-              1,
-              11,
-              5,
-              2,
-              11,
-              7,
-              2,
-              11,
-              7,
-              3,
-              11
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "装飾（朝昼夜）_5-wall-1",
-          "shape": "wall",
-          "mat": "mat_windows_doors",
-          "ts": "windows_doors",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_windows_doors_714_wall",
-            "p_windows_doors_746_wall",
-            "p_windows_doors_205_wall",
-            "p_windows_doors_237_wall"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              8,
-              1,
-              10,
-              8,
-              0,
-              10,
-              6,
-              1,
-              10,
-              6,
-              0,
-              10
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "装飾（夕）_5",
-      "name": "装飾（夕夜） 5",
-      "kind": "tile",
-      "parent": "wood_small_house_2",
-      "visible": true,
-      "opacity": 1,
-      "overlay": true,
-      "properties": [
-        {
-          "name": "ShowIn",
-          "type": "string",
-          "value": "evening,night"
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "装飾（夕）_5-wall-0",
-          "shape": "wall",
-          "mat": "mat_roof_trim",
-          "ts": "roof_trim",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_roof_trim_142_wall_o0_2_0",
-            "p_roof_trim_94_wall_o0_2_0",
-            "p_roof_trim_93_wall_o0_2_0",
-            "p_roof_trim_91_wall_o0_2_0",
-            "p_roof_trim_138_wall_o0_2_0",
-            "p_roof_trim_90_wall_o0_2_0",
-            "p_roof_trim_92_wall_o0_2_0",
-            "p_roof_trim_44_wall_o0_2_0"
-          ],
-          "count": 8,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              9,
-              1,
-              11,
-              9,
-              2,
-              11,
-              8,
-              2,
-              11,
-              6,
-              2,
-              11,
-              5,
-              1,
-              11,
-              5,
-              2,
-              11,
-              7,
-              2,
-              11,
-              7,
-              3,
-              11
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "装飾（夕）_5-wall-1",
-          "shape": "wall",
-          "mat": "mat_windows_doors",
-          "ts": "windows_doors",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_windows_doors_714_wall",
-            "p_windows_doors_746_wall",
-            "p_windows_doors_215_wall",
-            "p_windows_doors_247_wall"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              8,
-              1,
-              10,
-              8,
-              0,
-              10,
-              6,
-              1,
-              10,
-              6,
-              0,
-              10
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "屋根_4",
-      "name": "屋根 4",
-      "kind": "tile",
-      "parent": "wood_small_house_2",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "屋根_4-floor_ramp2_s_lo-0",
-          "shape": "floor_ramp2_s_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_lo"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              9,
-              2,
-              10,
-              9,
-              2,
-              9,
-              9,
-              2,
-              8
-            ],
-            "proto": [
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              1,
-              1,
-              1
-            ],
-            "gid": [
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-floor_ramp2_s_hi-1",
-          "shape": "floor_ramp2_s_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_hi"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              8,
-              2,
-              10,
-              8,
-              2,
-              9,
-              8,
-              2,
-              8
-            ],
-            "proto": [
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              1,
-              1,
-              1
-            ],
-            "gid": [
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-floor_ridge_quarter-2",
-          "shape": "floor_ridge_quarter",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              7,
-              3,
-              10,
-              7,
-              3,
-              9,
-              7,
-              3,
-              8,
-              7,
-              3,
-              11
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-floor_ramp2_hi-3",
-          "shape": "floor_ramp2_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              6,
-              2,
-              10,
-              6,
-              2,
-              9,
-              6,
-              2,
-              8,
-              6,
-              2,
-              11
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-floor_ramp2_lo-4",
-          "shape": "floor_ramp2_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              5,
-              2,
-              10,
-              5,
-              2,
-              9,
-              5,
-              2,
-              8,
-              5,
-              2,
-              11
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              689,
-              689,
-              689,
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-wall_tri2_b_tip_flip-5",
-          "shape": "wall_tri2_b_tip_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4114_wall_tri2_b_tip_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              9,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-wall_tri2_b_base_flip-6",
-          "shape": "wall_tri2_b_base_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall_tri2_b_base_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              8,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-wall_tri2_b_tip-7",
-          "shape": "wall_tri2_b_tip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4112_wall_tri2_b_tip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              5,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-wall_tri2_b_base-8",
-          "shape": "wall_tri2_b_base",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall_tri2_b_base"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              6,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-wall_gable_quarter-9",
-          "shape": "wall_gable_quarter",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4049_wall_gable_quarter_o0_-16_0"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              7,
-              3,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-wall-10",
-          "shape": "wall",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              7,
-              2,
-              10
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-floor_ramp2_lo_flip-11",
-          "shape": "floor_ramp2_lo_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              9,
-              2,
-              11
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        },
-        {
-          "id": "屋根_4-floor_ramp2_hi_flip-12",
-          "shape": "floor_ramp2_hi_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              8,
-              2,
-              11
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              689
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "壁_5",
-      "name": "壁 5",
-      "kind": "tile",
-      "parent": "wood_small_house_3",
-      "visible": true,
-      "opacity": 1,
-      "properties": [],
-      "batches": [
-        {
-          "id": "壁_5-wall-0",
-          "shape": "wall",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4109_wall",
-            "p_walls_4111_wall",
-            "p_walls_4110_wall",
-            "p_walls_3981_wall",
-            "p_walls_3982_wall",
-            "p_walls_3983_wall",
-            "p_walls_4108_wall",
-            "p_walls_3980_wall",
-            "p_walls_3981_wall_t16"
-          ],
-          "count": 21,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -18,
-              0,
-              2,
-              -15,
-              0,
-              2,
-              -17,
-              0,
-              2,
-              -18,
-              1,
-              2,
-              -17,
-              1,
-              2,
-              -15,
-              1,
-              2,
-              -19,
-              0,
-              2,
-              -19,
-              1,
-              2,
-              -19,
-              0,
-              2,
-              -19,
-              0,
-              1,
-              -19,
-              0,
-              0,
-              -19,
-              1,
-              0,
-              -19,
-              1,
-              1,
-              -19,
-              1,
-              2,
-              -15,
-              0,
-              2,
-              -15,
-              0,
-              1,
-              -15,
-              0,
-              0,
-              -15,
-              1,
-              0,
-              -15,
-              1,
-              1,
-              -15,
-              1,
-              2,
-              -16,
-              1,
-              2
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              6,
-              0,
-              2,
-              4,
-              3,
-              7,
-              6,
-              0,
-              2,
-              4,
-              3,
-              7,
-              8
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              3,
-              3,
-              3,
-              3,
-              3,
-              3,
-              1,
-              1,
-              1,
-              1,
-              1,
-              1,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "壁_5-floor_ramp2_s_lo-1",
-          "shape": "floor_ramp2_s_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_lo"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -15,
-              2,
-              -1
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              1
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "壁_5-floor_ramp2_s_hi-2",
-          "shape": "floor_ramp2_s_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_hi"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -16,
-              2,
-              -1
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              1
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "壁_5-floor_ridge_quarter-3",
-          "shape": "floor_ridge_quarter",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -17,
-              3,
-              -1
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "壁_5-floor_ramp2_hi-4",
-          "shape": "floor_ramp2_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -18,
-              2,
-              -1
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "壁_5-floor_ramp2_lo-5",
-          "shape": "floor_ramp2_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -19,
-              2,
-              -1
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "装飾（朝昼夜）_6",
-      "name": "装飾（朝昼） 6",
-      "kind": "tile",
-      "parent": "wood_small_house_3",
-      "visible": true,
-      "opacity": 1,
-      "overlay": true,
-      "properties": [
-        {
-          "name": "ShowIn",
-          "type": "string",
-          "value": "morning,day"
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "装飾（朝昼夜）_6-wall-0",
-          "shape": "wall",
-          "mat": "mat_roof_trim",
-          "ts": "roof_trim",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_roof_trim_142_wall_o0_2_0",
-            "p_roof_trim_94_wall_o0_2_0",
-            "p_roof_trim_93_wall_o0_2_0",
-            "p_roof_trim_91_wall_o0_2_0",
-            "p_roof_trim_138_wall_o0_2_0",
-            "p_roof_trim_90_wall_o0_2_0",
-            "p_roof_trim_92_wall_o0_2_0",
-            "p_roof_trim_44_wall_o0_2_0"
-          ],
-          "count": 8,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -15,
-              1,
-              3,
-              -15,
-              2,
-              3,
-              -16,
-              2,
-              3,
-              -18,
-              2,
-              3,
-              -19,
-              1,
-              3,
-              -19,
-              2,
-              3,
-              -17,
-              2,
-              3,
-              -17,
-              3,
-              3
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "装飾（朝昼夜）_6-wall-1",
-          "shape": "wall",
-          "mat": "mat_windows_doors",
-          "ts": "windows_doors",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_windows_doors_714_wall",
-            "p_windows_doors_746_wall",
-            "p_windows_doors_205_wall",
-            "p_windows_doors_237_wall"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -16,
-              1,
-              2,
-              -16,
-              0,
-              2,
-              -18,
-              1,
-              2,
-              -18,
-              0,
-              2
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "装飾（夕）_6",
-      "name": "装飾（夕夜） 6",
-      "kind": "tile",
-      "parent": "wood_small_house_3",
-      "visible": true,
-      "opacity": 1,
-      "overlay": true,
-      "properties": [
-        {
-          "name": "ShowIn",
-          "type": "string",
-          "value": "evening,night"
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "装飾（夕）_6-wall-0",
-          "shape": "wall",
-          "mat": "mat_roof_trim",
-          "ts": "roof_trim",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_roof_trim_142_wall_o0_2_0",
-            "p_roof_trim_94_wall_o0_2_0",
-            "p_roof_trim_93_wall_o0_2_0",
-            "p_roof_trim_91_wall_o0_2_0",
-            "p_roof_trim_138_wall_o0_2_0",
-            "p_roof_trim_90_wall_o0_2_0",
-            "p_roof_trim_92_wall_o0_2_0",
-            "p_roof_trim_44_wall_o0_2_0"
-          ],
-          "count": 8,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -15,
-              1,
-              3,
-              -15,
-              2,
-              3,
-              -16,
-              2,
-              3,
-              -18,
-              2,
-              3,
-              -19,
-              1,
-              3,
-              -19,
-              2,
-              3,
-              -17,
-              2,
-              3,
-              -17,
-              3,
-              3
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "装飾（夕）_6-wall-1",
-          "shape": "wall",
-          "mat": "mat_windows_doors",
-          "ts": "windows_doors",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_windows_doors_714_wall",
-            "p_windows_doors_746_wall",
-            "p_windows_doors_215_wall",
-            "p_windows_doors_247_wall"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -16,
-              1,
-              2,
-              -16,
-              0,
-              2,
-              -18,
-              1,
-              2,
-              -18,
-              0,
-              2
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "屋根_5",
-      "name": "屋根 5",
-      "kind": "tile",
-      "parent": "wood_small_house_3",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "屋根_5-floor_ramp2_s_lo-0",
-          "shape": "floor_ramp2_s_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_lo"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -15,
-              2,
-              2,
-              -15,
-              2,
-              1,
-              -15,
-              2,
-              0
-            ],
-            "proto": [
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              1,
-              1,
-              1
-            ],
-            "gid": [
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-floor_ramp2_s_hi-1",
-          "shape": "floor_ramp2_s_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_s_hi"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -16,
-              2,
-              2,
-              -16,
-              2,
-              1,
-              -16,
-              2,
-              0
-            ],
-            "proto": [
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              1,
-              1,
-              1
-            ],
-            "gid": [
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-floor_ridge_quarter-2",
-          "shape": "floor_ridge_quarter",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -17,
-              3,
-              2,
-              -17,
-              3,
-              1,
-              -17,
-              3,
-              0,
-              -17,
-              3,
-              3
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-floor_ramp2_hi-3",
-          "shape": "floor_ramp2_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -18,
-              2,
-              2,
-              -18,
-              2,
-              1,
-              -18,
-              2,
-              0,
-              -18,
-              2,
-              3
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-floor_ramp2_lo-4",
-          "shape": "floor_ramp2_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -19,
-              2,
-              2,
-              -19,
-              2,
-              1,
-              -19,
-              2,
-              0,
-              -19,
-              2,
-              3
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              690,
-              690,
-              690,
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-wall_tri2_b_tip_flip-5",
-          "shape": "wall_tri2_b_tip_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4114_wall_tri2_b_tip_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -15,
-              2,
-              2
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-wall_tri2_b_base_flip-6",
-          "shape": "wall_tri2_b_base_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall_tri2_b_base_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -16,
-              2,
-              2
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-wall_tri2_b_tip-7",
-          "shape": "wall_tri2_b_tip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4112_wall_tri2_b_tip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -19,
-              2,
-              2
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-wall_tri2_b_base-8",
-          "shape": "wall_tri2_b_base",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall_tri2_b_base"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -18,
-              2,
-              2
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-wall_gable_quarter-9",
-          "shape": "wall_gable_quarter",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4049_wall_gable_quarter_o0_-16_0"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -17,
-              3,
-              2
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-wall-10",
-          "shape": "wall",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4113_wall"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -17,
-              2,
-              2
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-floor_ramp2_lo_flip-11",
-          "shape": "floor_ramp2_lo_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -15,
-              2,
-              3
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        },
-        {
-          "id": "屋根_5-floor_ramp2_hi_flip-12",
-          "shape": "floor_ramp2_hi_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -16,
-              2,
-              3
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ],
-            "gid": [
-              690
-            ]
-          }
-        }
-      ]
-    },
-    {
       "id": "光源レイヤー_1",
       "name": "光源レイヤー 1",
       "kind": "light",
@@ -43544,7 +40289,7 @@
             {
               "name": "ShowIn",
               "type": "string",
-              "value": "morning,day,evening"
+              "value": "morning,day"
             }
           ],
           "space": "plane",
@@ -43577,7 +40322,7 @@
             {
               "name": "ShowIn",
               "type": "string",
-              "value": "morning,day,evening"
+              "value": "morning,day"
             }
           ],
           "space": "plane",
@@ -43610,7 +40355,7 @@
             {
               "name": "ShowIn",
               "type": "string",
-              "value": "morning,day,evening"
+              "value": "morning,day"
             }
           ],
           "space": "plane",
@@ -43643,7 +40388,7 @@
             {
               "name": "ShowIn",
               "type": "string",
-              "value": "morning,day,evening"
+              "value": "morning,day"
             }
           ],
           "space": "plane",
@@ -43940,7 +40685,7 @@
             {
               "name": "ShowIn",
               "type": "string",
-              "value": "day,evening"
+              "value": "morning,day,evening"
             }
           ],
           "space": "plane",
@@ -43996,11 +40741,6 @@
       "opacity": 1,
       "properties": [
         {
-          "name": "Hit",
-          "type": "string",
-          "value": "block"
-        },
-        {
           "name": "Hidden",
           "type": "boolean",
           "value": true
@@ -44017,11 +40757,101 @@
           "protos": [
             "p_collision_0_floor_o0_16_0"
           ],
-          "count": 68,
+          "count": 13,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
             "cell": [
+              -1,
+              0,
+              11,
+              0,
+              0,
+              11,
+              1,
+              0,
+              11,
+              5,
+              0,
+              11,
+              6,
+              0,
+              11,
+              7,
+              0,
+              11,
+              9,
+              0,
+              11,
+              10,
+              0,
+              -6,
+              9,
+              0,
+              -6,
+              8,
+              0,
+              -6,
+              7,
+              0,
+              -6,
+              6,
+              0,
+              -6,
+              5,
+              0,
+              -6
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "id": "タイルマップレイヤー_41-wall-1",
+          "shape": "wall",
+          "mat": "solid_a50",
+          "ts": "",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "wall_c45c5c_a50"
+          ],
+          "count": 56,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              20,
+              0,
+              -28,
               20,
               0,
               -27,
@@ -44091,6 +40921,15 @@
               20,
               0,
               -5,
+              20,
+              0,
+              -4,
+              20,
+              0,
+              -3,
+              20,
+              0,
+              -2,
               20,
               0,
               -1,
@@ -44177,69 +41016,9 @@
               26,
               20,
               0,
-              27,
-              -1,
-              0,
-              11,
-              0,
-              0,
-              11,
-              1,
-              0,
-              11,
-              5,
-              0,
-              11,
-              6,
-              0,
-              11,
-              7,
-              0,
-              11,
-              9,
-              0,
-              11,
-              10,
-              0,
-              -6,
-              9,
-              0,
-              -6,
-              8,
-              0,
-              -6,
-              7,
-              0,
-              -6,
-              6,
-              0,
-              -6,
-              5,
-              0,
-              -6,
-              20,
-              0,
-              -2,
-              20,
-              0,
-              -3,
-              20,
-              0,
-              -4
+              27
             ],
             "proto": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
               0,
               0,
               0,
@@ -44298,74 +41077,62 @@
               0
             ],
             "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3
             ]
           }
         }
@@ -44587,11 +41354,2690 @@
           ]
         }
       ]
+    },
+    {
+      "id": "壁_8",
+      "name": "壁 8",
+      "kind": "tile",
+      "parent": "wood_small_house_4",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "壁_8-wall-0",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4109_wall",
+            "p_walls_4111_wall",
+            "p_walls_4110_wall",
+            "p_walls_3981_wall",
+            "p_walls_3982_wall",
+            "p_walls_3983_wall",
+            "p_walls_4108_wall",
+            "p_walls_3980_wall",
+            "p_walls_3981_wall_t16"
+          ],
+          "count": 21,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              0,
+              0,
+              10,
+              3,
+              0,
+              10,
+              1,
+              0,
+              10,
+              0,
+              1,
+              10,
+              1,
+              1,
+              10,
+              3,
+              1,
+              10,
+              -1,
+              0,
+              10,
+              -1,
+              1,
+              10,
+              -1,
+              0,
+              10,
+              -1,
+              0,
+              9,
+              -1,
+              0,
+              8,
+              -1,
+              1,
+              8,
+              -1,
+              1,
+              9,
+              -1,
+              1,
+              10,
+              3,
+              0,
+              10,
+              3,
+              0,
+              9,
+              3,
+              0,
+              8,
+              3,
+              1,
+              8,
+              3,
+              1,
+              9,
+              3,
+              1,
+              10,
+              2,
+              1,
+              10
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              8
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        },
+        {
+          "id": "壁_8-floor_ridge_quarter-1",
+          "shape": "floor_ridge_quarter",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              3,
+              7
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              792
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "装飾（朝昼）_8",
+      "name": "装飾（朝昼） 8",
+      "kind": "tile",
+      "parent": "wood_small_house_4",
+      "visible": true,
+      "opacity": 1,
+      "overlay": true,
+      "properties": [
+        {
+          "name": "ShowIn",
+          "type": "string",
+          "value": "morning,day"
+        }
+      ],
+      "batches": [
+        {
+          "id": "装飾（朝昼）_8-wall-0",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_windows_doors_205_wall",
+            "p_windows_doors_237_wall",
+            "p_windows_doors_714_wall",
+            "p_windows_doors_746_wall"
+          ],
+          "count": 4,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              0,
+              1,
+              10,
+              0,
+              0,
+              10,
+              2,
+              1,
+              10,
+              2,
+              0,
+              10
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "装飾（夕夜）_7",
+      "name": "装飾（夕夜） 7",
+      "kind": "tile",
+      "parent": "wood_small_house_4",
+      "visible": true,
+      "opacity": 1,
+      "overlay": true,
+      "properties": [
+        {
+          "name": "ShowIn",
+          "type": "string",
+          "value": "evening,night"
+        }
+      ],
+      "batches": [
+        {
+          "id": "装飾（夕夜）_7-wall-0",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_windows_doors_714_wall",
+            "p_windows_doors_746_wall",
+            "p_windows_doors_215_wall",
+            "p_windows_doors_247_wall"
+          ],
+          "count": 4,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              2,
+              1,
+              10,
+              2,
+              0,
+              10,
+              0,
+              1,
+              10,
+              0,
+              0,
+              10
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根_7",
+      "name": "屋根 7",
+      "kind": "tile",
+      "parent": "wood_small_house_4",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根_7-floor_ramp2_lo_flip-0",
+          "shape": "floor_ramp2_lo_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              3,
+              2,
+              10,
+              3,
+              2,
+              9,
+              3,
+              2,
+              8,
+              3,
+              2,
+              7,
+              3,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-floor_ramp2_hi_flip-1",
+          "shape": "floor_ramp2_hi_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              2,
+              2,
+              10,
+              2,
+              2,
+              9,
+              2,
+              2,
+              8,
+              2,
+              2,
+              7,
+              2,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-floor_ridge_quarter-2",
+          "shape": "floor_ridge_quarter",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              3,
+              10,
+              1,
+              3,
+              9,
+              1,
+              3,
+              8,
+              1,
+              3,
+              11,
+              1,
+              3,
+              7
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-floor_ramp2_hi-3",
+          "shape": "floor_ramp2_hi",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              0,
+              2,
+              10,
+              0,
+              2,
+              9,
+              0,
+              2,
+              8,
+              0,
+              2,
+              7,
+              0,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-floor_ramp2_lo-4",
+          "shape": "floor_ramp2_lo",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -1,
+              2,
+              10,
+              -1,
+              2,
+              9,
+              -1,
+              2,
+              8,
+              -1,
+              2,
+              7,
+              -1,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-wall_tri2_b_tip_flip-5",
+          "shape": "wall_tri2_b_tip_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4114_wall_tri2_b_tip_flip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              3,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-wall_tri2_b_base_flip-6",
+          "shape": "wall_tri2_b_base_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall_tri2_b_base_flip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              2,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-wall_tri2_b_tip-7",
+          "shape": "wall_tri2_b_tip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4112_wall_tri2_b_tip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -1,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-wall_tri2_b_base-8",
+          "shape": "wall_tri2_b_base",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall_tri2_b_base"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              0,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-wall_gable_quarter-9",
+          "shape": "wall_gable_quarter",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4049_wall_gable_quarter_o0_-16_0"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              3,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              792
+            ]
+          }
+        },
+        {
+          "id": "屋根_7-wall-10",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              792
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根装飾",
+      "name": "屋根装飾",
+      "kind": "tile",
+      "parent": "wood_small_house_4",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根装飾-wall-0",
+          "shape": "wall",
+          "mat": "mat_roof_trim",
+          "ts": "roof_trim",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_roof_trim_44_wall_o0_2_16",
+            "p_roof_trim_92_wall_o0_2_16",
+            "p_roof_trim_93_wall_o0_2_16",
+            "p_roof_trim_94_wall_o0_2_16",
+            "p_roof_trim_91_wall_o0_2_16",
+            "p_roof_trim_90_wall_o0_2_16",
+            "p_roof_trim_142_wall_o0_2_16",
+            "p_roof_trim_138_wall_o0_2_16"
+          ],
+          "count": 8,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              3,
+              11,
+              1,
+              2,
+              11,
+              2,
+              2,
+              11,
+              3,
+              2,
+              11,
+              0,
+              2,
+              11,
+              -1,
+              2,
+              11,
+              3,
+              1,
+              11,
+              -1,
+              1,
+              11
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792,
+              792
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "壁_9",
+      "name": "壁 9",
+      "kind": "tile",
+      "parent": "wood_small_house_2_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "壁_9-wall-0",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4109_wall",
+            "p_walls_4111_wall",
+            "p_walls_4110_wall",
+            "p_walls_3981_wall",
+            "p_walls_3982_wall",
+            "p_walls_3983_wall",
+            "p_walls_4108_wall",
+            "p_walls_3980_wall",
+            "p_walls_3981_wall_t16"
+          ],
+          "count": 21,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              6,
+              0,
+              10,
+              9,
+              0,
+              10,
+              7,
+              0,
+              10,
+              6,
+              1,
+              10,
+              7,
+              1,
+              10,
+              9,
+              1,
+              10,
+              5,
+              0,
+              10,
+              5,
+              1,
+              10,
+              5,
+              0,
+              10,
+              5,
+              0,
+              9,
+              5,
+              0,
+              8,
+              5,
+              1,
+              8,
+              5,
+              1,
+              9,
+              5,
+              1,
+              10,
+              9,
+              0,
+              10,
+              9,
+              0,
+              9,
+              9,
+              0,
+              8,
+              9,
+              1,
+              8,
+              9,
+              1,
+              9,
+              9,
+              1,
+              10,
+              8,
+              1,
+              10
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              8
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        },
+        {
+          "id": "壁_9-floor_ridge_quarter-1",
+          "shape": "floor_ridge_quarter",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              7,
+              3,
+              7
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              794
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "装飾（朝昼）_9",
+      "name": "装飾（朝昼） 9",
+      "kind": "tile",
+      "parent": "wood_small_house_2_2",
+      "visible": true,
+      "opacity": 1,
+      "overlay": true,
+      "properties": [
+        {
+          "name": "ShowIn",
+          "type": "string",
+          "value": "morning,day"
+        }
+      ],
+      "batches": [
+        {
+          "id": "装飾（朝昼）_9-wall-0",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_windows_doors_205_wall",
+            "p_windows_doors_237_wall",
+            "p_windows_doors_714_wall",
+            "p_windows_doors_746_wall"
+          ],
+          "count": 4,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              6,
+              1,
+              10,
+              6,
+              0,
+              10,
+              8,
+              1,
+              10,
+              8,
+              0,
+              10
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "装飾（夕夜）_8",
+      "name": "装飾（夕夜） 8",
+      "kind": "tile",
+      "parent": "wood_small_house_2_2",
+      "visible": true,
+      "opacity": 1,
+      "overlay": true,
+      "properties": [
+        {
+          "name": "ShowIn",
+          "type": "string",
+          "value": "evening,night"
+        }
+      ],
+      "batches": [
+        {
+          "id": "装飾（夕夜）_8-wall-0",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_windows_doors_714_wall",
+            "p_windows_doors_746_wall",
+            "p_windows_doors_215_wall",
+            "p_windows_doors_247_wall"
+          ],
+          "count": 4,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              8,
+              1,
+              10,
+              8,
+              0,
+              10,
+              6,
+              1,
+              10,
+              6,
+              0,
+              10
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根_8",
+      "name": "屋根 8",
+      "kind": "tile",
+      "parent": "wood_small_house_2_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根_8-floor_ramp2_lo_flip-0",
+          "shape": "floor_ramp2_lo_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              9,
+              2,
+              10,
+              9,
+              2,
+              9,
+              9,
+              2,
+              8,
+              9,
+              2,
+              7,
+              9,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-floor_ramp2_hi_flip-1",
+          "shape": "floor_ramp2_hi_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              8,
+              2,
+              10,
+              8,
+              2,
+              9,
+              8,
+              2,
+              8,
+              8,
+              2,
+              7,
+              8,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-floor_ridge_quarter-2",
+          "shape": "floor_ridge_quarter",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              7,
+              3,
+              10,
+              7,
+              3,
+              9,
+              7,
+              3,
+              8,
+              7,
+              3,
+              11,
+              7,
+              3,
+              7
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-floor_ramp2_hi-3",
+          "shape": "floor_ramp2_hi",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              6,
+              2,
+              10,
+              6,
+              2,
+              9,
+              6,
+              2,
+              8,
+              6,
+              2,
+              7,
+              6,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-floor_ramp2_lo-4",
+          "shape": "floor_ramp2_lo",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              5,
+              2,
+              10,
+              5,
+              2,
+              9,
+              5,
+              2,
+              8,
+              5,
+              2,
+              7,
+              5,
+              2,
+              11
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-wall_tri2_b_tip_flip-5",
+          "shape": "wall_tri2_b_tip_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4114_wall_tri2_b_tip_flip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              9,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-wall_tri2_b_base_flip-6",
+          "shape": "wall_tri2_b_base_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall_tri2_b_base_flip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              8,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-wall_tri2_b_tip-7",
+          "shape": "wall_tri2_b_tip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4112_wall_tri2_b_tip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              5,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-wall_tri2_b_base-8",
+          "shape": "wall_tri2_b_base",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall_tri2_b_base"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              6,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-wall_gable_quarter-9",
+          "shape": "wall_gable_quarter",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4049_wall_gable_quarter_o0_-16_0"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              7,
+              3,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              794
+            ]
+          }
+        },
+        {
+          "id": "屋根_8-wall-10",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              7,
+              2,
+              10
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              794
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根装飾_2",
+      "name": "屋根装飾 2",
+      "kind": "tile",
+      "parent": "wood_small_house_2_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根装飾_2-wall-0",
+          "shape": "wall",
+          "mat": "mat_roof_trim",
+          "ts": "roof_trim",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_roof_trim_44_wall_o0_2_16",
+            "p_roof_trim_92_wall_o0_2_16",
+            "p_roof_trim_93_wall_o0_2_16",
+            "p_roof_trim_94_wall_o0_2_16",
+            "p_roof_trim_91_wall_o0_2_16",
+            "p_roof_trim_90_wall_o0_2_16",
+            "p_roof_trim_142_wall_o0_2_16",
+            "p_roof_trim_138_wall_o0_2_16"
+          ],
+          "count": 8,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              7,
+              3,
+              11,
+              7,
+              2,
+              11,
+              8,
+              2,
+              11,
+              9,
+              2,
+              11,
+              6,
+              2,
+              11,
+              5,
+              2,
+              11,
+              9,
+              1,
+              11,
+              5,
+              1,
+              11
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794,
+              794
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "壁_10",
+      "name": "壁 10",
+      "kind": "tile",
+      "parent": "wood_small_house_3_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "壁_10-wall-0",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4109_wall",
+            "p_walls_4111_wall",
+            "p_walls_4110_wall",
+            "p_walls_3981_wall",
+            "p_walls_3982_wall",
+            "p_walls_3983_wall",
+            "p_walls_4108_wall",
+            "p_walls_3980_wall",
+            "p_walls_3981_wall_t16"
+          ],
+          "count": 21,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -18,
+              0,
+              2,
+              -15,
+              0,
+              2,
+              -17,
+              0,
+              2,
+              -18,
+              1,
+              2,
+              -17,
+              1,
+              2,
+              -15,
+              1,
+              2,
+              -19,
+              0,
+              2,
+              -19,
+              1,
+              2,
+              -19,
+              0,
+              2,
+              -19,
+              0,
+              1,
+              -19,
+              0,
+              0,
+              -19,
+              1,
+              0,
+              -19,
+              1,
+              1,
+              -19,
+              1,
+              2,
+              -15,
+              0,
+              2,
+              -15,
+              0,
+              1,
+              -15,
+              0,
+              0,
+              -15,
+              1,
+              0,
+              -15,
+              1,
+              1,
+              -15,
+              1,
+              2,
+              -16,
+              1,
+              2
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              8
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        },
+        {
+          "id": "壁_10-floor_ridge_quarter-1",
+          "shape": "floor_ridge_quarter",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -17,
+              3,
+              -1
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              795
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "装飾（朝昼）_10",
+      "name": "装飾（朝昼） 10",
+      "kind": "tile",
+      "parent": "wood_small_house_3_2",
+      "visible": true,
+      "opacity": 1,
+      "overlay": true,
+      "properties": [
+        {
+          "name": "ShowIn",
+          "type": "string",
+          "value": "morning,day"
+        }
+      ],
+      "batches": [
+        {
+          "id": "装飾（朝昼）_10-wall-0",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_windows_doors_205_wall",
+            "p_windows_doors_237_wall",
+            "p_windows_doors_714_wall",
+            "p_windows_doors_746_wall"
+          ],
+          "count": 4,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -18,
+              1,
+              2,
+              -18,
+              0,
+              2,
+              -16,
+              1,
+              2,
+              -16,
+              0,
+              2
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "装飾（夕夜）_9",
+      "name": "装飾（夕夜） 9",
+      "kind": "tile",
+      "parent": "wood_small_house_3_2",
+      "visible": true,
+      "opacity": 1,
+      "overlay": true,
+      "properties": [
+        {
+          "name": "ShowIn",
+          "type": "string",
+          "value": "evening,night"
+        }
+      ],
+      "batches": [
+        {
+          "id": "装飾（夕夜）_9-wall-0",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_windows_doors_714_wall",
+            "p_windows_doors_746_wall",
+            "p_windows_doors_215_wall",
+            "p_windows_doors_247_wall"
+          ],
+          "count": 4,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -16,
+              1,
+              2,
+              -16,
+              0,
+              2,
+              -18,
+              1,
+              2,
+              -18,
+              0,
+              2
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根_9",
+      "name": "屋根 9",
+      "kind": "tile",
+      "parent": "wood_small_house_3_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根_9-floor_ramp2_lo_flip-0",
+          "shape": "floor_ramp2_lo_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -15,
+              2,
+              2,
+              -15,
+              2,
+              1,
+              -15,
+              2,
+              0,
+              -15,
+              2,
+              -1,
+              -15,
+              2,
+              3
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-floor_ramp2_hi_flip-1",
+          "shape": "floor_ramp2_hi_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -16,
+              2,
+              2,
+              -16,
+              2,
+              1,
+              -16,
+              2,
+              0,
+              -16,
+              2,
+              -1,
+              -16,
+              2,
+              3
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-floor_ridge_quarter-2",
+          "shape": "floor_ridge_quarter",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -17,
+              3,
+              2,
+              -17,
+              3,
+              1,
+              -17,
+              3,
+              0,
+              -17,
+              3,
+              3,
+              -17,
+              3,
+              -1
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-floor_ramp2_hi-3",
+          "shape": "floor_ramp2_hi",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -18,
+              2,
+              2,
+              -18,
+              2,
+              1,
+              -18,
+              2,
+              0,
+              -18,
+              2,
+              -1,
+              -18,
+              2,
+              3
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-floor_ramp2_lo-4",
+          "shape": "floor_ramp2_lo",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -19,
+              2,
+              2,
+              -19,
+              2,
+              1,
+              -19,
+              2,
+              0,
+              -19,
+              2,
+              -1,
+              -19,
+              2,
+              3
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-wall_tri2_b_tip_flip-5",
+          "shape": "wall_tri2_b_tip_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4114_wall_tri2_b_tip_flip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -15,
+              2,
+              2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-wall_tri2_b_base_flip-6",
+          "shape": "wall_tri2_b_base_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall_tri2_b_base_flip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -16,
+              2,
+              2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-wall_tri2_b_tip-7",
+          "shape": "wall_tri2_b_tip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4112_wall_tri2_b_tip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -19,
+              2,
+              2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-wall_tri2_b_base-8",
+          "shape": "wall_tri2_b_base",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall_tri2_b_base"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -18,
+              2,
+              2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-wall_gable_quarter-9",
+          "shape": "wall_gable_quarter",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4049_wall_gable_quarter_o0_-16_0"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -17,
+              3,
+              2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              795
+            ]
+          }
+        },
+        {
+          "id": "屋根_9-wall-10",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4113_wall"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -17,
+              2,
+              2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              795
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根装飾_3",
+      "name": "屋根装飾 3",
+      "kind": "tile",
+      "parent": "wood_small_house_3_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根装飾_3-wall-0",
+          "shape": "wall",
+          "mat": "mat_roof_trim",
+          "ts": "roof_trim",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_roof_trim_44_wall_o0_2_16",
+            "p_roof_trim_92_wall_o0_2_16",
+            "p_roof_trim_93_wall_o0_2_16",
+            "p_roof_trim_94_wall_o0_2_16",
+            "p_roof_trim_91_wall_o0_2_16",
+            "p_roof_trim_90_wall_o0_2_16",
+            "p_roof_trim_142_wall_o0_2_16",
+            "p_roof_trim_138_wall_o0_2_16"
+          ],
+          "count": 8,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -17,
+              3,
+              3,
+              -17,
+              2,
+              3,
+              -16,
+              2,
+              3,
+              -15,
+              2,
+              3,
+              -18,
+              2,
+              3,
+              -19,
+              2,
+              3,
+              -15,
+              1,
+              3,
+              -19,
+              1,
+              3
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795,
+              795
+            ]
+          }
+        }
+      ]
     }
   ],
   "stats": {
-    "tiles": 6021,
-    "batches": 166,
-    "drawCalls": 166
+    "tiles": 6001,
+    "batches": 146,
+    "drawCalls": 146
   }
 }

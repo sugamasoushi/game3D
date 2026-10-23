@@ -3,7 +3,7 @@
   "version": 3,
   "name": "untitled",
   "grid": {
-    "tilePx": 32,
+    "tilePx": 48,
     "unit": 1,
     "width": 40,
     "depth": 24
@@ -35,9 +35,9 @@
       },
       {
         "id": "tex_fantagyhouse_03",
-        "src": "assets/tilesets/0201/FantagyHouse_03.png",
-        "w": 1280,
-        "h": 720,
+        "src": "assets/tilesets/other/FantagyHouse_03.png",
+        "w": 1920,
+        "h": 1080,
         "filter": "nearest"
       }
     ],
@@ -46,7 +46,7 @@
         "id": "fantagyhouse_03",
         "tex": "tex_fantagyhouse_03",
         "mat": "mat_fantagyhouse_03",
-        "tile": 32,
+        "tile": 48,
         "cols": 40,
         "rows": 22,
         "margin": 0,
@@ -4544,7 +4544,8 @@
     "cloudShadow": false,
     "cloudShadowAmount": 0.45,
     "cloudShadowScale": 0.018,
-    "cloudShadowSpeed": 0.004
+    "cloudShadowSpeed": 0.004,
+    "pointShadowShift": 6
   },
   "pointLights": [
     {

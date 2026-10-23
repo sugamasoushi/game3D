@@ -1,0 +1,16 @@
+{
+  "information": "感情マークの台帳（GS-267）。キャラの頭の上に出す吹き出しの絵。キーはマークの id（イベントの emote 命令・mapNpcs.json の idleEmote / talkEmote が指す）。sheet は spriteSheets.json のキー、frames はコマの番号（左上から右へ 0,1,2…。横のコマ数で折り返す）、fps は 1 秒にめくるコマ数（省略 4）、loop は繰り返すか（切ると最後のコマで止まる）、ms はイベントで出したときの長さの既定（ミリ秒。省略 1200）、se は出たときの音（sounds.json のキー）。name はエディタに出す名前。talk は話せる合図（GS-49）の既定なので消さない。シートを広げるときは下に行を足す（途中に差し込むと番号がずれる）。台帳エディタの「スプライト素材」の「感情マーク」で編集する。",
+  "emotes": {
+    "talk": { "name": "話せるよ（…）", "sheet": "character_effects.png", "frames": [0, 1, 2], "fps": 3.33, "loop": true },
+    "sleep": { "name": "眠り", "sheet": "character_effects.png", "frames": [3, 4, 5], "fps": 2, "loop": true, "ms": 2400 },
+    "music": { "name": "音符（ごきげん）", "sheet": "character_effects.png", "frames": [6] },
+    "surprise": { "name": "驚き", "sheet": "character_effects.png", "frames": [7] },
+    "anger": { "name": "怒り", "sheet": "character_effects.png", "frames": [8] },
+    "question": { "name": "疑問", "sheet": "character_effects.png", "frames": [9] },
+    "sweat": { "name": "汗（焦り・困った）", "sheet": "character_effects.png", "frames": [10] },
+    "bear": { "name": "遊ぶ（クマ）", "sheet": "character_effects.png", "frames": [11] },
+    "meat": { "name": "食事・食欲（肉）", "sheet": "character_effects.png", "frames": [12] },
+    "bag": { "name": "道具を使う（袋）", "sheet": "character_effects.png", "frames": [13] },
+    "coin": { "name": "売買（コイン）", "sheet": "character_effects.png", "frames": [14] }
+  }
+}

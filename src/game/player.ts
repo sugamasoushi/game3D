@@ -19,8 +19,7 @@ import { blockShadowLength, resolveLighting, shadowDirection } from '../mep3d/li
 import { MAX_WALK, SEGMENTS_PER_CELL, drape, profile } from '../mep3d/shadowCast';
 import { cellOf } from '../mep3d/collision';
 import type { PhysicsBody, Terrain } from './physics';
-import { createLaneAligner } from './lane';
-import type { CameraFxDef, LightingDef, PointLightDef } from '../mep3d/types';
+import { createLaneAligner } from './lane';import type { CameraFxDef, LightingDef, PointLightDef } from '../mep3d/types';
 
 /** 行の添字。シートの既定の並び（上から 下・左・右・上）。 */
 const ROW = { south: 0, west: 1, east: 2, north: 3 } as const;
@@ -36,8 +35,17 @@ export interface ActorSheet {
   /** 横のコマ数（歩き）と縦の行数（向き）。 */
   cols: number;
   rows: number;
-  /** 1 コマの大きさ（px）。チップ 32px に対する比がそのまま背丈になる。 */
+  /**
+   * 1 コマの大きさ（px）。マップの 1 マスの画素（`grid.tilePx`）に対する比がそのまま背丈になる。
+   * **キャラの絵の 1 画素＝マップの絵の 1 画素**（RPG ツクールと同じ。2026-10-22）。48px のマップで 64×64 のコマは約 1.33 マス。
+   */
   framePx: [number, number];
+  /**
+   * **絵だけ**の倍率（2026-10-22）。台帳の画像ごとの `actorScale` に、配置した物の `Scale` を掛けたもの。書かなければ 1。
+   * 板の大きさ・足元の補正・頭のすき間に掛かり、当たり・歩く速さには掛からない。
+   * コマの区切り（`framePx`）は画像の画素のまま——ここを伸ばすと、頭のすき間を測るときのコマの切り方がずれる。
+   */
+  scale?: number;
   /** 行の並び。省略すると 下・左・右・上（旧作の既定と同じ）。 */
   order?: Facing[];
   /**
@@ -249,6 +257,11 @@ export interface Player {
   dispose(): void;
 }
 
+/** 絵だけの倍率。書いていない・壊れた値は 1。 */
+function artScale(scale: number | undefined): number {
+  return typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
 /** シートごとの「コマの上の透明な行数」（GS-205）。同じ絵を何人が使っても 1 度だけ数える。 */
 const headPadPx = new Map<string, number>();
 
@@ -284,6 +297,7 @@ function measureHeadPad(image: CanvasImageSource & { width: number; height: numb
  * **絵も当たりも同じ倍率で**大きくする——体の四角・細い体・体の高さ・踏んだ判定の範囲まで。
  * 動く速さ（歩き・走り・うろつき・はしご）にも同じ倍率を掛ける。
  * 1 マス幅の通路に入れるかは設定者の責任（1 より大きいと入れない通路が出る）。
+ * `tilePx` はマップの 1 マスの絵の画素。背丈（コマの画素 ÷ これ）と、影を面から浮かせる 1 画素に使う。
  */
 export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ scale = 1 }: { scale?: number } = {}): Player {
   const size = Number.isFinite(scale) && scale > 0 ? scale : 1;
@@ -340,11 +354,14 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
 
   // マップのビルボードと同じ光の当て方にする（GF-3.7）。
   const skin = createActorMaterial(texture);
-  const width = (sheet.framePx[0] / tilePx) * unit * size;
-  const height = (sheet.framePx[1] / tilePx) * unit * size;
+  // 背丈は絵の画素 ÷ マップの 1 マスの画素（ツクールと同じく、キャラとマップの 1 画素をそろえる）。
+  // 絵だけの倍率（画像ごとの `actorScale` × 物の `Scale`）は板にだけ掛ける。当たり（`size`）には掛けない。
+  const art = size * artScale(sheet.scale);
+  const width = (sheet.framePx[0] / tilePx) * unit * art;
+  const height = (sheet.framePx[1] / tilePx) * unit * art;
   const body = new Mesh(new PlaneGeometry(width, height), skin.material);
   /** 絵を下げる量（GS-52）。台帳の `footPx` をワールドの長さへ直したもの。 */
-  const footLift = ((sheet.footPx ?? 0) / tilePx) * unit * size;
+  const footLift = ((sheet.footPx ?? 0) / tilePx) * unit * art;
   body.position.y = height / 2 - footLift;
   group.add(body);
   // 太陽の影は頭の少し上で引く（DEC-156）。自分も深度に入っているので、
@@ -921,7 +938,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     frame: () => frameUv,
     size: { width, height },
     boardFoot: () => boardFootAt.set(position.x, position.y + body.position.y - height / 2, position.z),
-    headPad: () => ((headPadPx.get(sheet.url) ?? 0) / tilePx) * unit * size,
+    headPad: () => ((headPadPx.get(sheet.url) ?? 0) / tilePx) * unit * art,
     // 踏んだ判定も四角に合わせる（GS-116）。細いままだと、四角で壁の手前に止まったとき
     // 壁のマスに描いた起動場所（扉など）に届かなくなる。
     radius: bodyHalf,

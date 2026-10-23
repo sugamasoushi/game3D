@@ -3,7 +3,7 @@
   "version": 3,
   "name": "untitled",
   "grid": {
-    "tilePx": 32,
+    "tilePx": 48,
     "unit": 1,
     "width": 40,
     "depth": 40
@@ -36,8 +36,8 @@
       {
         "id": "tex_purplering_purple-ring-terrain",
         "src": "assets/tilesets/PurpleRing/purple-ring-terrain.png",
-        "w": 704,
-        "h": 800,
+        "w": 1056,
+        "h": 1200,
         "filter": "nearest"
       }
     ],
@@ -46,7 +46,7 @@
         "id": "purplering_purple-ring-terrain",
         "tex": "tex_purplering_purple-ring-terrain",
         "mat": "mat_purplering_purple-ring-terrain",
-        "tile": 32,
+        "tile": 48,
         "cols": 22,
         "rows": 25,
         "margin": 0,
@@ -9082,7 +9082,8 @@
     "cloudShadowScale": 0.01,
     "cloudShadowSpeed": 0.03,
     "sunColor": "#c8cefe",
-    "ambientColor": "#ffefc2"
+    "ambientColor": "#ffefc2",
+    "pointShadowShift": 6
   },
   "pointLights": [
     {

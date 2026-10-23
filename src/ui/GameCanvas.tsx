@@ -47,7 +47,6 @@ import { mapNpcSettingsForFile, rollCompanions } from '../game/mapNpcs';
 import type { MapDef } from '../mep3d/types';
 import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
-import { TalkMarks, type TalkMark } from './TalkMarks';
 import { Menu } from './menu/Menu';
 import { CameraIllustrationLayer } from './CameraIllustrationLayer';
 import { SettingsMenu } from './SettingsMenu';
@@ -698,6 +697,8 @@ export default function GameCanvas() {
       useUi.getState().clearPortraits();
       // めくる絵も同じ（GS-188）。閉じ忘れても次のイベントに残らない。
       clearComic();
+      // 感情マーク（GS-267）も。出したままにしたマークを歩き出しに持ち越さない。
+      viewRef.current?.clearEmotes();
       useUi.getState().setBusy(false);
       canvasRef.current?.focus();
     }
@@ -1241,12 +1242,8 @@ export default function GameCanvas() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      if (cameraPreviewRef.current) return;
-      checkSpotsRef.current();
-      // 敵シンボル（GS-76）。起動場所と同じ間隔で見る。
-      checkSymbolsRef.current();
-      // 歩いているあいだの毒（GS-71）。同じ間隔で見る。
-      checkWalkAilmentsRef.current();
+      // 見た目の出し入れは**エディタのプレビュー中も見る**——時間帯を変えたら NPC がその場で
+      // 出入りしてほしい（`ShowIn`。GS-222）。止めると、入り直すまで変わらない（GS-266）。
       // 出す条件が崩れた NPC（GS-130）。**`busy` でも見る**——イベントの中でスイッチが入り、
       // その場で消えてほしいことがある（倒したイベント敵）。
       checkNpcShownRef.current();
@@ -1254,6 +1251,13 @@ export default function GameCanvas() {
       checkNpcPoseRef.current();
       // イベントで出し入れするレイヤーも同じ（GS-233）。
       checkSwitchLayersRef.current();
+      // ここから下は遊ぶ画面だけ（起動場所・敵シンボル・毒・並行イベント・オートセーブ）。
+      if (cameraPreviewRef.current) return;
+      checkSpotsRef.current();
+      // 敵シンボル（GS-76）。起動場所と同じ間隔で見る。
+      checkSymbolsRef.current();
+      // 歩いているあいだの毒（GS-71）。同じ間隔で見る。
+      checkWalkAilmentsRef.current();
       // 並行イベント（GS-43）。**`busy` でも見る**——止めないのが持ち場なので、
       // 会話の裏でスイッチが入るのは正しい動き。
       checkParallelRef.current();
@@ -1417,14 +1421,15 @@ export default function GameCanvas() {
   /**
    * 「話せるよ」の合図を出す相手（GS-49）。**毎フレーム聞かれる**ので、
    * 重い判定はしない——距離と、そのイベントが動くかだけ。
+   * 絵は 3D の板で、キャラと同じ割合の大きさ（GS-267。`GameView.setTalkMarks`）。
    */
-  const talkMarks = useCallback((): TalkMark[] => {
+  const talkMarks = useCallback((): Array<{ id: string; near: boolean }> => {
     const view = viewRef.current;
     // 会話や暗転の最中は出さない。合図の役目は「押せば始まる」を伝えることなので。
     if (!view || useUi.getState().busy || useUi.getState().phase !== 'play') return [];
     const at = view.playerAt();
     if (!at) return [];
-    const out: TalkMark[] = [];
+    const out: Array<{ id: string; near: boolean }> = [];
     for (const [npc, eventId] of npcTalkRef.current) {
       const event = eventsRef.current.get(eventId);
       if (!event || event.trigger !== 'action') continue;
@@ -1434,12 +1439,24 @@ export default function GameCanvas() {
       if (span > TALK_MARK_SHOW) continue;
       // 条件を満たさないイベント（もう終わった話など）には出さない。
       if (!runnableRef.current(event)) continue;
-      const head = view.headAt(npc);
-      if (!head) continue;
-      out.push({ id: npc, x: head.x, y: head.y, near: span <= TALK_MARK_NEAR });
+      out.push({ id: npc, near: span <= TALK_MARK_NEAR });
     }
     return out;
   }, []);
+
+  // 話せる合図を毎フレーム 3D へ渡す（GS-49 / GS-267）。NPC はうろつくので細かく見る。
+  useEffect(() => {
+    let alive = true;
+    const tick = () => {
+      if (!alive) return;
+      viewRef.current?.setTalkMarks(talkMarks());
+      window.requestAnimationFrame(tick);
+    };
+    window.requestAnimationFrame(tick);
+    return () => {
+      alive = false;
+    };
+  }, [talkMarks]);
 
   /** いまの場所を記録に写す。 */
   const saveTo = useCallback(async (slot: number) => {
@@ -1588,8 +1605,6 @@ export default function GameCanvas() {
         {/* めくる絵を読ませている間は隠す（GS-188。旧作も隠した）。絵の左右の矢印でめくる。 */}
         {/* 出すかは設定（GS-214。既定はスマホだけ）。 */}
         {phase === 'play' && !comicReading && padShown ? <VirtualPad /> : null}
-        {/* 話せる合図（GS-49）。会話の裏では出さない。 */}
-        <TalkMarks probe={talkMarks} />
         {notice ? <div className="notice">{notice}</div> : null}
         {/* 歩いているあいだの毒（GS-71）。**会話ウィンドウは使わない**——歩きが止まる。 */}
         {walkNote ? <div className="walk-note">{walkNote}</div> : null}

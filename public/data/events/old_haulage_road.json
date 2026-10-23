@@ -12,6 +12,50 @@
       "kind": "click",
       "trigger": "action",
       "commands": [{ "type": "message", "talk": [{ "lines": ["立入禁止"] }], "style": "window" }]
+    },
+    {
+      "id": "short_story_001",
+      "kind": "object",
+      "trigger": "action",
+      "when": [
+        { "story": "ending", "is": "done" },
+        { "story": "commotion_entering_village", "is": "notDone" },
+        { "self": "A", "is": false }
+      ],
+      "commands": [
+        { "type": "portrait", "slot": "left", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "right", "who": "lamy", "face": "talk" },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
+            { "who": "meina", "lines": ["この道を行けば、もうすぐリッカ村だよ。"] },
+            { "who": "lamy", "lines": ["村！　おいしいもの、売ってる？"] },
+            { "who": "meina", "lines": ["売ってるけど、今日は旅の準備。", "装備を見て、薬と食料も買わないと。"] },
+            { "who": "lamy", "lines": ["じゃあ、まず食料だね！"] },
+            { "who": "meina", "lines": ["まず装備。", "途中で怪我したら、旅どころじゃないでしょ。"] },
+            { "who": "lamy", "lines": ["おなかがすいても、旅どころじゃないよ。"] },
+            { "who": "meina", "lines": ["……どっちも買うから。"] },
+            { "who": "lamy", "lines": ["メイナ、そのマントも新しくするの？", "裾、ほつれてるよ。"] },
+            { "who": "meina", "lines": ["うん。枝に引っかけたり、", "誰かに寝ながら引っ張られたりしたからね。"] },
+            { "who": "lamy", "lines": ["……丈夫なやつにしよう。"] },
+            { "who": "meina", "lines": ["次は引っ張らないで。"] },
+            { "who": "lamy", "lines": ["あたしも毛布がほしい。", "自分のがあれば、引っ張らないもん。"] },
+            { "who": "meina", "lines": ["それは買おう。", "二人で使うものも、考えないとね。"] },
+            { "who": "lamy", "lines": ["村のお店、メイナは詳しいの？"] },
+            { "who": "meina", "lines": ["塩とか布を買いに、何度か来たことはあるよ。", "旅の装備を揃えるのは、私も初めてだけど。"] },
+            { "who": "lamy", "lines": ["じゃあ、一緒に選ぼうよ。", "メイナのマントと、あたしの毛布と、お肉！"] },
+            { "who": "meina", "lines": ["……食料は、日持ちするものも買うからね。"] },
+            { "who": "lamy", "lines": ["大丈夫。日持ちしないやつは、あたしが先に食べる！"] },
+            { "who": "meina", "lines": ["全部先に食べないでよ。", "それと村では、勝手に離れないこと。"] },
+            { "who": "lamy", "lines": ["わかってるって。", "ほら、早く行こう！"] },
+            { "who": "meina", "lines": ["はいはい。リッカ村へ、出発！"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left" },
+        { "type": "portrait", "slot": "right" },
+        { "type": "setSelfSwitch", "key": "A", "value": true }
+      ]
     }
   ],
   "mapMoves": [
@@ -21,7 +65,7 @@
         {
           "map": "forest_mansion",
           "at": { "x": -9, "y": 0, "z": 26 },
-          "px": { "x": 0, "z": -6 },
+          "px": { "x": 0, "z": -9 },
           "face": "up"
         }
       ]
@@ -32,7 +76,7 @@
         {
           "map": "rikka_village",
           "at": { "x": -4, "y": 0, "z": 25 },
-          "px": { "x": 0, "z": -7 },
+          "px": { "x": 0, "z": -11 },
           "face": "up"
         }
       ]

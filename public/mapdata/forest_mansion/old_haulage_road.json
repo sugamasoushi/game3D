@@ -3,7 +3,7 @@
   "version": 3,
   "name": "untitled",
   "grid": {
-    "tilePx": 32,
+    "tilePx": 48,
     "unit": 1,
     "width": 50,
     "depth": 50
@@ -36,64 +36,64 @@
       {
         "id": "tex_terrain-v7",
         "src": "assets/tilesets/terrain-v7.png",
-        "w": 1024,
-        "h": 2048,
+        "w": 1536,
+        "h": 3072,
         "filter": "nearest"
       },
       {
         "id": "tex_nature_trees-green",
         "src": "assets/tilesets/Nature/trees-green.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_nature_plants",
         "src": "assets/tilesets/Nature/plants.png",
-        "w": 512,
-        "h": 1024,
+        "w": 768,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_outside_objects_palisade-160x96",
         "src": "assets/tilesets/outside_objects/palisade-160x96.png",
-        "w": 160,
-        "h": 96,
+        "w": 240,
+        "h": 144,
         "filter": "nearest"
       },
       {
         "id": "tex_outside_objects_signboard",
         "src": "assets/tilesets/outside_objects/signboard.png",
-        "w": 128,
-        "h": 128,
+        "w": 192,
+        "h": 192,
         "filter": "nearest"
       },
       {
         "id": "tex_outside_objects_restricted_area_64px",
         "src": "assets/tilesets/outside_objects/Restricted Area_64px.png",
-        "w": 64,
-        "h": 64,
+        "w": 96,
+        "h": 96,
         "filter": "nearest"
       },
       {
         "id": "tex_mountain_mountain_summer_",
         "src": "assets/tilesets/Mountain/Mountain (Summer).png",
-        "w": 224,
-        "h": 320,
+        "w": 336,
+        "h": 480,
         "filter": "nearest"
       },
       {
         "id": "tex_grass-dirt_summer_",
         "src": "assets/tilesets/Mountain/Grass-Dirt (Summer).png",
-        "w": 96,
-        "h": 224,
+        "w": 144,
+        "h": 336,
         "filter": "nearest"
       },
       {
         "id": "tex_dirt_non-winter_",
         "src": "assets/tilesets/Mountain/Dirt (Non-Winter).png",
-        "w": 96,
-        "h": 64,
+        "w": 144,
+        "h": 96,
         "filter": "nearest"
       }
     ],
@@ -102,7 +102,7 @@
         "id": "terrain-v7",
         "tex": "tex_terrain-v7",
         "mat": "mat_terrain-v7",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 64,
         "margin": 0,
@@ -112,7 +112,7 @@
         "id": "nature_trees-green",
         "tex": "tex_nature_trees-green",
         "mat": "mat_nature_trees-green",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -122,7 +122,7 @@
         "id": "nature_plants",
         "tex": "tex_nature_plants",
         "mat": "mat_nature_plants",
-        "tile": 32,
+        "tile": 48,
         "cols": 16,
         "rows": 32,
         "margin": 0,
@@ -132,7 +132,7 @@
         "id": "outside_objects_palisade-160x96",
         "tex": "tex_outside_objects_palisade-160x96",
         "mat": "mat_outside_objects_palisade-160x96",
-        "tile": 32,
+        "tile": 48,
         "cols": 5,
         "rows": 3,
         "margin": 0,
@@ -142,7 +142,7 @@
         "id": "outside_objects_signboard",
         "tex": "tex_outside_objects_signboard",
         "mat": "mat_outside_objects_signboard",
-        "tile": 32,
+        "tile": 48,
         "cols": 4,
         "rows": 4,
         "margin": 0,
@@ -152,7 +152,7 @@
         "id": "outside_objects_restricted_area_64px",
         "tex": "tex_outside_objects_restricted_area_64px",
         "mat": "mat_outside_objects_restricted_area_64px",
-        "tile": 32,
+        "tile": 48,
         "cols": 2,
         "rows": 2,
         "margin": 0,
@@ -162,7 +162,7 @@
         "id": "mountain_mountain_summer_",
         "tex": "tex_mountain_mountain_summer_",
         "mat": "mat_mountain_mountain_summer_",
-        "tile": 32,
+        "tile": 48,
         "cols": 7,
         "rows": 10,
         "margin": 0,
@@ -172,7 +172,7 @@
         "id": "grass-dirt_summer_",
         "tex": "tex_grass-dirt_summer_",
         "mat": "mat_grass-dirt_summer_",
-        "tile": 32,
+        "tile": 48,
         "cols": 3,
         "rows": 7,
         "margin": 0,
@@ -182,7 +182,7 @@
         "id": "dirt_non-winter_",
         "tex": "tex_dirt_non-winter_",
         "mat": "mat_dirt_non-winter_",
-        "tile": 32,
+        "tile": 48,
         "cols": 3,
         "rows": 2,
         "margin": 0,
@@ -4963,7 +4963,8 @@
     "cloudShadow": true,
     "cloudShadowAmount": 0.45,
     "cloudShadowScale": 0.018,
-    "cloudShadowSpeed": 0.004
+    "cloudShadowSpeed": 0.004,
+    "pointShadowShift": 6
   },
   "lightingPresets": [
     {
@@ -5091,16 +5092,16 @@
   "editor": {
     "camera": {
       "target": [
-        -6.399040575610419,
-        4.5544858451895465,
-        -19.120415459128395
+        0.26565208752669967,
+        2.3250654983208383,
+        1.664537512444495
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 25.937424601000018,
+      "distance": 13.241057960203925,
       "orthographic": false
     },
-    "height": 8,
+    "height": 0,
     "activeLayer": "タイルマップレイヤー_9",
     "brush": {
       "shape": "wall",

@@ -74,6 +74,11 @@ export interface EventContext {
   /** その場でジャンプ（GS-184）。跳ね終わったら返る。居ない相手なら何もしない。 */
   jump(target: ActorRef, times: number, height: number, ms: number): Promise<void>;
   /**
+   * 感情マーク（GS-267）。消えたら返る（出したまま・引っ込めるなら すぐ）。居ない相手・台帳に無いマークなら何もしない。
+   * `ms` が無ければ台帳の既定。
+   */
+  emote(target: ActorRef, id: string | null, ms: number | undefined): Promise<void>;
+  /**
    * カメラが主人公を追うかどうか（GS-166）。**その時点から効く。**
    * 戻すのは `on: true` の書き直しか、イベントの終わり（マップの読み直しでも戻る）。
    */
@@ -370,6 +375,13 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
     );
     if (cmd.wait === false) void hops;
     else await hops;
+  },
+
+  // 感情マーク（GS-267）。既定は消えるまで待つ。
+  emote: async (ctx, cmd) => {
+    const shown = ctx.emote(cmd.target, cmd.id ?? null, cmd.ms === undefined ? undefined : Math.max(0, cmd.ms));
+    if (cmd.wait === false) void shown;
+    else await shown;
   },
 
   // カメラ追従（GS-166）。**書いた所だけが効く**——切ったら戻すまで画面は止まったまま。

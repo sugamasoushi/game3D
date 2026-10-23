@@ -6,7 +6,7 @@
       "label": "序章 出会い"
     },
     {
-      "from": "short_story_001",
+      "from": "commotion_entering_village",
       "label": "１章　旅立ちに備えて"
     }
   ],
@@ -38,10 +38,6 @@
     {
       "id": "ending",
       "label": "旅立ちを決める（クリア）"
-    },
-    {
-      "id": "short_story_001",
-      "label": "道中話"
     },
     {
       "id": "commotion_entering_village",

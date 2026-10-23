@@ -18,7 +18,7 @@
         {
           "type": "move",
           "target": "npc:grandpaNpc",
-          "to": { "x": -6, "y": 10, "z": 1 },
+          "to": { "x": "player", "y": 10, "z": 1 },
           "first": "upDown"
         },
         { "type": "wait", "ms": 200 },
@@ -79,9 +79,11 @@
           "type": "move",
           "target": "npc:grandpaNpc",
           "to": { "x": 6, "y": 10, "z": -1 },
-          "first": "leftRight"
+          "first": "leftRight",
+          "wait": false
         },
         { "type": "shot", "id": "event010201_camera02" },
+        { "type": "wait", "ms": 1000 },
         { "type": "hide", "target": "npc:grandpaNpc" },
         { "type": "story", "done": "leave_home" }
       ],
@@ -132,11 +134,7 @@
         {
           "type": "message",
           "style": "bubble",
-          "talk": [
-            { "lines": ["遊んでくれてありがとう！"] },
-            { "lines": ["シナリオはなんとなく作ってありますが", "システム作りだけで一杯一杯です。泣"] },
-            { "lines": ["遊べるゲームを作るのは大変ですね。"] }
-          ]
+          "talk": [{ "lines": ["こちらは体験版です"] }, { "lines": ["・・・"] }, { "lines": ["製品版も買ってね！"] }]
         }
       ],
       "kind": "talk"
@@ -165,7 +163,7 @@
   "mapMoves": [
     {
       "object": "obj_1",
-      "to": [{ "map": "home", "at": { "x": 5, "y": 0, "z": 3 }, "px": { "x": 0, "z": -6 }, "face": "up" }]
+      "to": [{ "map": "home", "at": { "x": 5, "y": 0, "z": 3 }, "px": { "x": 0, "z": -9 }, "face": "up" }]
     },
     {
       "object": "obj_2",

@@ -148,16 +148,16 @@ export function geometryFor(shape: Shape): BufferGeometry {
       geometry = rampGeometry(RAMP_HEIGHTS[shape.slice('floor_ramp_'.length)], false);
       break;
     case 'floor_ramp_corner_ne':
-      geometry = foldGeometry([0, 1, 0, 0], false, 0);
+      geometry = foldGeometry([0, 1, 0, 0], false, 0, CORNER_CHIP_UV[shape]);
       break;
     case 'floor_ramp_corner_nw':
-      geometry = foldGeometry([1, 0, 0, 0], true, 0);
+      geometry = foldGeometry([1, 0, 0, 0], true, 0, CORNER_CHIP_UV[shape]);
       break;
     case 'floor_ramp_corner_ne_inverse':
-      geometry = foldGeometry([1, 1, 1, 0], false, 1);
+      geometry = foldGeometry([1, 1, 1, 0], false, 1, CORNER_CHIP_UV[shape]);
       break;
     case 'floor_ramp_corner_nw_inverse':
-      geometry = foldGeometry([1, 1, 0, 1], true, 1);
+      geometry = foldGeometry([1, 1, 0, 1], true, 1, CORNER_CHIP_UV[shape]);
       break;
     case 'floor_ramp2_lo':
     case 'floor_ramp2_hi':
@@ -856,6 +856,23 @@ function diagWallGeometry(nwse: boolean): BufferGeometry {
 }
 
 /**
+ * 接続坂（5・6）と逆三角形（7・8）の UV。チップから**二等辺三角形を切り抜いて斜面に貼る**。
+ * 5・6 は △（底辺＝低い辺をチップの下、頂点＝高い隅をチップの上の真ん中）、
+ * 7・8 は ▽（上辺＝高い辺をチップの上、下の頂点＝低い隅をチップの下の真ん中）。
+ * 左右は低い側から坂の上を見上げた向きで、絵は裏返らない。並びは隅の北西・北東・南東・南西（使わない隅は何でもよい）。
+ */
+const CORNER_CHIP_UV: Partial<Record<Shape, Array<[number, number]>>> = {
+  floor_ramp_corner_ne: [[0, 1], [0.5, 0], [1, 1], [0, 0]],
+  floor_ramp_corner_nw: [[0.5, 0], [1, 1], [0, 0], [0, 1]],
+  floor_ramp_corner_ne_inverse: [[0, 0], [0, 0], [1, 0], [0.5, 1]],
+  floor_ramp_corner_nw_inverse: [[0, 0], [1, 0], [0.5, 1], [0, 0]],
+};
+
+export function cornerChipUv(shape: Shape): Array<[number, number]> | undefined {
+  return CORNER_CHIP_UV[shape];
+}
+
+/**
  * 坂の面の 4 隅の高さ（マス）。並びは床と同じ NW, NE, SE, SW。
  * 高いほうの辺が 1、向かいの辺が 0。マスを 1 辺から向かいの辺へ斜めに切った断面と同じ。
  */
@@ -991,10 +1008,16 @@ const FOLD_SW_NE: Record<string, boolean> = {
  * それぞれの法線を出す（`ridgeGeometry` と同じ理由）。
  *
  * UV は真上から見た足跡のまま（隅の x/z は動かないので `quadUvs` がそれ）。
+ * 傾斜の輪の接続坂・逆三角形（5〜8）だけは `cornerUv` で三角形を切り抜いて貼る（`CORNER_CHIP_UV`）。
  * だから絵は引き伸ばされず、**折り目で曲がって**見える。
  */
 // faceIndex 指定時は接続坂の斜め三角面だけを作り、水平な半分は作らない。
-function foldGeometry(heights: number[], swNe: boolean, faceIndex?: 0 | 1): BufferGeometry {
+function foldGeometry(
+  heights: number[],
+  swNe: boolean,
+  faceIndex?: 0 | 1,
+  cornerUv?: Array<[number, number]>,
+): BufferGeometry {
   const [nw, ne, se, sw] = heights;
   const corner: Array<[number, number, number]> = [
     [-HALF, nw, -HALF],
@@ -1002,7 +1025,7 @@ function foldGeometry(heights: number[], swNe: boolean, faceIndex?: 0 | 1): Buff
     [HALF, se, HALF],
     [-HALF, sw, HALF],
   ];
-  const uv: Array<[number, number]> = [[0, 0], [1, 0], [1, 1], [0, 1]];
+  const uv: Array<[number, number]> = cornerUv ?? [[0, 0], [1, 0], [1, 1], [0, 1]];
   // 折れ目は 3—1（南西—北東）か 0—2（北西—南東）。巻き順は表を上へ向けるため（DEC-353 / DEC-354）。
   const faces: Array<[number, number, number]> = swNe
     ? [[0, 3, 1], [1, 3, 2]]

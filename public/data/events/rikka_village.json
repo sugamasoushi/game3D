@@ -276,6 +276,179 @@
         }
       ],
       "npc": "soldier_junior02"
+    },
+    {
+      "commands": [
+        {
+          "talk": [{ "at": "chiken1", "lines": ["コケコッコー！", "EventOps MCP の会話テストです。"], "who": "chiken" }],
+          "type": "message",
+          "style": "bubble"
+        }
+      ],
+      "npc": "chiken1",
+      "id": "talk_mcp_test",
+      "trigger": "action",
+      "kind": "talk"
+    },
+    {
+      "id": "commotion_entering_village",
+      "kind": "scenario",
+      "trigger": "auto",
+      "when": [{ "story": "commotion_entering_village", "is": "next" }],
+      "commands": [
+        { "type": "fade", "to": "out", "ms": 350 },
+        { "type": "place", "target": "player", "at": { "x": -4, "y": 0, "z": 25 }, "face": "up" },
+        {
+          "type": "place",
+          "target": "party:lamy",
+          "at": { "x": -3, "y": 0, "z": 25 },
+          "face": "up"
+        },
+        {
+          "type": "place",
+          "target": "npc:soldier_junior01",
+          "at": { "x": -4, "y": 0, "z": 23 },
+          "face": "down"
+        },
+        {
+          "type": "place",
+          "target": "npc:VegetableSeller",
+          "at": { "x": -6, "y": 0, "z": 24 },
+          "face": "right"
+        },
+        {
+          "type": "place",
+          "target": "npc:Butcher",
+          "at": { "x": -1, "y": 0, "z": 24 },
+          "face": "left"
+        },
+        { "type": "fade", "to": "in", "ms": 450 },
+        { "type": "portrait", "slot": "left", "who": "meina", "face": "talk" },
+        { "type": "portrait", "slot": "right", "who": "lamy", "face": "talk" },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
+            { "who": "meina", "lines": ["着いた。ここがリッカ村だよ。", "買い物するから、勝手にどこか行かないでね。"] },
+            { "who": "lamy", "lines": ["わあ、あれ何？　あっちは？", "……なんか、すっごくいい匂い！"] },
+            { "who": "soldier_junior", "lines": ["おう、メイナ。今日は連れが……", "待て。その子、ラミア族じゃないか！？"] },
+            { "who": "middle_aunt_01", "lines": ["ラミア……？", "人を丸呑みにするって噂の……？"] },
+            { "who": "middle_uncle_01", "lines": ["お、おい。こっちに来るぞ。", "屋台は倒さんでくれよ……。"] },
+            { "who": "meina", "lines": ["この子は大丈夫。", "ご飯を食べるだけだから。"] }
+          ]
+        },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
+            { "who": "lamy", "lines": ["ねえメイナ！　あのお肉、串に刺さってる！", "隣の焼き菓子も……じゅる……。"] },
+            { "who": "soldier_junior", "lines": ["よだれ、垂れてるぞ……。", "本当に大丈夫なんだろうな？"] },
+            { "who": "meina", "lines": ["……食べ物のことしか考えてないから。"] },
+            { "who": "soldier_junior", "lines": ["それが心配なんだが。"] }
+          ]
+        },
+        { "type": "portrait", "slot": "right", "who": "lamy", "face": "talk" },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
+            { "who": "soldier_junior", "lines": ["メイナの連れなら、追い返す気はない。", "ただ、村に入るなら約束してもらうぞ。"] },
+            { "who": "soldier_junior", "lines": ["一つ。人を丸呑みにしないこと。"] },
+            { "who": "lamy", "lines": ["しないよ！", "初対面で何言ってんの！？"] },
+            { "who": "meina", "lines": ["ほら、しないって。次は？"] },
+            { "who": "soldier_junior", "lines": ["二つ。商品を勝手に食べないこと。"] },
+            { "who": "meina", "lines": ["ラミィ。ここ、ちゃんと聞いて。"] },
+            { "who": "lamy", "lines": ["さっきより真剣じゃない！？"] },
+            { "who": "meina", "lines": ["お店のものは、お金を払ってから。", "味見も勝手にしちゃだめ。"] },
+            { "who": "lamy", "lines": ["……ひと口だけでも？"] },
+            { "who": "meina", "lines": ["だめ。"] },
+            { "who": "soldier_junior", "lines": ["三つ。尻尾で屋台を倒さないこと。"] },
+            { "who": "lamy", "lines": ["わざと倒したりしないってば。", "……曲がるとき、気をつければいいんでしょ。"] },
+            { "who": "soldier_junior", "lines": ["四つ。鶏に近づかないこと。"] },
+            { "who": "lamy", "lines": ["鶏まで！？", "あたし、何しに来たと思われてるの？"] },
+            { "who": "meina", "lines": ["買い物。だから、鶏は見なくていい。"] }
+          ]
+        },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
+            { "who": "lamy", "lines": ["わかったよ！", "人は食べない。売り物は勝手に食べない。"] },
+            { "who": "lamy", "lines": ["屋台は倒さない。鶏には近づかない。", "これでいい？"] },
+            {
+              "who": "soldier_junior",
+              "lines": ["ああ。こちらも、むやみに騒がないよう伝えよう。", "メイナ、しばらくは一緒にいてやってくれ。"]
+            },
+            { "who": "meina", "lines": ["うん。何かあったら私に言って。"] },
+            { "who": "middle_uncle_01", "lines": ["……肉串なら、ちゃんと焼いて売ってるぞ。", "約束を守るお客なら歓迎だ。"] }
+          ]
+        },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
+            { "who": "lamy", "lines": ["じゃあ、お金を払ったお肉は食べていいんだね！", "メイナ、早く！"] },
+            { "who": "meina", "lines": ["まず買い物の相談。", "……あと、よだれ拭いて。"] }
+          ]
+        },
+        { "type": "portrait", "slot": "left" },
+        { "type": "portrait", "slot": "right" },
+        { "type": "cameraFollow", "on": false },
+        {
+          "type": "move",
+          "target": "npc:VegetableSeller",
+          "to": { "x": -7, "y": 0, "z": 21 },
+          "first": "leftRight",
+          "speed": 4,
+          "wait": false
+        },
+        {
+          "type": "move",
+          "target": "npc:Butcher",
+          "to": { "x": 0, "y": 0, "z": 21 },
+          "first": "leftRight",
+          "speed": 4,
+          "wait": false
+        },
+        {
+          "type": "move",
+          "target": "npc:soldier_junior01",
+          "to": { "x": -2, "y": 0, "z": 23 },
+          "speed": 3,
+          "wait": false
+        },
+        { "type": "wait", "ms": 200 },
+        { "type": "fade", "to": "out", "ms": 800 },
+        { "type": "wait", "ms": 600 },
+        {
+          "type": "place",
+          "target": "npc:VegetableSeller",
+          "at": { "x": 2, "y": 0, "z": 11 },
+          "face": "down"
+        },
+        {
+          "type": "place",
+          "target": "npc:Butcher",
+          "at": { "x": 9, "y": 0, "z": -7 },
+          "face": "down"
+        },
+        {
+          "type": "place",
+          "target": "npc:soldier_junior01",
+          "at": { "x": -2, "y": 0, "z": 24 },
+          "face": "down"
+        },
+        { "type": "place", "target": "player", "at": { "x": -4, "y": 0, "z": 23 }, "face": "up" },
+        {
+          "type": "place",
+          "target": "party:lamy",
+          "at": { "x": -3, "y": 0, "z": 24 },
+          "face": "up"
+        },
+        { "type": "cameraFollow", "on": true },
+        { "type": "fade", "to": "in", "ms": 650 },
+        { "type": "story", "done": "commotion_entering_village" }
+      ]
     }
   ],
   "mapMoves": [

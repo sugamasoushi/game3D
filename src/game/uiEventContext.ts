@@ -19,6 +19,7 @@ import { assetUrl } from './assets';
 import { nextPaint, preloadImages, readyImages } from './preload';
 import { closeComic, openComic, readComic, turnComic } from '../ui/comic';
 import { playBgm, playSe, stopBgm } from './audio';
+import { EMOTE_MS, emote as emoteDef, loadEmotes } from './emotes';
 import { PORTRAIT_MS, useUi } from '../ui/store';
 import { PLAYER_CHARACTER, type CharacterBook } from './characters';
 import { talkAnchor } from './talkAnchor';
@@ -468,6 +469,40 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       if (op === 'next') return turnComic(1);
       if (op === 'prev') return turnComic(-1);
       return closeComic();
+    },
+
+    /**
+     * 感情マーク（GS-267）。相手の引き方はジャンプと同じ（`party:` の先頭は主人公、ほかは付いて歩く仲間）。
+     * 台帳に音があれば出たときに鳴らす。
+     */
+    async emote(target, id, ms) {
+      const view = options.getView();
+      if (!view) return;
+      let who: string | null = null;
+      const party = partyOf(target);
+      if (party) {
+        if (party.role === 'absent') {
+          todo(`感情マーク（${target}）——隊列に居ない`);
+          return;
+        }
+        who = party.role === 'leader' ? 'player' : `follower:${party.id}`;
+      } else if (target === 'player') who = 'player';
+      else {
+        const npc = actorId(target);
+        if (npc === null) {
+          todo(`感情マーク（${target}）——誰を指すか決まらない`);
+          return;
+        }
+        who = `npc:${npc}`;
+      }
+      if (id === null) {
+        await view.emote(who, null, 0);
+        return;
+      }
+      await loadEmotes();
+      const def = emoteDef(id);
+      if (def?.se) playSe(def.se, 1);
+      await view.emote(who, id, ms ?? def?.ms ?? EMOTE_MS);
     },
 
     /**

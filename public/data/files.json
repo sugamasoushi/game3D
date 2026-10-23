@@ -1,13 +1,13 @@
 {
   "information": "置いてある物の一覧（DEC-374）。node tools/fileIndex.mjs で作り直す。",
   "normals": [
-    "assets/tilesets_normal/0201/FantagyHouse_03_normal.png",
     "assets/tilesets_normal/Dwelling/2ffdb342da8b7d2c_normal.png",
     "assets/tilesets_normal/Dwelling/city_inside_normal.png",
     "assets/tilesets_normal/Dwelling/floors_normal.png",
     "assets/tilesets_normal/Dwelling/walls_normal.png",
     "assets/tilesets_normal/Interior_normal.png",
     "assets/tilesets_normal/Storage/Chests_normal.png",
+    "assets/tilesets_normal/other/FantagyHouse_03_normal.png",
     "assets/tilesets_normal/water_and_fire_normal.png"
   ],
   "events": [

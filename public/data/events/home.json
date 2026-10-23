@@ -91,6 +91,7 @@
             "今日は山を下りて近くを探索するようだ。"
           ]
         },
+        { "type": "emote", "target": "player", "id": "meat" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         {
           "type": "message",

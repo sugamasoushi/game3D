@@ -3,7 +3,7 @@
   "version": 3,
   "name": "untitled",
   "grid": {
-    "tilePx": 32,
+    "tilePx": 48,
     "unit": 1,
     "width": 40,
     "depth": 42
@@ -36,36 +36,36 @@
       {
         "id": "tex_mountains",
         "src": "assets/tilesets/next_field/mountains.png",
-        "w": 384,
-        "h": 288,
+        "w": 576,
+        "h": 432,
         "filter": "nearest"
       },
       {
         "id": "tex_trees-green",
         "src": "assets/tilesets/Nature/trees-green.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_terrain_mountain_summer_",
         "src": "assets/tilesets/Mountain/Mountain (Summer).png",
-        "w": 224,
-        "h": 320,
+        "w": 336,
+        "h": 480,
         "filter": "nearest"
       },
       {
         "id": "tex_plants",
         "src": "assets/tilesets/Nature/plants.png",
-        "w": 512,
-        "h": 1024,
+        "w": 768,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_collision",
         "src": "assets/tilesets/collision.png",
-        "w": 32,
-        "h": 32,
+        "w": 48,
+        "h": 48,
         "filter": "nearest"
       }
     ],
@@ -74,7 +74,7 @@
         "id": "mountains",
         "tex": "tex_mountains",
         "mat": "mat_mountains",
-        "tile": 32,
+        "tile": 48,
         "cols": 12,
         "rows": 9,
         "margin": 0,
@@ -84,7 +84,7 @@
         "id": "trees-green",
         "tex": "tex_trees-green",
         "mat": "mat_trees-green",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -94,7 +94,7 @@
         "id": "terrain_mountain_summer_",
         "tex": "tex_terrain_mountain_summer_",
         "mat": "mat_terrain_mountain_summer_",
-        "tile": 32,
+        "tile": 48,
         "cols": 7,
         "rows": 10,
         "margin": 0,
@@ -104,7 +104,7 @@
         "id": "plants",
         "tex": "tex_plants",
         "mat": "mat_plants",
-        "tile": 32,
+        "tile": 48,
         "cols": 16,
         "rows": 32,
         "margin": 0,
@@ -114,7 +114,7 @@
         "id": "collision",
         "tex": "tex_collision",
         "mat": "mat_collision",
-        "tile": 32,
+        "tile": 48,
         "cols": 1,
         "rows": 1,
         "margin": 0,
@@ -2230,7 +2230,8 @@
     "cloudShadow": true,
     "cloudShadowAmount": 1.46,
     "cloudShadowScale": 0.018,
-    "cloudShadowSpeed": 0.004
+    "cloudShadowSpeed": 0.004,
+    "pointShadowShift": 6
   },
   "lightingPresets": [
     {

@@ -73,6 +73,13 @@ export interface MapNpcDef {
    * フィールドに出るのはシンボル 1 体だけ。イベント戦闘（`battle` 命令）には効かない。
    */
   companions?: CompanionDef[];
+  /**
+   * **いつも頭の上に出しているマーク**（GS-267）。感情マークの台帳（`emotes.json`）のキー。寝ている人の `sleep` など。
+   * イベントのマーク・話せる合図が出ているあいだはそちらが勝つ。
+   */
+  idleEmote?: string;
+  /** 話せる合図（GS-49）のマーク（GS-267）。省略は `talk`（「…」）。商人の `coin` など。 */
+  talkEmote?: string;
 }
 
 /** お供 1 体ぶんの枠（GS-255）。 */

@@ -465,6 +465,11 @@ void main() {
     }
   }
   vFaceUv = clamp(uv, 0.0, 1.0);
+  // チップの絵の回転（rf の bit4-5。F キー）。1 歩で時計回りに 90°。形は動かさず面の UV だけ回す。
+  float chipTurn = mod(floor(floor(chip.w + 0.5) / 16.0 + 0.001), 4.0);
+  if (chipTurn > 0.5 && chipTurn < 1.5) vFaceUv = vec2(vFaceUv.y, 1.0 - vFaceUv.x);
+  else if (chipTurn > 1.5 && chipTurn < 2.5) vFaceUv = vec2(1.0) - vFaceUv;
+  else if (chipTurn > 2.5) vFaceUv = vec2(1.0 - vFaceUv.y, vFaceUv.x);
   if (vSolid > 0.5) {
     vSolidColor = srgbToLinear(unpackFaceColor(index));
     vChipUv = vec2(0.0);

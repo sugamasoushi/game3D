@@ -3,7 +3,7 @@
   "version": 3,
   "name": "untitled",
   "grid": {
-    "tilePx": 32,
+    "tilePx": 48,
     "unit": 1,
     "width": 50,
     "depth": 30
@@ -36,29 +36,29 @@
       {
         "id": "tex_terrain-v7",
         "src": "assets/tilesets/terrain-v7.png",
-        "w": 1024,
-        "h": 2048,
+        "w": 1536,
+        "h": 3072,
         "filter": "nearest"
       },
       {
         "id": "tex__tileb_",
         "src": "assets/tilesets/火山TileB(デフォ用).png",
-        "w": 512,
-        "h": 512,
+        "w": 768,
+        "h": 768,
         "filter": "nearest"
       },
       {
         "id": "tex_trees-green",
         "src": "assets/tilesets/Nature/trees-green.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_plants",
         "src": "assets/tilesets/Nature/plants.png",
-        "w": 512,
-        "h": 1024,
+        "w": 768,
+        "h": 1536,
         "filter": "nearest"
       }
     ],
@@ -67,7 +67,7 @@
         "id": "terrain-v7",
         "tex": "tex_terrain-v7",
         "mat": "mat_terrain-v7",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 64,
         "margin": 0,
@@ -77,7 +77,7 @@
         "id": "_tileb_",
         "tex": "tex__tileb_",
         "mat": "mat__tileb_",
-        "tile": 32,
+        "tile": 48,
         "cols": 16,
         "rows": 16,
         "margin": 0,
@@ -87,7 +87,7 @@
         "id": "trees-green",
         "tex": "tex_trees-green",
         "mat": "mat_trees-green",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -97,7 +97,7 @@
         "id": "plants",
         "tex": "tex_plants",
         "mat": "mat_plants",
-        "tile": 32,
+        "tile": 48,
         "cols": 16,
         "rows": 32,
         "margin": 0,
@@ -2436,7 +2436,8 @@
     "cloudShadow": true,
     "cloudShadowAmount": 0.91,
     "cloudShadowScale": 0.018,
-    "cloudShadowSpeed": 0.004
+    "cloudShadowSpeed": 0.004,
+    "pointShadowShift": 6
   },
   "camera": {
     "background": "191c17",

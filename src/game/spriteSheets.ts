@@ -25,7 +25,17 @@ export interface SpriteSheetDef {
    * 余白は**画像の性質**なので区切りと一緒に持つ（2026-10-11）。立ち姿の行が無い画像にも効く。
    */
   footPx?: number;
+  /**
+   * 人の絵として立てるときの**絵の大きさの倍率**（2026-10-22）。書かなければ 1。
+   * キャラチップごとに描かれた大きさが違うのを、画像ごとにそろえるため。**フィールドだけ**で、戦闘の絵には効かない。
+   * 絵だけで、当たり・歩く速さは変えない（配置した物の `Scale` と同じ）。マップの `CharacterScale`・物の `Scale` と掛け合わせる。
+   */
+  actorScale?: number;
 }
+
+/** 絵の大きさの倍率の範囲（台帳の検査と同じ）。 */
+export const ACTOR_SCALE_MIN = 0.1;
+export const ACTOR_SCALE_MAX = 4;
 
 let sheets: Record<string, SpriteSheetDef> = {};
 let pending: Promise<void> | undefined;

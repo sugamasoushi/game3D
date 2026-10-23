@@ -62,6 +62,7 @@ export function actorSheet(book: ActorBook, sheet: string): ActorSheet | null {
     ...(entry?.order ? { order: entry.order } : {}),
     ...(entry?.walk ? { walk: entry.walk } : {}),
     ...(cut.footPx !== undefined ? { footPx: cut.footPx } : {}),
+    ...(cut.actorScale !== undefined ? { scale: cut.actorScale } : {}),
     ...(entry?.poses ? { poses: entry.poses } : {}),
   };
 }

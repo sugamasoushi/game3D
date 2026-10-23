@@ -189,6 +189,14 @@ export type EventCommand =
    */
   | { type: 'jump'; target: ActorRef; times?: number; height?: number; ms?: number; wait?: boolean }
   /**
+   * 感情マーク（GS-267）。**頭の上に吹き出しの絵を出す**（驚き・怒り・疑問・汗・音符・眠りなど）。
+   * `id` は感情マークの台帳（`data/emotes.json`）のキー。`null` で引っ込める。
+   * `ms` は出している長さ（省くと台帳の既定。`0` で出したまま——`null` か次のマークか、イベントの終わりで消える）。
+   * 既定は**消えるまで待つ**。`wait: false` で待たずに次へ（何人かに同時に出すとき）。
+   * 台帳に音（`se`）があれば出たときに鳴る。
+   */
+  | { type: 'emote'; target: ActorRef; id: string | null; ms?: number; wait?: boolean }
+  /**
    * 漫画のようにめくるイベントイラスト（GS-188。旧作 EVENT020301）。絵は `assets/img/Event/`（拡張子まで）。
    * 1 枚ずつ左から滑り込んで前の絵に重なり、最後の先へ進むと全部が右へ抜ける。
    *

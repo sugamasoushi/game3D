@@ -27,7 +27,7 @@
         },
         { "type": "fade", "to": "in", "ms": 300 },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
         {
           "type": "message",
           "talk": [
@@ -37,6 +37,7 @@
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
+        { "type": "hide", "target": "npc:BOSS_GreatBear" },
         {
           "type": "battle",
           "enemies": ["enemy03"],
@@ -44,9 +45,8 @@
           "lose": [],
           "escape": []
         },
-        { "type": "hide", "target": "npc:slime2" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        { "type": "portrait", "slot": "left", "who": "lamy", "face": "normal" },
+        { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
         {
           "type": "message",
           "talk": [

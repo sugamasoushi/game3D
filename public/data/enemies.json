@@ -14,8 +14,8 @@
       "gold": 2,
       "skills": [
         {
-          "id": "enemy01",
-          "chance": 0.4
+          "id": "magic02",
+          "chance": 0.2
         }
       ]
     },
@@ -24,7 +24,7 @@
       "image": "enemy01",
       "level": 2,
       "hp": 50,
-      "mp": 0,
+      "mp": 10,
       "attack": 40,
       "guard": 1,
       "speed": 5,
@@ -33,6 +33,14 @@
       "skills": [
         {
           "id": "enemy02",
+          "chance": 0.5
+        },
+        {
+          "id": "magic01",
+          "chance": 0.5
+        },
+        {
+          "id": "magic02",
           "chance": 0.5
         }
       ]

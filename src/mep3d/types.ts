@@ -273,8 +273,29 @@ export type Encoding = 'b64' | 'json';
 export type CellEncoding = 'abs' | 'delta';
 export type BatchMode = 'instanced' | 'merged';
 
-/** セル下位バイト。下位 2bit 回転、bit2 は U 反転、bit3 は V 反転。 */
+/** セル下位バイト。下位 2bit 回転、bit2 は U 反転、bit3 は V 反転、bit4-5 はチップの絵の回転。 */
 export const ROTATION_MASK = 0b11;
+
+/**
+ * チップの絵を面の上で回す歩数（0〜3。1 歩で時計回りに 90°）。エディタの F キー。
+ * 形の回転（R）とは別で、形は動かさず絵だけ回す。ビルボードと立体の部品には効かない。
+ */
+export const CHIP_TURN_SHIFT = 4;
+export const CHIP_TURN_MASK = 0b11 << CHIP_TURN_SHIFT;
+
+export function chipTurnOf(rf: number): number {
+  return (rf & CHIP_TURN_MASK) >> CHIP_TURN_SHIFT;
+}
+
+/** 絵の回転（F）が効く形か。ビルボードは絵が立つ向きが決まっていて、立体の部品は UV を形が持つので回さない。 */
+export function chipTurns(shape: Shape | string): boolean {
+  return !isBillboardShape(shape) && !isSolidPieceShape(shape);
+}
+
+export function withChipTurn(rf: number, turn: number): number {
+  const steps = ((Math.round(turn) % 4) + 4) % 4;
+  return (rf & ~CHIP_TURN_MASK) | (steps << CHIP_TURN_SHIFT);
+}
 
 /** ブロックは回転しない。壁・床・斜面・板は R で回す（DEC-42）。 */
 export function shapeRotates(shape: Shape): boolean {
@@ -391,7 +412,7 @@ export interface TilesetDef {
   id: string;
   tex: string;
   mat: string;
-  /** チップサイズ（ピクセル）。 */
+  /** チップ 1 枚の大きさ（ピクセル。`TILE_PX_CHOICES`）。マップの `tilePx` と違ってもよく、1 枚が 1 マスに収まる。 */
   tile: number;
   cols: number;
   rows: number;
@@ -1212,6 +1233,8 @@ export interface EditorStateDef {
     tile?: number;
     shape?: Shape;
     rotation?: number;
+    /** チップの絵の回転（0〜3、F キー）。 */
+    chipTurn?: number;
     color?: string;
     paint?: 'chip' | 'color' | 'placeholder' | 'prefab';
     edgeEnabled?: boolean;
@@ -1376,12 +1399,21 @@ export interface ScreenEffectDef {
   showIn?: string;
 }
 
+/**
+ * マップの 1 マスの大きさ（`grid.tilePx`）とタイルセットのチップ（`TilesetDef.tile`）に選べる px。
+ * 48 は RPG ツクール MV/MZ の素材用。マップエディタの欄と Game Checker の検査はこれを読む。
+ */
+export const TILE_PX_CHOICES = [32, 48] as const;
+
 export interface MapDef {
   format: 'mep3d-map';
   version: number;
   name: string;
   grid: {
-    /** チップサイズ（ピクセル）。UV 計算用。 */
+    /**
+     * 1 マスを何 px の絵として扱うか（`TILE_PX_CHOICES`）。キャラの背丈（コマの px ÷ これ。キャラとマップの 1 画素をそろえる＝ツクールと同じ）・ピクセル単位の値に効く。
+     * タイルセットのチップの大きさは `TilesetDef.tile` が別に持ち、違ってもチップ 1 枚が 1 マスに収まる。
+     */
     tilePx: number;
     /** 1 マスのワールド単位。 */
     unit: number;

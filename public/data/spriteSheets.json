@@ -31,72 +31,82 @@
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "Battler/adult_female_adventurer_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "Battler/adult_male_swordsman_male_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "Battler/elderly_male_warrior_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "Battler/soldier_junior.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
-    "bubble.png": {
+    "character_effects.png": {
       "frameWidth": 32,
       "frameHeight": 32,
       "columns": 3,
-      "rows": 1
+      "rows": 5
     },
     "Effects/flames32.png": {
       "frameWidth": 32,
       "frameHeight": 48,
       "columns": 4,
-      "rows": 3
+      "rows": 3,
+      "actorScale": 1.5
     },
     "Effects/pipo-btleffect002.png": {
       "frameWidth": 120,
       "frameHeight": 120,
       "columns": 9,
-      "rows": 1
+      "rows": 1,
+      "actorScale": 1.5
     },
     "Effects/pipo-btleffect161.png": {
       "frameWidth": 192,
       "frameHeight": 192,
       "columns": 5,
-      "rows": 2
+      "rows": 2,
+      "actorScale": 1.5
     },
     "elderly_male_ghost_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "elderly_village_chief_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
-      "rows": 4
+      "rows": 4,
+      "actorScale": 1.5
     },
     "FieldObjects/Chests.png": {
       "frameWidth": 32,
@@ -123,14 +133,15 @@
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.4
     },
     "PlayerParty/lamy_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 3
+      "actorScale": 1.4
     },
     "PlayerParty/lamy_32_40.png": {
       "frameWidth": 32,
@@ -143,21 +154,15 @@
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.4
     },
     "PlayerParty/meina_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
-    },
-    "PlayerParty/meina_03.png": {
-      "frameWidth": 64,
-      "frameHeight": 64,
-      "columns": 3,
-      "rows": 4,
-      "footPx": 4
+      "actorScale": 1.4
     },
     "PlayerParty/meina2_32_40.png": {
       "frameWidth": 32,
@@ -170,119 +175,136 @@
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/child_female_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/child_female_03.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/child_female_04.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/child_male_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/child_male_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/child_male_03.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/child_male_04.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.3
     },
     "VillagePeople/elderly_female_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/elderly_female_cane_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/elderly_male_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/elderly_male_cane_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/elderly_male_cane_02.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/middle_aunt_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/middle_uncle_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/teen_female_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     },
     "VillagePeople/teen_male_01.png": {
       "frameWidth": 64,
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "footPx": 4
+      "footPx": 4,
+      "actorScale": 1.5
     }
   }
 }

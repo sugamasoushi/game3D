@@ -667,22 +667,7 @@ body {
   transition: none;
 }
 
-/* ── 話せる合図（GS-49）。NPC の頭の上で 3 コマを回す ───────── */
-
-/*
- * コマ送りは JS（`TalkMarks.tsx`）がやる（GS-122）。絵の大きさ・コマの位置は
- * **台帳（`spriteSheets.json`）の区切り**から決まるので、ここには書かない——
- * 以前は 96×32 の 3 コマを `@keyframes` に直に書いていて、この絵だけ台帳の外に居た。
- * 近づいたら止めるだけで消さない（GS-49）のも JS 側で見る。
- */
-.talk-mark {
-  position: absolute;
-  /* 頭のすぐ上に浮かせる。会話の吹き出しと重ならない高さ。 */
-  margin-top: -38px;
-  background-repeat: no-repeat;
-  image-rendering: pixelated;
-  pointer-events: none;
-}
+/* 話せる合図（GS-49）は 3D の板になった（GS-267。src/game/headMarks.ts）。 */
 
 /* ── 吹き出し（GS-23）。フィールドの立ち話 ─────────────────── */
 
@@ -2443,13 +2428,15 @@ body {
   z-index: 2;
 }
 
-/* 殴られた敵の仰け反り（旧作 `leanBack`: 上へ 20px を 100ms で行って戻る）。 */
+/* 殴られた敵の仰け反り（旧作 `leanBack`）。奥へ下がって戻る（2026-10-21。以前は上へ 20px 跳ねた）。
+   2D では足元を支点に少し小さくして奥へ下がったように見せる。3D は `battle/leanBack.ts`。 */
 @keyframes mep-lean {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-20px); }
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(0.9); }
 }
 
 .battle-foe.lean img {
+  transform-origin: 50% 100%;
   animation: mep-lean 200ms ease-in-out;
 }
 

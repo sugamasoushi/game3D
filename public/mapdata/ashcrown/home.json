@@ -3,7 +3,7 @@
   "version": 3,
   "name": "untitled",
   "grid": {
-    "tilePx": 32,
+    "tilePx": 48,
     "unit": 1,
     "width": 40,
     "depth": 40
@@ -36,71 +36,71 @@
       {
         "id": "tex_floors",
         "src": "assets/tilesets/Dwelling/floors.png",
-        "w": 1024,
-        "h": 2048,
+        "w": 1536,
+        "h": 3072,
         "filter": "nearest"
       },
       {
         "id": "tex_house_inside",
         "src": "assets/tilesets/house_inside.png",
-        "w": 512,
-        "h": 448,
+        "w": 768,
+        "h": 672,
         "filter": "nearest"
       },
       {
         "id": "tex_outside_objects",
         "src": "assets/tilesets/outside_objects/outside_objects.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_walls",
         "src": "assets/tilesets/Dwelling/walls.png",
-        "w": 2048,
-        "h": 3072,
+        "w": 3072,
+        "h": 4608,
         "filter": "nearest"
       },
       {
         "id": "tex_water_and_fire",
         "src": "assets/tilesets/water_and_fire.png",
-        "w": 192,
-        "h": 256,
+        "w": 288,
+        "h": 384,
         "filter": "nearest"
       },
       {
         "id": "tex_windows_doors",
         "src": "assets/tilesets/Dwelling/windows_doors.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_interior",
         "src": "assets/tilesets/Interior.png",
-        "w": 1024,
-        "h": 1024,
+        "w": 1536,
+        "h": 1536,
         "filter": "nearest"
       },
       {
         "id": "tex_2ffdb342da8b7d2c",
         "src": "assets/tilesets/Dwelling/2ffdb342da8b7d2c.png",
-        "w": 384,
-        "h": 512,
+        "w": 576,
+        "h": 768,
         "filter": "nearest"
       },
       {
         "id": "tex_city_inside",
         "src": "assets/tilesets/Dwelling/city_inside.png",
-        "w": 768,
-        "h": 512,
+        "w": 1152,
+        "h": 768,
         "filter": "nearest"
       },
       {
         "id": "tex_chests",
         "src": "assets/tilesets/Storage/Chests.png",
-        "w": 128,
-        "h": 96,
+        "w": 192,
+        "h": 144,
         "filter": "nearest"
       }
     ],
@@ -109,7 +109,7 @@
         "id": "floors",
         "tex": "tex_floors",
         "mat": "mat_floors",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 64,
         "margin": 0,
@@ -119,7 +119,7 @@
         "id": "house_inside",
         "tex": "tex_house_inside",
         "mat": "mat_house_inside",
-        "tile": 32,
+        "tile": 48,
         "cols": 16,
         "rows": 14,
         "margin": 0,
@@ -129,7 +129,7 @@
         "id": "outside_objects",
         "tex": "tex_outside_objects",
         "mat": "mat_outside_objects",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -139,7 +139,7 @@
         "id": "walls",
         "tex": "tex_walls",
         "mat": "mat_walls",
-        "tile": 32,
+        "tile": 48,
         "cols": 64,
         "rows": 96,
         "margin": 0,
@@ -149,7 +149,7 @@
         "id": "water_and_fire",
         "tex": "tex_water_and_fire",
         "mat": "mat_water_and_fire",
-        "tile": 32,
+        "tile": 48,
         "cols": 6,
         "rows": 8,
         "margin": 0,
@@ -159,7 +159,7 @@
         "id": "windows_doors",
         "tex": "tex_windows_doors",
         "mat": "mat_windows_doors",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -169,7 +169,7 @@
         "id": "interior",
         "tex": "tex_interior",
         "mat": "mat_interior",
-        "tile": 32,
+        "tile": 48,
         "cols": 32,
         "rows": 32,
         "margin": 0,
@@ -179,7 +179,7 @@
         "id": "2ffdb342da8b7d2c",
         "tex": "tex_2ffdb342da8b7d2c",
         "mat": "mat_2ffdb342da8b7d2c",
-        "tile": 32,
+        "tile": 48,
         "cols": 12,
         "rows": 16,
         "margin": 0,
@@ -189,7 +189,7 @@
         "id": "city_inside",
         "tex": "tex_city_inside",
         "mat": "mat_city_inside",
-        "tile": 32,
+        "tile": 48,
         "cols": 24,
         "rows": 16,
         "margin": 0,
@@ -199,7 +199,7 @@
         "id": "chests",
         "tex": "tex_chests",
         "mat": "mat_chests",
-        "tile": 32,
+        "tile": 48,
         "cols": 4,
         "rows": 3,
         "margin": 0,
@@ -3519,7 +3519,8 @@
     "billboard": 1,
     "blockShadow": false,
     "blockShadowStrength": 1,
-    "cloudShadow": false
+    "cloudShadow": false,
+    "pointShadowShift": 6
   },
   "pointLights": [
     {

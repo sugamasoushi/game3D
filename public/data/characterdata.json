@@ -23,7 +23,7 @@
   "lamy": {
     "name": "ラミィ",
     "kind": "player",
-    "sheet": "PlayerParty/lamy_01.png",
+    "sheet": "PlayerParty/lamy_02.png",
     "icon": "Icon_20240908",
     "normal": "20240908",
     "smile": "20240907_3",

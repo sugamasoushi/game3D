@@ -53,7 +53,8 @@ import {
 import { createInput } from './input';
 import { BODY_TALL_CELLS, BODY_WIDTH_HALF, createPlayer, type Facing, type Player } from './player';
 import { PartyTrail } from './partyTrail';
-import { actorSheet, loadActorBook } from './actors';
+import { actorSheet, loadActorBook } from './actors';import { loadEmotes, TALK_EMOTE } from './emotes';
+import { createHeadMarks } from './headMarks';
 import { characterBookReady, characterSheet, PLAYER_CHARACTER } from './characters';
 import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from './mapNpcs';
 import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
@@ -79,6 +80,7 @@ import { battleCameraPose, battleCameraStartView, createBattleCameraPlayer, type
 import { entryForFile, mapKeyForFile, type MapEntry } from './mapIndex';
 import { mapUrl } from './assets';
 import { battleFormationSlots, chooseBattleFormation, stageFigureCells } from './battle/book';
+import { LEAN_BACK_S, leanBackOffset } from './battle/leanBack';
 import { battleStageBook, battleStageSettingsOf, loadBattleStages, stageCellOffset, type BattleStageSettings } from './battle/stage';
 
 /** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
@@ -310,6 +312,18 @@ export interface GameView {
   /** その名前の NPC がこのマップに居るか。 */
   hasNpc(id: string): boolean;
   /**
+   * 感情マーク（GS-267。イベントの `emote`）。`who` は `player`・`npc:<id>`・`follower:<id>`。
+   * `id` が null なら引っ込める。`ms` が 0 なら出したまま。消えたら返る（出したままなら すぐ）。
+   */
+  emote(who: string, id: string | null, ms: number): Promise<boolean>;
+  /** イベントで出した感情マークを全部引っ込める（イベントの終わり）。 */
+  clearEmotes(): void;
+  /**
+   * 話せる合図（GS-49 / GS-267）を出す NPC（毎フレーム全員ぶん）。マークは NPC の設定の `talkEmote`、無ければ `talk`。
+   * `near` なら動きを止める（消さない）。
+   */
+  setTalkMarks(list: Array<{ id: string; near: boolean }>): void;
+  /**
    * 隠していた NPC を**マップに置いた場所に**出し直す（GS-222）。時間帯が変わって出す番になった人に使う。
    * 隠していなければ何もしない（false）。
    */
@@ -485,9 +499,7 @@ export interface GameView {
  * 見る点（右・上・手前）とカメラの距離・高さ（マス）。旧 GS-90 の「敵の列と味方の列の間（敵寄り 3 割）を見る」と
  * 見る高さ 1.2 マスは、既定の構図の値に置き直してやめた。
  */
-/** 仰け反り・攻めかかり（旧作 `leanBack` / `attackTween` と同じ長さ）。 */
-const STAGE_LEAN_S = 0.2;
-const STAGE_LEAN_CELLS = 0.5;
+/* 仰け反り（奥へ下がって戻る）の長さと距離は `battle/leanBack.ts`（2026-10-21。以前は上へ跳ねていた）。 */
 /**
  * 敵が攻めかかる動き（GS-109 / GS-110）。**溜め `STAGE_LUNGE_DELAY_S` の後に、`STAGE_LUNGE_S` かけて大きくなって戻る**。
  * 全体で 0.3 ＋ 0.2 ＝ 500ms（GS-110 で 800ms にして、戻した）。戦闘画面は溜めが終わる瞬間に音と揺れを出し、動きが終わるまで次（味方の点滅）へ進まない。
@@ -765,6 +777,23 @@ export function createGameView(
     opacity?: number;
   }
   const npcs = new Map<string, NpcActor>();
+  /** 頭の上のマーク（GS-267）。キャラと同じ割合の 3D の板。 */
+  const headMarks = createHeadMarks({
+    unit: () => mapDef?.grid?.unit ?? 1,
+    tilePx: () => mapDef?.grid?.tilePx ?? 32,
+    scale: () => characterScaleOf(mapDef?.properties),
+  });
+  /** マークを付ける人。`player`・`npc:<id>`・`follower:<id>`。 */
+  const markActor = (who: string): Player | null =>
+    who === 'player'
+      ? player
+      : who.startsWith('npc:')
+        ? npcs.get(who.slice(4))?.actor ?? null
+        : who.startsWith('follower:')
+          ? followers.get(who.slice(9)) ?? null
+          : null;
+  /** 話せる合図のマーク（NPC の設定の `talkEmote`）。マップを組むたびに入れ直す。 */
+  let talkEmoteOf: (id: string) => string = () => TALK_EMOTE;
   /** 見た目を変えた回数（GS-207）。走っている現れ方が、後から来た指示に負けるように。 */
   const lookTurns = new Map<string, number>();
   /** 見た目を塗る（GS-207）。いまの濃さを覚えておく——消えるときはそこから薄くする。 */
@@ -1044,9 +1073,10 @@ export function createGameView(
       // 絵はキャラクターから引く（2026-10-08）ので、キャラクターの台帳も待つ。
       // NPC の設定（2026-10-08。マップ＋1 体。出し方と動き）も一緒に待つ。引くのはこのマップの番号（`maps.json` のキー）。
       // 戦闘の舞台の台帳（2026-10-19 / BPE-30）も 1 回読んで使い回す。
-      const [book, files] = await Promise.all([loadActorBook(), loadFileIndex(), characterBookReady(), loadMapNpcs(), loadBattleStages()]);
+      const [book, files] = await Promise.all([loadActorBook(), loadFileIndex(), characterBookReady(), loadMapNpcs(), loadBattleStages(), loadEmotes()]);
       mapKey = (await mapKeyForFile(name)) ?? null;
       const npcSettings = mapNpcSettings(mapKey);
+      talkEmoteOf = (id) => npcSettings[id]?.talkEmote || TALK_EMOTE;
       followerBook = book;
       if (typeof map.assets === 'string') {
         throw new Error('assets が外部ファイル参照。エディタが書いた 1 ファイル形式のみ読める（DEC-04）');
@@ -1195,6 +1225,8 @@ export function createGameView(
       npcs.clear();
       hiddenNpcs.clear();
       cutWalks.clear();
+      // 頭の上のマークも前のマップのぶんは捨てる（GS-267）。
+      headMarks.clear();
       // 追従は既定へ戻す（GS-166）。前のマップで切ったまま持ち越さない。
       cameraFollow = true;
       // 1 人ぶんを作る（GS-153）。**関数にしてあとからも呼べるようにする**——
@@ -1223,14 +1255,8 @@ export function createGameView(
           console.warn(`[npc] 絵の区切りが台帳（spriteSheets.json）にありません: ${sheetKey}（${def.id} は置かない）`);
           return false;
         }
-        const sheet =
-          def.scale && def.scale !== 1
-            ? {
-                ...plain,
-                framePx: [plain.framePx[0] * def.scale, plain.framePx[1] * def.scale] as [number, number],
-                ...(plain.footPx !== undefined ? { footPx: plain.footPx * def.scale } : {}),
-              }
-            : plain;
+        // 絵だけの倍率は、画像ごとの `actorScale`（台帳）× NPC ごとの `Scale`（マップの物）。コマの区切りは画像の画素のまま。
+        const sheet = def.scale && def.scale !== 1 ? { ...plain, scale: (plain.scale ?? 1) * def.scale } : plain;
         // NPC ごとの `Scale` は絵だけ、マップのキャラクターの大きさは絵と当たり。絵は掛け合わせになる。
         const actor = createPlayer(unit, tilePx, sheet, { scale: characterScale });
         // 立つのはそのマスの中央（GS-18）。足場はプレイヤーの出発点と同じ取り方（GC-14）。
@@ -1251,6 +1277,8 @@ export function createGameView(
         // 動き（2026-10-08）。**マップ＋1 体（`Id`）ごと**に NPC の設定の台帳（`mapNpcs.json`）が持つ。
         // 書いていなければ立ち止まる。
         const motion = npcSettings[def.id] ?? null;
+        // いつも出しているマーク（GS-267。寝ている人の Zzz）。
+        if (motion?.idleEmote) headMarks.setIdle(`npc:${def.id}`, motion.idleEmote);
         const wander = wanderWithDefaults(motion);
         const path = motion?.route ? motionRoutes.find((r) => r.id === motion.route!.id) : undefined;
         npcs.set(def.id, {
@@ -1697,13 +1725,16 @@ export function createGameView(
     const yawR = (rig.yaw * Math.PI) / 180;
     for (const figure of stage.figures.values()) {
       const pose = figure.pose;
-      const leanK = figure.leanAt >= 0 ? (elapsed - figure.leanAt) / STAGE_LEAN_S : 1;
+      const leanK = figure.leanAt >= 0 ? (elapsed - figure.leanAt) / LEAN_BACK_S : 1;
       const lungeK = figure.lungeAt >= 0 ? (elapsed - figure.lungeAt - STAGE_LUNGE_DELAY_S) / STAGE_LUNGE_S : 1;
-      const lift = leanK >= 0 && leanK < 1 ? Math.sin(Math.PI * leanK) * STAGE_LEAN_CELLS * unit : 0;
+      // 仰け反りはカメラから見て奥へ下がって戻る（影も一緒に動かす）。
+      const back = leanBackOffset(leanK, rig.yaw);
+      const backX = back.x * unit;
+      const backZ = back.z * unit;
       const grow = lungeK >= 0 && lungeK < 1 ? 1 + STAGE_LUNGE_GROW * Math.sin(Math.PI * lungeK) : 1;
-      figure.mesh.position.set(figure.base.x, figure.base.y + lift, figure.base.z);
+      figure.mesh.position.set(figure.base.x + backX, figure.base.y, figure.base.z + backZ);
       figure.mesh.rotation.y = yawR;
-      figure.shadow.position.set(figure.base.x, figure.groundY + 0.02 * unit, figure.base.z);
+      figure.shadow.position.set(figure.base.x + backX, figure.groundY + 0.02 * unit, figure.base.z + backZ);
       figure.shadow.scale.set(figure.width * 0.9, figure.width * 0.35, 1);
       // 呼吸（GS-88）。**足元を支点に縦へわずかに伸び縮み**（板の原点は足元）。倒れたら止める。
       const breath = pose.gone
@@ -2398,6 +2429,8 @@ export function createGameView(
     updateFollowers(dt);
     for (const npc of npcs.values()) npc.actor.faceCamera((rig.yaw * Math.PI) / 180);
     advanceHops(dt);
+    // 頭の上のマーク（GS-267）。跳ねた後に置く——頭に付いてくるように。
+    headMarks.update(dt, markActor);
 
     // キャラが動くたびに遮光の位置とコマを渡し直す（GC-39）。
     applyActorOccluder();
@@ -2849,6 +2882,7 @@ export function createGameView(
       // 体も世界から外す（GS-239）。残すと見えない人に当たる。
       npcBodies.get(id)?.dispose();
       npcBodies.delete(id);
+      headMarks.forget(`npc:${id}`);
       // 影と遮光の相手からも外す（消えた人の影が残らないように）。
       applyActorOccluder();
       return true;
@@ -2924,6 +2958,18 @@ export function createGameView(
       });
     },
     hasNpc: (id) => npcs.has(id),
+    emote(who, id, ms) {
+      if (who.startsWith('follower:')) updateFollowers(0);
+      if (!markActor(who)) {
+        console.warn(`[emote] 居ない: ${who}`);
+        return Promise.resolve(false);
+      }
+      return headMarks.show(who, id, ms);
+    },
+    clearEmotes: () => headMarks.clearEvent(),
+    setTalkMarks(list) {
+      headMarks.setTalk(list.map((entry) => ({ who: `npc:${entry.id}`, id: talkEmoteOf(entry.id), near: entry.near })));
+    },
     restoreNpc(id) {
       if (npcs.has(id) || !makeNpc) return false;
       const def = hiddenNpcs.get(id);
@@ -3270,6 +3316,7 @@ export function createGameView(
       stopOptionWatch();
       player?.dispose();
       clearFollowers();
+      headMarks.dispose();
       for (const npc of npcs.values()) npc.actor.dispose();
       npcs.clear();
       wires?.dispose();

@@ -1235,7 +1235,9 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       }
     }
 
-    const atlas = bakeOccluderAtlas(chips);
+    // 1 枠はいちばん細かい絵に合わせる。48px のチップを 32px の枠へ縮めると、影の形が粗くなる。
+    const slotPx = Math.max(map.grid?.tilePx ?? 32, ...assets.tilesets.map((tileset) => tileset.tile || 0));
+    const atlas = bakeOccluderAtlas(chips, slotPx);
     if (!atlas) return { list: [], atlas: null };
     for (const entry of pending) entry.occluder.frame.copy(atlas.rects[entry.slot]);
     return { list: pending.map((entry) => entry.occluder), atlas };
