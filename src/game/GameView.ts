@@ -459,6 +459,11 @@ export interface GameView {
    */
   shownTime(): string;
   /**
+   * 時間帯を切り替えている途中か。書き割りの絵を待っている間も含む。
+   * この間は決定・メニュー・踏むイベントを受け付けない（見た目と条件の時間帯がずれるため）。
+   */
+  timeShifting(): boolean;
+  /**
    * マップに置いた**点オブジェクトの名前**でプレイヤーを置き直す（GS-17）。
    * 高さは出発点と同じで、その柱の足場に乗せる。見つからなければ false。
    */
@@ -873,6 +878,8 @@ export function createGameView(
   let timeFallback: Record<string, string> = {};
   /** 時間帯の切り替えを頼んだ回数（GS-225）。絵を待っているあいだに次が来たら、古いほうは始めない。 */
   let timeGen = 0;
+  /** 書き割りの絵を待っている切り替えの番号（無ければ -1）。待つ間も「切り替え中」に数える。 */
+  let timeWaitGen = -1;
   let look: TimeLook | null = null;
   /** 切り替えの途中。`swapped` は出し分けを次の時間帯へ移したか（半分で 1 回）。 */
   let shift: { from: TimeLook; to: TimeLook; at: number; ms: number; swapped: boolean } | null = null;
@@ -3079,7 +3086,9 @@ export function createGameView(
       const src = to.view.backdrop?.src ?? '';
       if (ms > 0 && !backdropLoaded(src)) {
         const map = mapDef;
+        timeWaitGen = mine;
         void preloadBackdrop(src).then(() => {
+          if (timeWaitGen === mine) timeWaitGen = -1;
           if (mine === timeGen && map === mapDef) beginTime(to, ms);
         });
         return;
@@ -3087,6 +3096,7 @@ export function createGameView(
       beginTime(to, ms);
     },
     shownTime: () => shownTimeId,
+    timeShifting: () => shift !== null || timeWaitGen === timeGen,
     setCellPicker(handler) {
       cellPicker = handler;
       // やめたら色も消す。拾い終わった（拾い先が null にされた）ときも同じ。
