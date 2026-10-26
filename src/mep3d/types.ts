@@ -27,6 +27,15 @@ export type Shape =
   | 'floor_ramp_corner_ne_inverse'
   | 'floor_ramp_corner_nw_inverse'
   /**
+   * 北東・北西の接続坂の南向き（2026-10-25）。南東は東・南へ上る坂、南西は西・南へ上る坂をつなぐ。
+   * MCP は回転を使わないので、R で回す代わりに形状として足した。
+   */
+  | 'floor_ramp_corner_se'
+  | 'floor_ramp_corner_sw'
+  /** その逆三角形。低い頂点は `se` が北西、`sw` が北東（名前の隅の向かい）。 */
+  | 'floor_ramp_corner_se_inverse'
+  | 'floor_ramp_corner_sw_inverse'
+  /**
    * 2 マスにまたがる板（緩い坂）。2 マスで 1 マス上がる（DEC-93）。
    * `lo` が低いほう、`hi` が高いほう。既定は東へ上る。向きは R で回す。
    * 1 マスの `floor_ramp_*`（45 度）より緩く、2 マス三角（`floor_tri2_*`）と同じ勾配。
@@ -51,6 +60,9 @@ export type Shape =
    */
   | 'floor_slant_nwse'
   | 'floor_slant_nesw'
+  /** 斜め坂の残りの 2 向き（2026-10-25）。`senw` は南東が高い、`swne` は南西が高い。 */
+  | 'floor_slant_senw'
+  | 'floor_slant_swne'
   /**
    * 屋根の棟と谷（DEC-98）。マスの中央で折れた面 1 枚で、マスは埋めない。
    * `ridge` は中央が高い山型（屋根のてっぺん）、`valley` は中央が低い谷型。
@@ -120,6 +132,14 @@ export type Shape =
   | 'floor_fold_in'
   /** 斜面入隅の左右反転（「上＋縦面（右）」に合わせる）。低いのは南西、北東—南西で谷折り。 */
   | 'floor_fold_in_flip'
+  /**
+   * 上＋縦の南向き（2026-10-25）。`se` は尾根が北西（0）から南東（1）へ、`sw` は北東（0）から南西（1）へ上る。
+   * 斜面入隅の北向き。`in_nw` は低いのが北西、`in_ne` は低いのが北東。
+   */
+  | 'floor_fold_se'
+  | 'floor_fold_sw'
+  | 'floor_fold_in_nw'
+  | 'floor_fold_in_ne'
   | 'ceil'
   /** 天井の直角二等辺三角形。床と同じ並び。 */
   /** 1/4 の円の天井（DEC-480）。並びは `floor_quarter_*` と同じ。 */

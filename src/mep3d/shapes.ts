@@ -159,6 +159,19 @@ export function geometryFor(shape: Shape): BufferGeometry {
     case 'floor_ramp_corner_nw_inverse':
       geometry = foldGeometry([1, 1, 0, 1], true, 1, CORNER_CHIP_UV[shape]);
       break;
+    // 南向きの接続坂と逆三角形（2026-10-25）。三角は北東—南西か北西—南東の対角線で切った半分。
+    case 'floor_ramp_corner_se':
+      geometry = foldGeometry([0, 0, 1, 0], true, 1, CORNER_CHIP_UV[shape]);
+      break;
+    case 'floor_ramp_corner_sw':
+      geometry = foldGeometry([0, 0, 0, 1], false, 1, CORNER_CHIP_UV[shape]);
+      break;
+    case 'floor_ramp_corner_se_inverse':
+      geometry = foldGeometry([0, 1, 1, 1], true, 0, CORNER_CHIP_UV[shape]);
+      break;
+    case 'floor_ramp_corner_sw_inverse':
+      geometry = foldGeometry([1, 0, 1, 1], false, 0, CORNER_CHIP_UV[shape]);
+      break;
     case 'floor_ramp2_lo':
     case 'floor_ramp2_hi':
     case 'floor_ramp2_lo_flip':
@@ -177,12 +190,18 @@ export function geometryFor(shape: Shape): BufferGeometry {
       break;
     case 'floor_slant_nwse':
     case 'floor_slant_nesw':
+    case 'floor_slant_senw':
+    case 'floor_slant_swne':
       geometry = rampGeometry(SLANT_HEIGHTS[shape.slice('floor_slant_'.length)], false);
       break;
     case 'floor_fold_ne':
     case 'floor_fold_nw':
     case 'floor_fold_in':
-    case 'floor_fold_in_flip': {
+    case 'floor_fold_in_flip':
+    case 'floor_fold_se':
+    case 'floor_fold_sw':
+    case 'floor_fold_in_nw':
+    case 'floor_fold_in_ne': {
       const fold = shape.slice('floor_fold_'.length);
       geometry = foldGeometry(FOLD_HEIGHTS[fold], FOLD_SW_NE[fold]);
       break;
@@ -866,6 +885,11 @@ const CORNER_CHIP_UV: Partial<Record<Shape, Array<[number, number]>>> = {
   floor_ramp_corner_nw: [[0.5, 0], [1, 1], [0, 0], [0, 1]],
   floor_ramp_corner_ne_inverse: [[0, 0], [0, 0], [1, 0], [0.5, 1]],
   floor_ramp_corner_nw_inverse: [[0, 0], [1, 0], [0.5, 1], [0, 0]],
+  // 南向き（2026-10-25）。同じ決まりで、南東は北西から見上げて左が北東、南西は北東から見上げて左が南東。
+  floor_ramp_corner_se: [[0, 0], [0, 1], [0.5, 0], [1, 1]],
+  floor_ramp_corner_sw: [[1, 1], [0, 0], [0, 1], [0.5, 0]],
+  floor_ramp_corner_se_inverse: [[0.5, 1], [0, 0], [0, 0], [1, 0]],
+  floor_ramp_corner_sw_inverse: [[1, 0], [0.5, 1], [0, 0], [0, 0]],
 };
 
 export function cornerChipUv(shape: Shape): Array<[number, number]> | undefined {
@@ -909,6 +933,9 @@ const RAMP2_HEIGHTS: Record<string, number[]> = {
 const SLANT_HEIGHTS: Record<string, number[]> = {
   nwse: [1, 0.5, 0, 0.5],
   nesw: [0.5, 1, 0.5, 0],
+  // 南が高い 2 向き（2026-10-25。上向きだけ）。`senw` は南東、`swne` は南西が高い。
+  senw: [0, 0.5, 1, 0.5],
+  swne: [0.5, 0, 0.5, 1],
 };
 
 /**
@@ -981,6 +1008,12 @@ const FOLD_HEIGHTS: Record<string, number[]> = {
   in: [1, 1, 0, 1],
   // その左右反転（「上＋縦面（右）」に合わせる）。低いのは南西だけ。
   in_flip: [1, 1, 1, 0],
+  // 南向き（2026-10-25）。尾根が南東・南西へ上る。
+  se: [0, 0, 1, 0],
+  sw: [0, 0, 0, 1],
+  // 北向きの入隅。低いのは北西・北東。
+  in_nw: [0, 1, 1, 1],
+  in_ne: [1, 0, 1, 1],
 };
 
 /** 折れ面の尾根がどちらの対角線か。`ne` は南西—北東、`nw` は北西—南東。 */
@@ -991,6 +1024,11 @@ const FOLD_SW_NE: Record<string, boolean> = {
   in: false,
   // 反転は谷も反転して北東—南西。
   in_flip: true,
+  // 尾根・谷は高い隅（入隅は低い隅）を通る対角線。
+  se: false,
+  sw: true,
+  in_nw: false,
+  in_ne: true,
 };
 
 /**
