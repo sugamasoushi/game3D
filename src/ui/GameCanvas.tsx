@@ -1055,6 +1055,9 @@ export default function GameCanvas() {
     const view = viewRef.current;
     const bridge = bridgeRef.current;
     if (!view || !bridge || useUi.getState().busy || useUi.getState().phase !== 'play') return;
+    // 時間帯の切り替え中は踏むイベント・マップ移動を起こさない。踏んだ印も付けないので、
+    // 立ったままなら切り替えが終わったところで起きる。
+    if (view.timeShifting()) return;
     const at = view.playerAt();
     if (!at) return;
     const spot = spotUnder(spotsRef.current, at, view.playerRadius());
@@ -1097,6 +1100,8 @@ export default function GameCanvas() {
     const at = view?.playerAt();
     if (!view || !at) return;
     if (!canWalk(useUi.getState())) return;
+    // 時間帯の切り替え中は戦闘を始めない（触ったままなら終わったところで始まる）。
+    if (view.timeShifting()) return;
 
     let near = '';
     for (const [id] of symbolsRef.current) {
@@ -1157,6 +1162,9 @@ export default function GameCanvas() {
   const checkNpcShown = useCallback(() => {
     const view = viewRef.current;
     if (!view) return;
+    // イベント中は**時間帯による出し入れを保留する**。話の途中で時間帯が移っても、話し相手が消えたり
+    // 誰かが湧いたりしない。終わった次の見回りでまとめて合わせる。スイッチなどで消すのは今までどおりその場で。
+    const holdTime = useUi.getState().busy;
     for (const def of npcDefsRef.current) {
       const shown = npcShown(def, (key) => switchOnRef.current(key, def.id), (when) => npcMeetsRef.current(when, def.id));
       // 時間帯だけで隠した人（GS-222）。**時間帯が戻ればその場に出し直す**——ほかの条件（`showWhen` など）で
@@ -1166,6 +1174,9 @@ export default function GameCanvas() {
         (key) => (key.startsWith(TIME_PREFIX) ? true : switchOnRef.current(key, def.id)),
         (when) => npcMeetsRef.current(when, def.id, true),
       );
+      // 時間帯だけで出入りが決まる人は、保留中は**いま居る・居ないのまま**にしておく。
+      // 出し入れが要らない人（読み込み直後でまだ作っていない人など）は今までどおり控えを揃える。
+      if (holdTime && otherwise && shown !== view.hasNpc(def.id)) continue;
       if (shown && npcTimeHiddenRef.current.has(def.id)) {
         npcTimeHiddenRef.current.delete(def.id);
         view.restoreNpc(def.id);
@@ -1278,6 +1289,9 @@ export default function GameCanvas() {
       // メニュー中は話しかけも調べ物も止める（GS-59）。以前は「メニューがキーを
       // 飲み込むから届かない」だけだったので、**ゲームパッドの合成イベント（GS-58）は素通り**していた。
       if (!DECIDE.includes(key.code) || !canWalk(useUi.getState())) return;
+      // 時間帯を切り替えている途中は話しかけ・調べ物を受け付けない（歩くのは止めない）。
+      // 途中で始めると、見た目の時間帯が半分で移ったときに話し相手が消えてしまう。
+      if (viewRef.current?.timeShifting()) return;
       const view = viewRef.current;
       const bridge = bridgeRef.current;
       if (!view || !bridge) return;
@@ -1354,6 +1368,8 @@ export default function GameCanvas() {
     if (phase !== 'play') return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || !canWalk(useUi.getState())) return;
+      // 時間帯の切り替え中はメニューも開かない（決定キーと同じ扱い）。
+      if (viewRef.current?.timeShifting()) return;
       event.preventDefault();
       useUi.getState().setMenu(true);
     };
