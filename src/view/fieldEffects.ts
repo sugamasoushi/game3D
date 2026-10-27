@@ -1,3 +1,4 @@
+import { createLightExplosionGeometry, lightExplosionVertexShader, lightExplosionFragmentShader } from '../mep3d/lightExplosion';
 // フィールドエフェクト（DEC-175 / DEC-177）。世界に置く。画面エフェクト（`screenEffects.ts`）と違い、
 // カメラが動けば一緒に流れていく。
 //
@@ -27,6 +28,7 @@ import {
   Vector2,
   Vector3,
   WebGLRenderTarget,
+  type BufferGeometry,
   type Camera,
   type Object3D,
   type Texture,
@@ -41,7 +43,7 @@ const NOISE_B = '/assets/noise/Super Perlin/Super Perlin 12 - 512x512.png';
 /** オブジェクトのプロパティ名。値がこの種類の名前ならフィールドエフェクトになる。 */
 export const EFFECT_PROPERTY_NAME = 'Effect';
 
-export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror'] as const;
+export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror', 'explosion'] as const;
 export type FieldEffectKind = (typeof FIELD_EFFECT_KINDS)[number];
 
 export const FIELD_EFFECT_LABELS: Record<FieldEffectKind, string> = {
@@ -51,6 +53,7 @@ export const FIELD_EFFECT_LABELS: Record<FieldEffectKind, string> = {
   snow: '雪',
   dapple: '木漏れ日',
   mote: '光の粒',
+  explosion: '爆発',
   water: '水面',
   swell: '水面2',
   mirror: '鏡面',
@@ -250,6 +253,7 @@ const LAYERS: Record<FieldEffectKind, number> = {
   snow: 5,
   dapple: 1,
   mote: 4,
+  explosion: 1,
   water: 1,
   swell: 1,
   mirror: 1,
@@ -345,6 +349,7 @@ export interface FieldEffectSettings {
 }
 
 export const FIELD_EFFECT_DEFAULTS: Record<FieldEffectKind, FieldEffectSettings> = {
+  explosion: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 4, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
   fog: { on: true, amount: 0.5, speed: 0.03, scale: 0.09, color: '#dbe6f0', lift: 0, thick: 3, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
   // 煙は立ち上がる柱（DEC-343）。厚みが柱の高さになる。
   smoke: { on: true, amount: 0.75, speed: 0.35, scale: 0.5, color: '#9aa3ad', lift: 0, thick: 6, warp: 0.8, mirror: 0, face: 0.22, dye: 0, cast: true },
@@ -1019,6 +1024,7 @@ void main() {
 `;
 
 const SHADERS: Record<FieldEffectKind, string> = {
+  explosion: lightExplosionFragmentShader,
   fog: fogShader,
   smoke: smokeShader,
   rain: rainShader,
@@ -1032,6 +1038,7 @@ const SHADERS: Record<FieldEffectKind, string> = {
 
 /** 加算で重ねる種類。光るものだけ。 */
 const ADDITIVE: Record<FieldEffectKind, boolean> = {
+  explosion: true,
   fog: false,
   // 煙は光らない。下地を覆う。
   smoke: false,
@@ -1059,6 +1066,7 @@ const REFLECTS: Partial<Record<FieldEffectKind, boolean>> = { water: true, swell
 
 /** 水平の板を使う種類。それ以外は縦の板。 */
 const FLAT: Record<FieldEffectKind, boolean> = {
+  explosion: false,
   fog: true,
   // 煙は立ち上がるので縦板（DEC-343）。
   smoke: false,
@@ -1308,13 +1316,14 @@ export function createFieldEffects(): FieldEffects {
   const group = new Group();
   group.name = 'field-effects';
   const geometry = new PlaneGeometry(1, 1);
+  const explosionGeometry = createLightExplosionGeometry();
   /**
    * 置いた板。`reflects` は自分が映す側か（DEC-344）、`cast` は水面へ映すか（DEC-345）。
    * どちらも焼くあいだ隠すかの判断に使う。
    */
   const slices: Array<{
     id: string;
-    mesh: Mesh<PlaneGeometry, ShaderMaterial>;
+    mesh: Mesh<BufferGeometry, ShaderMaterial>;
     poolKey: string;
     reflects: boolean;
     cast: boolean;
@@ -1392,13 +1401,13 @@ export function createFieldEffects(): FieldEffects {
         const cz = ((volume.minZ + volume.maxZ) / 2) * unit;
         // 縦の格子に置いたものは、その面 1 枚として立てる（DEC-198）。
         const wall = volume.plane !== 'xz';
-        const count = wall ? WALL_LAYERS : LAYERS[kind];
+        const count = kind === 'explosion' ? 1 : wall ? WALL_LAYERS : LAYERS[kind];
         for (let i = 0; i < count; i += 1) {
           const level = i / Math.max(1, count - 1);
           const key = poolKey(kind, wall);
           const spare = pool.get(key)?.pop();
           const material = spare ?? new ShaderMaterial({
-            vertexShader: REFLECTS[kind] ? waterVertexShader : vertexShader,
+            vertexShader: kind === 'explosion' ? lightExplosionVertexShader : REFLECTS[kind] ? waterVertexShader : vertexShader,
             fragmentShader: (wall && WALL_SHADERS[kind]) || SHADERS[kind],
             uniforms: {
               mapA: { value: mapA },
@@ -1448,7 +1457,7 @@ export function createFieldEffects(): FieldEffects {
             u.mirror.value = look.mirror;
           }
           applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
-          const mesh = new Mesh(geometry, material);
+          const mesh = new Mesh(kind === 'explosion' ? explosionGeometry : geometry, material);
           if (REFLECTS[kind]) {
             mesh.onBeforeRender = (renderer, _scene, drawCamera) => {
               // 映り込みが先（DEC-303）。別の的へ描くので、画面の写しより前に済ませる。
@@ -1504,7 +1513,12 @@ export function createFieldEffects(): FieldEffects {
               material.uniforms.sceneOn.value = screenGrab ? 1 : 0;
             };
           }
-          if (wall) {
+          if (kind === 'explosion') {
+            // 球の半径は置いた四角と高さの短い辺。縦面でも奥行きを持つ。
+            const diameter = Math.min(tall, volume.plane === 'yz' ? deep : wide);
+            mesh.scale.setScalar(diameter / 2);
+            mesh.position.set(cx, cy, cz);
+          } else if (wall) {
             // 板が重なるとチラつくので、奥行きへ少しずつずらす。
             const gap = (i - (count - 1) / 2) * WALL_GAP * unit;
             if (volume.plane === 'yz') {
@@ -1593,6 +1607,7 @@ export function createFieldEffects(): FieldEffects {
     dispose() {
       clear();
       geometry.dispose();
+      explosionGeometry.dispose();
       mapA.dispose();
       mapB.dispose();
       screenGrab?.dispose();

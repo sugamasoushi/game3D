@@ -10890,14 +10890,6 @@
         "tile": 4
       },
       {
-        "id": "p_collision_0_floor",
-        "name": "collision #0 floor",
-        "shape": "floor",
-        "mat": "mat_collision",
-        "ts": "collision",
-        "tile": 0
-      },
-      {
         "id": "wall_diag_nwse_c45c5c_a50",
         "name": "カラー #c45c5c 50% wall_diag_nwse",
         "shape": "wall_diag_nwse",
@@ -11153,19 +11145,19 @@
   "editor": {
     "camera": {
       "target": [
-        -6.499209072289705,
-        14.712819135453481,
-        12.948211285591775
+        -0.19091684467005443,
+        13.213850631192168,
+        9.803946785367415
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 10.356281643411007,
+      "distance": 9.135172474836418,
       "orthographic": false
     },
-    "activeLayer": "オブジェクトレイヤー_6",
+    "activeLayer": "オブジェクトレイヤー_1",
     "height": 2,
     "brush": {
-      "shape": "wall_tri_br",
+      "shape": "floor",
       "rotation": 0,
       "chipTurn": 0,
       "color": "#c45c5c",
@@ -37079,12 +37071,17 @@
           "kind": "rect",
           "visible": true,
           "guides": true,
-          "collision": false,
+          "collision": true,
           "properties": [
             {
               "name": "Id",
               "type": "string",
               "value": "Chest_Map0102"
+            },
+            {
+              "name": "Collision",
+              "type": "boolean",
+              "value": true
             }
           ],
           "space": "solid",
@@ -38344,60 +38341,12 @@
           "value": true
         }
       ],
-      "batches": [
-        {
-          "id": "タイルマップレイヤー_14-floor-0",
-          "shape": "floor",
-          "mat": "mat_collision",
-          "ts": "collision",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_collision_0_floor"
-          ],
-          "count": 5,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              1,
-              10,
-              -2,
-              2,
-              10,
-              -2,
-              3,
-              10,
-              -2,
-              5,
-              10,
-              -2,
-              8,
-              10,
-              -3
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0
-            ]
-          }
-        }
-      ]
+      "batches": []
     }
   ],
   "stats": {
-    "tiles": 4152,
-    "batches": 75,
-    "drawCalls": 75
+    "tiles": 4147,
+    "batches": 74,
+    "drawCalls": 74
   }
 }
