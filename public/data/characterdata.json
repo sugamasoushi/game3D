@@ -32,7 +32,7 @@
     "talk": "EventTalkImage002"
   },
   "lamyNPC": {
-    "name": "ラミア娘",
+    "name": "シュラン娘",
     "kind": "npc",
     "sheet": "PlayerParty/lamy_01.png",
     "icon": "Icon_20240908",

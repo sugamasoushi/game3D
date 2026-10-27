@@ -301,8 +301,8 @@ export function mergeFieldVolumes(from: readonly FieldEffectVolume[], to: readon
 
 export interface FieldEffectSettings {
   /**
-   * 出すか。**エディタからは切り替えない**（DEC-225）。出す／出さないは演出の側で決めるので、
-   * ゲームが実行時に触る前提で残してある。保存に無ければ入。切れているものは一覧に（切）と出る。
+   * 最初から出すか（マップエディタの「最初から出す」。DEC-519）。保存に無ければ入。切れているものは一覧に（切）と出る。
+   * ゲームではイベントの命令「マップのエフェクト」（GS-270）で出し入れする。
    */
   on: boolean;
   /** 濃さ・数。 */
@@ -397,6 +397,12 @@ export interface FieldEffects {
    * `fade` の無い板には効かない。
    */
   setFade(k: number): void;
+  /**
+   * イベントの出し入れ（GS-270。命令 `mapEffect`）。キーはプリセットの `id`、値は濃さの倍率（0..1）。
+   * **表に在る id はプリセットの `on` より優先する**（`on: false` の物も出せる）。表に無い id は `on` のまま。
+   * 0 の板は描かない。時間帯の切り替え（`setFade`）とは掛け合わせる。
+   */
+  setPresetWeights(weights: ReadonlyMap<string, number>): void;
   /** 毎フレーム。時間を進める。 */
   update(deltaSeconds: number): void;
   dispose(): void;
@@ -1320,6 +1326,9 @@ export function createFieldEffects(): FieldEffects {
   let fadeAt = 1;
   const weightOf = (fade: 'in' | 'out' | undefined): number =>
     fade === 'in' ? fadeAt : fade === 'out' ? 1 - fadeAt : 1;
+  /** イベントの出し入れ（GS-270）。プリセット id → 濃さの倍率。無い id は `on` のまま。 */
+  let presetWeights: ReadonlyMap<string, number> = new Map();
+  const sliceWeight = (slice: { id: string; fade?: 'in' | 'out' }): number => weightOf(slice.fade) * (presetWeights.get(slice.id) ?? 1);
   let clock = 0;
   /** 画面の切り替え（DEC-201）。置いてあっても切っていれば出さない。 */
   let shown = true;
@@ -1331,7 +1340,10 @@ export function createFieldEffects(): FieldEffects {
    * （DEC-323）——歪み・映り込み・正面の映り・映りの染まりが抜けていて、
    * フィールドエフェクト編集で動かしても画に出なかった。
    */
-  const applyLook = (look: FieldEffectSettings, material: ShaderMaterial, weight = 1) => {
+  const applyLook = (look: FieldEffectSettings, material: ShaderMaterial, weight = 1, id = '') => {
+    // イベントの出し入れ（GS-270）。表に在れば `on` より優先し、濃さに掛ける。
+    const pick = id ? presetWeights.get(id) : undefined;
+    const on = pick === undefined ? look.on : pick > 0;
     // 時間帯の切り替え（GS-226）。濃さと映り込みを薄めて出し入れする。
     material.uniforms.amount.value = Math.max(0, look.amount) * weight;
     material.uniforms.speed.value = Math.max(0, look.speed);
@@ -1341,7 +1353,7 @@ export function createFieldEffects(): FieldEffects {
     if (material.uniforms.mirror) material.uniforms.mirror.value = Math.max(0, look.mirror) * weight;
     if (material.uniforms.face) material.uniforms.face.value = Math.min(1, Math.max(0, look.face));
     if (material.uniforms.dye) material.uniforms.dye.value = Math.min(1, Math.max(0, look.dye));
-    material.visible = look.on;
+    material.visible = on;
   };
 
   /**
@@ -1435,7 +1447,7 @@ export function createFieldEffects(): FieldEffects {
             u.dye.value = look.dye;
             u.mirror.value = look.mirror;
           }
-          applyLook(look, material, weightOf(volume.fade));
+          applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
           const mesh = new Mesh(geometry, material);
           if (REFLECTS[kind]) {
             mesh.onBeforeRender = (renderer, _scene, drawCamera) => {
@@ -1556,7 +1568,7 @@ export function createFieldEffects(): FieldEffects {
         const look = looks[slice.id];
         if (!look) continue;
         slice.look = look;
-        applyLook(look, slice.mesh.material, weightOf(slice.fade));
+        applyLook(look, slice.mesh.material, sliceWeight(slice), slice.id);
         // 映すかは uniform ではないので、板の側に憶える（DEC-345）。
         slice.cast = look.cast;
       }
@@ -1564,7 +1576,12 @@ export function createFieldEffects(): FieldEffects {
 
     setFade(k) {
       fadeAt = Math.min(1, Math.max(0, k));
-      for (const slice of slices) if (slice.fade) applyLook(slice.look, slice.mesh.material, weightOf(slice.fade));
+      for (const slice of slices) if (slice.fade) applyLook(slice.look, slice.mesh.material, sliceWeight(slice), slice.id);
+    },
+
+    setPresetWeights(weights) {
+      presetWeights = weights;
+      for (const slice of slices) applyLook(slice.look, slice.mesh.material, sliceWeight(slice), slice.id);
     },
 
     update(deltaSeconds) {

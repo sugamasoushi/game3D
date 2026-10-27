@@ -27,7 +27,7 @@
       "name": "風の刃",
       "image": "Effects/pipo-btleffect161.png",
       "frames": [0, 9],
-      "fps": 30,
+      "fps": 25,
       "ms": 400,
       "se": "slash"
     }

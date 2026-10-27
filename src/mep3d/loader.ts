@@ -105,7 +105,7 @@ type SolidCell = {
   offset: [number, number, number];
   shadowOffset: [number, number, number];
 };
-import { FLAT_PLATE, LAYER_DEPTH_STEP, OFFSET_STEPS, applyWallPose, boxFootprint, boxHeight, geometryFor, offsetFor, offsetInCells, offsetStepsFor, plateCornerHeights, plateHeight, readThickness, rotatePlate, slopeCornerHeights, solidPieceHeight } from './shapes';
+import { FLAT_PLATE, LAYER_DEPTH_STEP, OFFSET_STEPS, applyWallPose, boxFootprint, boxHeight, geometryFor, offsetFor, offsetInCells, offsetStepsFor, plateCornerHeights, protosByIdWithOffsets, plateHeight, readThickness, rotatePlate, slopeCornerHeights, solidPieceHeight } from './shapes';
 import {
   ROTATION_MASK,
   billboardFacesCamera,
@@ -538,7 +538,8 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
   const texturesById = indexBy(assets.textures);
   const tilesetsById = indexBy(assets.tilesets);
   const materialsById = indexBy(assets.materials);
-  const protosById = indexBy(assets.protos);
+  // ずれの分母を揃えた表（DEC-516）。ここから先は `offsetStepsFor` で割るだけでよい。
+  const protosById = protosByIdWithOffsets(assets.protos, offsetStepsFor(assets.version ?? 1));
 
   const assetBase = options.assetBase ?? (typeof document !== 'undefined' ? document.baseURI : '/');
   // 同じアセットなら前のシーンの持ち物をそのまま使う（DEC-275）。

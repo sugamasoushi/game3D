@@ -800,8 +800,13 @@ export interface ProtoDef {
   ts?: string;
   tile?: number;
   faces?: FaceChips;
-  /** マス内のずれ（+X 右、+Y 上、+Z 奥）。rot では回らない。1 ステップ = 1/32。 */
+  /** マス内のずれ（+X 右、+Y 上、+Z 奥）。rot では回らない。1 ステップ = 1/`offsetUnit` マス。 */
   offset?: [number, number, number];
+  /**
+   * `offset` の分母（1 マスを何ステップで数えたか）。チップの px（48px なら 48）を入れ、1 ステップ = 1px にする（DEC-516）。
+   * 無ければアセットの既定（version 2 以降は 32、1 は 16）。読み込みで既定の分母へ換算する（`protosByIdWithOffsets`）。
+   */
+  offsetUnit?: number;
   /** 影の開始位置だけずらす（+X 右、+Y 上、+Z 奥）。絵・箱は動かない。1 ステップ = 1/32。 */
   shadowOffset?: [number, number, number];
   /** 影を光の向きへ伸ばす倍率。32 が標準（1 倍）。幅は変えない。 */
@@ -1345,7 +1350,10 @@ export interface FieldEffectPresetDef {
   name: string;
   /** fog / rain / snow / dapple / mote / water。 */
   kind: string;
-  /** 出すか。切ると置いてあっても描かない。 */
+  /**
+   * 最初から出すか（マップエディタの「最初から出す」）。切ると置いてあっても描かない。
+   * イベントの命令「マップのエフェクト」（GS-270）で出し入れする。
+   */
   on?: boolean;
   /** 濃さ・数。 */
   amount?: number;
@@ -1393,7 +1401,7 @@ export interface ScreenEffectDef {
   name: string;
   /** `fog`（霧）/ `dapple`（木漏れ日）。 */
   kind: string;
-  /** 出すか。切ると一覧に残したまま消せる。省略時は出す。 */
+  /** 最初から出すか。切ると消えた形で始まる（イベントの命令「マップのエフェクト」で出す。GS-270）。省略時は出す。 */
   on?: boolean;
   /** 濃さ（0〜1）。 */
   amount?: number;

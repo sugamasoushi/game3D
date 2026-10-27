@@ -40,6 +40,7 @@ import { pickMapMove } from '../game/mapMoves';
 import { readNpcs, npcShown, type NpcDef, TIME_PREFIX } from '../game/npcs';
 import { facesOnTalk } from '../game/talkTurn';
 import { layerKey, readSwitchLayers, switchLayerShown, type SwitchLayer } from '../game/layerSwitch';
+import { mapEffectKey } from '../game/mapEffectSwitch';
 import { applyEventVisit, forgetRespawn, NO_VISIT, rollEventVisit, type EventVisit } from '../game/eventVisit';
 import { canRun, meets, runCommands, ReturnToTitle, timeMatches } from '../event/interpreter';
 import type { EventCommand, EventDef, EventFile, IfCondition } from '../event/types';
@@ -821,6 +822,8 @@ export default function GameCanvas() {
       },
       // レイヤーの出し入れの覚え（GS-233）。組んでいるマップの分。
       layerState: (name, id) => stateRef.current.self.get(layerKey(mapKey(name), id)),
+      // マップのエフェクトの出し入れの覚え（GS-270）。組んでいるマップの分。
+      effectState: (name, id) => stateRef.current.self.get(mapEffectKey(mapKey(name), id)),
     });
     viewRef.current = view;
     canvas.focus();

@@ -201,7 +201,7 @@
         {
           "type": "message",
           "talk": [
-            { "who": "grandpa", "lines": ["帰ってきたと思ったら", "ラミアを連れてくるとはたまげたわい"] },
+            { "who": "grandpa", "lines": ["帰ってきたと思ったら", "シュランを連れてくるとはたまげたわい"] },
             { "who": "grandpa", "lines": ["それにしてもよく食べるのぉ", "よほど腹減ってたんじゃな"] },
             { "who": "lamy", "lines": ["もぐも・・・鶏がしゃべった！？"] },
             { "who": "meina", "lines": ["あんたも蛇なのにしゃべってるじゃん？"] },
@@ -291,7 +291,7 @@
           "lead": 5,
           "hold": 4000,
           "lines": [
-            "ラミア娘ことラミィを仲間にしたメイナ。",
+            "シュラン娘ことラミィを仲間にしたメイナ。",
             "ついに冒険に出る事を決意した。",
             "冒険の目的とは？",
             "",
@@ -367,7 +367,7 @@
           "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
           "else": [
             { "type": "playSe", "key": "chest" },
-            { "type": "getItem", "id": "おにぎり", "count": 1 },
+            { "type": "getItem", "id": "ばんそうこう", "count": 1 },
             { "type": "layer", "id": "宝箱_家2_閉", "shown": false },
             { "type": "layer", "id": "宝箱_家2_開", "shown": true },
             { "type": "setSelfSwitch", "key": "開けた", "value": true },

@@ -16,6 +16,7 @@ import type { EventCommand, EventDef } from '../event/types';
 import type { MapDef } from '../mep3d/types';
 import type { EventSpot } from './eventSpots';
 import { layerKey, layersOfId } from './layerSwitch';
+import { mapEffectKey } from './mapEffectSwitch';
 
 
 /** 入ったときに決めたこと。 */
@@ -48,6 +49,15 @@ export function layerIdsOf(event: EventDef): string[] {
   const out: string[] = [];
   for (const command of walk(event.commands)) {
     if (command.type === 'layer' && command.id && !out.includes(command.id)) out.push(command.id);
+  }
+  return out;
+}
+
+/** そのイベントの「マップのエフェクト」が指す id（GS-270）。 */
+export function mapEffectIdsOf(event: EventDef): string[] {
+  const out: string[] = [];
+  for (const command of walk(event.commands)) {
+    if (command.type === 'mapEffect' && command.id && !out.includes(command.id)) out.push(command.id);
   }
   return out;
 }
@@ -87,6 +97,8 @@ export function forgetRespawn(self: Map<string, boolean>, mapKey: string, events
     scopes.add(event.id);
     for (const spot of spots) if (spot.event === event.id && spot.owner) scopes.add(`@${spot.owner}`);
     for (const id of layerIdsOf(event)) layerKeys.add(layerKey(mapKey, id));
+    // マップのエフェクトの出し入れ（GS-270）も、入るたびに最初の形へ戻す。
+    for (const id of mapEffectIdsOf(event)) layerKeys.add(mapEffectKey(mapKey, id));
   }
   let count = 0;
   for (const key of [...self.keys()]) {

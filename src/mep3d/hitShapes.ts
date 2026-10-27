@@ -18,6 +18,7 @@ import {
   offsetFor,
   offsetInCells,
   offsetStepsFor,
+  protosByIdWithOffsets,
   readThickness,
   solidPieceHeight,
 } from './shapes';
@@ -120,8 +121,9 @@ function pointInPolygon(shape: Array<[number, number]>, x: number, z: number): b
 export function buildHitMeshes(map: MapDef): HitMesh[] {
   const unit = map.grid?.unit ?? 1;
   const assets = typeof map.assets === 'object' && map.assets ? (map.assets as AssetsDef) : null;
-  const protosById = new Map((assets?.protos ?? []).map((entry) => [entry.id, entry]));
   const offsetSteps = offsetStepsFor(assets?.version ?? 1);
+  // ずれの分母を揃えた表（DEC-516）。描画と同じ。
+  const protosById = protosByIdWithOffsets(assets?.protos, offsetSteps);
   const out: HitMesh[] = [];
   const matrix = new Matrix4();
   const quaternion = new Quaternion();

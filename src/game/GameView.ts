@@ -67,6 +67,7 @@ import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { coreCells, overlaps, symbolTouching } from './symbolTouch';
 import { withoutHiddenLayers } from './hiddenLayers';
+import { mapEffectStartWeights, readMapEffects, startMapEffectFade, stepMapEffectFade, type MapEffectFade } from './mapEffectSwitch';
 import { backdropLoaded, preloadBackdrop } from '../mep3d/backdrop';
 import { readSwitchLayers, switchLayerShown, withStartHiddenBuilt } from './layerSwitch';
 import {
@@ -391,6 +392,11 @@ export interface GameView {
    * 入れ替える。描かないだけで、当たりは組んだときのまま。`id` はレイヤーの id。
    */
   setLayerShown(id: string, shown: boolean): boolean;
+  /**
+   * マップのエフェクトを出す／消す（GS-270。命令 `mapEffect`）。`id` はフィールドエフェクトか画面エフェクトの
+   * プリセットの id。`ms` かけて濃さを混ぜる（省略・0 ならすぐ）。そのマップに無い id なら false。
+   */
+  setMapEffect(id: string, shown: boolean, ms?: number): boolean;
   /** 静止コマを指名する（GS-47）。台帳の `poses` に無い名前なら false。 */
   posePlayer(name: string | null): boolean;
   /** 名前でもコマ番号でもよい（GS-135）。 */
@@ -576,6 +582,11 @@ export interface GameViewOptions {
    * true / false、決めていなければ undefined（最初の形 = `StartHidden` に従う）。記録は React 側が持つ。
    */
   layerState?: (map: string, id: string) => boolean | undefined;
+  /**
+   * マップのエフェクトの出し入れの覚え（GS-270。命令 `mapEffect`）。決めてあれば true / false、
+   * 決めていなければ undefined（最初の形 = プリセットの `on`）。記録は React 側が持つ。
+   */
+  effectState?: (map: string, id: string) => boolean | undefined;
 }
 
 export function createGameView(
@@ -889,6 +900,17 @@ export function createGameView(
   const shownLights = (map: MapDef | null) => (map && heavyOn('pointLights') ? (look?.lights ?? map.pointLights ?? []) : []);
   /** イベントの「レイヤーの出し入れ」（GS-233。元は宝箱の開け閉め GS-179）で頼まれた出し入れ。時間帯の出し分けと**両方**満たすときだけ出す。 */
   const layerWants = new Map<string, boolean>();
+  /**
+   * マップのエフェクトの出し入れ（GS-270）。プリセット id → 今の濃さの倍率（0..1）。
+   * `effectFades` は混ぜている途中の物。毎フレーム進めて `effectWeights` を書き換える。
+   */
+  const effectWeights = new Map<string, number>();
+  const effectFades = new Map<string, MapEffectFade>();
+  const pushEffectWeights = () => {
+    const snapshot = new Map(effectWeights);
+    fieldEffects.setPresetWeights(snapshot);
+    screenEffects.setWeights(snapshot);
+  };
   let buildGen = 0;
   let renderedFrames = 0;
   let disposed = false;
@@ -1156,6 +1178,13 @@ export function createGameView(
       // 画面エフェクト（DEC-389）。**隠したレイヤーとは無関係**——置き場所を持たない。
       // 時間帯で出す物（`showIn`。GS-227）はその時間帯の物だけ。
       screenEffects.set(screenEffectsAtTime(map.screenEffects ?? [], shownTimeId));
+      // イベントの出し入れ（GS-270）は**覚えのとおりに置く**。最初の 1 枚から正しい形で描く。
+      effectFades.clear();
+      effectWeights.clear();
+      for (const [id, weight] of mapEffectStartWeights(readMapEffects(map), (id) => options.effectState?.(name, id))) {
+        effectWeights.set(id, weight);
+      }
+      pushEffectWeights();
 
       // 水面へ映すもの（DEC-303）。マップと置いた 3D。キャラは下で足す。
       fieldEffects.setReflectSources(
@@ -2453,6 +2482,14 @@ export function createGameView(
     if (built && mapModels) mapModels.tick(built.time);
     // 書き割りの絵を「うねり」へ渡す（DEC-316）。読み込みは非同期なので毎フレーム。
     fieldEffects.setSkyTexture(built?.skyTexture ?? null);
+    // マップのエフェクトの出し入れ（GS-270）。混ぜている途中の物だけ進める。
+    if (effectFades.size) {
+      for (const [id, fade] of effectFades) {
+        effectWeights.set(id, stepMapEffectFade(fade, dt));
+        if (fade.at >= fade.seconds) effectFades.delete(id);
+      }
+      pushEffectWeights();
+    }
     fieldEffects.update(dt);
     // マップか太陽が変わった次のフレームで 1 回だけ焼く（DEC-145）。
     built?.tickSunShadow(renderer);
@@ -2804,6 +2841,17 @@ export function createGameView(
       layerWants.set(id, shown);
       const ok = built.setLayerShown(id, shown && layerShownAtTime(mapDef.layers, id, shownTimeId));
       return ok;
+    },
+    setMapEffect: (id, shown, ms) => {
+      if (!mapDef || !effectWeights.has(id)) return false;
+      effectFades.set(id, startMapEffectFade(effectWeights.get(id) ?? 0, shown, ms));
+      // すぐ（0ms）の物はこの場で当てる。次のフレームを待つと 1 枚だけ前の形が出る。
+      if (!ms || ms <= 0) {
+        effectWeights.set(id, shown ? 1 : 0);
+        effectFades.delete(id);
+        pushEffectWeights();
+      }
+      return true;
     },
     posePlayer: (name) => player?.pose(name) ?? false,
     poseNpc(id, name) {

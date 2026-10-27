@@ -1387,7 +1387,8 @@ body {
  * 使えない物・効かない物は薄くするだけ（`aria-disabled`）——選んで説明を読めるように。
  */
 .gmenu-body .item-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 7em) minmax(3ch, max-content) minmax(0, 1fr);
   align-items: baseline;
   gap: 14px;
   width: 100%;
@@ -1399,8 +1400,9 @@ body {
 .gmenu-body .item-row.on { border-color: rgba(255, 212, 121, 0.6); }
 .gmenu-body .item-row[aria-disabled='true'] > .item-name,
 .gmenu-body .item-row[aria-disabled='true'] > .item-count { opacity: 0.45; }
-.item-list .item-name { min-width: 180px; }
-.item-list .item-text { font-size: 17px; }
+.item-list .item-name { min-width: 0; overflow-wrap: anywhere; }
+.item-list .item-count { width: auto; }
+.item-list .item-text { margin-left: 18px; font-size: 17px; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
 
 /*
  * 使い先を選ぶ小窓（GS-208）。枠は武具の小窓（`.equip-chooser`）と同じ。
@@ -1702,7 +1704,7 @@ body {
 .gmenu-body:has(.equip) .equip-list button { font-size: 24px; }
 .gmenu-body:has(.equip) .equip-head button,
 .gmenu-body:has(.equip) .equip-list button { padding: 8px 12px; }
-.gmenu-body .equip-name { min-width: 170px; }
+.gmenu-body .equip-name { min-width: 0; overflow-wrap: anywhere; }
 .gmenu-body:has(.status) .status-facts { font-size: 20px; }
 .gmenu-body:has(.status) .status-name { font-size: 29px; }
 .gmenu-body:has(.status) .status-facts dd { font-size: 24px; }
@@ -1727,10 +1729,10 @@ body {
 .equip-chooser .equip-list { max-height: 420px; overflow-y: auto; }
 .equip-chooser .equip-list button { text-align: left; }
 
-.gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(150px, 1.1fr) 90px minmax(180px, 2fr); gap: 14px; align-items: baseline; padding: 10px 0; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
-.skill-items .item-name { min-width: 0; }
-.skill-items .item-count { width: auto; text-align: center; }
-.skill-items .item-text { white-space: normal; }
+.gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(0, 6em) max-content minmax(0, 1fr); gap: 14px; align-items: baseline; padding: 10px 0; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
+.skill-items .item-name { min-width: 0; overflow-wrap: anywhere; }
+.skill-items .item-count { width: auto; min-width: 5ch; text-align: right; font-size: 18px; }
+.skill-items .item-text { margin-left: 10px; white-space: normal; overflow-wrap: anywhere; font-size: 17px; line-height: 1.6; }
 
 
 /*
@@ -2299,7 +2301,8 @@ body {
 }
 
 .equip-list button {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 7em) minmax(3ch, max-content) minmax(0, 1fr);
   align-items: baseline;
   gap: 10px;
   width: 100%;
@@ -2307,15 +2310,18 @@ body {
 }
 
 .equip-name { flex: none; min-width: 130px; }
-.equip-count { flex: none; width: 34px; opacity: 0.7; font-size: 14px; }
+.equip-count { width: auto; text-align: right; font-variant-numeric: tabular-nums; opacity: 0.7; font-size: 18px; }
 .equip-text {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  margin-left: 18px;
+  line-height: 1.6;
   opacity: 0.6;
-  font-size: 14px;
+  font-size: 17px;
 }
 
 .equip-none {

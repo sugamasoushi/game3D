@@ -376,6 +376,34 @@ export function offsetStepsFor(assetsVersion: number): number {
   return assetsVersion >= 2 ? OFFSET_STEPS : LEGACY_OFFSET_STEPS;
 }
 
+/** `proto.offset` の分母（DEC-516）。`offsetUnit` が無い・おかしいときはアセットの既定 `steps`。 */
+export function protoOffsetUnit(proto: { offsetUnit?: number } | undefined, steps: number): number {
+  const unit = proto?.offsetUnit;
+  return typeof unit === 'number' && Number.isFinite(unit) && unit > 0 ? unit : steps;
+}
+
+/**
+ * プロトの表。`offsetUnit` を持つプロトは、ずれを既定の分母 `steps` の値へ直した写しにする（DEC-516）。
+ * 読む側（描画・当たり・影）は `steps` で割るだけでよい。値は小数になることがある。
+ */
+export function protosByIdWithOffsets<T extends { id: string; offset?: [number, number, number]; offsetUnit?: number }>(
+  protos: readonly T[] | undefined,
+  steps: number,
+): Map<string, T> {
+  const out = new Map<string, T>();
+  for (const proto of protos ?? []) {
+    const unit = protoOffsetUnit(proto, steps);
+    if (!proto.offset || unit === steps) {
+      out.set(proto.id, proto);
+      continue;
+    }
+    const scale = steps / unit;
+    const offset: [number, number, number] = [proto.offset[0] * scale, proto.offset[1] * scale, proto.offset[2] * scale];
+    out.set(proto.id, { ...proto, offset, offsetUnit: steps });
+  }
+  return out;
+}
+
 /** JSON のずれをワールドのセル単位にする。Z は奥が＋、ワールド +Z は南なので符号を反転する。 */
 export function offsetInCells(offset: [number, number, number], denom: number, out: Vector3): Vector3 {
   return out.set(offset[0] / denom, offset[1] / denom, -offset[2] / denom);

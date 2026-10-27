@@ -31,7 +31,7 @@ export interface CharacterEntry {
   /**
    * フィールドの絵（2026-10-08）。**画像のファイル名**（`spriteSheets.json` のキー。立ち姿 `actors.json` も同じキー）。
    * **無ければフィールドに出ない**（話者だけの人）。マップの NPC（`Character`）も隊列の仲間もここから絵を引く。
-   * 同じ画像を何人で使ってもよい（ラミィとラミア娘など）。
+   * 同じ画像を何人で使ってもよい（ラミィとシュラン娘など）。
    */
   sheet?: string;
   icon?: string;

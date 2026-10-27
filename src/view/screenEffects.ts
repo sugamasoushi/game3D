@@ -169,6 +169,11 @@ export function blendScreenEffects(from: readonly ScreenEffectDef[], to: readonl
 export interface ScreenEffects {
   /** 一覧を差し替える。**毎フレーム渡してよい**（同じなら作り直さない）。 */
   set(list: ScreenEffectDef[]): void;
+  /**
+   * イベントの出し入れ（GS-270。命令 `mapEffect`）。キーは id、値は濃さの倍率（0..1）。
+   * **表に在る id は `on` より優先する**（`on: false` の物も出せる）。表に無い id は `on` のまま。
+   */
+  setWeights(weights: ReadonlyMap<string, number>): void;
   /** シーンを描いたあとに呼ぶ。出す物が無ければ何もしない。 */
   render(renderer: WebGLRenderer, deltaSeconds: number): void;
   dispose(): void;
@@ -233,6 +238,9 @@ export function createScreenEffects(): ScreenEffects {
   scene.add(quad);
 
   let list: ScreenEffectDef[] = [];
+  /** イベントの出し入れ（GS-270）。id → 濃さの倍率。 */
+  let weights: ReadonlyMap<string, number> = new Map();
+  const weightOf = (entry: ScreenEffectDef): number => weights.get(entry.id) ?? (entry.on !== false ? 1 : 0);
   /** 経った時間（秒）。**筋は「流す」のではなく波を動かす**ので、時計そのものを渡す。 */
   let clock = 0;
   /** 流れた量は**id ごと**に覚える。1 つの入れ物で持つと、2 枚が同じ模様で流れる。 */
@@ -263,10 +271,14 @@ export function createScreenEffects(): ScreenEffects {
       for (const id of [...drifts.keys()]) if (!alive.has(id)) drifts.delete(id);
     },
 
+    setWeights(next) {
+      weights = next;
+    },
+
     render(renderer, deltaSeconds) {
       const shown = list.filter(
         (entry) =>
-          entry.on !== false &&
+          weightOf(entry) > 0 &&
           (SCREEN_EFFECT_KINDS as readonly string[]).includes(entry.kind) &&
           (entry.amount ?? SCREEN_EFFECT_DEFAULTS[entry.kind as ScreenEffectKind].amount) > 0,
       );
@@ -296,7 +308,7 @@ export function createScreenEffects(): ScreenEffects {
         // 木漏れ日は `tile.x` を**筋の細かさ**として読むので、縦は触らない。
         (material.uniforms.tile.value as Vector2).set(scale, kind === 'fog' ? scale * 0.56 : scale);
         (material.uniforms.tint.value as Vector3).copy(colorOf(entry.color, fallback.color));
-        material.uniforms.amount.value = Math.max(0, entry.amount ?? fallback.amount);
+        material.uniforms.amount.value = Math.max(0, entry.amount ?? fallback.amount) * weightOf(entry);
         material.uniforms.height.value = Math.max(0.05, entry.height ?? fallback.height);
         material.uniforms.bottom.value = Math.max(0, entry.bottom ?? fallback.bottom);
         material.uniforms.thickness.value = Math.max(0, entry.thickness ?? fallback.thickness);
