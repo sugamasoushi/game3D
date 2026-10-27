@@ -1873,6 +1873,9 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     attachShadowMask(material: ShaderMaterial) {
       if (!shadowMaskTargets.includes(material)) shadowMaskTargets.push(material);
       applyOneShadowMask(material);
+      // 太陽の影（新方式）も**渡したその場で**書く。書くのは焼いたときと光が変わったときだけなので、
+      // 読み込みの後で作るキャラ（隊列の 2 人目以降・後から出した NPC）は影を受けないままになっていた。
+      sunShadow.apply(material, sunShadowActive(), blockShadowStrength(lighting));
     },
     bindLightWalls(material: ShaderMaterial) {
       if (!lightWallTargets.includes(material)) lightWallTargets.push(material);
