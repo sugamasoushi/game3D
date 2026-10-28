@@ -98,7 +98,13 @@ export function EquipPage({
                   >
                     外す
                   </button>
-                ) : null}
+                ) : (
+                  // 着けていない欄も「外す」の場所を空けておく（「変更」の位置を上下の行でそろえる）。
+                  // 押せない・選べない（`disabled` はカーソルの行き先から外れる）。
+                  <button type="button" className="equip-slot-spacer" disabled aria-hidden tabIndex={-1}>
+                    外す
+                  </button>
+                )}
               </p>
             </div>
           );

@@ -1773,6 +1773,7 @@ body {
 /* 着けている物の説明。名前の右の余白に置く（名前の欄は幅を決めて、行ごとに説明の頭をそろえる）。 */
 .equip-current .equip-desc { flex: 1; min-width: 0; font-size: 17px; line-height: 1.5; opacity: 0.8; overflow-wrap: anywhere; }
 .equip-current .equip-kind { min-width: 3em; }
+.equip-head .equip-slot-spacer { visibility: hidden; }
 .equip-current .equip-now { flex: none; width: 7em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .equip-modal-backdrop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(0,0,0,.65); }
 .equip-chooser { position: relative; width: min(760px, 92%); max-height: 84%; overflow: auto; padding: 24px; border: 2px solid #8ea6c8; border-radius: 10px; background: rgba(25,25,112,.98); box-shadow: 0 12px 40px rgba(0,0,0,.55); }
