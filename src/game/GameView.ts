@@ -2517,6 +2517,8 @@ export function createGameView(
       pushEffectWeights();
     }
     fieldEffects.update(dt);
+    // 風で揺らす（GS-274）。出し入れと時間帯の濃さを掛けた後の風を、`Sway` のレイヤーへ渡す。
+    built?.setWind(fieldEffects.windZones());
     // マップか太陽が変わった次のフレームで 1 回だけ焼く（DEC-145）。
     built?.tickSunShadow(renderer);
     // カメラ演出（DEC-388）。**`rig.apply()` の後**——リグが組んだ位置と投影に足す。

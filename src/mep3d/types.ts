@@ -1387,6 +1387,8 @@ export interface FieldEffectPresetDef {
   lift?: number;
   /** 厚み（マス）。床に置いたときだけ効く。 */
   thick?: number;
+  /** 風向き（度。GS-274）。風だけが使う。吹いていく向きで、0 が北、90 が東。省略時 90。 */
+  angle?: number;
 }
 
 /**

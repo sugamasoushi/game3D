@@ -8363,6 +8363,14 @@
           "left": -12868701,
           "right": -12868701
         }
+      },
+      {
+        "id": "p_plants_272_floor",
+        "name": "plants #272 floor",
+        "shape": "floor",
+        "mat": "mat_plants",
+        "ts": "plants",
+        "tile": 272
       }
     ]
   },
@@ -8507,6 +8515,26 @@
       "count": 7
     }
   },
+  "fieldEffects": [
+    {
+      "id": "wind1",
+      "name": "風",
+      "kind": "wind",
+      "on": true,
+      "amount": 0.5,
+      "speed": 0.5,
+      "scale": 0,
+      "color": "#ffffff",
+      "lift": 0,
+      "thick": 8,
+      "warp": 0,
+      "mirror": 0,
+      "face": 0.22,
+      "dye": 0,
+      "cast": true,
+      "angle": 45
+    }
+  ],
   "screenEffects": [
     {
       "id": "dapple1",
@@ -8520,25 +8548,25 @@
   "editor": {
     "camera": {
       "target": [
-        -7.505176634893609,
-        2.527056474078578,
-        2.971903887448307
+        5.958997158177389,
+        2.8480972560050386,
+        21.950871984000777
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 6.318065961149528,
+      "distance": 6.2287625954543975,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "オブジェクトレイヤー_3",
+    "activeLayer": "タイルマップレイヤー_12",
     "brush": {
       "shape": "floor",
       "rotation": 0,
       "chipTurn": 0,
       "color": "#c45c5c",
-      "tileset": "terrain-v7",
-      "tile": 327,
-      "paint": "color",
+      "tileset": "plants",
+      "tile": 256,
+      "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
@@ -46496,6 +46524,11 @@
           "name": "Hit",
           "type": "string",
           "value": "nowall"
+        },
+        {
+          "name": "Sway",
+          "type": "float",
+          "value": 3
         }
       ],
       "batches": [
@@ -47346,10 +47379,11 @@
           "anim": null,
           "protos": [
             "p_plants_274_floor",
+            "p_plants_257_floor",
             "p_plants_256_floor",
-            "p_plants_257_floor"
+            "p_plants_272_floor"
           ],
-          "count": 4,
+          "count": 5,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -47360,24 +47394,36 @@
               -3,
               0,
               -20,
-              -8,
-              0,
-              -16,
               -15,
               0,
-              -12
+              -12,
+              -8,
+              0,
+              -17,
+              -8,
+              0,
+              -16
             ],
             "proto": [
               0,
               0,
               1,
-              2
+              2,
+              3
             ],
             "rf": [
               0,
               1,
-              1,
-              2
+              2,
+              0,
+              0
+            ],
+            "gid": [
+              0,
+              0,
+              0,
+              301,
+              301
             ]
           }
         }
@@ -47395,6 +47441,11 @@
           "name": "Hit",
           "type": "string",
           "value": "nowall"
+        },
+        {
+          "name": "Sway",
+          "type": "float",
+          "value": 0.5
         }
       ],
       "batches": [
@@ -65948,10 +65999,57 @@
           ]
         }
       ]
+    },
+    {
+      "id": "エフェクト",
+      "name": "エフェクト",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [],
+      "objects": [
+        {
+          "id": "obj_1",
+          "name": "風",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Effect",
+              "type": "string",
+              "value": "wind1"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              -34.293252396907505,
+              -34.86727271351852
+            ],
+            [
+              21.80189653135688,
+              -34.86727271351852
+            ],
+            [
+              21.80189653135688,
+              26.861484302285092
+            ],
+            [
+              -34.293252396907505,
+              26.861484302285092
+            ]
+          ]
+        }
+      ]
     }
   ],
   "stats": {
-    "tiles": 9928,
+    "tiles": 9929,
     "batches": 66,
     "drawCalls": 66
   }
