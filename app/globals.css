@@ -1752,7 +1752,16 @@ body {
 .gmenu-body:has(.status) { overflow: hidden; }
 /* 絵を左に置くページ（ステータス・装備・スキル。GS-206）。絵の大きさと置き方はここ 1 か所。 */
 .menu-figured { display: flex; align-items: flex-start; gap: 24px; }
-.menu-figure { flex: none; width: 220px; max-height: 320px; object-fit: contain; }
+/* 絵の枠。幅と高さを決めて、右の項目と線で区切る。絵は枠の中で縦横比を保って上寄せ。 */
+.menu-figure-frame {
+  flex: none;
+  width: 220px;
+  height: 320px;
+  padding-right: 24px;
+  border-right: 1px solid rgba(142, 166, 200, 0.25);
+  box-sizing: content-box;
+}
+.menu-figure { display: block; width: 100%; height: 100%; object-fit: contain; object-position: top center; }
 .menu-figured-body { flex: 1; min-width: 0; }
 .status-columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .status-content .status-facts { grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; line-height: 1.25; margin: 0; }
@@ -1760,7 +1769,9 @@ body {
 .status-content .status-facts dd { overflow-wrap: anywhere; }
 .status-content .status-equipment { grid-template-columns: 2em minmax(0, 1fr); }
 
-.equip-current .equip-head { align-items: center; margin: 0 0 20px; }
+.equip-current .equip-head { align-items: center; margin: 0 0 4px; }
+/* 着けている物の説明。装備名の頭（種類の欄 3em ＋ 間 10px のあと）にそろえる。 */
+.equip-current .equip-desc { min-height: 1.6em; margin: 0 0 20px; padding-left: calc(72px + 10px); font-size: 17px; line-height: 1.6; opacity: 0.8; overflow-wrap: anywhere; }
 .equip-current .equip-kind { min-width: 3em; }
 .equip-current .equip-now { flex: 1; }
 .equip-modal-backdrop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(0,0,0,.65); }

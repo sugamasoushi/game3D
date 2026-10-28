@@ -73,7 +73,8 @@ export function EquipPage({
 
   return (
     <div className="menu-figured equip" data-tick={tick} ref={pageRef}>
-      {image ? <img className="menu-figure" src={image} alt="" /> : null}
+      {/* 絵の場所は**いつも同じ幅と高さ**で取る。絵が無い・細い人でも、右の項目が左へ寄らない。 */}
+      <div className="menu-figure-frame">{image ? <img className="menu-figure" src={image} alt="" /> : null}</div>
       <div className="menu-figured-body equip-current">
         {slots.map((slot) => {
           const now = member.equip[slot];
@@ -97,6 +98,8 @@ export function EquipPage({
                   </button>
                 ) : null}
               </p>
+              {/* 着けている物の説明（持ち物の台帳 `items.json` の `text`）。 */}
+              <p className="equip-desc">{now ? itemText(now) : ''}</p>
             </div>
           );
         })}
