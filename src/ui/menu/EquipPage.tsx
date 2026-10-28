@@ -83,6 +83,8 @@ export function EquipPage({
               <p className="equip-head">
                 <span className="equip-kind">{SLOT_LABEL[slot] ?? slot}</span>
                 <span className="equip-now">{now ? itemName(now) : '—'}</span>
+                {/* 着けている物の説明（持ち物の台帳 `items.json` の `text`）。名前の右の余白に置く。 */}
+                <span className="equip-desc">{now ? itemText(now) : ''}</span>
                 <button type="button" data-pick data-change={slot} onClick={() => setChoosingSlot(slot)}>変更</button>
                 {now ? (
                   <button
@@ -98,8 +100,6 @@ export function EquipPage({
                   </button>
                 ) : null}
               </p>
-              {/* 着けている物の説明（持ち物の台帳 `items.json` の `text`）。 */}
-              <p className="equip-desc">{now ? itemText(now) : ''}</p>
             </div>
           );
         })}
