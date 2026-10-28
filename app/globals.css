@@ -6,12 +6,22 @@
  * M PLUS 1 の使用条件は assets/fonts/MPLUS1-OFL.txt（SIL Open Font License）。
  * PixelMplus は **10px の絵**なので、20px（2 倍）で出すと 1 ドットが 2 画素にきっちり乗る。半端な大きさにすると滲む。
  * 使ってよいかは assets/fonts/README.txt（M+ FONT LICENSE）。
+ *
+ * **M PLUS 1 の行の高さはドット絵に合わせる**（`ascent-override` / `descent-override`）。画面はドット絵で作ってある。
+ * そのままだと 1 行の高さが字の大きさの 1.448 倍（上 1.16・下 0.288）で、ドット絵の 1.1 倍（上 0.9・下 0.2）より
+ * 20px で約 7px 高く、窓の行がずれる。上と下を足して 1.1 にし、漢字の真ん中が行の中で同じ所に来るように
+ * 分けた（ドット絵の漢字は −0.1〜0.9 で中心 0.4、M PLUS 1 は −0.077〜0.823 で中心 0.373 → 上 0.873・下 0.227）。
+ * 字の大きさ・幅は変えていない。
  */
 @font-face {
   font-family: 'M PLUS 1';
   src: url('/assets/fonts/MPLUS1-Regular.ttf') format('truetype');
   font-weight: 400;
   font-display: swap;
+  /* 行の高さをドット絵（PixelMplus10）にそろえる。わけは上の説明。 */
+  ascent-override: 87.3%;
+  descent-override: 22.7%;
+  line-gap-override: 0%;
 }
 
 @font-face {
@@ -19,6 +29,10 @@
   src: url('/assets/fonts/MPLUS1-Bold.ttf') format('truetype');
   font-weight: 700;
   font-display: swap;
+  /* 行の高さをドット絵（PixelMplus10）にそろえる。わけは上の説明。 */
+  ascent-override: 87.3%;
+  descent-override: 22.7%;
+  line-gap-override: 0%;
 }
 
 :root {
