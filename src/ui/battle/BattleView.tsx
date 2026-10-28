@@ -1198,18 +1198,19 @@ export function BattleView({
                  * HP は**4 割を切ると赤**（旧作と同じ）——数を読む前に危ないと分かる。
                  */}
                 <dl className="battle-stats">
-                  {/*
-                   * 名前は**レベルの上**（GS-84）。顔だけだと、仲間が増えたとき誰なのか分かりにくい。
-                   * 状態異常の札は**名前の上**に浮かせる（横に置くと帯の幅を押し狭める）。
-                   */}
-                  <dt className="battle-name">
+                  {/* 名前は**レベルの上**（GS-84）。顔だけだと、仲間が増えたとき誰なのか分かりにくい。 */}
+                  <dt className="battle-name">{who.name}</dt>
+                  <dt>Lv</dt>
+                  <dd className="battle-lv">
+                    {who.stats.level}
+                    {/*
+                     * 状態異常の札は**名前とレベルの横**。右端を帯の右端にそろえ、2 行の真ん中に置く。
+                     * 浮かせて置くので、札が出ても帯の幅は変わらない。
+                     */}
                     <span className="battle-ail">
                       <AilmentTags who={who} />
                     </span>
-                    {who.name}
-                  </dt>
-                  <dt>Lv</dt>
-                  <dd>{who.stats.level}</dd>
+                  </dd>
                   <dt>HP</dt>
                   <dd className="battle-meter">
                     <span className={hpOf(who) / who.stats.hp <= 0.4 ? 'battle-gauge low' : 'battle-gauge'}>

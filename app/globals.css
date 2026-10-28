@@ -2926,20 +2926,29 @@ body {
 
 /* 名前（GS-84）。**2 列ぶんを使う**（Lv の欄に押し込むと帯が名前の長さで押し出される）。 */
 .battle-stats .battle-name {
-  position: relative;
   grid-column: 1 / -1;
-  overflow: visible;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   opacity: 1;
 }
 
-/* 状態異常の札は名前の上に浮かせる（行の高さを取らない）。 */
+/* レベルの欄。状態異常の札を右端に浮かせる土台。 */
+.battle-stats dd.battle-lv {
+  position: relative;
+}
+
+/*
+ * 状態異常の札は名前とレベルの横（右端は帯の右端＝この欄の右端）。
+ * レベルの行の下端から名前の行の上端まで（2 行ぶん）の真ん中に置く。行の高さは取らない。
+ */
 .battle-ail {
   position: absolute;
-  left: 0;
-  bottom: 100%;
-  margin-bottom: 2px;
+  right: 0;
+  bottom: 0;
+  height: calc(200% + 2px);
+  display: flex;
+  align-items: center;
   line-height: 1;
 }
 
