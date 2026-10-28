@@ -1050,9 +1050,20 @@ export function BattleView({
                * 体力は**絵の上**（GS-78）。名前は出さない——出来事は下の窓が言うので、
                * 絵の横に名前を並べると同じことを 2 か所で言うことになる。
                */}
-              <div className="battle-bar">
-                <span style={{ width: `${Math.max(0, (hpOf(foe) / foe.stats.hp) * 100)}%` }} />
-              </div>
+              {(() => {
+                // 残りで色を変える（多い・半分を切った・4 分の 1 を切った）。
+                const rate = Math.max(0, Math.min(1, hpOf(foe) / foe.stats.hp));
+                const level = rate > 0.5 ? 'high' : rate > 0.25 ? 'mid' : 'low';
+                // 枠の内側（左右 2px の余白を除いた幅）に対する割合。
+                const width = `calc((100% - 4px) * ${rate})`;
+                return (
+                  <div className="battle-bar" data-level={level}>
+                    {/* 減った分。中身より少し遅れて縮み、削られた量を見せる。 */}
+                    <span className="battle-bar-trail" style={{ width }} />
+                    <span className="battle-bar-fill" style={{ width }} />
+                  </div>
+                );
+              })()}
               <AilmentTags who={foe} />
               {/* 2D でも元の大きさ × 敵の倍率（`enemies.json` の `scale`）。 */}
               {on3d ? null : src ? <img src={src} alt={foe.name} style={scaleStyle(enemyScale(enemyIdOf(foe)))} /> : <span className="battle-foe-name">{foe.name}</span>}

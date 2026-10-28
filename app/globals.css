@@ -1389,7 +1389,7 @@ body {
 .gmenu-body .item-row {
   display: grid;
   /* 名前・「：個数」・説明の 3 列。個数の列は幅をそろえる（コロンも数も縦にそろう）。 */
-  grid-template-columns: minmax(0, 7em) minmax(4ch, max-content) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 7em) 5ch minmax(0, 1fr);
   align-items: baseline;
   gap: 14px;
   width: 100%;
@@ -1897,20 +1897,84 @@ body {
  * 減り具合の帯（GS-78）。**絵の上**に出す（旧作と同じ）——
  * 名前の札は出さない。誰に何が起きたかは下の窓が言う。
  */
+/*
+ * 敵の体力の帯。窓と同じ紺地に水色の縁。中身は残りで色が変わり（緑 → 黄 → 赤）、
+ * 削られた分は明るい色で少し残ってから縮む。4 分の 1 ごとに目盛り。
+ */
 .battle-bar {
+  --bar-hi: #7ff0a4;
+  --bar-lo: #23a35a;
+  position: relative;
   width: 168px;
   height: 14px;
   margin-bottom: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.5);
+  padding: 2px;
+  border: 2px solid #8ea6c8;
+  border-radius: 7px;
+  background: rgba(8, 10, 48, 0.82);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  box-sizing: content-box;
 }
 
-.battle-bar span {
-  display: block;
-  height: 100%;
-  background: #e2694f;
-  transition: width 200ms linear;
+.battle-bar[data-level='mid'] {
+  --bar-hi: #ffe58a;
+  --bar-lo: #d99a22;
+}
+
+.battle-bar[data-level='low'] {
+  --bar-hi: #ff8a7a;
+  --bar-lo: #c8392b;
+}
+
+.battle-bar > span {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  border-radius: 4px;
+}
+
+/* 削られた分。中身より遅れて、ゆっくり縮む。 */
+.battle-bar-trail {
+  background: #fff1c2;
+  opacity: 0.85;
+  transition: width 500ms ease-out 350ms;
+}
+
+/* 中身。上半分に光沢を重ねる。 */
+.battle-bar-fill {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.08) 50%, rgba(0, 0, 0, 0.12) 51%, rgba(0, 0, 0, 0)),
+    linear-gradient(to bottom, var(--bar-hi), var(--bar-lo));
+  box-shadow: 0 0 6px var(--bar-lo);
+  transition: width 200ms linear, background-color 200ms linear;
+}
+
+/* 4 分の 1 ごとの目盛り。中身の上に細く重ねる。 */
+.battle-bar::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 4px;
+  background: linear-gradient(
+    to right,
+    transparent calc(25% - 1px), rgba(8, 10, 48, 0.55) calc(25% - 1px), rgba(8, 10, 48, 0.55) 25%,
+    transparent 25%, transparent calc(50% - 1px), rgba(8, 10, 48, 0.55) calc(50% - 1px), rgba(8, 10, 48, 0.55) 50%,
+    transparent 50%, transparent calc(75% - 1px), rgba(8, 10, 48, 0.55) calc(75% - 1px), rgba(8, 10, 48, 0.55) 75%,
+    transparent 75%
+  );
+  pointer-events: none;
+}
+
+/* 残りわずかは、ゆっくり明滅させる。 */
+.battle-bar[data-level='low'] .battle-bar-fill {
+  animation: battle-bar-low 900ms ease-in-out infinite alternate;
+}
+
+@keyframes battle-bar-low {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.45); }
 }
 
 /*
@@ -2972,6 +3036,7 @@ body {
 /* 狙っている敵は帯も明るく（絵が暗いときでも分かるように）。 */
 .battle-foe.picking .battle-bar {
   border-color: #ffd479;
+  box-shadow: 0 0 8px rgba(255, 212, 121, 0.7), 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 /*
