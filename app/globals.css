@@ -397,8 +397,22 @@ body {
   background: rgba(142, 166, 200, 0.35);
 }
 
+/*
+ * 矢印の場所は**いつも空けておく**（戦闘のコマンドと同じ）。選んだ行だけ矢印を見せる——
+ * 選んだときに字を足すと、その行の文字が右へずれる。
+ */
+.choices button::before {
+  content: '▶';
+  display: inline-block;
+  width: 1.1em;
+  font-size: 0.85em;
+  color: #ffd479;
+  opacity: 0;
+}
+
 .choices button.on::before {
-  content: '▶ ';
+  opacity: 1;
+  animation: mep-cursor 500ms ease-in-out infinite alternate;
 }
 
 /* ── 立ち絵（GS-20）────────────────────────────────────────── */
