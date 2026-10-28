@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createGameView, type GameStatus, type GameView, type WalkDir } from '../game/GameView';
 import { START_MAP_ID, assetUrl, mapUrl } from '../game/assets';
-import { mapEntryOf, entryForFile, knownSaveMapId, loadMapIndex } from '../game/mapIndex';
+import { mapEntryOf, entryForFile, knownMapLabel, knownSaveMapId, loadMapIndex } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
 import { loadItemBook } from '../game/items';
@@ -1695,6 +1695,8 @@ export default function GameCanvas() {
             party={stateRef.current.party}
             members={stateRef.current.members}
             gold={stateRef.current.gold}
+            playSeconds={stateRef.current.playSeconds}
+            place={knownMapLabel(mapRef.current)}
             onUseItem={useItem}
             onEquip={(who, id) => equipItem(stateRef.current, who, id)}
             onUnequip={(who, slot) => unequipItem(stateRef.current, who, slot)}
