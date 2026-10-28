@@ -2687,7 +2687,20 @@ body {
   align-content: start;
 }
 
-/* 特技・魔法の窓は 3:1 に分ける。左が一覧、右が選んでいる技の説明と消費 MP。 */
+/* 一覧の窓の上に出す札（「メイナ の 魔法」「道具」）。窓と同じ色の小さな窓。 */
+.battle-list-label {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  margin: 0;
+  padding: 2px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.78);
+  font-size: 18px;
+}
+
+/* 特技・魔法・道具の窓は 3:1 に分ける。左が一覧、右が選んでいる物の説明と数。 */
 .battle-list-split {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
@@ -2706,10 +2719,6 @@ body {
 
 .battle-skill-info p {
   margin: 0;
-}
-
-.battle-skill-name {
-  color: #ffe9a8;
 }
 
 .battle-skill-text {

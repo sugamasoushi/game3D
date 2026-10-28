@@ -29,11 +29,11 @@ import { AilTags } from '../AilTags';
 import { enemyFighters, enemyIdOf, gainExp, partyFighters, writeBack } from '../../game/battle/party';
 import { skillName } from '../../game/battle/book';
 import { runBattle, type BattleAction, type BattleOutcome, type BattleSpoils } from '../../game/battle/flow';
-import { alive, type Fighter, type SkillDef } from '../../game/battle/rules';
+import { alive, type Fighter } from '../../game/battle/rules';
 import { characterIcon, characterName, characterStand } from '../../game/characters';
 import { STAGE_LUNGE_DELAY_S, STAGE_LUNGE_S, type BattleFigure, type BattleStageSpec, type FigurePose } from '../../game/GameView';
 import { spendItem, type GameState } from '../../game/state';
-import { itemName, itemUse } from '../../game/items';
+import { itemName, itemText, itemUse } from '../../game/items';
 import { wouldHelp } from '../../game/battle/heal';
 import { playSe, stopBgm } from '../../game/audio';
 import { DEV_MODE } from '../../game/devMode';
@@ -264,19 +264,19 @@ function skillsOf(known: string[], group: string): string[] {
 }
 
 /**
- * 特技・魔法の窓の右（3:1 の 1）。**選んでいる技**の説明と消費 MP。
- * 説明はメニューの「スキル」と同じ台帳の `text`。払えなければ消費 MP を沈めた色で出す。
+ * 特技・魔法・道具の窓の右（3:1 の 1）。**選んでいる物**の説明と、下に 1 行の数（消費 MP・持っている数）。
+ * 名前は左の一覧で分かるので出さない。`short` は払えない印（数を沈めた色で出す）。
  */
-function SkillInfo({ skill, mp }: { skill: SkillDef | null; mp: number }) {
-  if (!skill) return <div className="battle-skill-info" />;
+function ListInfo({ text, label, value, short = false }: { text: string; label: string; value: string; short?: boolean }) {
   return (
     <div className="battle-skill-info">
-      <p className="battle-skill-name">{skill.name}</p>
-      <p className="battle-skill-text">{skill.text ?? ''}</p>
-      <p className={mp < skill.mp ? 'battle-skill-mp short' : 'battle-skill-mp'}>
-        <span>消費MP</span>
-        <span>{skill.mp}</span>
-      </p>
+      <p className="battle-skill-text">{text}</p>
+      {value ? (
+        <p className={short ? 'battle-skill-mp short' : 'battle-skill-mp'}>
+          <span>{label}</span>
+          <span>{value}</span>
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -771,8 +771,8 @@ export function BattleView({
           const skill = skillDef(id);
           return {
             // **払えない技も出す**（消すと「覚えたはずの技が無い」に見える）。押せなくするだけ。
+            // 消費 MP は右の説明に出すので、一覧には書かない。
             label: skill?.name ?? id,
-            note: skill?.mp ? `MP ${skill.mp}` : undefined,
             disabled: !skill || asking.mp < skill.mp,
             go: () => {
               if (!skill) return;
@@ -785,9 +785,9 @@ export function BattleView({
     }
 
     if (stage.kind === 'items') {
-      return battleItems(state).map(([id, count]) => ({
+      // 持っている数は右の説明に出すので、一覧には書かない（特技・魔法と同じ形）。
+      return battleItems(state).map(([id]) => ({
         label: itemName(id),
-        note: `×${count}`,
         go: () => {
           // 使い先が 1 人なら選ばせない。増えたときだけ選ぶ段へ進む。
           const alive1 = party.filter(alive);
@@ -1204,17 +1204,33 @@ export function BattleView({
        */}
       {asking && (stage.kind === 'skills' || stage.kind === 'items' || stage.kind === 'friend') ? (
         <div className="battle-list">
-          <p className="battle-ask">
-            {stage.kind === 'friend' ? 'だれに つかう？' : `${asking.name} の ${stage.kind === 'items' ? 'どうぐ' : stage.group}`}
+          {/* 何の一覧か。**窓の上に別の札**で出す。道具は誰の物でもないので「道具」だけ。 */}
+          <p className="battle-list-label">
+            {stage.kind === 'friend' ? 'だれに つかう？' : stage.kind === 'items' ? '道具' : `${asking.name} の ${stage.group}`}
           </p>
-          {stage.kind === 'skills' ? (
-            // 特技・魔法は窓を 3:1 に分け、右に**選んでいる技**の説明と消費 MP を出す。
+          {stage.kind === 'skills' || stage.kind === 'items' ? (
+            // 特技・魔法・道具は窓を 3:1 に分け、右に**選んでいる物**の説明と数を出す。
             <div className="battle-list-split">
               <Picks rows={picks} at={at} setAt={setAt} />
-              <SkillInfo
-                skill={skillDef(skillsOf(state.members.get(asking.id)?.skills ?? [], stage.group)[at] ?? '')}
-                mp={asking.mp}
-              />
+              {stage.kind === 'skills' ? (
+                (() => {
+                  const skill = skillDef(skillsOf(state.members.get(asking.id)?.skills ?? [], stage.group)[at] ?? '');
+                  return skill ? (
+                    <ListInfo text={skill.text ?? ''} label="消費MP" value={String(skill.mp)} short={asking.mp < skill.mp} />
+                  ) : (
+                    <ListInfo text="" label="" value="" />
+                  );
+                })()
+              ) : (
+                (() => {
+                  const row = battleItems(state)[at];
+                  return row ? (
+                    <ListInfo text={itemText(row[0])} label="所持数" value={String(row[1])} />
+                  ) : (
+                    <ListInfo text="" label="" value="" />
+                  );
+                })()
+              )}
             </div>
           ) : (
             <Picks rows={picks} at={at} setAt={setAt} />
