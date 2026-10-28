@@ -20,7 +20,8 @@
     "levelup": { "file": "SE/ひらめく2.mp3", "volume": 0.6 },
     "Crystal_Cave": { "file": "BGM/Crystal Cave.mp3", "volume": 0.5, "loop": true },
     "The_Cave": { "file": "BGM/The Cave.mp3", "volume": 0.5, "loop": true },
-    "幽霊出現": { "file": "SE/幽霊出現.wav", "volume": 0.5 }
+    "幽霊出現": { "file": "SE/幽霊出現.wav", "volume": 0.5 },
+    "剣の素振り3": { "file": "BattleSE/剣の素振り3.mp3", "volume": 0.5 }
   },
   "ui": {
     "message": "message",

@@ -109,15 +109,6 @@
       },
       "sukerabi": {
         "wander": {}
-      },
-      "sukowaimu": {
-        "wander": {},
-        "companions": [
-          {
-            "enemy": "enemy01",
-            "chance": 0.9
-          }
-        ]
       }
     },
     "home": {

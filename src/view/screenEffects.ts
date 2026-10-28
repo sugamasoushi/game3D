@@ -1,3 +1,4 @@
+import { screenShakeOffset, screenShakeFragmentShader, SCREEN_SHAKE_DEFAULT_AMOUNT, SCREEN_SHAKE_DEFAULT_SPEED } from '../mep3d/screenShake';
 // 画面エフェクト（DEC-389）。**画面全体にかかる画作りで、世界の場所を持たない。**
 //
 // フィールドエフェクト（`fieldEffects.ts`）との違いは置き場所——あちらは世界に板を置くので
@@ -13,6 +14,8 @@
 
 import {
   AdditiveBlending,
+  FramebufferTexture,
+  LinearFilter,
   Mesh,
   NearestFilter,
   OrthographicCamera,
@@ -32,10 +35,12 @@ import type { ScreenEffectDef } from '../mep3d/types';
 const NOISE_A = '/assets/noise/Super Perlin/Super Perlin 14 - 512x512.png';
 const NOISE_B = '/assets/noise/Super Perlin/Super Perlin 12 - 512x512.png';
 
-export const SCREEN_EFFECT_KINDS = ['fog', 'dapple'] as const;
+export const SCREEN_EFFECT_KINDS = ['fog', 'dapple', 'shake'] as const;
 export type ScreenEffectKind = (typeof SCREEN_EFFECT_KINDS)[number];
 
 export const SCREEN_EFFECT_LABELS: Record<ScreenEffectKind, string> = {
+  shake: { amount: SCREEN_SHAKE_DEFAULT_AMOUNT, speed: SCREEN_SHAKE_DEFAULT_SPEED, scale: 1, color: 'ffffff', height: 0.9, bottom: 0, thickness: 0.5 },
+  shake: '揺れ',
   fog: '霧',
   dapple: '木漏れ日',
 };
@@ -204,6 +209,9 @@ export function createScreenEffects(): ScreenEffects {
       vertexShader,
       fragmentShader,
       uniforms: {
+        sceneMap: { value: null },
+        shakeOffset: { value: new Vector2() },
+        shakeMargin: { value: 0 },
         mapA: { value: mapA },
         mapB: { value: mapB },
         offsetA: { value: new Vector2() },
@@ -227,10 +235,14 @@ export function createScreenEffects(): ScreenEffects {
     });
 
   const materials: Record<ScreenEffectKind, ShaderMaterial> = {
+    shake: makeMaterial(screenShakeFragmentShader, false),
     fog: makeMaterial(fogShader, false),
     dapple: makeMaterial(dappleShader, true),
   };
 
+  materials.shake.transparent = false;
+  let screenGrab: FramebufferTexture | null = null;
+  const bufferSize = new Vector2();
   const scene = new Scene();
   const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
   const quad = new Mesh(new PlaneGeometry(2, 2), materials.fog);
@@ -289,6 +301,7 @@ export function createScreenEffects(): ScreenEffects {
       const auto = renderer.autoClear;
       renderer.autoClear = false;
       for (const entry of shown) {
+        if (entry.kind === 'shake') continue;
         const kind = entry.kind as ScreenEffectKind;
         const fallback = SCREEN_EFFECT_DEFAULTS[kind];
         const material = materials[kind];
@@ -319,10 +332,29 @@ export function createScreenEffects(): ScreenEffects {
         quad.material = material;
         renderer.render(scene, camera);
       }
+      // 霧・木漏れ日を重ねた画ごと最後に揺らす。UIとカメラの座標は動かさない。
+      const shake = screenShakeOffset(list, clock, weights);
+      if (shake.margin > 0) {
+        renderer.getDrawingBufferSize(bufferSize);
+        const w = Math.max(1, Math.floor(bufferSize.x)), h = Math.max(1, Math.floor(bufferSize.y));
+        if (!screenGrab || screenGrab.image.width !== w || screenGrab.image.height !== h) {
+          screenGrab?.dispose();
+          screenGrab = new FramebufferTexture(w, h);
+          screenGrab.minFilter = LinearFilter;
+          screenGrab.magFilter = LinearFilter;
+        }
+        renderer.copyFramebufferToTexture(screenGrab);
+        materials.shake.uniforms.sceneMap.value = screenGrab;
+        materials.shake.uniforms.shakeOffset.value.set(shake.x, shake.y);
+        materials.shake.uniforms.shakeMargin.value = shake.margin;
+        quad.material = materials.shake;
+        renderer.render(scene, camera);
+      }
       renderer.autoClear = auto;
     },
 
     dispose() {
+      screenGrab?.dispose();
       quad.geometry.dispose();
       for (const material of Object.values(materials)) material.dispose();
       mapA.dispose();

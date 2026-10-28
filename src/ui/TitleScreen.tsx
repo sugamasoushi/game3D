@@ -207,7 +207,7 @@ export function TitleScreen({
             <div className="title-menu" ref={menuRef}>
               {usable.map((entry) => (
                 <button key={entry.slot} type="button" onClick={() => onContinue(entry.slot)}>
-                  {`${slotLabel(entry.slot)} : ${entry.map}  ${playTimeLabel(entry.playSeconds)}  ${savedAtLabel(entry.savedAt)}`}
+                  {`${slotLabel(entry.slot)} : ${entry.mapName}  ${playTimeLabel(entry.playSeconds)}  ${savedAtLabel(entry.savedAt)}`}
                 </button>
               ))}
               <button type="button" onClick={() => setPicking(false)}>

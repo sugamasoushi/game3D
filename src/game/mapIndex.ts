@@ -10,6 +10,8 @@ import { assetUrl } from './assets';
 
 /** 台帳の 1 行。 */
 export interface MapEntry {
+  /** 画面に出すマップの名前（「メイナの家」）。セーブの一覧などに出す。無ければ id を出す。台帳エディタの「マップ構成」で直す。 */
+  name?: string;
   /** `public/mapdata/` の中のファイル名。 */
   file: string;
   /** そのマップで流す曲（`sounds.json` のキー）。 */
@@ -99,6 +101,14 @@ export function knownMapKeyForFile(file: string): string | null {
  */
 export function saveMapId(maps: Record<string, MapEntry>, file: string): string {
   return Object.entries(maps).find(([, entry]) => entry.file === file)?.[0] ?? file.replace(/\.json$/i, '');
+}
+
+/**
+ * マップの id（セーブに書く物）→ 画面に出す名前。台帳の `name`、無ければ（台帳に無いマップ・名前を書いていないマップ）id のまま。
+ * セーブには id を書き、名前は出すときに引く——名前を直すと古いセーブの表示も変わる。
+ */
+export function mapLabel(maps: Record<string, MapEntry>, id: string): string {
+  return maps[id]?.name?.trim() || id;
 }
 
 /** 読み終えた台帳で `saveMapId` を引く。**台帳を読み終えてから**呼ぶ。 */

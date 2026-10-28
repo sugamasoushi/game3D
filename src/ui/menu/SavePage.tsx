@@ -40,7 +40,7 @@ export function SavePage({
           <span className="menu-slot">{slotLabel(slot)}</span>
           <span className="menu-info">
             {data
-              ? `${data.map}  ${playTimeLabel(data.playSeconds)}  ${savedAtLabel(data.savedAt)}${data.stale ? '（古い形式）' : ''}`
+              ? `${data.mapName}  ${playTimeLabel(data.playSeconds)}  ${savedAtLabel(data.savedAt)}${data.stale ? '（古い形式）' : ''}`
               : '空き'}
           </span>
           {/* オート枠は読むだけ（GS-33）。押せる形で置いておくと、手で書けると思ってしまう。 */}

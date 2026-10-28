@@ -1297,7 +1297,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
   };
 
   const group = new Group();
-  group.name = map.name;
+  group.name = 'map';
 
   const objects = new Map<string, ObjectLayer>();
   const animated: AnimatedBatch[] = [];

@@ -13,6 +13,7 @@
 
 import type { WalkDir } from './GameView';
 import { CLEAR_SWITCH } from './omake';
+import { loadMapIndex, mapLabel } from './mapIndex';
 
 /** セーブの形の版（GS-27）。形を変えたらここを上げ、読む側で古い版を判別する。 */
 export const SAVE_VERSION = 6;
@@ -108,6 +109,8 @@ export interface SaveSummary {
   savedAt: number;
   playSeconds: number;
   map: string;
+  /** 画面に出すマップの名前（台帳 `maps.json` の `name`。無ければ `map` の id）。 */
+  mapName: string;
   /** 読めない版（未来のセーブなど）。 */
   stale: boolean;
   /** クリアのフラグ（`ゲーム_クリア`）が立っている記録か（GS-212。タイトルの「おまけ」）。 */
@@ -164,6 +167,7 @@ export async function eraseSave(slot: number): Promise<void> {
 /** 枠の一覧。空き枠は入らない。 */
 export async function listSaves(): Promise<SaveSummary[]> {
   const out: SaveSummary[] = [];
+  const maps = await loadMapIndex();
   for (let slot = AUTO_SLOT; slot <= SAVE_SLOTS; slot += 1) {
     const data = await run<SaveData | undefined>('readonly', (store) => store.get(slot)).catch(() => undefined);
     if (!data) continue;
@@ -172,6 +176,7 @@ export async function listSaves(): Promise<SaveSummary[]> {
       savedAt: data.savedAt ?? 0,
       playSeconds: data.playSeconds ?? 0,
       map: data.map ?? '',
+      mapName: mapLabel(maps, data.map ?? ''),
       stale: !readableSave(data.version),
       cleared: data.switches?.[CLEAR_SWITCH] === true,
     });

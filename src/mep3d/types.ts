@@ -1436,7 +1436,6 @@ export const TILE_PX_CHOICES = [32, 48] as const;
 export interface MapDef {
   format: 'mep3d-map';
   version: number;
-  name: string;
   grid: {
     /**
      * 1 マスを何 px の絵として扱うか（`TILE_PX_CHOICES`）。キャラの背丈（コマの px ÷ これ。キャラとマップの 1 画素をそろえる＝ツクールと同じ）・ピクセル単位の値に効く。

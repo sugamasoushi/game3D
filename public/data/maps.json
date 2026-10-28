@@ -1,7 +1,8 @@
 {
-  "information": "マップの id（英小文字の名前。ファイル名は <id>.json で、file に同じ名前を書く）→ そのマップの音・戦闘設定。MapMove などの行き先はこの id で書く。マップ内に BattleStage=true の点があれば3D舞台となり、battleStage.formationsの候補から戦闘ごとに隊形を選ぶ。イベント戦闘は命令のformationで上書きできる。無ければ battleField の2D背景（未指定時は hill）を使う。",
+  "information": "マップの id（英小文字の名前。ファイル名は <id>.json で、file に同じ名前を書く）→ そのマップの名前（name。セーブの一覧などに出す）・音・戦闘設定。MapMove などの行き先はこの id で書く。マップ内に BattleStage=true の点があれば3D舞台となり、battleStage.formationsの候補から戦闘ごとに隊形を選ぶ。イベント戦闘は命令のformationで上書きできる。無ければ battleField の2D背景（未指定時は hill）を使う。",
   "maps": {
     "home": {
+      "name": "メイナの家",
       "file": "ashcrown/home.json",
       "bgm": "field",
       "time": {
@@ -12,6 +13,7 @@
       }
     },
     "ashcrown": {
+      "name": "灰冠山地",
       "file": "ashcrown/ashcrown.json",
       "bgm": "field",
       "bgs": "waterfall",
@@ -28,16 +30,19 @@
       }
     },
     "forest_mansion": {
+      "name": "忘れ森の館",
       "file": "forest_mansion/forest_mansion.json",
       "battleField": "forestMansion",
       "bgm": "field"
     },
     "forest_cave": {
+      "name": "青鳴洞・入口",
       "file": "blue_echo_cave/forest_cave.json",
       "battleField": "forest",
       "bgm": "The_Cave"
     },
     "blue_echo_cave": {
+      "name": "青鳴洞",
       "file": "blue_echo_cave/blue_echo_cave.json",
       "bgm": "The_Cave",
       "time": {
@@ -45,21 +50,26 @@
       }
     },
     "gald_peaks_road": {
+      "name": "ガルドの山道",
       "file": "forest_mansion/gald_peaks_road.json",
       "bgm": "field"
     },
     "gensou": {
+      "name": "幻の家",
       "file": "gensou.json",
       "battleField": "hill",
       "bgm": "Crystal_Cave"
     },
     "rikka_village": {
+      "name": "リッカ村",
       "file": "rikka/rikka_village.json"
     },
     "purple_ring_wastes": {
+      "name": "紫環災域",
       "file": "violet_scar/purple_ring_wastes.json"
     },
     "old_haulage_road": {
+      "name": "旧運搬道",
       "file": "forest_mansion/old_haulage_road.json"
     }
   }

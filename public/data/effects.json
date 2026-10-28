@@ -30,6 +30,14 @@
       "fps": 25,
       "ms": 400,
       "se": "slash"
+    },
+    "normal_dagger_slash": {
+      "image": "Effects/dagger_slash.png",
+      "frames": [0, 14],
+      "fps": 26,
+      "ms": 301,
+      "se": "slash",
+      "name": "斬撃（小）"
     }
   }
 }

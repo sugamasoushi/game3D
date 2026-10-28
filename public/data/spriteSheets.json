@@ -336,6 +336,12 @@
       "columns": 3,
       "rows": 4,
       "footPx": 8
+    },
+    "Effects/dagger_slash.png": {
+      "frameWidth": 192,
+      "frameHeight": 192,
+      "columns": 4,
+      "rows": 4
     }
   }
 }

@@ -1,7 +1,6 @@
 {
   "format": "mep3d-map",
   "version": 3,
-  "name": "untitled",
   "grid": {
     "tilePx": 48,
     "unit": 1,

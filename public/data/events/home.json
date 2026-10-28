@@ -71,7 +71,7 @@
         { "type": "time", "to": "morning", "clock": "run" },
         {
           "type": "scroll",
-          "speed": 1000,
+          "speed": 1200,
           "dim": 0.5,
           "lines": [
             "昔々（？）",
@@ -240,7 +240,7 @@
           "type": "message",
           "talk": [
             { "who": "meina", "lines": ["よし、それじゃあ狩に行くよ！"] },
-            { "who": "lamy", "lines": ["お～！腕が鳴るね！"] }
+            { "who": "lamy", "lines": ["お～！腕が鳴��ね！"] }
           ]
         },
         { "type": "telop", "lines": ["ラミィが仲間になった！！"], "dim": 0.5, "click": false, "hold": 1000 },
