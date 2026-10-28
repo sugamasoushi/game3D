@@ -1388,8 +1388,8 @@ body {
  */
 .gmenu-body .item-row {
   display: grid;
-  /* 「名前：個数」と説明の 2 列。 */
-  grid-template-columns: minmax(0, 10em) minmax(0, 1fr);
+  /* 名前・「：個数」・説明の 3 列。個数の列は幅をそろえる（コロンも数も縦にそろう）。 */
+  grid-template-columns: minmax(0, 7em) minmax(4ch, max-content) minmax(0, 1fr);
   align-items: baseline;
   gap: 14px;
   width: 100%;
@@ -1402,7 +1402,7 @@ body {
 .gmenu-body .item-row[aria-disabled='true'] > .item-name,
 .gmenu-body .item-row[aria-disabled='true'] > .item-count { opacity: 0.45; }
 .item-list .item-name { min-width: 0; overflow-wrap: anywhere; }
-.item-list .item-count { width: auto; font-variant-numeric: tabular-nums; }
+.item-list .item-count { display: flex; justify-content: space-between; gap: 4px; width: auto; font-variant-numeric: tabular-nums; }
 .item-list .item-text { margin-left: 18px; font-size: 17px; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
 
 /*
@@ -1876,9 +1876,9 @@ body {
   transition: opacity 400ms linear;
 }
 
-/* 倒れた敵は**消さずに薄くする**——数が急に減ると、何体居たのか分からなくなる。 */
+/* 倒した敵は**消しきる**（3D の板と同じ）。体力の帯と状態の札も一緒に消える。 */
 .battle-foe.gone {
-  opacity: 0.18;
+  opacity: 0;
   filter: grayscale(1);
 }
 

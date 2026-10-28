@@ -1781,9 +1781,11 @@ export function createGameView(
       const tone = pose.gone ? 0.45 : pose.picking ? 0.75 + 0.25 * Math.cos((elapsed / 0.4) * Math.PI) : 1;
       figure.material.color.setScalar(tone);
       // 透け: 当たった点滅は 100ms ごとに半透明（旧作 `blinking`）。倒れたら 0.4 秒でうすく。
+      // **倒した敵は消しきる**（残すと倒したのか分かりにくい）。味方は薄く残す。透明度 0 は `alphaTest` で描かれない。
       const fade = pose.gone && figure.goneAt >= 0 ? Math.min(1, (elapsed - figure.goneAt) / 0.4) : 0;
       const flash = pose.flash && Math.floor(elapsed * 10) % 2 === 0 ? 0.5 : 1;
-      figure.material.opacity = flash * (1 - 0.82 * fade);
+      const faded = figure.def.side === 'enemy' ? 1 : 0.82;
+      figure.material.opacity = flash * (1 - faded * fade);
       figure.shadow.visible = figure.mesh.visible && !pose.gone;
     }
   };

@@ -124,10 +124,11 @@ export function ItemsPage({
                 aria-disabled={!ready}
                 onClick={() => choose(id)}
               >
-                {/* 「名前：個数」で 1 つの列に。説明は右の列のまま。 */}
-                <span className="item-name">
-                  {itemName(id)}
-                  <span className="item-count">：{count}</span>
+                {/* 「名前：個数」。個数は列をそろえ、コロンは左端・数は右端に置く。 */}
+                <span className="item-name">{itemName(id)}</span>
+                <span className="item-count">
+                  <span>：</span>
+                  <span>{count}</span>
                 </span>
                 <span className="item-text">{itemText(id)}</span>
               </button>
