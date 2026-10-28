@@ -29,7 +29,7 @@ import { AilTags } from '../AilTags';
 import { enemyFighters, enemyIdOf, gainExp, partyFighters, writeBack } from '../../game/battle/party';
 import { skillName } from '../../game/battle/book';
 import { runBattle, type BattleAction, type BattleOutcome, type BattleSpoils } from '../../game/battle/flow';
-import { alive, type Fighter } from '../../game/battle/rules';
+import { alive, type Fighter, type SkillDef } from '../../game/battle/rules';
 import { characterIcon, characterName, characterStand } from '../../game/characters';
 import { STAGE_LUNGE_DELAY_S, STAGE_LUNGE_S, type BattleFigure, type BattleStageSpec, type FigurePose } from '../../game/GameView';
 import { spendItem, type GameState } from '../../game/state';
@@ -255,6 +255,29 @@ function Picks({
         </li>
       ))}
     </ul>
+  );
+}
+
+/** 覚えている技のうち、その種類（特技・魔法）の物。窓の並びの順（`at` はこの並びの番号）。 */
+function skillsOf(known: string[], group: string): string[] {
+  return known.filter((id) => skillDef(id)?.kind === group);
+}
+
+/**
+ * 特技・魔法の窓の右（3:1 の 1）。**選んでいる技**の説明と消費 MP。
+ * 説明はメニューの「スキル」と同じ台帳の `text`。払えなければ消費 MP を沈めた色で出す。
+ */
+function SkillInfo({ skill, mp }: { skill: SkillDef | null; mp: number }) {
+  if (!skill) return <div className="battle-skill-info" />;
+  return (
+    <div className="battle-skill-info">
+      <p className="battle-skill-name">{skill.name}</p>
+      <p className="battle-skill-text">{skill.text ?? ''}</p>
+      <p className={mp < skill.mp ? 'battle-skill-mp short' : 'battle-skill-mp'}>
+        <span>消費MP</span>
+        <span>{skill.mp}</span>
+      </p>
+    </div>
   );
 }
 
@@ -743,8 +766,7 @@ export function BattleView({
 
     if (stage.kind === 'skills') {
       const group = stage.group;
-      return known
-        .filter((id) => skillDef(id)?.kind === group)
+      return skillsOf(known, group)
         .map((id) => {
           const skill = skillDef(id);
           return {
@@ -1185,7 +1207,18 @@ export function BattleView({
           <p className="battle-ask">
             {stage.kind === 'friend' ? 'だれに つかう？' : `${asking.name} の ${stage.kind === 'items' ? 'どうぐ' : stage.group}`}
           </p>
-          <Picks rows={picks} at={at} setAt={setAt} />
+          {stage.kind === 'skills' ? (
+            // 特技・魔法は窓を 3:1 に分け、右に**選んでいる技**の説明と消費 MP を出す。
+            <div className="battle-list-split">
+              <Picks rows={picks} at={at} setAt={setAt} />
+              <SkillInfo
+                skill={skillDef(skillsOf(state.members.get(asking.id)?.skills ?? [], stage.group)[at] ?? '')}
+                mp={asking.mp}
+              />
+            </div>
+          ) : (
+            <Picks rows={picks} at={at} setAt={setAt} />
+          )}
           <button type="button" className="battle-close" onClick={back} aria-label="もどる">
             ✖
           </button>

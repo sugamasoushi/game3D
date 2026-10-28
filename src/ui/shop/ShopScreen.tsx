@@ -168,9 +168,8 @@ export function ShopScreen({
         </div>
 
         <div className="shop-foot">
-          <span className="gmenu-hint">←→ かう／うる　↑↓ 選ぶ　Enter 決定　Esc おわり</span>
           <button type="button" onClick={onClose}>
-            おわり（Esc）
+            おわり
           </button>
         </div>
       </div>

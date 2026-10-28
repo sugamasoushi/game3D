@@ -2195,6 +2195,7 @@ body {
 .shop-foot {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
   padding-top: 8px;
   border-top: 2px solid rgba(142, 166, 200, 0.4);
@@ -2684,6 +2685,48 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 24px;
   align-content: start;
+}
+
+/* 特技・魔法の窓は 3:1 に分ける。左が一覧、右が選んでいる技の説明と消費 MP。 */
+.battle-list-split {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+  gap: 0 16px;
+  align-items: stretch;
+}
+
+.battle-skill-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding-left: 16px;
+  border-left: 2px solid rgba(142, 166, 200, 0.4);
+}
+
+.battle-skill-info p {
+  margin: 0;
+}
+
+.battle-skill-name {
+  color: #ffe9a8;
+}
+
+.battle-skill-text {
+  flex: 1;
+  font-size: 0.85em;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.battle-skill-mp {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* 払えない技は消費 MP を沈めた色に（一覧の行と同じく押せない印）。 */
+.battle-skill-mp.short {
+  color: #ff9a9a;
 }
 
 /* もどるの ✖（旧作も窓の右上に置いていた）。 */

@@ -107,6 +107,8 @@ const GAME_OVER_FADE_MS = 1600;
 installFullscreenShortcut();
 
 const CLOCK_MS = 1000;
+/** タイトルから始めるとき、タイトルの曲を消していく時間（ミリ秒）。 */
+const TITLE_BGM_FADE_MS = 400;
 
 export default function GameCanvas() {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -651,8 +653,12 @@ export default function GameCanvas() {
   /**
    * マップを移る（GS-17）。**行き先の書き方と着地の解き方はここ 1 か所**に置く——
    * イベントの `transfer` も、マップに置いた `MapMove` も同じ道を通る。
+   *
+   * `soundAfterPaint` はタイトルから始めたとき。曲は**読み込み終えて画面が出始めてから**鳴らす
+   * （黒い読み込みのあいだに鳴り出さないように）。ほかのマップ移動は今までどおり読み込んだところで替える
+   * ——同じ曲なら切れずに続く。
    */
-  const goTo = useCallback(async (map: string, landing: Landing, face: WalkDir | '', fade = true) => {
+  const goTo = useCallback(async (map: string, landing: Landing, face: WalkDir | '', fade = true, soundAfterPaint = false) => {
     const view = viewRef.current;
     if (!view) return;
     // 入口をくぐるときは暗転を挟む（GS-21）。旧作と同じ間の取り方で、読み込みの間も隠せる。
@@ -669,7 +675,7 @@ export default function GameCanvas() {
       await readEventsAhead(file);
       await view.load(file);
       // そのマップの曲と環境音（GS-21）。同じ曲なら切れずに続く。
-      applyMapSound(entry);
+      if (!soundAfterPaint) applyMapSound(entry);
       // 着地。座標が書いてあればそこ、目印の名前ならその点、どちらも無ければマップの `default`。
       if (landing.at) view.placePlayer(landing.at.x, landing.at.y, landing.at.z, landing.px);
       else if (landing.marker) view.placeAtMarker(landing.marker, landing.px);
@@ -679,9 +685,13 @@ export default function GameCanvas() {
       if (fade) {
         // 黒いうちに、踏んでいる場所のイベントを起こす。
         useUi.getState().setBusy(false);
+        // 曲はイベントより先に当てる——踏んで起きるイベントが曲を指していれば、そちらが勝つ。
+        if (soundAfterPaint) applyMapSound(entry);
         checkSpotsRef.current();
         await painted();
         useUi.getState().setFade(0, DOOR_FADE_MS);
+      } else if (soundAfterPaint) {
+        applyMapSound(entry);
       }
       setNotice('');
     } catch (error) {
@@ -1408,6 +1418,9 @@ export default function GameCanvas() {
   /** はじめから（GS-27）。記録を新しくして出発点のマップへ。 */
   const startNew = useCallback(async () => {
     autoPendingRef.current = false;
+    // タイトルの曲はここで止める。マップの曲は画面が出始めてから（下）。
+    audio.stopBgm(TITLE_BGM_FADE_MS);
+    audio.stopBgs(TITLE_BGM_FADE_MS);
     // 記録は**欄ごと全部**戻す（GS-265）。1 つずつ戻すと、欄を足したときに戻し忘れる
     // （物語の段階が残り、済ませたイベントが動かなかった）。入れ物は差し替えない——イベントの道具立てが握っている。
     resetState(stateRef.current);
@@ -1426,10 +1439,13 @@ export default function GameCanvas() {
     // 最初のマップは id で決め、ファイルは台帳から引く（フォルダ分け GS-257）。
     const entry = await mapEntryOf(START_MAP_ID);
     const startFile = entry.file;
-    applyMapSound(entry);
     await readEventsAhead(startFile);
     await viewRef.current?.load(startFile);
     await adoptRef.current(startFile);
+    // 曲は**読み込み終えて画面が出始めるところで**鳴らす（黒い読み込みのあいだは鳴らさない）。
+    // 明けるのは次の 2 フレーム後。イベントより先に当てる——踏んで起きるイベントが曲を指していれば、そちらが勝つ。
+    await viewRef.current?.waitForRenderedFrame();
+    applyMapSound(entry);
     checkSpotsRef.current();
     await painted();
     useUi.getState().setFade(0, DOOR_FADE_MS);
@@ -1442,6 +1458,13 @@ export default function GameCanvas() {
       autoPendingRef.current = false;
       const data = await readSave(slot);
       if (!data) return;
+      // タイトルから始めたときだけ、タイトルの曲を止めて、マップの曲は画面が出始めてから鳴らす。
+      // ゲーム中のメニューから読んだときは今までどおり（マップ移動と同じく読み込んだところで替える）。
+      const fromTitle = useUi.getState().phase === 'title';
+      if (fromTitle) {
+        audio.stopBgm(TITLE_BGM_FADE_MS);
+        audio.stopBgs(TITLE_BGM_FADE_MS);
+      }
       const { state, progress } = fromSave(data);
       // **入れ物は差し替えず中身を移す**——イベントの道具立てが同じ入れ物を握っている。欄は全部 `restoreState` が移す。
       restoreState(stateRef.current, state);
@@ -1456,7 +1479,7 @@ export default function GameCanvas() {
       useUi.getState().setPhase('play');
       useUi.getState().setMenu(false);
       // 読み直すあいだは黒のまま（GS-28）。
-      await goTo(progress.map, { marker: '', at: progress.at }, progress.facing, true);
+      await goTo(progress.map, { marker: '', at: progress.at }, progress.facing, true, fromTitle);
       canvasRef.current?.focus();
     },
     [goTo],
