@@ -102,6 +102,7 @@ export function readFieldPreset(raw: FieldEffectPresetDef): FieldEffectPreset | 
     dye: num(raw.dye, base.dye),
     cast: raw.cast !== false,
     angle: num(raw.angle, base.angle),
+    rainTilt: readRainTilt(raw.rainTilt),
   };
 }
 
@@ -358,6 +359,12 @@ export interface FieldEffectSettings {
    * 風向き（度。GS-274）。**風だけ**が使う。風が吹いていく向きで、0 が北、90 が東（太陽の方位と同じ）。
    */
   angle: number;
+  /** 雨だけ。鉛直からの傾き（度、-75〜75）。省略時6。 */
+  rainTilt?: number;
+}
+
+export function readRainTilt(value: unknown): number {
+  return Math.max(-75, Math.min(75, num(value, 6)));
 }
 
 export const FIELD_EFFECT_DEFAULTS: Record<FieldEffectKind, FieldEffectSettings> = {
@@ -619,6 +626,7 @@ void main() {
 const rainShader = `
 precision highp float;
 uniform vec2 rainSize;
+uniform float rainSlope;
 ${COMMON_UNIFORMS}
 ${EDGE_FADE}
 ${HASH}
@@ -626,7 +634,7 @@ void main() {
   vec2 p = vUv * rainSize;
   float density = max(0.1, scale);
   // 斜め下へ落ちる。時刻で横に揺らさないので、雪のように漂わない。
-  float x = (p.x + p.y * 0.10) * 3.2 * density;
+  float x = (p.x + p.y * rainSlope) * 3.2 * density;
   float col = floor(x);
   float seed = col + level * 137.0;
   float fast = mix(3.8, 6.2, mepHash(seed + 5.0));
@@ -1428,6 +1436,7 @@ export function createFieldEffects(): FieldEffects {
     material.uniforms.speed.value = Math.max(0, look.speed);
     material.uniforms.scale.value = Math.max(0.001, look.scale);
     material.uniforms.tint.value = tintOf(look.color, 'ffffff');
+    if (material.uniforms.rainSlope) material.uniforms.rainSlope.value = Math.tan(readRainTilt(look.rainTilt) * Math.PI / 180);
     if (material.uniforms.warp) material.uniforms.warp.value = Math.max(0, look.warp);
     if (material.uniforms.mirror) material.uniforms.mirror.value = Math.max(0, look.mirror) * weight;
     if (material.uniforms.face) material.uniforms.face.value = Math.min(1, Math.max(0, look.face));
@@ -1534,6 +1543,7 @@ export function createFieldEffects(): FieldEffects {
           // UV の縦横比ではなくマスで雨粒を描く。取り置き材質でも必ず更新。
           if (kind === 'rain') {
             material.uniforms.rainSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
+            material.uniforms.rainSlope ??= { value: 0 };
           }
           applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
           const mesh = new Mesh(kind === 'pillar' ? pillarGeometry : kind === 'explosion' ? explosionGeometry : geometry, material);
