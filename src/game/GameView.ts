@@ -60,7 +60,7 @@ import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from 
 import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
-import { heavyOn } from './quality';
+import { drawMode, heavyOn } from './quality';
 import { battlePartyFiguresShown } from './devMode';
 import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
@@ -196,6 +196,9 @@ export interface RestageResult {
  * `height` はマス。0 なら絵の高さから決める（190px で 1 マス。上限・下限なし）。
  * `scale` はそのあとに掛ける倍率（敵は `enemies.json` の `scale`。2026-10-17）。
  */
+/** 全画面で描く細かさの上限（1280×720 の何倍まで）。1.5 倍 ＝ 1920×1080。 */
+const MAX_RENDER_RATIO = 1.5;
+
 export interface BattleFigure {
   id: string;
   side: 'party' | 'enemy';
@@ -464,6 +467,11 @@ export interface GameView {
    * 使うプリセットが無いマップでは ''（基準＝すべて出す）。NPC の出し入れはこれで決める。
    */
   shownTime(): string;
+  /**
+   * 画面に出している倍率（1280×720 を何倍で見せているか）。全画面で拡大しているときは、
+   * 描く細かさをその倍率に合わせて上げる（引き伸ばしてぼやけないように）。
+   */
+  setDisplayScale(scale: number): void;
   /**
    * 時間帯を切り替えている途中か。書き割りの絵を待っている間も含む。
    * この間は決定・メニュー・踏むイベントを受け付けない（見た目と条件の時間帯がずれるため）。
@@ -1032,6 +1040,19 @@ export function createGameView(
     status.orthographic = playOrtho;
   };
   let sizedH = 0;
+  let sizedRatio = 0;
+  /** 画面に出している倍率（`setDisplayScale`）。 */
+  let displayScale = 1;
+  /**
+   * 描く細かさ。**全画面で拡大しているとき（倍率が 1 を超える）だけ**、高負荷の描画モードで上げる。
+   * 倍率 × 端末の画素の細かさ（Windows の表示倍率など）に合わせ、上限は 1080p 相当（1.5 倍）——
+   * 4K の画面で 3 倍に描くと 9 倍重くなる。ふだんは今までどおり 1280×720 で描く。
+   */
+  const renderRatio = (): number => {
+    if (displayScale <= 1 || drawMode() !== 'high') return 1;
+    const device = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+    return Math.min(MAX_RENDER_RATIO, Math.max(1, displayScale * device));
+  };
 
   /**
    * ゲーム画面は 1280×720 固定（DEC-162）。ウィンドウに合わせて広げない。
@@ -1040,11 +1061,14 @@ export function createGameView(
   const resize = () => {
     const w = GAME_SCREEN_WIDTH;
     const h = GAME_SCREEN_HEIGHT;
+    // 描く細かさ（全画面で拡大しているときだけ上げる）。
+    const ratio = renderRatio();
     // 変わっていなければ何もしない。毎フレーム呼ばれてもバッファを組み直さない（GC-24）。
-    if (w === sizedW && h === sizedH) return;
+    if (w === sizedW && h === sizedH && ratio === sizedRatio) return;
     sizedW = w;
     sizedH = h;
-    const ratio = renderer.getPixelRatio();
+    sizedRatio = ratio;
+    renderer.setPixelRatio(ratio);
     renderer.setSize(w, h, false);
     rig.resize(w, h, ratio);
     tilt.setSize(w, h, ratio);
@@ -3146,6 +3170,10 @@ export function createGameView(
       beginTime(to, ms);
     },
     shownTime: () => shownTimeId,
+    setDisplayScale(scale) {
+      // 次のフレームの `resize` が細かさを合わせ直す。
+      if (Number.isFinite(scale) && scale > 0) displayScale = scale;
+    },
     timeShifting: () => shift !== null || timeWaitGen === timeGen,
     setCellPicker(handler) {
       cellPicker = handler;
