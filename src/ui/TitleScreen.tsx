@@ -206,8 +206,12 @@ export function TitleScreen({
           ) : (
             <div className="title-menu" ref={menuRef}>
               {usable.map((entry) => (
-                <button key={entry.slot} type="button" onClick={() => onContinue(entry.slot)}>
-                  {`${slotLabel(entry.slot)} : ${entry.mapName}  ${playTimeLabel(entry.playSeconds)}  ${savedAtLabel(entry.savedAt)}`}
+                <button key={entry.slot} type="button" className="save-info title-save" onClick={() => onContinue(entry.slot)}>
+                  {/* セーブ画面と同じ並び。マップ名は 10 文字分まで（超えたら「…」）。 */}
+                  <span className="save-slot">{slotLabel(entry.slot)}</span>
+                  <span className="save-map">{entry.mapName}</span>
+                  <span className="save-time">{playTimeLabel(entry.playSeconds)}</span>
+                  <span className="save-at">{savedAtLabel(entry.savedAt)}</span>
                 </button>
               ))}
               <button type="button" onClick={() => setPicking(false)}>

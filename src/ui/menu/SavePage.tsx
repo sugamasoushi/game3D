@@ -38,10 +38,20 @@ export function SavePage({
       {rows.map(({ slot, data }) => (
         <li key={slot}>
           <span className="menu-slot">{slotLabel(slot)}</span>
-          <span className="menu-info">
-            {data
-              ? `${data.mapName}  ${playTimeLabel(data.playSeconds)}  ${savedAtLabel(data.savedAt)}${data.stale ? '（古い形式）' : ''}`
-              : '空き'}
+          {/* マップ名・遊んだ時間・書いた日時は**別の欄**。マップ名は 10 文字分まで（超えたら「…」）。 */}
+          <span className="menu-info save-info">
+            {data ? (
+              <>
+                <span className="save-map">{data.mapName}</span>
+                <span className="save-time">{playTimeLabel(data.playSeconds)}</span>
+                <span className="save-at">
+                  {savedAtLabel(data.savedAt)}
+                  {data.stale ? '（古い形式）' : ''}
+                </span>
+              </>
+            ) : (
+              '空き'
+            )}
           </span>
           {/* オート枠は読むだけ（GS-33）。押せる形で置いておくと、手で書けると思ってしまう。 */}
           <button
