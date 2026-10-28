@@ -172,9 +172,7 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
                 void setFullscreen(on).then((now) => setFull(now));
               }}
             />
-            <span className="menu-hint">
-              {isDesktopApp() ? 'F11 / Alt+Enter でも切り替え。次の起動もこの状態' : 'Alt+Enter でも切り替え'}
-            </span>
+            <span className="menu-hint">{isDesktopApp() ? '次の起動もこの状態' : ''}</span>
           </li>
         ) : null}
         {volume('全体', 'masterVolume')}

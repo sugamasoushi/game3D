@@ -15,6 +15,7 @@ import { assetUrl } from '../game/assets';
 import { loadOpening, openingBackdrop, type OpeningBook } from '../game/opening';
 import { DEV_MODE, showOpening } from '../game/devMode';
 import { loadSoundBook, playBgm } from '../game/audio';
+import { useUi } from './store';
 import { Opening } from './Opening';
 import { preloadFonts, preloadImages } from '../game/preload';
 import { clearedHere, loadOmake, type OmakeBook, type OmakeItem } from '../game/omake';
@@ -108,6 +109,9 @@ export function TitleScreen({
     (buttons()[viewedRef.current] ?? buttons()[0])?.focus();
     viewedRef.current = -1;
     const onKey = (event: KeyboardEvent) => {
+      // 設定を開いている間は設定の窓に任せる。ゲームパッドの合成キー（GS-58）は window へ直に送るので、
+      // 設定の窓が止めても同じ window のこの受け手には届いてしまう。
+      if (useUi.getState().settings) return;
       const list = buttons();
       if (list.length === 0) return;
       const at = list.indexOf(document.activeElement as HTMLButtonElement);
