@@ -1193,8 +1193,8 @@ export function BattleView({
                   </div>
                 ) : null}
                 {/*
-                 * 帯は**敵の帯と同じ作り**（中に何も書かない）。数は帯の右に出す——帯の中に重ねると、
-                 * 中身が減ったとき帯ごと縮んだように見える。
+                 * 帯は**敵の帯と同じ作り**。数は帯に重ねる。帯の空いた所は窓より暗くして、
+                 * 中身が減ったとき帯ごと縮んだように見えないようにする。
                  * HP は**4 割を切ると赤**（旧作と同じ）——数を読む前に危ないと分かる。
                  */}
                 <dl className="battle-stats">
@@ -1218,7 +1218,7 @@ export function BattleView({
                       <span className="battle-gauge-fill" style={{ width: gaugeWidth(hpOf(who), who.stats.hp) }} />
                     </span>
                     <b className="battle-gauge-num">
-                      {hpOf(who)}/{who.stats.hp}
+                      {hpOf(who)} / {who.stats.hp}
                     </b>
                   </dd>
                   <dt>MP</dt>
@@ -1228,7 +1228,7 @@ export function BattleView({
                       <span className="battle-gauge-fill" style={{ width: gaugeWidth(mpOf(who), who.stats.mp) }} />
                     </span>
                     <b className="battle-gauge-num">
-                      {mpOf(who)}/{who.stats.mp}
+                      {mpOf(who)} / {who.stats.mp}
                     </b>
                   </dd>
                 </dl>

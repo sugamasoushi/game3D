@@ -2072,8 +2072,10 @@ body {
 
 .battle-party li {
   /* 1 人ぶんを等分する。**3 人でも収まる**幅で組んであるので、
-   * 2 人のときは間が空くだけで、並びは動かない。 */
-  flex: 1;
+   * 2 人のときは間が空くだけで、並びは動かない。
+   * **1 人のときも窓の半分まで**（2 人並べて 2 人目が居ない形）。端まで伸ばすと帯が長すぎる。 */
+  flex: 1 1 0;
+  max-width: calc((100% - 16px) / 2);
   min-width: 0;
   display: flex;
   align-items: center;
@@ -2945,11 +2947,9 @@ body {
   margin-left: 0;
 }
 
-/* 帯と数の行。帯は余りいっぱいに伸び、数は右にそろえる。 */
+/* 帯と数の行。数は帯に重ねる（帯の幅は数の桁に左右されない）。 */
 .battle-stats dd.battle-meter {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  position: relative;
 }
 
 .battle-stats dt {
@@ -2976,10 +2976,9 @@ body {
   --bar-lo: #23a35a;
   position: relative;
   display: block;
-  flex: 1;
   min-width: 0;
-  /* 敵の帯と同じ作り・同じ高さ。中には何も書かない。空いた所は窓より暗くして、帯の長さが分かるようにする。 */
-  height: 14px;
+  /* 敵の帯と同じ作り。数を重ねるので少し高く。空いた所は窓より暗くして、帯の長さが分かるようにする。 */
+  height: 18px;
   border: 2px solid #8ea6c8;
   border-radius: 7px;
   background: rgba(0, 0, 0, 0.55);
@@ -2989,14 +2988,22 @@ body {
   padding: 2px;
 }
 
-/* 数は帯の右。桁が変わっても帯の長さが変わらないよう、幅を決めて右にそろえる。 */
+/* 数は帯の真ん中に重ねる。**縁を付ける**（旧作は 5px の縁）——帯の色の上でも読める。 */
 .battle-gauge-num {
-  flex: none;
-  min-width: 5.5ch;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 15px;
   font-weight: normal;
-  text-align: right;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  text-shadow:
+    1px 1px 0 #2d2d2d,
+    -1px 1px 0 #2d2d2d,
+    1px -1px 0 #2d2d2d,
+    -1px -1px 0 #2d2d2d;
 }
 
 .battle-gauge > span {
