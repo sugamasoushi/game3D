@@ -31,7 +31,9 @@ export function SkillsPage({ who, member }: { who: string; member: MemberState |
               return (
                 <li key={id}>
                   <span className="item-name">{skill?.name ?? id}</span>
-                  <span className="item-count">{skill?.mp ? `MP ${skill.mp}` : '—'}</span>
+                  {/* 「消費MP」と数は別の列。数は幅を決めて右にそろえる（桁が変わっても説明がずれない）。 */}
+                  <span className="skill-mp-label">消費MP</span>
+                  <span className="item-count">{skill?.mp ? skill.mp : '—'}</span>
                   <span className="item-text">
                     {skill?.kind ? `［${skill.kind}］` : ''}
                     {skill?.text ?? ''}
