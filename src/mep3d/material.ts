@@ -6,12 +6,94 @@ import { createOccluderArrays, emptyOccluderMap, MAX_OCCLUDERS, OCCLUDER_GLSL, O
 import { FADE_CELLS, TEXELS_PER_CELL } from './shadowMask';
 import { createSunShadowUniforms, SUN_SHADOW_GLSL, SUN_SHADOW_UNIFORMS_GLSL } from './sunShadow';
 import type { CameraFxDef, LightingDef, MaterialDef, PointLightDef } from './types';
+import type { WindZone } from './fieldEffects';
+import { emptySwayDataTexture } from './sway';
 
 /**
  * 透過レイヤー（DEC-251）。**レイヤー**のプロパティ。
  * オンにすると、そのレイヤーのチップが網掛けで透ける。手前の壁を別レイヤーにして使う。
  */
 export const SEE_THROUGH_PROPERTY_NAME = 'SeeThrough';
+
+/**
+ * 風で揺らすレイヤー（GS-274）。タイルレイヤーのカスタムプロパティ `Sway`（数）。値は揺れやすさで、
+ * 1 が標準、0 か無しは揺らさない。草は 1、太い木は 0.3 のように分ける。
+ * 風そのもの（範囲・向き・強さ）はフィールドエフェクトの「風」が決める。
+ */
+export const SWAY_PROPERTY_NAME = 'Sway';
+
+/** 1 枚の材質へ同時に渡せる風の数（GS-274）。それより多いと、強い順にこの数だけ使う。 */
+export const MAX_WIND_ZONES = 4;
+
+/**
+ * 揺れのずれ（GS-274）。頂点シェーダの文字列。**チップの塊（木 1 本）ごとに**、根元（塊のいちばん低いマス）からの
+ * 高さに比例して風下へずらす。根元は動かず、塊の中はそろって動くので、積んだ所も横の列との境も割れない。
+ * 塊の根元と中心はチップ 1 枚ずつの表（`sway.ts`）にあり、インスタンスの番号で引く。
+ */
+export const SWAY_GLSL = /* glsl */ `
+#ifdef MEP_SWAY
+uniform float mepSwayAmount;
+uniform float mepSwayUnit;
+uniform float mepWindTime;
+uniform highp sampler2D mepSwayData; // チップ 1 枚ずつ: 根元, 中心 x, 中心 z, 揺らす印（sway.ts）
+uniform int mepSwayDataWidth;
+uniform int mepWindCount;
+uniform vec4 mepWindBox[MEP_MAX_WIND]; // minX, minZ, maxX, maxZ（マス）
+uniform vec4 mepWindA[MEP_MAX_WIND];   // 向き x, 向き z, 強さ, 速さ
+uniform vec4 mepWindB[MEP_MAX_WIND];   // 突風, 波の細かさ, -, -
+
+float mepSwayHash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// y は頂点の高さ（レイヤーの入れ物の座標）。返り値も同じ座標のずれ。
+vec3 mepSwayOffset(float y) {
+  #ifndef USE_INSTANCING
+    return vec3(0.0);
+  #else
+  int w = max(mepSwayDataWidth, 1);
+  // 番号で直に読む。texture2D は頂点シェーダでは傾き（ミップ）が決まらず、D3D 越しだと 0 が返った。
+  vec4 data = texelFetch(mepSwayData, ivec2(gl_InstanceID % w, gl_InstanceID / w), 0);
+  if (data.w < 0.5) return vec3(0.0);
+  float h = y / mepSwayUnit - data.x;
+  if (h <= 0.001) return vec3(0.0);
+  // 位相と風の範囲は塊の中心で取る。塊の中はそろって動く。
+  vec2 at = data.yz;
+  float seed = mepSwayHash(floor(at * 2.0));
+  vec2 push = vec2(0.0);
+  for (int i = 0; i < MEP_MAX_WIND; i += 1) {
+    if (i >= mepWindCount) break;
+    vec4 box = mepWindBox[i];
+    vec4 a = mepWindA[i];
+    vec4 b = mepWindB[i];
+    // 範囲の端の 1 マスでぼかす。
+    vec2 edge = min(at - box.xy, box.zw - at);
+    float inside = smoothstep(0.0, 1.0, edge.x) * smoothstep(0.0, 1.0, edge.y);
+    if (inside <= 0.0) continue;
+    vec2 dir = a.xy;
+    float t = mepWindTime * a.w;
+    float along = dot(at, dir);
+    // 風下へ流れる波。隣どうしで少しずつ遅れて揺れる。
+    float phase = along * b.y * 6.2831853 - t * 2.4 + seed * 1.5;
+    float wave = sin(phase) * 0.6 + sin(phase * 2.17 + seed * 6.2831853 - t * 1.3) * 0.25;
+    // 突風。ときどき風下へ大きくしなる帯が通り抜ける。
+    float gust = b.x * pow(max(0.0, sin(along * 0.09 - t * 0.35 + 1.0)), 8.0);
+    float lean = 0.45 + wave * 0.55 + gust * 1.6;
+    vec2 side = vec2(-dir.y, dir.x) * sin(phase * 1.7 + seed * 4.0) * 0.12;
+    push += (dir * lean + side) * a.z * inside;
+  }
+  // 強さ 1・揺れやすさ 1 で、1 マス上がるごとに 0.12 マス。
+  vec2 d = push * mepSwayAmount * 0.12 * h;
+  float len = length(d);
+  float most = 0.45 * h;
+  if (len > most) d *= most / len;
+  // しなったぶん少し下げる（棒の先は弧を描く）。
+  float drop = dot(d, d) / (2.0 * max(h, 0.5));
+  return vec3(d.x, -drop, d.y) * mepSwayUnit;
+  #endif
+}
+#endif
+`;
 
 /**
  * タイルセット×ビルボードごとに 1 マテリアル。6 面のチップ番号をインスタンス属性で持つ。
@@ -386,6 +468,8 @@ vec3 unpackFaceColor(float value) {
     mod(packed, 256.0)) / 255.0;
 }
 
+${SWAY_GLSL}
+
 vec4 chipRect(float index, float flags) {
   float slot = floor(index + 0.5);
   float col = mod(slot, atlasCols);
@@ -512,6 +596,9 @@ void main() {
     vec3 viewPosition = originView
       + viewRight * position.x * instanceScale
       + viewUp * position.y * instanceScale;
+    #ifdef MEP_SWAY
+      viewPosition += mat3(modelViewMatrix) * mepSwayOffset(localOrigin.y + position.y * instanceScale);
+    #endif
     vShadowPos = vec3(localOrigin.x, localOrigin.y + position.y * instanceScale, localOrigin.z);
     vFogView = viewPosition;
     gl_Position = projectionMatrix * vec4(viewPosition, 1.0);
@@ -536,6 +623,9 @@ void main() {
       + right * position.x * instanceScale
       + vec3(0.0, 1.0, 0.0) * position.y * instanceScale
       + forward * position.z * instanceScale;
+    #ifdef MEP_SWAY
+      worldPos += mepSwayOffset(worldPos.y);
+    #endif
     vWorldNormal = vec3(0.0, 1.0, 0.0);
     vWorldPos = worldPos;
     vFogView = (viewMatrix * vec4(worldPos, 1.0)).xyz;
@@ -666,6 +756,9 @@ void main() {
     #ifdef USE_INSTANCING
       local = instanceMatrix * local;
       worldNormal = instanceMatrix * worldNormal;
+    #endif
+    #ifdef MEP_SWAY
+      local.xyz += mepSwayOffset(local.y);
     #endif
     vec3 faceNormal = normalize((modelMatrix * worldNormal).xyz);
     #ifdef MEP_WALL
@@ -922,6 +1015,8 @@ interface TileMaterialOptions {
    * 半透明にせず、4×4 のディザで市松に捨てる（描き順を管理しなくて済む）。
    */
   seeThrough?: boolean;
+  /** 風で揺らす（GS-274）。レイヤーの `Sway` の値。0 か無しは揺らさない（シェーダも変えない）。 */
+  sway?: number;
   atlas: AtlasLayout;
   lighting: Required<LightingDef>;
   /** チップサイズ（ピクセル）。縁を絵の 1px にするため。 */
@@ -1061,6 +1156,7 @@ export function createTileMaterial(
    * 立てたときは**チップのアルファをそのまま出す**——薄い所は下が透ける。
    */
   const blend = def.transparent === true;
+  const sway = options.sway && options.sway > 0 ? options.sway : 0;
   const material = new ShaderMaterial({
     vertexShader,
     fragmentShader,
@@ -1139,6 +1235,8 @@ export function createTileMaterial(
       mepShadowFade: { value: FADE_CELLS },
       // 太陽の影（DEC-145）。既定はオフ。焼いてから applySunShadow で入れる。
       ...createSunShadowUniforms(),
+      // 風で揺らす（GS-274）。根元の表はローダ、風はフィールドエフェクトの「風」が入れる。
+      ...(sway ? createSwayUniforms(sway, options.unit ?? 1) : {}),
     },
     defines: {
       ...(options.billboard ? { MEP_BILLBOARD: '' } : {}),
@@ -1149,6 +1247,7 @@ export function createTileMaterial(
       ...(options.seeThrough ? { MEP_SEE_THROUGH: '', MEP_SEE_THROUGH_AMOUNT: '0.5' } : {}),
       // チップのアルファを出す（DEC-378）。
       ...(blend ? { MEP_BLEND: '' } : {}),
+      ...(sway ? { MEP_SWAY: '', MEP_MAX_WIND: String(MAX_WIND_ZONES) } : {}),
     },
     side: options.billboard || options.card || options.flatFollow || def.side !== 'front' ? DoubleSide : FrontSide,
     transparent: blend,
@@ -1171,6 +1270,46 @@ export function createTileMaterial(
   return material;
 }
 
+function createSwayUniforms(amount: number, unit: number): Record<string, { value: unknown }> {
+  return {
+    mepSwayAmount: { value: amount },
+    mepSwayUnit: { value: unit },
+    mepWindTime: { value: 0 },
+    // 表はメッシュごと。描く直前に差し替える（`sway.ts` の attachSwayData）。
+    mepSwayData: { value: emptySwayDataTexture() },
+    mepSwayDataWidth: { value: 1 },
+    mepWindCount: { value: 0 },
+    mepWindBox: { value: Array.from({ length: MAX_WIND_ZONES }, () => new Vector4()) },
+    mepWindA: { value: Array.from({ length: MAX_WIND_ZONES }, () => new Vector4()) },
+    mepWindB: { value: Array.from({ length: MAX_WIND_ZONES }, () => new Vector4()) },
+  };
+}
+
+/** 揺れる材質か（GS-274）。 */
+export function isSwayMaterial(material: ShaderMaterial): boolean {
+  return material.uniforms.mepSwayAmount !== undefined;
+}
+
+/**
+ * 風を材質へ入れる（GS-274）。多いときは強い順に `MAX_WIND_ZONES` まで。揺れない材質には何もしない。
+ * 毎フレーム呼んでよい（配列を作り直さず値だけ入れる）。
+ */
+export function applyWindZones(material: ShaderMaterial, zones: readonly WindZone[]): void {
+  const u = material.uniforms;
+  if (!u.mepSwayAmount) return;
+  const list = zones.length > MAX_WIND_ZONES ? [...zones].sort((a, b) => b.strength - a.strength).slice(0, MAX_WIND_ZONES) : zones;
+  const box = u.mepWindBox.value as Vector4[];
+  const a = u.mepWindA.value as Vector4[];
+  const b = u.mepWindB.value as Vector4[];
+  for (let i = 0; i < list.length; i += 1) {
+    const zone = list[i];
+    box[i].set(zone.minX, zone.minZ, zone.maxX, zone.maxZ);
+    a[i].set(zone.dirX, zone.dirZ, zone.strength, zone.speed);
+    b[i].set(zone.gust, zone.scale, 0, 0);
+  }
+  u.mepWindCount.value = list.length;
+}
+
 /** 属性を省いたバッチのための既定値。タイルと深度で同じ。 */
 function tileAttributeDefaults(material: ShaderMaterial): void {
   material.defaultAttributeValues.boxThick = [0, 0, 0];
@@ -1179,6 +1318,13 @@ function tileAttributeDefaults(material: ShaderMaterial): void {
   material.defaultAttributeValues.faceAnchor = [0];
   material.defaultAttributeValues.faceFit = [0];
   material.defaultAttributeValues.chipEmit = [0];
+}
+
+function withoutSway(defines: Record<string, unknown> | undefined): Record<string, unknown> {
+  const out = { ...(defines ?? {}) };
+  delete out.MEP_SWAY;
+  delete out.MEP_MAX_WIND;
+  return out;
 }
 
 /** 太陽の深度パス用。色は書かず、切り取りと抜き色だけタイルと同じに判定する。 */
@@ -1219,7 +1365,8 @@ export function createTileDepthMaterial(source: ShaderMaterial): ShaderMaterial 
     vertexShader,
     fragmentShader: depthFragmentShader,
     uniforms: source.uniforms,
-    defines: { ...(source.defines ?? {}) },
+    // 風の揺れは外す（GS-274）。太陽の影は焼き置きなので、焼いた瞬間の揺れで止まって見える。
+    defines: withoutSway(source.defines),
     // 面 1 枚は裏からでも光を遮る。
     side: DoubleSide,
     transparent: false,

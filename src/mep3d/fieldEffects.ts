@@ -9,6 +9,7 @@ import { createLightExplosionGeometry, lightExplosionVertexShader, lightExplosio
 // 描き方は種類ごとに板の向きが違う。
 //   fog / dapple      — 水平の板。地面に沿って見せる
 //   rain / snow / mote — 縦の板。カメラは南から北の固定なので、板は南向きで足りる（DEC-147）
+//   wind               — 板を描かない。範囲と風向き・強さを、`Sway` を付けたタイルレイヤーへ渡す（GS-274）
 // 中身はすべて自前のシェーダー。雨・雪・光の粒はハッシュで散らすのでテクスチャを読まない。
 
 import {
@@ -44,7 +45,7 @@ const NOISE_B = '/assets/noise/Super Perlin/Super Perlin 12 - 512x512.png';
 /** オブジェクトのプロパティ名。値がこの種類の名前ならフィールドエフェクトになる。 */
 export const EFFECT_PROPERTY_NAME = 'Effect';
 
-export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror', 'explosion', 'pillar'] as const;
+export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror', 'explosion', 'pillar', 'wind'] as const;
 export type FieldEffectKind = (typeof FIELD_EFFECT_KINDS)[number];
 
 export const FIELD_EFFECT_LABELS: Record<FieldEffectKind, string> = {
@@ -59,6 +60,7 @@ export const FIELD_EFFECT_LABELS: Record<FieldEffectKind, string> = {
   water: '水面',
   swell: '水面2',
   mirror: '鏡面',
+  wind: '風',
 };
 
 /** 1 つのプリセット。`id` で参照される。 */
@@ -99,6 +101,8 @@ export function readFieldPreset(raw: FieldEffectPresetDef): FieldEffectPreset | 
     face: num(raw.face, base.face),
     dye: num(raw.dye, base.dye),
     cast: raw.cast !== false,
+    angle: num(raw.angle, base.angle),
+    rainTilt: readRainTilt(raw.rainTilt),
   };
 }
 
@@ -260,6 +264,8 @@ const LAYERS: Record<FieldEffectKind, number> = {
   water: 1,
   swell: 1,
   mirror: 1,
+  // 風は板を描かない（GS-274）。タイルの材質へ範囲を渡すだけ。
+  wind: 0,
 };
 
 /**
@@ -349,25 +355,65 @@ export interface FieldEffectSettings {
    * 映す側（水面・うねり・鏡面）は焼くあいだ必ず隠れるので、この札は見ない。
    */
   cast: boolean;
+  /**
+   * 風向き（度。GS-274）。**風だけ**が使う。風が吹いていく向きで、0 が北、90 が東（太陽の方位と同じ）。
+   */
+  angle: number;
+  /** 雨だけ。鉛直からの傾き（度、-75〜75）。省略時6。 */
+  rainTilt?: number;
+}
+
+export function readRainTilt(value: unknown): number {
+  return Math.max(-75, Math.min(75, num(value, 6)));
 }
 
 export const FIELD_EFFECT_DEFAULTS: Record<FieldEffectKind, FieldEffectSettings> = {
-  pillar: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
-  explosion: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 4, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
-  fog: { on: true, amount: 0.5, speed: 0.03, scale: 0.09, color: '#dbe6f0', lift: 0, thick: 3, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
+  pillar: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
+  explosion: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 4, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
+  fog: { on: true, amount: 0.5, speed: 0.03, scale: 0.09, color: '#dbe6f0', lift: 0, thick: 3, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   // 煙は立ち上がる柱（DEC-343）。厚みが柱の高さになる。
-  smoke: { on: true, amount: 0.75, speed: 0.35, scale: 0.5, color: '#9aa3ad', lift: 0, thick: 6, warp: 0.8, mirror: 0, face: 0.22, dye: 0, cast: true },
-  rain: { on: true, amount: 0.55, speed: 1.6, scale: 1, color: '#b9cfe4', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
-  snow: { on: true, amount: 0.7, speed: 0.35, scale: 1, color: '#ffffff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
-  dapple: { on: true, amount: 0.45, speed: 0.02, scale: 0.14, color: '#fff3cf', lift: 0, thick: 1, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
-  mote: { on: true, amount: 0.6, speed: 0.18, scale: 1, color: '#ffe9a8', lift: 0, thick: 4, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true },
+  smoke: { on: true, amount: 0.75, speed: 0.35, scale: 0.5, color: '#9aa3ad', lift: 0, thick: 6, warp: 0.8, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
+  rain: { on: true, amount: 0.55, speed: 1.6, scale: 1, color: '#b9cfe4', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
+  snow: { on: true, amount: 0.7, speed: 0.35, scale: 1, color: '#ffffff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
+  dapple: { on: true, amount: 0.45, speed: 0.02, scale: 0.14, color: '#fff3cf', lift: 0, thick: 1, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
+  mote: { on: true, amount: 0.6, speed: 0.18, scale: 1, color: '#ffe9a8', lift: 0, thick: 4, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   // 水面は面 1 枚（DEC-300）。厚みは使わないので薄くしてある。
-  water: { on: true, amount: 0.35, speed: 0.05, scale: 0.12, color: '#2f7ea8', lift: 0, thick: 0.5, warp: 0.5, mirror: 0.35, face: 0.22, dye: 0, cast: true },
+  water: { on: true, amount: 0.35, speed: 0.05, scale: 0.12, color: '#2f7ea8', lift: 0, thick: 0.5, warp: 0.5, mirror: 0.35, face: 0.22, dye: 0, cast: true, angle: 90 },
   // うねりは空の絵を映す（DEC-316）。映り込み 0 なら書き割りだけを読むので**軽い**。
-  swell: { on: true, amount: 0.32, speed: 0.5, scale: 0.35, color: '#12405c', lift: 0, thick: 0.5, warp: 1, mirror: 0, face: 0.22, dye: 0, cast: true },
+  swell: { on: true, amount: 0.32, speed: 0.5, scale: 0.35, color: '#12405c', lift: 0, thick: 0.5, warp: 1, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   // 鏡面は映すだけ（DEC-308）。波もきらめきも持たない。色はほんの少しだけ乗せる。
-  mirror: { on: true, amount: 0.06, speed: 0, scale: 0.12, color: '#31434f', lift: 0, thick: 0.5, warp: 0, mirror: 0.9, face: 0.22, dye: 0, cast: true },
+  mirror: { on: true, amount: 0.06, speed: 0, scale: 0.12, color: '#31434f', lift: 0, thick: 0.5, warp: 0, mirror: 0.9, face: 0.22, dye: 0, cast: true, angle: 90 },
+  // 風（GS-274）。濃さ＝強さ、速さ＝揺れの速さ、細かさ＝波の細かさ（1 マスあたり）、歪み＝突風。
+  wind: { on: true, amount: 0.5, speed: 1, scale: 0.35, color: '#ffffff', lift: 0, thick: 8, warp: 0.4, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
 };
+
+/**
+ * 今吹いている風 1 か所（GS-274）。`Sway` を付けたタイルレイヤーの材質へ渡す（`Mep3DScene.setWind`）。
+ * 座標はマス。範囲は XZ の四角で、高さは見ない（丘の上の木も揺れる）。
+ */
+export interface WindZone {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+  /** 吹いていく向き（XZ の単位ベクトル）。 */
+  dirX: number;
+  dirZ: number;
+  /** 強さ。プリセットの濃さに、イベントの出し入れと時間帯の切り替えの濃さを掛けたもの。 */
+  strength: number;
+  /** 揺れの速さ。0 で止まる（傾いたまま）。 */
+  speed: number;
+  /** 突風の強さ。0 で吹かない。 */
+  gust: number;
+  /** 波の細かさ（1 マスあたり）。大きいほど隣どうしの揺れがずれる。 */
+  scale: number;
+}
+
+/** 風向き（度。0 が北、90 が東）を XZ の向きにする。太陽の方位（`lighting.ts`）と同じ取り方。 */
+export function windDirection(angle: number): { x: number; z: number } {
+  const rad = (angle * Math.PI) / 180;
+  return { x: Math.sin(rad), z: -Math.cos(rad) };
+}
 
 export interface FieldEffects {
   group: Group;
@@ -412,6 +458,11 @@ export interface FieldEffects {
    * 0 の板は描かない。時間帯の切り替え（`setFade`）とは掛け合わせる。
    */
   setPresetWeights(weights: ReadonlyMap<string, number>): void;
+  /**
+   * 今吹いている風（GS-274）。出していない・濃さ 0 の物は入れない。
+   * 毎フレーム `Mep3DScene.setWind` へ渡す。`setVisible(false)` のあいだは空。
+   */
+  windZones(): WindZone[];
   /** 毎フレーム。時間を進める。 */
   update(deltaSeconds: number): void;
   dispose(): void;
@@ -575,6 +626,7 @@ void main() {
 const rainShader = `
 precision highp float;
 uniform vec2 rainSize;
+uniform float rainSlope;
 ${COMMON_UNIFORMS}
 ${EDGE_FADE}
 ${HASH}
@@ -582,7 +634,7 @@ void main() {
   vec2 p = vUv * rainSize;
   float density = max(0.1, scale);
   // 斜め下へ落ちる。時刻で横に揺らさないので、雪のように漂わない。
-  float x = (p.x + p.y * 0.10) * 3.2 * density;
+  float x = (p.x + p.y * rainSlope) * 3.2 * density;
   float col = floor(x);
   float seed = col + level * 137.0;
   float fast = mix(3.8, 6.2, mepHash(seed + 5.0));
@@ -1051,6 +1103,8 @@ const SHADERS: Record<FieldEffectKind, string> = {
   water: waterShader,
   swell: swellShader,
   mirror: mirrorShader,
+  // 板を作らないので使わない（GS-274）。
+  wind: fogShader,
 };
 
 /** 加算で重ねる種類。光るものだけ。 */
@@ -1068,6 +1122,7 @@ const ADDITIVE: Record<FieldEffectKind, boolean> = {
   water: false,
   swell: false,
   mirror: false,
+  wind: false,
 };
 
 /** 縦に置いたときだけ使うシェーダ。無い種類は水平と同じものを使う。 */
@@ -1096,6 +1151,7 @@ const FLAT: Record<FieldEffectKind, boolean> = {
   water: true,
   swell: true,
   mirror: true,
+  wind: true,
 };
 
 function tintOf(color: string, fallback: string): Vector3 {
@@ -1351,6 +1407,8 @@ export function createFieldEffects(): FieldEffects {
     look: FieldEffectSettings;
     fade?: 'in' | 'out';
   }> = [];
+  /** 風の置き場所（GS-274）。板は作らず、範囲と見た目だけ覚える。 */
+  const winds: Array<{ id: string; volume: FieldEffectVolume; look: FieldEffectSettings; fade?: 'in' | 'out' }> = [];
   /** 時間帯の切り替えの進み（GS-226）。 */
   let fadeAt = 1;
   const weightOf = (fade: 'in' | 'out' | undefined): number =>
@@ -1378,6 +1436,7 @@ export function createFieldEffects(): FieldEffects {
     material.uniforms.speed.value = Math.max(0, look.speed);
     material.uniforms.scale.value = Math.max(0.001, look.scale);
     material.uniforms.tint.value = tintOf(look.color, 'ffffff');
+    if (material.uniforms.rainSlope) material.uniforms.rainSlope.value = Math.tan(readRainTilt(look.rainTilt) * Math.PI / 180);
     if (material.uniforms.warp) material.uniforms.warp.value = Math.max(0, look.warp);
     if (material.uniforms.mirror) material.uniforms.mirror.value = Math.max(0, look.mirror) * weight;
     if (material.uniforms.face) material.uniforms.face.value = Math.min(1, Math.max(0, look.face));
@@ -1410,9 +1469,14 @@ export function createFieldEffects(): FieldEffects {
 
     setVolumes(list, unit) {
       clear();
+      winds.length = 0;
       for (const volume of list) {
         const look = volume.look;
         const kind = look.kind;
+        if (kind === 'wind') {
+          winds.push({ id: look.id, volume, look, fade: volume.fade });
+          continue;
+        }
         const wide = Math.max(0.2, volume.maxX - volume.minX) * unit;
         const deep = Math.max(0.2, volume.maxZ - volume.minZ) * unit;
         const tall = Math.max(0.2, volume.maxY - volume.minY) * unit;
@@ -1479,6 +1543,7 @@ export function createFieldEffects(): FieldEffects {
           // UV の縦横比ではなくマスで雨粒を描く。取り置き材質でも必ず更新。
           if (kind === 'rain') {
             material.uniforms.rainSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
+            material.uniforms.rainSlope ??= { value: 0 };
           }
           applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
           const mesh = new Mesh(kind === 'pillar' ? pillarGeometry : kind === 'explosion' ? explosionGeometry : geometry, material);
@@ -1607,6 +1672,10 @@ export function createFieldEffects(): FieldEffects {
     },
 
     setLooks(looks) {
+      for (const wind of winds) {
+        const look = looks[wind.id];
+        if (look) wind.look = look;
+      }
       for (const slice of slices) {
         const look = looks[slice.id];
         if (!look) continue;
@@ -1625,6 +1694,33 @@ export function createFieldEffects(): FieldEffects {
     setPresetWeights(weights) {
       presetWeights = weights;
       for (const slice of slices) applyLook(slice.look, slice.mesh.material, sliceWeight(slice), slice.id);
+    },
+
+    windZones() {
+      const out: WindZone[] = [];
+      if (!shown) return out;
+      for (const wind of winds) {
+        // 出し入れは板と同じ決まり（GS-270）。表に在れば `on` より優先し、濃さに掛ける。
+        const pick = presetWeights.get(wind.id);
+        const on = pick === undefined ? wind.look.on : pick > 0;
+        const strength = on ? Math.max(0, wind.look.amount) * weightOf(wind.fade) * (pick ?? 1) : 0;
+        if (strength <= 0) continue;
+        const dir = windDirection(wind.look.angle);
+        const v = wind.volume;
+        out.push({
+          minX: v.minX,
+          maxX: v.maxX,
+          minZ: v.minZ,
+          maxZ: v.maxZ,
+          dirX: dir.x,
+          dirZ: dir.z,
+          strength,
+          speed: Math.max(0, wind.look.speed),
+          gust: Math.max(0, wind.look.warp),
+          scale: Math.max(0, wind.look.scale),
+        });
+      }
+      return out;
     },
 
     update(deltaSeconds) {

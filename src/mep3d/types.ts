@@ -1387,6 +1387,10 @@ export interface FieldEffectPresetDef {
   lift?: number;
   /** 厚み（マス）。床に置いたときだけ効く。 */
   thick?: number;
+  /** 風向き（度。GS-274）。風だけが使う。吹いていく向きで、0 が北、90 が東。省略時 90。 */
+  angle?: number;
+  /** 雨の傾き（度）。0で真下、正で板の右、負で左へ。-75〜75、省略時6。 */
+  rainTilt?: number;
 }
 
 /**

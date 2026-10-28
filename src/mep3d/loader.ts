@@ -28,6 +28,9 @@ import {
   type WebGLRenderer,
 } from 'three';
 import { decodeCells, decodeProtoIndices, decodeRotationFlags, decodeStampGids } from './decode';
+import { applyWindZones, SWAY_PROPERTY_NAME } from './material';
+import { attachSwayData, createSwayDataTexture, swayAnchors, type SwayCell } from './sway';
+import type { WindZone } from './fieldEffects';
 import { createTileDepthMaterial, createTileMaterial, edgeFadeFor, edgeWidthFor, SEE_THROUGH_PROPERTY_NAME, type AtlasLayout,
   applySunActors,
   type SunActor,
@@ -416,6 +419,11 @@ export interface Mep3DScene {
   /** 透過レイヤーの抜け具合（DEC-281）。0 で普通、1 で全開。途中の値で薄く抜ける。 */
   setSeeThrough(amount: number): void;
   /**
+   * 今吹いている風（GS-274。`FieldEffects.windZones()`）。`Sway` を付けたレイヤーだけが揺れる。
+   * 毎フレーム渡してよい。渡さなければ揺れない。
+   */
+  setWind(zones: readonly WindZone[]): void;
+  /**
    * そのマスが透過レイヤーのものか（DEC-252）。セル座標（整数）。
    * カメラとキャラの間にこのマスがあれば「隠れている」と見なす。
    */
@@ -512,6 +520,20 @@ function layerSeeThrough(layer: LayerDef): boolean {
     return entry.value !== 0 && entry.value !== '' && entry.value !== '0' && entry.value !== 'false';
   }
   return false;
+}
+
+/**
+ * そのレイヤーの揺れやすさ（GS-274）。レイヤーのカスタムプロパティ `Sway`。0 か無しは揺らさない。
+ * 真偽で入れたときは 1（標準）。
+ */
+export function layerSway(layer: Pick<LayerDef, 'properties'>): number {
+  for (const entry of layer.properties ?? []) {
+    if (entry.name !== SWAY_PROPERTY_NAME) continue;
+    if (typeof entry.value === 'boolean') return entry.value ? 1 : 0;
+    const value = Number(entry.value);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+  return 0;
 }
 
 /**
@@ -1022,13 +1044,14 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     flatFollow = false,
     layerDepth = 0,
     seeThrough = false,
+    sway = 0,
   ): ShaderMaterial => {
     // 深度のずらしはレイヤーごと（DEC-123）。同じ材質でも重なり順が違えば別マテリアル。
     // 透過（DEC-251）もシェーダが変わるので鍵に混ぜる。
     // **半透明の切り替え（DEC-378）も鍵に混ぜる。** 混ぜないと、前のシーンから
     // 使い回した古い設定のマテリアルがそのまま出て、切り替えても絵が変わらない。
     const blend = materialsById.get(materialId)?.transparent === true;
-    const key = `${materialId}|${tilesetId}|${billboard ? 'bb' : flatFollow ? 'flat' : card ? 'card' : wall ? 'wall' : 'st'}|${layerDepth}|${seeThrough ? 'see' : ''}|${blend ? 'blend' : ''}`;
+    const key = `${materialId}|${tilesetId}|${billboard ? 'bb' : flatFollow ? 'flat' : card ? 'card' : wall ? 'wall' : 'st'}|${layerDepth}|${seeThrough ? 'see' : ''}|${blend ? 'blend' : ''}|${sway > 0 ? `sway${sway}` : ''}`;
     const existing = materials.get(key);
     if (existing) return existing;
     // 前のシーンが持っていれば作り直さない（DEC-275）。シェーダのリンクが丸ごと省ける。
@@ -1053,6 +1076,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       flatFollow,
       wall: wall && !billboard && !card && !flatFollow,
       seeThrough,
+      sway,
       atlas: atlasLayout(tilesetsById.get(tilesetId), texturesById.get(def.tex)),
       lighting,
       tilePx: map.grid?.tilePx,
@@ -1419,16 +1443,35 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
    * **`faceHideAt`（接地面除去）は入れていない**——隣のレイヤーの都合まで見ると
    * 使い回しがほぼ効かなくなる。消したときに隣へ穴が残るのは承知のうえ。
    */
-  const batchSignature = (layer: LayerDef, depth: number, see: boolean, batch: BatchDef): string => {
+  const batchSignature = (layer: LayerDef, depth: number, see: boolean, sway: number, batch: BatchDef): string => {
     const attr = (value: string | number[] | undefined): string =>
       typeof value === 'string' ? value : (value ?? []).join(',');
     return [
-      layer.id, depth, see ? 1 : 0,
+      layer.id, depth, see ? 1 : 0, sway,
       batch.shape, batch.mat, batch.ts, batch.mode, batch.count, batch.enc, batch.cellEnc,
       batch.anim ? JSON.stringify(batch.anim) : '',
       batch.protos.join('|'),
       attr(batch.attrs.cell), attr(batch.attrs.proto), attr(batch.attrs.rf), attr(batch.attrs.gid),
     ].join('');
+  };
+  /**
+   * 揺らすチップ（GS-274）。レイヤーをまたいで集め、組み終えてから塊（木 1 本）に分ける（`sway.ts`）。
+   * メッシュのインスタンスの並びはバッチのセルの並びと同じ。
+   */
+  const swayBatches: Array<{ mesh: InstancedMesh; from: number; count: number }> = [];
+  const swayCells: SwayCell[] = [];
+  const collectSway = (object: Object3D, layer: LayerDef, batch: BatchDef) => {
+    let mesh: InstancedMesh | null = null;
+    object.traverse((node) => {
+      if (!mesh && (node as InstancedMesh).isInstancedMesh) mesh = node as InstancedMesh;
+    });
+    if (!mesh) return;
+    const cells = decodeCells(batch);
+    const gids = decodeStampGids(batch);
+    swayBatches.push({ mesh, from: swayCells.length, count: batch.count });
+    for (let i = 0; i < batch.count; i += 1) {
+      swayCells.push({ layer: layer.id, x: cells[i * 3], y: cells[i * 3 + 1], z: cells[i * 3 + 2], gid: gids[i] ?? 0 });
+    }
   };
   /** 今回のバッチの見取り図。次の組み直しへ渡す。 */
   const meshCache = new Map<string, CarriedMesh>();
@@ -1451,14 +1494,16 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       // 遮っているかを調べるためにマスを控える（DEC-252）。
       for (const batch of layer.batches) collectCells([batch], seeThroughCells);
     }
-    const materialForLayer = seeLayer
+    // 風で揺らすレイヤー（GS-274）。揺らすかでシェーダが変わるので、透過と同じく材質を分ける。
+    const swayLayer = layerSway(layer);
+    const materialForLayer = seeLayer || swayLayer > 0
       ? (m: string, t: string, bb: boolean, w?: boolean, c?: boolean, ff?: boolean, ld?: number) =>
-          materialFor(m, t, bb, w, c, ff, ld, true)
+          materialFor(m, t, bb, w, c, ff, ld, seeLayer, swayLayer)
       : materialFor;
     for (const batch of layer.batches) {
       // ビルボードは同じレイヤーの他のセルを見て広がりを決めるので、使い回さない（DEC-276）。
       const reusable = !billboardFacesCamera(batch.shape);
-      const sig = reusable ? batchSignature(layer, layerDepth, seeLayer, batch) : '';
+      const sig = reusable ? batchSignature(layer, layerDepth, seeLayer, swayLayer, batch) : '';
       const kept = reusable ? carried?.meshes.get(sig) : undefined;
       if (kept) {
         carried?.meshes.delete(sig);
@@ -1466,6 +1511,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
         // 持ち物の一覧（`materials`）に無いと、光・霧・点光源の差し替えがそのメッシュだけ届かず、
         // 時間帯を切り替えたあとの組み直しで、前の時間帯の明るさが残った。
         claimKeptMaterials(kept.object);
+        if (swayLayer > 0) collectSway(kept.object, layer, batch);
         pendingAdopt.push({ group: layerGroup, object: kept.object });
         meshCache.set(sig, kept);
         drawCalls += 1;
@@ -1485,6 +1531,7 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
         faceHideAt,
       });
       layerGroup.add(mesh.object);
+      if (swayLayer > 0) collectSway(mesh.object, layer, batch);
       drawCalls += 1;
       tiles += batch.count;
       hiddenFaces += mesh.hiddenFaces;
@@ -1502,6 +1549,22 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       }
     }
   }
+
+  // 塊ごとの根元と中心（GS-274）を、メッシュごとの表にして付ける。
+  // 引き継いだメッシュの前の表は、差し替える（adopt）まで前のシーンが描くので、そこで捨てる。
+  // 追い越されて捨てるときは前の表へ戻す（`swaySwaps`）。
+  const swaySwaps: Array<{ mesh: InstancedMesh; before: DataTexture | null; next: DataTexture }> = [];
+  {
+    const anchors = swayAnchors(swayCells);
+    for (const entry of swayBatches) {
+      const next = createSwayDataTexture(anchors.slice(entry.from, entry.from + entry.count));
+      const before = attachSwayData(entry.mesh, next);
+      swaySwaps.push({ mesh: entry.mesh, before, next });
+    }
+  }
+  let swayAdopted = false;
+  /** 最後に受けた風（GS-274）。引き継いだ材質を取り返したときに入れ直す。 */
+  let windZones: readonly WindZone[] = [];
 
   let floorShadow: ReturnType<typeof createFloorShadow> | null = null;
   let spriteMask: ShadowMaskData | null = null;
@@ -2031,6 +2094,10 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     seeThroughAt(x, y, z) {
       return seeThroughCells.has(`${x},${y},${z}`);
     },
+    setWind(zones) {
+      windZones = zones;
+      for (const material of materials.values()) applyWindZones(material, zones);
+    },
     setNearFade(distance: number, wallMode = 0) {
       nearFadeOn = wallMode;
       nearFadeDist = Math.max(0, distance);
@@ -2058,6 +2125,8 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       lightBulbs.setTime(elapsed);
       for (const material of materials.values()) {
         if (material.uniforms.lightTime) material.uniforms.lightTime.value = elapsed;
+        // 風の揺れ（GS-274）も同じ時計。
+        if (material.uniforms.mepWindTime) material.uniforms.mepWindTime.value = elapsed;
         // 雲を流す（DEC-218）。焼き直しは要らないので時計だけ進める。
         if (material.uniforms.mepCloudTime) material.uniforms.mepCloudTime.value = elapsed;
       }
@@ -2079,11 +2148,16 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
     adopt() {
       for (const entry of pendingAdopt) entry.group.add(entry.object);
       pendingAdopt.length = 0;
+      // 使い回したメッシュの前の表（GS-274）。前のシーンはもう描かない。
+      for (const swap of swaySwaps) swap.before?.dispose();
+      swayAdopted = true;
     },
     reclaim(carried) {
       for (const [key, material] of carried.materials) {
         if (!materials.has(key)) materials.set(key, material);
       }
+      // 追い越した組み直しは自分の表を戻してから捨てる（GS-274。dispose）。風だけ入れ直す。
+      for (const material of materials.values()) applyWindZones(material, windZones);
       handedOver = false;
     },
     dispose() {
@@ -2100,6 +2174,18 @@ async function build(map: MapDef, assets: AssetsDef, options: LoadOptions): Prom
       }
       // ゴーストはモジュールで使い回す（DEC-277）。ここで捨てない。
       if (!handedOver) sunDepthMaterials.clear();
+      // 揺れの表（GS-274）。差し替えずに捨てる（追い越された）なら、使い回すはずだったメッシュへ前の表を戻す。
+      // 差し替えたあとは、この入れ物に残っているメッシュの表だけ捨てる（次へ移ったメッシュは次のシーンの表を持つ）。
+      if (!swayAdopted) {
+        for (const swap of swaySwaps) {
+          if (swap.mesh.userData.mepSwayData === swap.next) attachSwayData(swap.mesh, swap.before);
+          swap.next.dispose();
+        }
+      } else {
+        group.traverse((object) => {
+          (object.userData.mepSwayData as DataTexture | undefined)?.dispose();
+        });
+      }
       sunShadow.dispose();
       backdrop.dispose();
       fadeBackdrop.dispose();
