@@ -2086,10 +2086,10 @@ body {
   opacity: 0.4;
 }
 
-/* 顔は**素の大きさ**（100×100。旧作も等倍で置いていた）。 */
+/* 顔は 8 割（80×80）に縮め、空いた幅を帯に回す。 */
 .battle-party img {
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   flex: none;
   image-rendering: pixelated;
 }
@@ -2924,11 +2924,32 @@ body {
 
 /* 名前（GS-84）。**2 列ぶんを使う**（Lv の欄に押し込むと帯が名前の長さで押し出される）。 */
 .battle-stats .battle-name {
+  position: relative;
   grid-column: 1 / -1;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
   white-space: nowrap;
   opacity: 1;
+}
+
+/* 状態異常の札は名前の上に浮かせる（行の高さを取らない）。 */
+.battle-ail {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+
+.battle-ail .ail-tags {
+  margin-left: 0;
+}
+
+/* 帯と数の行。帯は余りいっぱいに伸び、数は右にそろえる。 */
+.battle-stats dd.battle-meter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .battle-stats dt {
@@ -2955,17 +2976,27 @@ body {
   --bar-lo: #23a35a;
   position: relative;
   display: block;
-  /* **枠の余りに合わせて伸びる**（3 人なら詰まり、2 人なら少し広い）。
-   * 伸ばしっぱなしにすると 1 人のときに帯だけが長くなるので上限を付ける。 */
-  width: auto;
-  max-width: 110px;
-  height: 24px;
-  /* 敵の帯と同じ作り。窓と同じ紺地に水色の縁、中身は上半分に光沢。 */
+  flex: 1;
+  min-width: 0;
+  /* 敵の帯と同じ作り・同じ高さ。中には何も書かない。空いた所は窓より暗くして、帯の長さが分かるようにする。 */
+  height: 14px;
   border: 2px solid #8ea6c8;
   border-radius: 7px;
-  background: rgba(8, 10, 48, 0.82);
+  background: rgba(0, 0, 0, 0.55);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.6);
   overflow: hidden;
+  box-sizing: content-box;
+  padding: 2px;
+}
+
+/* 数は帯の右。桁が変わっても帯の長さが変わらないよう、幅を決めて右にそろえる。 */
+.battle-gauge-num {
+  flex: none;
+  min-width: 5.5ch;
+  font-size: 15px;
+  font-weight: normal;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .battle-gauge > span {
@@ -2989,23 +3020,6 @@ body {
     linear-gradient(to bottom, var(--bar-hi), var(--bar-lo));
   box-shadow: 0 0 6px var(--bar-lo);
   transition: width 200ms linear;
-}
-
-/* 数は帯の真ん中。**縁を付ける**（旧作は 5px の縁）——帯の色の上でも読める。 */
-.battle-gauge > b {
-  font-size: 15px;
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: normal;
-  font-variant-numeric: tabular-nums;
-  text-shadow:
-    1px 1px 0 #2d2d2d,
-    -1px 1px 0 #2d2d2d,
-    1px -1px 0 #2d2d2d,
-    -1px -1px 0 #2d2d2d;
 }
 
 /* 4 割を切ったら赤（旧作と同じ）。**色だけで危ないと分かる。** ゆっくり明滅させる。 */

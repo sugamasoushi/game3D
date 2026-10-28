@@ -1161,38 +1161,45 @@ export function BattleView({
                   </div>
                 ) : null}
                 {/*
-                 * 数は**帯の上に重ねる**（GS-79）。旧作も帯と数を同じ場所に描いていた。
-                 * 横に並べると 1 人ぶんの幅が伸びて、仲間が増えたときに収まらない。
+                 * 帯は**敵の帯と同じ作り**（中に何も書かない）。数は帯の右に出す——帯の中に重ねると、
+                 * 中身が減ったとき帯ごと縮んだように見える。
                  * HP は**4 割を切ると赤**（旧作と同じ）——数を読む前に危ないと分かる。
                  */}
                 <dl className="battle-stats">
-                  {/* 名前は**レベルの上**（GS-84）。顔だけだと、仲間が増えたとき誰なのか分かりにくい。 */}
-                  <dt className="battle-name">{who.name}</dt>
+                  {/*
+                   * 名前は**レベルの上**（GS-84）。顔だけだと、仲間が増えたとき誰なのか分かりにくい。
+                   * 状態異常の札は**名前の上**に浮かせる（横に置くと帯の幅を押し狭める）。
+                   */}
+                  <dt className="battle-name">
+                    <span className="battle-ail">
+                      <AilmentTags who={who} />
+                    </span>
+                    {who.name}
+                  </dt>
                   <dt>Lv</dt>
                   <dd>{who.stats.level}</dd>
                   <dt>HP</dt>
-                  <dd>
+                  <dd className="battle-meter">
                     <span className={hpOf(who) / who.stats.hp <= 0.4 ? 'battle-gauge low' : 'battle-gauge'}>
                       {/* 減った分は少し遅れて縮む（敵の帯と同じ）。 */}
                       <span className="battle-gauge-trail" style={{ width: gaugeWidth(hpOf(who), who.stats.hp) }} />
                       <span className="battle-gauge-fill" style={{ width: gaugeWidth(hpOf(who), who.stats.hp) }} />
-                      <b>
-                        {hpOf(who)} / {who.stats.hp}
-                      </b>
                     </span>
+                    <b className="battle-gauge-num">
+                      {hpOf(who)}/{who.stats.hp}
+                    </b>
                   </dd>
                   <dt>MP</dt>
-                  <dd>
+                  <dd className="battle-meter">
                     <span className="battle-gauge mp">
                       <span className="battle-gauge-trail" style={{ width: gaugeWidth(mpOf(who), who.stats.mp) }} />
                       <span className="battle-gauge-fill" style={{ width: gaugeWidth(mpOf(who), who.stats.mp) }} />
-                      <b>
-                        {mpOf(who)} / {who.stats.mp}
-                      </b>
                     </span>
+                    <b className="battle-gauge-num">
+                      {mpOf(who)}/{who.stats.mp}
+                    </b>
                   </dd>
                 </dl>
-                <AilmentTags who={who} />
               </li>
             );
           })}
