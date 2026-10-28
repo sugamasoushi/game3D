@@ -3288,6 +3288,18 @@ body {
   height: 100%;
 }
 
+/*
+ * コンディションは中身の欄の余白を詰め、窓の端からの余白を左・右・下とも同じ（24px）にする。
+ * 右はスクロールバー用の 4px、下は欄の下の余白と空の足元（.gmenu-foot）のぶんを詰める。
+ * カードは窓に収まる大きさなのでスクロールしない。
+ */
+.gmenu-body:has(.condition-page) {
+  padding-right: 0;
+  padding-bottom: 0;
+  margin-bottom: -4px;
+  overflow: hidden;
+}
+
 /* 上の帯。所持金・プレイ時間・現在地を札のように並べる。 */
 .condition-info {
   display: grid;
