@@ -21,7 +21,7 @@ export function SkillsPage({ who, member }: { who: string; member: MemberState |
   return (
     <div className="menu-figured skill-page">
       {/* 絵の場所は**いつも同じ幅と高さ**で取る。絵が無い・細い人でも、右の項目が左へ寄らない。 */}
-      <div className="menu-figure-frame">{image ? <img className="menu-figure" src={image} alt="" /> : null}</div>
+      <div className="menu-figure-frame">{image ? <img className="menu-figure" src={image} alt="" /> : <span className="menu-figure-empty">No Data</span>}</div>
       <div className="menu-figured-body">
         {member.skills.length === 0 ? (
           <p className="menu-empty">まだ 何も 覚えていない</p>

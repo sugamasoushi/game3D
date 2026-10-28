@@ -116,6 +116,11 @@ export function knownSaveMapId(file: string): string {
   return saveMapId(loaded, file);
 }
 
+/** 読み終えた台帳で、マップのファイル名 → 画面に出す名前（コンディションの「現在地」）。**台帳を読み終えてから**呼ぶ。 */
+export function knownMapLabel(file: string): string {
+  return mapLabel(loaded, saveMapId(loaded, file));
+}
+
 /** ファイル名から台帳の id（`home_forest`）を逆に引く。台帳に無ければ null。NPC の設定（`mapNpcs.json`）を引くのに使う。 */
 export async function mapKeyForFile(file: string): Promise<string | null> {
   const index = await loadMapIndex();

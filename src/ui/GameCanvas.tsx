@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createGameView, type GameStatus, type GameView, type WalkDir } from '../game/GameView';
 import { START_MAP_ID, assetUrl, mapUrl } from '../game/assets';
-import { mapEntryOf, entryForFile, knownSaveMapId, loadMapIndex } from '../game/mapIndex';
+import { mapEntryOf, entryForFile, knownMapLabel, knownSaveMapId, loadMapIndex } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
 import { loadItemBook } from '../game/items';
@@ -670,8 +670,11 @@ export default function GameCanvas() {
     if (fade) {
       useUi.getState().setBusy(true);
       // 読み込みを隠せるよう、暗転の完了を待ってからマップを差し替える。
-      useUi.getState().setFade(1, DOOR_FADE_MS);
-      await new Promise((done) => window.setTimeout(done, DOOR_FADE_MS));
+      // **もう暗転しきっていれば待たない**（セーブの読み込みは先に暗転してから記録を戻す）。
+      if (useUi.getState().fade < 1) {
+        useUi.getState().setFade(1, DOOR_FADE_MS);
+        await new Promise((done) => window.setTimeout(done, DOOR_FADE_MS));
+      }
     }
     try {
       // 行き先はマップの id（`home_forest`）。台帳で引き当てる（`.json` 付きのファイル名でもよい）。
@@ -1471,6 +1474,13 @@ export default function GameCanvas() {
         audio.stopBgm(TITLE_BGM_FADE_MS);
         audio.stopBgs(TITLE_BGM_FADE_MS);
       }
+      // **先に暗転しきる。** 記録を戻すと、その場で見た目が変わる（宝箱の開け閉め・時間帯など）。
+      // 暗くなりきる前に戻すと、読み込む前の画面のまま切り替わるのが見えてしまう。
+      useUi.getState().setBusy(true);
+      if (useUi.getState().fade < 1) {
+        useUi.getState().setFade(1, DOOR_FADE_MS);
+        await new Promise((done) => window.setTimeout(done, DOOR_FADE_MS));
+      }
       const { state, progress } = fromSave(data);
       // **入れ物は差し替えず中身を移す**——イベントの道具立てが同じ入れ物を握っている。欄は全部 `restoreState` が移す。
       restoreState(stateRef.current, state);
@@ -1484,7 +1494,7 @@ export default function GameCanvas() {
       ensureParty(stateRef.current);
       useUi.getState().setPhase('play');
       useUi.getState().setMenu(false);
-      // 読み直すあいだは黒のまま（GS-28）。
+      // 読み直すあいだは黒のまま（GS-28）。暗転はもう済んでいるので、`goTo` は待たずに読み込む。
       await goTo(progress.map, { marker: '', at: progress.at }, progress.facing, true, fromTitle);
       canvasRef.current?.focus();
     },
@@ -1695,6 +1705,8 @@ export default function GameCanvas() {
             party={stateRef.current.party}
             members={stateRef.current.members}
             gold={stateRef.current.gold}
+            playSeconds={stateRef.current.playSeconds}
+            place={knownMapLabel(mapRef.current)}
             onUseItem={useItem}
             onEquip={(who, id) => equipItem(stateRef.current, who, id)}
             onUnequip={(who, slot) => unequipItem(stateRef.current, who, slot)}

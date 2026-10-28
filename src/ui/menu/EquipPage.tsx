@@ -74,7 +74,7 @@ export function EquipPage({
   return (
     <div className="menu-figured equip" data-tick={tick} ref={pageRef}>
       {/* 絵の場所は**いつも同じ幅と高さ**で取る。絵が無い・細い人でも、右の項目が左へ寄らない。 */}
-      <div className="menu-figure-frame">{image ? <img className="menu-figure" src={image} alt="" /> : null}</div>
+      <div className="menu-figure-frame">{image ? <img className="menu-figure" src={image} alt="" /> : <span className="menu-figure-empty">No Data</span>}</div>
       <div className="menu-figured-body equip-current">
         {slots.map((slot) => {
           const now = member.equip[slot];

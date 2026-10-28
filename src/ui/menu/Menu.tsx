@@ -48,6 +48,8 @@ export function Menu({
   party,
   members,
   gold,
+  playSeconds,
+  place,
   onUseItem,
   onEquip,
   onUnequip,
@@ -64,6 +66,10 @@ export function Menu({
   members: Map<string, MemberState>;
   /** 所持金。 */
   gold: number;
+  /** 遊んだ秒（コンディションに出す）。 */
+  playSeconds: number;
+  /** いまいるマップの名前（コンディションの「現在地」）。 */
+  place: string;
   /** 持ち物を使う（GS-64）。返り値は画面に出す一言。 */
   onUseItem(id: string, who: string): string;
   /** 身に着ける・外す（GS-67）。 */
@@ -217,7 +223,7 @@ export function Menu({
                 <button type="button" tabIndex={-1} data-step="1" aria-label="次の仲間" disabled={at >= party.length - 1} onClick={() => setPickAt(at + 1)}>▶</button>
               </div>
             ) : null}
-            {page === 'コンディション' ? <ConditionPage party={party} members={members} gold={gold} /> : null}
+            {page === 'コンディション' ? <ConditionPage party={party} members={members} gold={gold} playSeconds={playSeconds} place={place} /> : null}
             {page === 'アイテム' ? (
               <ItemsPage
                 items={items}
