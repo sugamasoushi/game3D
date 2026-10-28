@@ -19,6 +19,15 @@ export const VIRTUAL_PAD_LABELS: Record<VirtualPadSetting, string> = {
   off: '非表示',
 };
 
+/** 文字の形。`mplus` は M PLUS 1（既定）、`pixel` は旧作と同じドット絵フォント（PixelMplus10）。 */
+export type FontSetting = 'mplus' | 'pixel';
+
+/** 画面に出す名前。 */
+export const FONT_LABELS: Record<FontSetting, string> = {
+  mplus: 'M PLUS 1',
+  pixel: 'ドット絵',
+};
+
 export interface Options {
   /**
    * 文字送りの速さ（1 文字あたりのミリ秒。GS-25）。**大きいほど遅い。**
@@ -35,6 +44,8 @@ export interface Options {
    * 旧作も設定で切り替えられた（`GameStateManager.virtualPad`）。
    */
   virtualPad: VirtualPadSetting;
+  /** 文字の形。画面の文字すべてに効く（`<html data-font>`）。 */
+  font: FontSetting;
   /** 音量（0〜1）。全体・BGM と環境音・効果音。 */
   masterVolume: number;
   bgmVolume: number;
@@ -47,6 +58,7 @@ export const DEFAULT_OPTIONS: Options = {
   // 既定は自動（GS-173）。**端末を見て決める**ので、スマホは初めから低負荷で始まる。
   drawMode: 'auto',
   virtualPad: 'auto',
+  font: 'mplus',
   masterVolume: 1,
   bgmVolume: 1,
   seVolume: 1,
@@ -68,6 +80,17 @@ function saneDrawMode(value: unknown): DrawModeSetting {
 /** 知っている値だけ受ける（GS-214）。読めない値は自動に落とす。 */
 function saneVirtualPad(value: unknown): VirtualPadSetting {
   return value === 'on' || value === 'off' || value === 'auto' ? value : DEFAULT_OPTIONS.virtualPad;
+}
+
+/** 知っている文字の形だけ受ける。読めない値は既定（M PLUS 1）に落とす。 */
+function saneFont(value: unknown): FontSetting {
+  return value === 'pixel' || value === 'mplus' ? value : DEFAULT_OPTIONS.font;
+}
+
+/** 文字の形を画面に当てる。CSS が `<html data-font>` を見て使うフォントを替える。 */
+function applyFont(): void {
+  if (typeof document === 'undefined') return;
+  document.documentElement.dataset.font = options.font;
 }
 
 /** 仮想パッドをいま出すか（GS-214）。`auto` はそのつど端末から解く。 */
@@ -94,6 +117,7 @@ export function loadOptions(): void {
       charMs: sane(saved.charMs, DEFAULT_OPTIONS.charMs, 5, 200),
       drawMode: saneDrawMode(saved.drawMode),
       virtualPad: saneVirtualPad(saved.virtualPad),
+      font: saneFont(saved.font),
       masterVolume: sane(saved.masterVolume, DEFAULT_OPTIONS.masterVolume, 0, 1),
       bgmVolume: sane(saved.bgmVolume, DEFAULT_OPTIONS.bgmVolume, 0, 1),
       seVolume: sane(saved.seVolume, DEFAULT_OPTIONS.seVolume, 0, 1),
@@ -106,6 +130,7 @@ export function loadOptions(): void {
 /** 変える。設定画面もセーブの読み込みもここを通す。**変えたら覚える。** */
 export function setOptions(next: Partial<Options>): void {
   Object.assign(options, next);
+  applyFont();
   if (typeof window !== 'undefined') {
     try {
       window.localStorage.setItem(STORE_KEY, JSON.stringify(options));
