@@ -5,7 +5,7 @@
 //
 // 設定はセーブとは別物で、端末に覚える（`options.ts`）。枠を読み替えても好みは変わらない。
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   DEFAULT_OPTIONS,
   VIRTUAL_PAD_LABELS,
@@ -18,6 +18,7 @@ import {
 import { DRAW_MODE_LABELS, drawMode, guessDrawMode, type DrawModeSetting } from '../../game/quality';
 import { DEV_MODE, devOptions, setDevOptions, type DevOptions } from '../../game/devMode';
 import { stopBgm, stopBgs } from '../../game/audio';
+import { fullscreenSupported, isDesktopApp, isFullscreen, onFullscreenChange, setFullscreen } from '../../game/fullscreen';
 
 /** 文字送りの目盛り。**小さいほど速い**ので、見せ方は左が速い。 */
 const CHAR_MIN = 10;
@@ -29,6 +30,21 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
   const [now, setNow] = useState<Options>({ ...options });
   // 開発中のつまみ（GS-126）。**本番では下の欄ごと出さない。**
   const [dev, setDev] = useState<DevOptions>({ ...devOptions });
+
+  // フルスクリーン。**設定ではなく今の状態**を映す（Esc や F11 で抜けても印が合うように）。
+  // 切り替えられない端末（iPhone の Safari など）では行ごと出さない。
+  const [canFull] = useState(fullscreenSupported);
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    if (!canFull) return;
+    let alive = true;
+    void isFullscreen().then((on) => alive && setFull(on));
+    const stop = onFullscreenChange((on) => setFull(on));
+    return () => {
+      alive = false;
+      stop();
+    };
+  }, [canFull]);
 
   const change = (next: Partial<Options>) => {
     setOptions(next);
@@ -143,6 +159,24 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
             {now.virtualPad === 'auto' ? `いまは ${virtualPadShown('auto') ? '表示' : '非表示'}` : ''}
           </span>
         </li>
+        {canFull ? (
+          <li>
+            <span className="menu-label">全画面</span>
+            <input
+              className="menu-check"
+              type="checkbox"
+              checked={full}
+              data-pick
+              onChange={(event) => {
+                const on = event.currentTarget.checked;
+                void setFullscreen(on).then((now) => setFull(now));
+              }}
+            />
+            <span className="menu-hint">
+              {isDesktopApp() ? 'F11 / Alt+Enter でも切り替え。次の起動もこの状態' : 'Alt+Enter でも切り替え'}
+            </span>
+          </li>
+        ) : null}
         {volume('全体', 'masterVolume')}
         {volume('BGM', 'bgmVolume')}
         {volume('効果音', 'seVolume')}

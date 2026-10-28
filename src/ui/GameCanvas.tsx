@@ -56,6 +56,7 @@ import { PwaInstall } from './PwaInstall';
 import { fromSave, newState, resetState, restoreState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
 import { loadStoryBook, storyMeets, storyOrder } from '../game/story';
 import { advanceClock, loadTimeSettings, timeSettings } from '../game/timeClock';
+import { installFullscreenShortcut } from '../game/fullscreen';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
 import { canWalk, useUi } from './store';
 import { clearComic, useComic } from './comic';
@@ -102,6 +103,9 @@ const DEBUG_ENEMIES = ['enemy02', 'enemy00', 'enemy01'];
 /** ゲームオーバーで黒くなるまで（ミリ秒）。**ゆっくり**——負けたことを飲み込む間を置く。 */
 const GAME_OVER_FADE_MS = 1600;
 /** 遊んだ秒を数える間隔（ミリ秒）。 */
+// Alt+Enter でフルスクリーン（ブラウザ）。**どの受け手よりも先に**付ける（読み込んだときに 1 回）。
+installFullscreenShortcut();
+
 const CLOCK_MS = 1000;
 
 export default function GameCanvas() {
@@ -140,7 +144,10 @@ export default function GameCanvas() {
   const uiBusy = useUi((s) => s.busy);
   const settings = useUi((s) => s.settings);
 
-  /** 1280×720 の論理座標は変えず、端末に収まる倍率だけを外側へ適用する。 */
+  /**
+   * 1280×720 の論理座標は変えず、端末に収まる倍率だけを外側へ適用する。
+   * **広い画面では拡大もする**（フルスクリーンで画面いっぱいに出すため）。縦横比は保ち、余りは黒い帯。
+   */
   useEffect(() => {
     const fit = () => {
       const stage = stageRef.current;
@@ -150,7 +157,7 @@ export default function GameCanvas() {
       // visualViewport と CSS の表示領域が異なる端末でも、狭い方へ収める。
       const width = Math.min(stage.clientWidth, viewport?.width ?? stage.clientWidth);
       const height = Math.min(stage.clientHeight, viewport?.height ?? stage.clientHeight);
-      const scale = Math.min(1, width / 1280, height / 720);
+      const scale = Math.min(width / 1280, height / 720);
       screen.style.setProperty('--game-scale', String(scale));
     };
     fit();
