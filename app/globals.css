@@ -3284,6 +3284,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* カードを窓の下まで伸ばす。 */
+  height: 100%;
 }
 
 /* 上の帯。所持金・プレイ時間・現在地を札のように並べる。 */
@@ -3331,8 +3333,10 @@ body {
   color: #ffd479;
 }
 
-/* 仲間のカード。3 人分の場所をいつも取る（列の数は画面側で決める）。 */
+/* 仲間のカード。3 人分の場所をいつも取る（列の数は画面側で決める）。窓の下まで伸ばす。 */
 .condition-cards {
+  flex: 1;
+  min-height: 0;
   display: grid;
   gap: 14px;
   margin: 0;
@@ -3341,14 +3345,12 @@ body {
 }
 
 .condition-card {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  position: relative;
   min-width: 0;
-  padding: 8px 12px 10px;
+  overflow: hidden;
   border: 1px solid rgba(142, 166, 200, 0.55);
   border-radius: 10px;
-  background: linear-gradient(to bottom, rgba(36, 46, 130, 0.65), rgba(8, 12, 50, 0.65));
+  background: radial-gradient(ellipse at 50% 30%, rgba(142, 166, 200, 0.3), rgba(8, 12, 50, 0.65) 75%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 
@@ -3357,28 +3359,33 @@ body {
   opacity: 0.55;
 }
 
-/* 絵。装備・ステータスと同じメニュー用の絵の上半分を窓のように切り取る。 */
+/* 絵。**カードの高さに合わせて**縦横比のまま出す（見切れない）。横の真ん中。 */
 .condition-portrait {
-  position: relative;
-  height: 96px;
-  overflow: hidden;
-  border-radius: 6px;
-  background: radial-gradient(ellipse at 50% 30%, rgba(142, 166, 200, 0.35), rgba(8, 12, 50, 0.2) 70%);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
 }
 
 .condition-portrait img {
   display: block;
-  width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center 8%;
+  width: auto;
+  max-width: none;
 }
 
-/* レベルは絵の左下に札で重ねる。 */
+/* 絵が無いときは上のほうに「No Data」（下は項目が重なる）。 */
+.condition-portrait .menu-figure-empty {
+  align-items: flex-start;
+  padding-top: 22%;
+  border: none;
+}
+
+/* レベルは左上に札で重ねる。 */
 .condition-level {
   position: absolute;
-  left: 6px;
-  bottom: 6px;
+  top: 8px;
+  left: 8px;
   padding: 1px 10px;
   border: 1px solid #8ea6c8;
   border-radius: 6px;
@@ -3392,6 +3399,19 @@ body {
   margin-right: 4px;
   font-size: 13px;
   opacity: 0.75;
+}
+
+/* 項目は絵の上に重ね、**下側にそろえる**。読めるよう下だけ暗くする。 */
+.condition-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 36px 12px 12px;
+  background: linear-gradient(to bottom, rgba(8, 10, 48, 0), rgba(8, 10, 48, 0.82) 30%, rgba(8, 10, 48, 0.94));
 }
 
 .condition-head {
@@ -3408,6 +3428,7 @@ body {
   font-size: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .condition-ok {
@@ -3457,55 +3478,25 @@ body {
   --bar-lo: #c98a1a;
 }
 
-/* 攻撃・守り・素早さ。3 つを小さな札で横に並べる。 */
+/* 攻撃・守り・素早さ。1 行に「名前：数」で並べる。 */
 .condition-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin: 0;
-}
-
-.condition-stats > div {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3px 0;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.28);
-}
-
-.condition-stats dt {
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.condition-stats dd {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 装備。種類と名前の 2 列。名前は折り返さず「…」。 */
-.condition-gear {
-  display: grid;
-  grid-template-columns: 2.6em minmax(0, 1fr);
-  gap: 2px 6px;
-  margin: 0;
-  padding-top: 6px;
-  border-top: 1px solid rgba(142, 166, 200, 0.25);
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 0 0;
   font-size: 15px;
-}
-
-.condition-gear dt {
-  opacity: 0.7;
-}
-
-.condition-gear dd {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.condition-stats span {
+  opacity: 0.85;
+}
+
+.condition-stats b {
+  font-size: 18px;
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
 }
 
 /* 絵が無いとき（装備・スキル・ステータス・コンディション）。 */
