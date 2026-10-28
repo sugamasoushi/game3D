@@ -26,8 +26,6 @@ export interface ItemUse {
   cure?: string[];
   /** 使ったときに出す一言。無ければ「○○ を つかった」だけ。 */
   say?: string;
-  /** 使ったときの音（`sounds.json` のキー）。 */
-  se?: string;
 }
 
 /**
@@ -40,6 +38,19 @@ export interface ItemEquip {
   attack?: number;
   guard?: number;
   speed?: number;
+  /**
+   * 武器で殴ったときの見せ方（2026-10-28 / GS-273）。書いた項目だけ、戦闘共通の「通常攻撃（味方の素手）」を差し替える。
+   * 武器（`slot: "weapon"`）にだけ意味がある。
+   */
+  strike?: ItemStrike;
+}
+
+/** 武器の通常攻撃の絵と音。 */
+export interface ItemStrike {
+  /** 出す絵（`effects.json` のキー）。 */
+  effect?: string;
+  /** 鳴らす音（`sounds.json` のキー）。 */
+  se?: string;
 }
 
 /** 台帳の 1 つぶん。 */

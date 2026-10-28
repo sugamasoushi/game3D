@@ -42,6 +42,8 @@ export interface Fighter {
    * **戦いのあいだだけ**——終われば消えるので、セーブには入らない。
    */
   ailments: string[];
+  /** 着けている武器（持ち物のキー。味方だけ）。通常攻撃の絵と音を選ぶのに使う（2026-10-28 / GS-273）。 */
+  weapon?: string;
 }
 
 /** 技 1 つぶん。台帳（`data/skills.json`）の行と同じ形。 */

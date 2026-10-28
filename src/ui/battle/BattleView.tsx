@@ -33,11 +33,11 @@ import { alive, type Fighter } from '../../game/battle/rules';
 import { characterIcon, characterName, characterStand } from '../../game/characters';
 import { STAGE_LUNGE_DELAY_S, STAGE_LUNGE_S, type BattleFigure, type BattleStageSpec, type FigurePose } from '../../game/GameView';
 import { spendItem, type GameState } from '../../game/state';
-import { itemName, itemText, itemUse } from '../../game/items';
+import { itemEquip, itemName, itemText, itemUse } from '../../game/items';
 import { wouldHelp } from '../../game/battle/heal';
 import { playSe, stopBgm } from '../../game/audio';
 import { DEV_MODE } from '../../game/devMode';
-import { battleSettings } from '../../game/battle/settings';
+import { battleSettings, normalAttackOf } from '../../game/battle/settings';
 import type { BattlePresentationContext, BattlePresentationHook } from '../../game/battle/presentation';
 
 // 間（1 行を読ませる・数が動く・当たった印・仰け反り・敵が攻めかかる・「何も持ってない！」）と
@@ -568,11 +568,11 @@ export function BattleView({
         // 何度も見る動きなので、急いでいるときに待たせない。
         act: async (attacker, defender, skill) => {
           presentationRef.current?.(attacker.side === 'party' ? 'action.party.start' : 'action.enemy.start', { subject: attacker.id });
-          const normal = battleSettings().normalAttack;
           if (attacker.side === 'party') {
             // 味方: 相手の上に技の絵、相手は仰け反る（旧作 `PlayerAttack`）。
-            // 素手の攻撃の絵は台帳から（GS-123）。空なら絵を出さない。
-            const key = skill?.effect ?? normal.party.effect;
+            // 素手の攻撃の絵は台帳から（GS-123）。武器に `strike` があればそちら（GS-273。短剣なら切りつけ）。空なら絵を出さない。
+            const plain = normalAttackOf('party', attacker.weapon ? itemEquip(attacker.weapon)?.strike : null);
+            const key = skill?.effect ?? plain.effect;
             const def = key ? effectDef(key) : null;
             setLean(defender.id);
             window.setTimeout(() => setLean((now) => (now === defender.id ? null : now)), battleSettings().ms.lean);
@@ -584,7 +584,7 @@ export function BattleView({
             await preload(effectImage(def));
             if (signal?.aborted) throw aborted();
             // 音は台帳の指定を先に見る（素手のとき）。空なら絵の側の音（GS-123）。
-            const sound = skill ? def.se : (normal.party.se || def.se);
+            const sound = skill ? def.se : (plain.se || def.se);
             if (sound) playSe(sound);
             fxSeqRef.current += 1;
             setFx({ seq: fxSeqRef.current, foe: defender.id, def });
@@ -598,13 +598,14 @@ export function BattleView({
           const lungeDelayMs = STAGE_LUNGE_DELAY_S * 1000;
           // 敵の攻撃にも絵を出せる（GS-125）。技は `skills.json` の `effect`、素手は戦闘共通の通常攻撃（敵）。
           // **決めていなければ出さない**（音だけ）。出す先は殴られた味方。
-          const foeKey = skill ? skill.effect ?? '' : normal.enemy.effect;
+          const enemyPlain = normalAttackOf('enemy');
+          const foeKey = skill ? skill.effect ?? '' : enemyPlain.effect;
           const foeDef = foeKey ? effectDef(foeKey) : null;
           if (foeDef) await preload(effectImage(foeDef));
           if (signal?.aborted) throw aborted();
           setLunge(attacker.id);
           await wait(lungeDelayMs);
-          playSe(skill?.se ?? (normal.enemy.se || battleSettings().se.enemyAttack));
+          playSe(skill?.se ?? (enemyPlain.se || battleSettings().se.enemyAttack));
           setQuake(true);
           if (foeDef) {
             fxSeqRef.current += 1;

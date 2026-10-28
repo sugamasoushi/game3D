@@ -7,7 +7,7 @@
       "se": ""
     },
     "enemy": {
-      "effect": "",
+      "effect": "normal",
       "se": "punch"
     }
   },

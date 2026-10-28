@@ -88,6 +88,8 @@ export function partyFighters(state: GameState): Fighter[] {
       avoiding: false,
       // 歩いているあいだの状態異常を戦いへ持ち込む（GS-71）。
       ailments: (now?.ailments ?? []).slice(),
+      // 武器で通常攻撃の見せ方が変わる（GS-273）。
+      ...(now?.equip.weapon ? { weapon: now.equip.weapon } : {}),
     };
   });
 }

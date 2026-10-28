@@ -403,7 +403,7 @@ export default function GameCanvas() {
     const max = memberStats(who, now.level);
     if (!wouldHelp(now, max, use)) return `${characterName(who)} には 何も 起きなかった……`;
     if (!spendItem(state, id)) return '';
-    audio.playSe(use.se ?? battleSettings().se.item);
+    audio.playSe(battleSettings().se.item);
     const healed = applyUse(now, max, use);
     // 消した状態異常も言う（GS-71）。**戦闘と同じ文**を台帳（`gone`）から出す。
     const cured = healed.cured.map(

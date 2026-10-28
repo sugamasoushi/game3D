@@ -1,6 +1,8 @@
 // 戦闘の共通の演出（GS-106）。**コードに直書きしていた音と間を台帳へ出した**——`public/data/battleSettings.json`。
 // 台帳エディタの「戦闘共通」で編集する。台帳が読めない・値が壊れているときは、ここの既定値（直書きしていた値）を使う。
 
+import type { ItemStrike } from '../items';
+
 /**
  * 通常攻撃（素手）の見せ方（GS-123）。**味方と敵で別に持つ。**
  * 技は `skills.json` の `effect` / `se` が決めるが、素手の攻撃は技の台帳に無い。
@@ -98,4 +100,17 @@ export function applyBattleSettings(raw: unknown): BattleSettings {
   }
   settings = next;
   return next;
+}
+
+/**
+ * 通常攻撃の見せ方（2026-10-28 / GS-273）。味方は**武器の `equip.strike`** に書いた項目だけ素手を差し替える
+ * （短剣なら切りつけの絵）。武器が無い・`strike` が無い・敵は戦闘共通の素手のまま。
+ */
+export function normalAttackOf(side: 'party' | 'enemy', strike?: ItemStrike | null): NormalAttackDef {
+  const base = settings.normalAttack[side];
+  if (side !== 'party' || !strike) return base;
+  return {
+    effect: typeof strike.effect === 'string' && strike.effect ? strike.effect : base.effect,
+    se: typeof strike.se === 'string' && strike.se ? strike.se : base.se,
+  };
 }

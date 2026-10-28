@@ -571,29 +571,41 @@ void main() {
 }
 `;
 
-/** 雨。列に切って、列ごとに速さと横位置を変えた筋を落とす。 */
+/** 雨。マス単位の細い筋。各列・各粒・奥行きで位置と速さを散らす。 */
 const rainShader = `
 precision highp float;
+uniform vec2 rainSize;
 ${COMMON_UNIFORMS}
 ${EDGE_FADE}
 ${HASH}
 void main() {
-  float cols = max(4.0, 46.0 * scale);
-  float x = vUv.x * cols;
+  vec2 p = vUv * rainSize;
+  float density = max(0.1, scale);
+  // 斜め下へ落ちる。時刻で横に揺らさないので、雪のように漂わない。
+  float x = (p.x + p.y * 0.10) * 3.2 * density;
   float col = floor(x);
-  float fx = fract(x);
-  float r = mepHash(col + level * 31.0);
-  float fast = 0.65 + 0.7 * mepHash(col + level * 13.0 + 5.0);
-  // fract(uv.y + t) は t が増えるほど模様が下へ流れる。
-  float rows = 1.5 + 2.5 * r;
-  float y = fract(vUv.y * rows + time * speed * fast + r);
-  // 筋。頭が濃く、尾を引く。
-  float streak = smoothstep(0.0, 0.05, y) * (1.0 - smoothstep(0.05, 0.34, y));
-  // 列の中では細い線。列ごとに横へずらす。
-  float w = 1.0 - smoothstep(0.05, 0.20, abs(fx - 0.5 - (r - 0.5) * 0.5));
-  // 列の一部だけ降らせる。全部だと簾に見える。
-  float pick = step(0.30, mepHash(col * 3.3 + level));
-  float alpha = streak * w * pick * mepEdgeFade(vUv, 0.1) * amount;
+  float seed = col + level * 137.0;
+  float fast = mix(3.8, 6.2, mepHash(seed + 5.0));
+  float cycle = (p.y + time * speed * fast) / 1.8 + mepHash(seed + 13.0);
+  float row = floor(cycle);
+  float r = mepHash2(vec2(col, row) + level * 71.0);
+  // 頭が下、尾が上。各周期で横位置と長さが変わり、固定の縞にならない。
+  float head = 0.10 + r * 0.30;
+  float length = mix(0.12, 0.27, mepHash(r * 83.0 + 2.0));
+  float y = fract(cycle) - head;
+  float aaY = max(fwidth(cycle), 0.001);
+  float streak = smoothstep(-aaY, aaY, y) * (1.0 - smoothstep(0.0, length, y));
+  float center = mix(0.20, 0.80, mepHash(r * 51.0 + 7.0));
+  float width = min(0.16, mix(0.045, 0.080, r) * density) * mix(1.0, 0.7, level);
+  float aaX = max(fwidth(x), 0.001);
+  float distance = abs(fract(x) - center);
+  float line = 1.0 - smoothstep(max(0.0, width - aaX), width + aaX, distance);
+  // 遠い雨ほど淡く。細い線が縮小時に点滅しないよう画素幅で補う。
+  line *= min(1.0, width / aaX);
+  float pick = step(0.23, r);
+  vec2 edge = min(vUv, 1.0 - vUv) * rainSize;
+  float fade = smoothstep(0.0, 0.35, edge.x) * smoothstep(0.0, 0.25, edge.y);
+  float alpha = streak * line * pick * fade * amount * mix(0.85, 0.45, level) * mix(0.55, 1.0, r);
   if (alpha <= 0.004) discard;
   gl_FragColor = vec4(tint, alpha);
 }
@@ -1463,6 +1475,10 @@ export function createFieldEffects(): FieldEffects {
             u.face.value = look.face;
             u.dye.value = look.dye;
             u.mirror.value = look.mirror;
+          }
+          // UV の縦横比ではなくマスで雨粒を描く。取り置き材質でも必ず更新。
+          if (kind === 'rain') {
+            material.uniforms.rainSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
           }
           applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
           const mesh = new Mesh(kind === 'pillar' ? pillarGeometry : kind === 'explosion' ? explosionGeometry : geometry, material);

@@ -53,7 +53,10 @@
       "price": 20,
       "equip": {
         "slot": "weapon",
-        "attack": 2
+        "attack": 2,
+        "strike": {
+          "effect": "normal"
+        }
       }
     },
     "短剣": {
@@ -62,7 +65,11 @@
       "price": 80,
       "equip": {
         "slot": "weapon",
-        "attack": 5
+        "attack": 5,
+        "strike": {
+          "effect": "normal_dagger_slash",
+          "se": "剣の素振り3"
+        }
       }
     },
     "マント": {

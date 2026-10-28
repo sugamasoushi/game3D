@@ -233,7 +233,7 @@ async function actParty(
       return false;
     }
     await io.say(`${who.name} は ${itemName(action.id)} を つかった！`);
-    io.se?.(use.se ?? battleSettings().se.item);
+    io.se?.(battleSettings().se.item);
     const target = party.find((one) => one.id === action.target) ?? who;
     const healed = applyUse(target, target.stats, use);
     await io.hit?.(target.id, healed.hp + healed.mp, 'heal');
