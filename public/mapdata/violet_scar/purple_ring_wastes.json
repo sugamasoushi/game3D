@@ -24686,6 +24686,46 @@
           ]
         },
         {
+          "id": "obj_3",
+          "name": "メイナ",
+          "kind": "point",
+          "visible": true,
+          "guides": false,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Character",
+              "type": "string",
+              "value": "meina"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "meina"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              0.5,
+              17.5
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "エフェクト",
+      "name": "エフェクト",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [],
+      "objects": [
+        {
           "id": "obj_2",
           "name": "円",
           "kind": "circle",
@@ -24717,34 +24757,6 @@
             [
               -12.622612606010911,
               -1.9739958457894353
-            ]
-          ]
-        },
-        {
-          "id": "obj_3",
-          "name": "メイナ",
-          "kind": "point",
-          "visible": true,
-          "guides": false,
-          "collision": false,
-          "properties": [
-            {
-              "name": "Character",
-              "type": "string",
-              "value": "meina"
-            },
-            {
-              "name": "Id",
-              "type": "string",
-              "value": "meina"
-            }
-          ],
-          "space": "plane",
-          "y": 0,
-          "points": [
-            [
-              0.5,
-              17.5
             ]
           ]
         }

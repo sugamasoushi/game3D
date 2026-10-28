@@ -21383,7 +21383,19 @@
               3.5
             ]
           ]
-        },
+        }
+      ]
+    },
+    {
+      "id": "エフェクト",
+      "name": "エフェクト",
+      "kind": "object",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [],
+      "objects": [
         {
           "id": "obj_2",
           "name": "雨",

@@ -1,5 +1,5 @@
-import { createLightPillarGeometry, lightPillarVertexShader, lightPillarFragmentShader } from '../mep3d/lightPillar';
-import { createLightExplosionGeometry, lightExplosionVertexShader, lightExplosionFragmentShader } from '../mep3d/lightExplosion';
+import { createLightPillarGeometry, lightPillarVertexShader, lightPillarFragmentShader } from './lightPillar';
+import { createLightExplosionGeometry, lightExplosionVertexShader, lightExplosionFragmentShader } from './lightExplosion';
 // フィールドエフェクト（DEC-175 / DEC-177）。世界に置く。画面エフェクト（`screenEffects.ts`）と違い、
 // カメラが動けば一緒に流れていく。
 //
@@ -35,7 +35,7 @@ import {
   type Texture,
   type WebGLRenderer,
 } from 'three';
-import type { FieldEffectPresetDef, MapObjectDef } from './../mep3d/types';
+import type { FieldEffectPresetDef, MapObjectDef } from './types';
 
 /** 霧と木漏れ日で使う。速さを変えて重ねる。 */
 const NOISE_A = '/assets/noise/Super Perlin/Super Perlin 14 - 512x512.png';

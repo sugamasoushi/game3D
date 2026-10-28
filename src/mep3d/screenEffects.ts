@@ -1,4 +1,4 @@
-import { screenShakeOffset, screenShakeFragmentShader, SCREEN_SHAKE_DEFAULT_AMOUNT, SCREEN_SHAKE_DEFAULT_SPEED } from '../mep3d/screenShake';
+import { screenShakeOffset, screenShakeFragmentShader, SCREEN_SHAKE_DEFAULT_AMOUNT, SCREEN_SHAKE_DEFAULT_SPEED } from './screenShake';
 // 画面エフェクト（DEC-389）。**画面全体にかかる画作りで、世界の場所を持たない。**
 //
 // フィールドエフェクト（`fieldEffects.ts`）との違いは置き場所——あちらは世界に板を置くので
@@ -29,7 +29,7 @@ import {
   type Texture,
   type WebGLRenderer,
 } from 'three';
-import type { ScreenEffectDef } from '../mep3d/types';
+import type { ScreenEffectDef } from './types';
 
 /** 重ねる 2 枚。速さを変えるので同じ絵にはしない。 */
 const NOISE_A = '/assets/noise/Super Perlin/Super Perlin 14 - 512x512.png';
@@ -39,10 +39,9 @@ export const SCREEN_EFFECT_KINDS = ['fog', 'dapple', 'shake'] as const;
 export type ScreenEffectKind = (typeof SCREEN_EFFECT_KINDS)[number];
 
 export const SCREEN_EFFECT_LABELS: Record<ScreenEffectKind, string> = {
-  shake: { amount: SCREEN_SHAKE_DEFAULT_AMOUNT, speed: SCREEN_SHAKE_DEFAULT_SPEED, scale: 1, color: 'ffffff', height: 0.9, bottom: 0, thickness: 0.5 },
-  shake: '揺れ',
   fog: '霧',
   dapple: '木漏れ日',
+  shake: '揺れ',
 };
 
 /**
@@ -59,6 +58,8 @@ export const SCREEN_EFFECT_DEFAULTS: Record<
   fog: { amount: 0.45, speed: 0.02, scale: 1.6, color: 'cfd8e3', height: 0.9, bottom: 0, thickness: 0.5 },
   // 木漏れ日は旧作の `SunrayPostPipeline` に合わせた（密度 18・速さ 0.4・太さ 0.5・濃さ 0.2）。
   dapple: { amount: 0.2, speed: 0.4, scale: 18, color: 'fff5d2', height: 0.9, bottom: 0, thickness: 0.5 },
+  // 揺れは濃さ＝揺れ幅、速さだけを使う。ほかの欄は読まない。
+  shake: { amount: SCREEN_SHAKE_DEFAULT_AMOUNT, speed: SCREEN_SHAKE_DEFAULT_SPEED, scale: 1, color: 'ffffff', height: 0.9, bottom: 0, thickness: 0.5 },
 };
 
 const vertexShader = /* glsl */ `

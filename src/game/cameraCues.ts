@@ -2,7 +2,7 @@
 // **イベント用**（GS-115）。戦闘の舞台の板を動かす・注視する機能（フィールドオブジェクトトラック・注視対象・選択中の味方）は削除した——
 // 戦闘のカメラは `battle/battleCamera.ts` が別に持つ（GS-105）。
 import { assetUrl } from './assets';
-import { createCameraShots, type CameraShot, type CameraShotFrame, type CameraShotKind } from '../view/cameraShots';
+import { createCameraShots, type CameraShot, type CameraShotFrame, type CameraShotKind } from '../mep3d/cameraShots';
 
 export interface CueFrame {
   at: number;

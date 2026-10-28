@@ -1399,7 +1399,7 @@ export interface ScreenEffectDef {
   id: string;
   /** 一覧に出す名前。自由に変えてよい。 */
   name: string;
-  /** `fog`（霧）/ `dapple`（木漏れ日）。 */
+  /** `fog`（霧）/ `dapple`（木漏れ日）/ `shake`（揺れ。`amount` が揺れ幅、`speed` が速さ）。 */
   kind: string;
   /** 最初から出すか。切ると消えた形で始まる（イベントの命令「マップのエフェクト」で出す。GS-270）。省略時は出す。 */
   on?: boolean;
