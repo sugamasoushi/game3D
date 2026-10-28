@@ -1388,7 +1388,9 @@ body {
  */
 .gmenu-body .item-row {
   display: grid;
-  grid-template-columns: minmax(0, 7em) minmax(3ch, max-content) minmax(0, 1fr);
+  /* 名前・「：個数」・説明の 3 列。個数の列は幅をそろえる（コロンも数も縦にそろう）。 */
+  /* 名前は 12 文字分まで（折り返さない。超えたら「…」）。個数の列はその右にそろえる。 */
+  grid-template-columns: 12em 5ch minmax(0, 1fr);
   align-items: baseline;
   gap: 14px;
   width: 100%;
@@ -1400,8 +1402,8 @@ body {
 .gmenu-body .item-row.on { border-color: rgba(255, 212, 121, 0.6); }
 .gmenu-body .item-row[aria-disabled='true'] > .item-name,
 .gmenu-body .item-row[aria-disabled='true'] > .item-count { opacity: 0.45; }
-.item-list .item-name { min-width: 0; overflow-wrap: anywhere; }
-.item-list .item-count { width: auto; }
+.item-list .item-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.item-list .item-count { display: flex; justify-content: space-between; gap: 4px; width: auto; font-variant-numeric: tabular-nums; }
 .item-list .item-text { margin-left: 18px; font-size: 17px; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
 
 /*
@@ -1875,9 +1877,9 @@ body {
   transition: opacity 400ms linear;
 }
 
-/* 倒れた敵は**消さずに薄くする**——数が急に減ると、何体居たのか分からなくなる。 */
+/* 倒した敵は**消しきる**（3D の板と同じ）。体力の帯と状態の札も一緒に消える。 */
 .battle-foe.gone {
-  opacity: 0.18;
+  opacity: 0;
   filter: grayscale(1);
 }
 
@@ -1896,20 +1898,68 @@ body {
  * 減り具合の帯（GS-78）。**絵の上**に出す（旧作と同じ）——
  * 名前の札は出さない。誰に何が起きたかは下の窓が言う。
  */
+/*
+ * 敵の体力の帯。窓と同じ紺地に水色の縁。中身は残りで色が変わり（緑 → 黄 → 赤）、
+ * 削られた分は明るい色で少し残ってから縮む。
+ */
 .battle-bar {
+  --bar-hi: #7ff0a4;
+  --bar-lo: #23a35a;
+  position: relative;
   width: 168px;
   height: 14px;
   margin-bottom: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.5);
+  padding: 2px;
+  border: 2px solid #8ea6c8;
+  border-radius: 7px;
+  background: rgba(8, 10, 48, 0.82);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  box-sizing: content-box;
 }
 
-.battle-bar span {
-  display: block;
-  height: 100%;
-  background: #e2694f;
-  transition: width 200ms linear;
+.battle-bar[data-level='mid'] {
+  --bar-hi: #ffe58a;
+  --bar-lo: #d99a22;
+}
+
+.battle-bar[data-level='low'] {
+  --bar-hi: #ff8a7a;
+  --bar-lo: #c8392b;
+}
+
+.battle-bar > span {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  border-radius: 4px;
+}
+
+/* 削られた分。中身より遅れて、ゆっくり縮む。 */
+.battle-bar-trail {
+  background: #fff1c2;
+  opacity: 0.85;
+  transition: width 500ms ease-out 350ms;
+}
+
+/* 中身。上半分に光沢を重ねる。 */
+.battle-bar-fill {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.08) 50%, rgba(0, 0, 0, 0.12) 51%, rgba(0, 0, 0, 0)),
+    linear-gradient(to bottom, var(--bar-hi), var(--bar-lo));
+  box-shadow: 0 0 6px var(--bar-lo);
+  transition: width 200ms linear, background-color 200ms linear;
+}
+
+/* 残りわずかは、ゆっくり明滅させる。 */
+.battle-bar[data-level='low'] .battle-bar-fill {
+  animation: battle-bar-low 900ms ease-in-out infinite alternate;
+}
+
+@keyframes battle-bar-low {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.45); }
 }
 
 /*
@@ -2667,6 +2717,9 @@ body {
  */
 .battle-list {
   position: absolute;
+  /* 中の分けた窓を縦いっぱいに伸ばす（右の説明の数を下端にそろえるため）。 */
+  display: flex;
+  flex-direction: column;
   left: 240px;
   right: 240px;
   top: var(--battle-top);
@@ -2687,8 +2740,23 @@ body {
   align-content: start;
 }
 
-/* 特技・魔法の窓は 3:1 に分ける。左が一覧、右が選んでいる技の説明と消費 MP。 */
+/* 一覧の窓の上に出す札（「メイナ の 魔法」「道具」）。窓と同じ色の小さな窓。 */
+.battle-list-label {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  margin: 0;
+  padding: 2px 14px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.78);
+  font-size: 18px;
+}
+
+/* 特技・魔法・道具の窓は 3:1 に分ける。左が一覧、右が選んでいる物の説明と数。 */
 .battle-list-split {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
   gap: 0 16px;
@@ -2706,10 +2774,6 @@ body {
 
 .battle-skill-info p {
   margin: 0;
-}
-
-.battle-skill-name {
-  color: #ffe9a8;
 }
 
 .battle-skill-text {
@@ -2887,6 +2951,8 @@ body {
  * 同じ y に描いていた）。横に並べると 1 人ぶんの幅が伸びて、仲間が増えたときに収まらない。
  */
 .battle-gauge {
+  --bar-hi: #7ff0a4;
+  --bar-lo: #23a35a;
   position: relative;
   display: block;
   /* **枠の余りに合わせて伸びる**（3 人なら詰まり、2 人なら少し広い）。
@@ -2894,16 +2960,34 @@ body {
   width: auto;
   max-width: 110px;
   height: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.45);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.5);
+  /* 敵の帯と同じ作り。窓と同じ紺地に水色の縁、中身は上半分に光沢。 */
+  border: 2px solid #8ea6c8;
+  border-radius: 7px;
+  background: rgba(8, 10, 48, 0.82);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.6);
   overflow: hidden;
 }
 
 .battle-gauge > span {
-  display: block;
-  height: 100%;
-  background: #3cb371;
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  border-radius: 4px;
+}
+
+/* 減った分。中身より遅れて、ゆっくり縮む。 */
+.battle-gauge-trail {
+  background: #fff1c2;
+  opacity: 0.85;
+  transition: width 500ms ease-out 350ms;
+}
+
+.battle-gauge-fill {
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.08) 50%, rgba(0, 0, 0, 0.12) 51%, rgba(0, 0, 0, 0)),
+    linear-gradient(to bottom, var(--bar-hi), var(--bar-lo));
+  box-shadow: 0 0 6px var(--bar-lo);
   transition: width 200ms linear;
 }
 
@@ -2924,13 +3008,19 @@ body {
     -1px -1px 0 #2d2d2d;
 }
 
-/* 4 割を切ったら赤（旧作と同じ）。**色だけで危ないと分かる。** */
-.battle-gauge.low > span {
-  background: #dc143c;
+/* 4 割を切ったら赤（旧作と同じ）。**色だけで危ないと分かる。** ゆっくり明滅させる。 */
+.battle-gauge.low {
+  --bar-hi: #ff8a7a;
+  --bar-lo: #c8392b;
 }
 
-.battle-gauge.mp > span {
-  background: #4169e1;
+.battle-gauge.low .battle-gauge-fill {
+  animation: battle-bar-low 900ms ease-in-out infinite alternate;
+}
+
+.battle-gauge.mp {
+  --bar-hi: #8fb4ff;
+  --bar-lo: #3a5fd6;
 }
 
 /*
@@ -2957,6 +3047,7 @@ body {
 /* 狙っている敵は帯も明るく（絵が暗いときでも分かるように）。 */
 .battle-foe.picking .battle-bar {
   border-color: #ffd479;
+  box-shadow: 0 0 8px rgba(255, 212, 121, 0.7), 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 /*
@@ -3020,4 +3111,44 @@ body {
 .debug-battle:hover {
   background: rgba(0, 0, 0, 0.75);
   border-color: #ffd479;
+}
+
+/*
+ * スクロールバー（ゲーム画面の中の物すべて）。窓の色に合わせる——紺の溝に、枠と同じ水色のつまみ。
+ * Chrome / Electron は ::-webkit-scrollbar で形まで決める。決められないブラウザ（Firefox）は色だけ。
+ */
+.screen ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.screen ::-webkit-scrollbar-track {
+  border-radius: 6px;
+  background: rgba(8, 10, 48, 0.55);
+}
+
+.screen ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 6px;
+  background: #8ea6c8 padding-box;
+}
+
+.screen ::-webkit-scrollbar-thumb:hover,
+.screen ::-webkit-scrollbar-thumb:active {
+  background: #ffd479 padding-box;
+}
+
+.screen ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.screen ::-webkit-scrollbar-button {
+  display: none;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .screen * {
+    scrollbar-width: thin;
+    scrollbar-color: #8ea6c8 rgba(8, 10, 48, 0.55);
+  }
 }
