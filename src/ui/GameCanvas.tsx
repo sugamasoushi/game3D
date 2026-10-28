@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createGameView, type GameStatus, type GameView, type WalkDir } from '../game/GameView';
 import { START_MAP_ID, assetUrl, mapUrl } from '../game/assets';
-import { mapEntryOf, entryForFile, knownMapLabel, knownSaveMapId, loadMapIndex } from '../game/mapIndex';
+import { mapEntryOf, entryForFile, knownMapLabel, knownSaveMapId, loadMapIndex, mapLabel } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
 import { loadItemBook } from '../game/items';
@@ -120,14 +120,14 @@ export default function GameCanvas() {
   const bridgeRef = useRef<EventBridge | null>(null);
   const [notice, setNotice] = useState('');
   const [, refreshParty] = useState(0);
-  /** デバッグのマップ移動（GS-216）。台帳（`maps.json`）の番号とファイル名。開発モードのときだけ読む。 */
-  const [debugMaps, setDebugMaps] = useState<Array<{ key: string; file: string }>>([]);
+  /** デバッグのマップ移動（GS-216）。台帳（`maps.json`）の id と、セーブの一覧と同じ名前。開発モードのときだけ読む。 */
+  const [debugMaps, setDebugMaps] = useState<Array<{ key: string; label: string }>>([]);
   /** いま居るマップの番号。リストの選択に出す（`mapRef` は描き直しを起こさないので別に持つ）。 */
   const [debugMapAt, setDebugMapAt] = useState('');
   useEffect(() => {
     if (!DEV_MODE) return;
     void loadMapIndex().then((index) =>
-      setDebugMaps(Object.entries(index).map(([key, entry]) => ({ key, file: entry.file }))),
+      setDebugMaps(Object.keys(index).map((key) => ({ key, label: mapLabel(index, key) }))),
     );
   }, []);
   /** 遊んだ記録（GS-27）。セーブに入るものはこの 1 つに集める。 */
@@ -1625,9 +1625,9 @@ export default function GameCanvas() {
                   void goTo(key, { marker: '', at: null }, '');
                 }}
               >
-                {debugMaps.map(({ key, file }) => (
+                {debugMaps.map(({ key, label }) => (
                   <option key={key} value={key}>
-                    {file.replace(/\.json$/i, '')}
+                    {label}
                   </option>
                 ))}
               </select>
