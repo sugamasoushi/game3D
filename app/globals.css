@@ -52,7 +52,7 @@ body {
   overflow: hidden;
 }
 
-/* 論理画面は 1280×720 固定。狭い端末では外側だけを等比縮小する。 */
+/* 論理画面は 1280×720 固定。外側だけを画面に合わせて等比で縮小・拡大する。 */
 .screen {
   --message-background: rgba(25, 25, 112, 0.78);
   position: absolute;

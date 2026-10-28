@@ -43,3 +43,9 @@ Windows では `%APPDATA%/samplegame/` に保存され、EXE を置き換えて�
 Electron 内では PWA の Service Worker を登録しない。
 
 参考: https://www.electron.build/v26/docs/win/
+
+## フルスクリーン
+
+F11 か Alt+Enter、または設定画面の「全画面」で切り替える。
+最後の状態を `%APPDATA%/samplegame/window.json` に覚え、次の起動もその状態で開く。
+画面へは `electron/preload.cjs` がフルスクリーンの切り替えだけを渡す（Node の機能は渡さない）。
