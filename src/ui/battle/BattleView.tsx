@@ -281,6 +281,12 @@ function ListInfo({ text, label, value, short = false }: { text: string; label: 
   );
 }
 
+/** 帯の中身の幅。枠の内側（左右 2px の余白を除いた幅）に対する割合。 */
+function gaugeWidth(now: number, max: number): string {
+  const rate = max > 0 ? Math.max(0, Math.min(1, now / max)) : 0;
+  return `calc((100% - 4px) * ${rate})`;
+}
+
 /** かかっている状態異常の札。**戦闘の外（メニュー）と同じ物**を使う（GS-71）。 */
 function AilmentTags({ who }: { who: Fighter }) {
   return <AilTags ids={who.ailments} />;
@@ -1054,8 +1060,7 @@ export function BattleView({
                 // 残りで色を変える（多い・半分を切った・4 分の 1 を切った）。
                 const rate = Math.max(0, Math.min(1, hpOf(foe) / foe.stats.hp));
                 const level = rate > 0.5 ? 'high' : rate > 0.25 ? 'mid' : 'low';
-                // 枠の内側（左右 2px の余白を除いた幅）に対する割合。
-                const width = `calc((100% - 4px) * ${rate})`;
+                const width = gaugeWidth(hpOf(foe), foe.stats.hp);
                 return (
                   <div className="battle-bar" data-level={level}>
                     {/* 減った分。中身より少し遅れて縮み、削られた量を見せる。 */}
@@ -1168,7 +1173,9 @@ export function BattleView({
                   <dt>HP</dt>
                   <dd>
                     <span className={hpOf(who) / who.stats.hp <= 0.4 ? 'battle-gauge low' : 'battle-gauge'}>
-                      <span style={{ width: `${Math.max(0, (hpOf(who) / who.stats.hp) * 100)}%` }} />
+                      {/* 減った分は少し遅れて縮む（敵の帯と同じ）。 */}
+                      <span className="battle-gauge-trail" style={{ width: gaugeWidth(hpOf(who), who.stats.hp) }} />
+                      <span className="battle-gauge-fill" style={{ width: gaugeWidth(hpOf(who), who.stats.hp) }} />
                       <b>
                         {hpOf(who)} / {who.stats.hp}
                       </b>
@@ -1177,9 +1184,8 @@ export function BattleView({
                   <dt>MP</dt>
                   <dd>
                     <span className="battle-gauge mp">
-                      <span
-                        style={{ width: `${who.stats.mp > 0 ? Math.max(0, (mpOf(who) / who.stats.mp) * 100) : 0}%` }}
-                      />
+                      <span className="battle-gauge-trail" style={{ width: gaugeWidth(mpOf(who), who.stats.mp) }} />
+                      <span className="battle-gauge-fill" style={{ width: gaugeWidth(mpOf(who), who.stats.mp) }} />
                       <b>
                         {mpOf(who)} / {who.stats.mp}
                       </b>
