@@ -8,10 +8,12 @@
 import { useEffect, useState } from 'react';
 import {
   DEFAULT_OPTIONS,
+  FONT_LABELS,
   VIRTUAL_PAD_LABELS,
   options,
   setOptions,
   virtualPadShown,
+  type FontSetting,
   type Options,
   type VirtualPadSetting,
 } from '../../game/options';
@@ -158,6 +160,23 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
           <span className="menu-hint">
             {now.virtualPad === 'auto' ? `いまは ${virtualPadShown('auto') ? '表示' : '非表示'}` : ''}
           </span>
+        </li>
+        <li>
+          {/* 文字の形。変えたその場で画面の文字すべてが替わる。 */}
+          <span className="menu-label">文字</span>
+          <select
+            className="menu-pick"
+            value={now.font}
+            data-pick
+            onChange={(event) => change({ font: event.currentTarget.value as FontSetting })}
+          >
+            {(['mplus', 'pixel'] as FontSetting[]).map((key) => (
+              <option key={key} value={key}>
+                {FONT_LABELS[key]}
+              </option>
+            ))}
+          </select>
+          <span className="menu-hint" />
         </li>
         {canFull ? (
           <li>

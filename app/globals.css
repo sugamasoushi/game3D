@@ -1,10 +1,34 @@
 /* 画面の作りは、もとはゲームビュー（2026-10-06 に削除）と同じ（GS-09）。canvas 1 枚で、UI はその上に重ねる。 */
 
 /*
- * 文字は旧作と同じドット絵フォント（GS-20）。PixelMplus は **10px の絵**なので、
- * 20px（2 倍）で出すと 1 ドットが 2 画素にきっちり乗る。半端な大きさにすると滲む。
+ * 文字は **M PLUS 1**（既定）。設定の「文字」で旧作と同じドット絵フォント（PixelMplus10）に戻せる
+ * （`<html data-font="pixel">`。切り替えは `options.ts` の `applyFont`）。
+ * M PLUS 1 の使用条件は assets/fonts/MPLUS1-OFL.txt（SIL Open Font License）。
+ * PixelMplus は **10px の絵**なので、20px（2 倍）で出すと 1 ドットが 2 画素にきっちり乗る。半端な大きさにすると滲む。
  * 使ってよいかは assets/fonts/README.txt（M+ FONT LICENSE）。
  */
+@font-face {
+  font-family: 'M PLUS 1';
+  src: url('/assets/fonts/MPLUS1-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'M PLUS 1';
+  src: url('/assets/fonts/MPLUS1-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  --game-font: 'M PLUS 1', 'Noto Sans JP', system-ui, sans-serif;
+}
+
+:root[data-font='pixel'] {
+  --game-font: 'PixelMplus10', 'M PLUS 1', 'Noto Sans JP', system-ui, sans-serif;
+}
+
 @font-face {
   font-family: 'PixelMplus10';
   src: url('/assets/fonts/PixelMplus10-Regular.ttf') format('truetype');
@@ -31,7 +55,7 @@ body {
 
 body {
   /* 無い字（絵文字や難しい漢字）は後ろのフォントが受ける。 */
-  font-family: 'PixelMplus10', 'Noto Sans JP', system-ui, sans-serif;
+  font-family: var(--game-font);
   font-size: 13px;
   color: #e8edf2;
   background: #10151b;
@@ -397,8 +421,22 @@ body {
   background: rgba(142, 166, 200, 0.35);
 }
 
+/*
+ * 矢印の場所は**いつも空けておく**（戦闘のコマンドと同じ）。選んだ行だけ矢印を見せる——
+ * 選んだときに字を足すと、その行の文字が右へずれる。
+ */
+.choices button::before {
+  content: '▶';
+  display: inline-block;
+  width: 1.1em;
+  font-size: 0.85em;
+  color: #ffd479;
+  opacity: 0;
+}
+
 .choices button.on::before {
-  content: '▶ ';
+  opacity: 1;
+  animation: mep-cursor 500ms ease-in-out infinite alternate;
 }
 
 /* ── 立ち絵（GS-20）────────────────────────────────────────── */
@@ -1714,7 +1752,16 @@ body {
 .gmenu-body:has(.status) { overflow: hidden; }
 /* 絵を左に置くページ（ステータス・装備・スキル。GS-206）。絵の大きさと置き方はここ 1 か所。 */
 .menu-figured { display: flex; align-items: flex-start; gap: 24px; }
-.menu-figure { flex: none; width: 220px; max-height: 320px; object-fit: contain; }
+/* 絵の枠。幅と高さを決めて、右の項目と線で区切る。絵は枠の中で縦横比を保って上寄せ。 */
+.menu-figure-frame {
+  flex: none;
+  width: 220px;
+  height: 320px;
+  padding-right: 24px;
+  border-right: 1px solid rgba(142, 166, 200, 0.25);
+  box-sizing: content-box;
+}
+.menu-figure { display: block; width: 100%; height: 100%; object-fit: contain; object-position: top center; }
 .menu-figured-body { flex: 1; min-width: 0; }
 .status-columns { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .status-content .status-facts { grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; line-height: 1.25; margin: 0; }
@@ -1723,17 +1770,21 @@ body {
 .status-content .status-equipment { grid-template-columns: 2em minmax(0, 1fr); }
 
 .equip-current .equip-head { align-items: center; margin: 0 0 20px; }
+/* 着けている物の説明。名前の右の余白に置く（名前の欄は幅を決めて、行ごとに説明の頭をそろえる）。 */
+.equip-current .equip-desc { flex: 1; min-width: 0; font-size: 17px; line-height: 1.5; opacity: 0.8; overflow-wrap: anywhere; }
 .equip-current .equip-kind { min-width: 3em; }
-.equip-current .equip-now { flex: 1; }
+.equip-head .equip-slot-spacer { visibility: hidden; }
+.equip-current .equip-now { flex: none; width: 7em; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .equip-modal-backdrop { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(0,0,0,.65); }
 .equip-chooser { position: relative; width: min(760px, 92%); max-height: 84%; overflow: auto; padding: 24px; border: 2px solid #8ea6c8; border-radius: 10px; background: rgba(25,25,112,.98); box-shadow: 0 12px 40px rgba(0,0,0,.55); }
 .equip-chooser h2 { margin: 0 0 18px; font-size: 24px; }
 .equip-chooser .equip-list { max-height: 420px; overflow-y: auto; }
 .equip-chooser .equip-list button { text-align: left; }
 
-.gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(0, 6em) max-content minmax(0, 1fr); gap: 14px; align-items: baseline; padding: 10px 0; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
+.gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(0, 6em) max-content 3ch minmax(0, 1fr); gap: 14px; align-items: baseline; padding: 10px 0; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
 .skill-items .item-name { min-width: 0; overflow-wrap: anywhere; }
-.skill-items .item-count { width: auto; min-width: 5ch; text-align: right; font-size: 18px; }
+.skill-items .skill-mp-label { font-size: 15px; opacity: 0.7; }
+.skill-items .item-count { width: auto; min-width: 0; text-align: right; font-size: 18px; font-variant-numeric: tabular-nums; }
 .skill-items .item-text { margin-left: 10px; white-space: normal; overflow-wrap: anywhere; font-size: 17px; line-height: 1.6; }
 
 
@@ -2072,8 +2123,10 @@ body {
 
 .battle-party li {
   /* 1 人ぶんを等分する。**3 人でも収まる**幅で組んであるので、
-   * 2 人のときは間が空くだけで、並びは動かない。 */
-  flex: 1;
+   * 2 人のときは間が空くだけで、並びは動かない。
+   * **1 人のときも窓の半分まで**（2 人並べて 2 人目が居ない形）。端まで伸ばすと帯が長すぎる。 */
+  flex: 1 1 0;
+  max-width: calc((100% - 16px) / 2);
   min-width: 0;
   display: flex;
   align-items: center;
@@ -2086,10 +2139,10 @@ body {
   opacity: 0.4;
 }
 
-/* 顔は**素の大きさ**（100×100。旧作も等倍で置いていた）。 */
+/* 顔は 8 割（80×80）に縮め、空いた幅を帯に回す。 */
 .battle-party img {
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   flex: none;
   image-rendering: pixelated;
 }
@@ -2931,6 +2984,34 @@ body {
   opacity: 1;
 }
 
+/* レベルの欄。状態異常の札を右端に浮かせる土台。 */
+.battle-stats dd.battle-lv {
+  position: relative;
+}
+
+/*
+ * 状態異常の札は名前とレベルの横（右端は帯の右端＝この欄の右端）。
+ * レベルの行の下端から名前の行の上端まで（2 行ぶん）の真ん中に置く。行の高さは取らない。
+ */
+.battle-ail {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  height: calc(200% + 2px);
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.battle-ail .ail-tags {
+  margin-left: 0;
+}
+
+/* 帯と数の行。数は帯に重ねる（帯の幅は数の桁に左右されない）。 */
+.battle-stats dd.battle-meter {
+  position: relative;
+}
+
 .battle-stats dt {
   opacity: 0.7;
 }
@@ -2955,17 +3036,34 @@ body {
   --bar-lo: #23a35a;
   position: relative;
   display: block;
-  /* **枠の余りに合わせて伸びる**（3 人なら詰まり、2 人なら少し広い）。
-   * 伸ばしっぱなしにすると 1 人のときに帯だけが長くなるので上限を付ける。 */
-  width: auto;
-  max-width: 110px;
-  height: 24px;
-  /* 敵の帯と同じ作り。窓と同じ紺地に水色の縁、中身は上半分に光沢。 */
+  min-width: 0;
+  /* 敵の帯と同じ作り。数を重ねるので少し高く。空いた所は窓より暗くして、帯の長さが分かるようにする。 */
+  height: 18px;
   border: 2px solid #8ea6c8;
   border-radius: 7px;
-  background: rgba(8, 10, 48, 0.82);
+  background: rgba(0, 0, 0, 0.55);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.6);
   overflow: hidden;
+  box-sizing: content-box;
+  padding: 2px;
+}
+
+/* 数は帯の真ん中に重ねる。**縁を付ける**（旧作は 5px の縁）——帯の色の上でも読める。 */
+.battle-gauge-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  text-shadow:
+    1px 1px 0 #2d2d2d,
+    -1px 1px 0 #2d2d2d,
+    1px -1px 0 #2d2d2d,
+    -1px -1px 0 #2d2d2d;
 }
 
 .battle-gauge > span {
@@ -2989,23 +3087,6 @@ body {
     linear-gradient(to bottom, var(--bar-hi), var(--bar-lo));
   box-shadow: 0 0 6px var(--bar-lo);
   transition: width 200ms linear;
-}
-
-/* 数は帯の真ん中。**縁を付ける**（旧作は 5px の縁）——帯の色の上でも読める。 */
-.battle-gauge > b {
-  font-size: 15px;
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: normal;
-  font-variant-numeric: tabular-nums;
-  text-shadow:
-    1px 1px 0 #2d2d2d,
-    -1px 1px 0 #2d2d2d,
-    1px -1px 0 #2d2d2d,
-    -1px -1px 0 #2d2d2d;
 }
 
 /* 4 割を切ったら赤（旧作と同じ）。**色だけで危ないと分かる。** ゆっくり明滅させる。 */

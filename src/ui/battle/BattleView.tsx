@@ -916,6 +916,33 @@ export function BattleView({
       });
     };
 
+    /**
+     * 2 列の一覧（特技・魔法・道具・使う相手）。**見た目の並びどおりに動かす**——
+     * 左上が 1 番、右が 2 番、その下が 3 番…。↑↓ は同じ列の上下（端で同じ列の反対側へ回る）、
+     * ←→ は同じ行の隣（回り込まない）。押せない所は飛ばし、無ければ動かない。
+     */
+    const COLS = 2;
+    const gridStep = (dx: number, dy: number) => {
+      if (picks.length === 0) return;
+      setAt((now) => {
+        if (dx !== 0) {
+          const col = now % COLS;
+          const next = now + dx;
+          if (col + dx < 0 || col + dx >= COLS || next < 0 || next >= picks.length) return now;
+          return picks[next]?.disabled ? now : next;
+        }
+        // 同じ列の番号だけを並べて、その中で回す。
+        const column = picks.map((_, index) => index).filter((index) => index % COLS === now % COLS);
+        const at0 = column.indexOf(now);
+        for (let i = 1; i <= column.length; i += 1) {
+          const next = column[(at0 + dy * i + column.length * i) % column.length]!;
+          if (!picks[next]?.disabled) return next;
+        }
+        return now;
+      });
+    };
+    const grid = stage.kind === 'skills' || stage.kind === 'items' || stage.kind === 'friend';
+
     const onKey = (event: KeyboardEvent) => {
       // **戦闘中はキーを通さない。** 通すと後ろで人が歩く（GS-59 と同じ穴）。
       event.preventDefault();
@@ -926,7 +953,12 @@ export function BattleView({
         back();
         return;
       }
-      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') step(1);
+      if (grid && event.key.startsWith('Arrow')) {
+        if (event.key === 'ArrowDown') gridStep(0, 1);
+        else if (event.key === 'ArrowUp') gridStep(0, -1);
+        else if (event.key === 'ArrowRight') gridStep(1, 0);
+        else if (event.key === 'ArrowLeft') gridStep(-1, 0);
+      } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') step(1);
       else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') step(-1);
       else if (event.key === 'Enter' || event.key === ' ') {
         // 文を読んでいる途中なら飛ばす。手を選んでいるなら決める。
@@ -940,7 +972,7 @@ export function BattleView({
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [back, picks, at, backdrop]);
+  }, [back, picks, at, backdrop, stage.kind]);
 
   // 舞台の板へ見せ方を渡す（GS-87）。点滅・仰け反り・攻めかかり・選ばれている・倒れた。
   // 描き直すたびに渡す（軽い。板の側は立ち上がりだけを見る）。
@@ -1161,38 +1193,46 @@ export function BattleView({
                   </div>
                 ) : null}
                 {/*
-                 * 数は**帯の上に重ねる**（GS-79）。旧作も帯と数を同じ場所に描いていた。
-                 * 横に並べると 1 人ぶんの幅が伸びて、仲間が増えたときに収まらない。
+                 * 帯は**敵の帯と同じ作り**。数は帯に重ねる。帯の空いた所は窓より暗くして、
+                 * 中身が減ったとき帯ごと縮んだように見えないようにする。
                  * HP は**4 割を切ると赤**（旧作と同じ）——数を読む前に危ないと分かる。
                  */}
                 <dl className="battle-stats">
                   {/* 名前は**レベルの上**（GS-84）。顔だけだと、仲間が増えたとき誰なのか分かりにくい。 */}
                   <dt className="battle-name">{who.name}</dt>
                   <dt>Lv</dt>
-                  <dd>{who.stats.level}</dd>
+                  <dd className="battle-lv">
+                    {who.stats.level}
+                    {/*
+                     * 状態異常の札は**名前とレベルの横**。右端を帯の右端にそろえ、2 行の真ん中に置く。
+                     * 浮かせて置くので、札が出ても帯の幅は変わらない。
+                     */}
+                    <span className="battle-ail">
+                      <AilmentTags who={who} />
+                    </span>
+                  </dd>
                   <dt>HP</dt>
-                  <dd>
+                  <dd className="battle-meter">
                     <span className={hpOf(who) / who.stats.hp <= 0.4 ? 'battle-gauge low' : 'battle-gauge'}>
                       {/* 減った分は少し遅れて縮む（敵の帯と同じ）。 */}
                       <span className="battle-gauge-trail" style={{ width: gaugeWidth(hpOf(who), who.stats.hp) }} />
                       <span className="battle-gauge-fill" style={{ width: gaugeWidth(hpOf(who), who.stats.hp) }} />
-                      <b>
-                        {hpOf(who)} / {who.stats.hp}
-                      </b>
                     </span>
+                    <b className="battle-gauge-num">
+                      {hpOf(who)} / {who.stats.hp}
+                    </b>
                   </dd>
                   <dt>MP</dt>
-                  <dd>
+                  <dd className="battle-meter">
                     <span className="battle-gauge mp">
                       <span className="battle-gauge-trail" style={{ width: gaugeWidth(mpOf(who), who.stats.mp) }} />
                       <span className="battle-gauge-fill" style={{ width: gaugeWidth(mpOf(who), who.stats.mp) }} />
-                      <b>
-                        {mpOf(who)} / {who.stats.mp}
-                      </b>
                     </span>
+                    <b className="battle-gauge-num">
+                      {mpOf(who)} / {who.stats.mp}
+                    </b>
                   </dd>
                 </dl>
-                <AilmentTags who={who} />
               </li>
             );
           })}

@@ -145,6 +145,8 @@ export default function GameCanvas() {
   /** イベントの最中か。デバッグの戦闘ボタンはこのあいだ出さない（GS-91）。 */
   const uiBusy = useUi((s) => s.busy);
   const settings = useUi((s) => s.settings);
+  /** 画面に出している倍率（1280×720 の何倍か）。3D の描く細かさに渡す。 */
+  const displayScaleRef = useRef(1);
 
   /**
    * 1280×720 の論理座標は変えず、端末に収まる倍率だけを外側へ適用する。
@@ -165,6 +167,9 @@ export default function GameCanvas() {
       const fits = Math.min(width / 1280, height / 720);
       const scale = full || fullMedia?.matches ? fits : Math.min(1, fits);
       screen.style.setProperty('--game-scale', String(scale));
+      // 3D の描く細かさも合わせる（全画面で拡大しているときだけ上がる）。
+      displayScaleRef.current = scale;
+      viewRef.current?.setDisplayScale(scale);
     };
     fit();
     let alive = true;
@@ -861,6 +866,7 @@ export default function GameCanvas() {
       effectState: (name, id) => stateRef.current.self.get(mapEffectKey(mapKey(name), id)),
     });
     viewRef.current = view;
+    view.setDisplayScale(displayScaleRef.current);
     canvas.focus();
     // マップはタイトルで「はじめから／つづきから」を選んでから読む（GS-27）。
     // 端末に覚えている設定（GS-32）。文字送りと音量は起動のたびに読み直す。

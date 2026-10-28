@@ -73,7 +73,8 @@ export function EquipPage({
 
   return (
     <div className="menu-figured equip" data-tick={tick} ref={pageRef}>
-      {image ? <img className="menu-figure" src={image} alt="" /> : null}
+      {/* 絵の場所は**いつも同じ幅と高さ**で取る。絵が無い・細い人でも、右の項目が左へ寄らない。 */}
+      <div className="menu-figure-frame">{image ? <img className="menu-figure" src={image} alt="" /> : null}</div>
       <div className="menu-figured-body equip-current">
         {slots.map((slot) => {
           const now = member.equip[slot];
@@ -82,6 +83,8 @@ export function EquipPage({
               <p className="equip-head">
                 <span className="equip-kind">{SLOT_LABEL[slot] ?? slot}</span>
                 <span className="equip-now">{now ? itemName(now) : '—'}</span>
+                {/* 着けている物の説明（持ち物の台帳 `items.json` の `text`）。名前の右の余白に置く。 */}
+                <span className="equip-desc">{now ? itemText(now) : ''}</span>
                 <button type="button" data-pick data-change={slot} onClick={() => setChoosingSlot(slot)}>変更</button>
                 {now ? (
                   <button
@@ -95,7 +98,13 @@ export function EquipPage({
                   >
                     外す
                   </button>
-                ) : null}
+                ) : (
+                  // 着けていない欄も「外す」の場所を空けておく（「変更」の位置を上下の行でそろえる）。
+                  // 押せない・選べない（`disabled` はカーソルの行き先から外れる）。
+                  <button type="button" className="equip-slot-spacer" disabled aria-hidden tabIndex={-1}>
+                    外す
+                  </button>
+                )}
               </p>
             </div>
           );
