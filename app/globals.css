@@ -1388,7 +1388,8 @@ body {
  */
 .gmenu-body .item-row {
   display: grid;
-  grid-template-columns: minmax(0, 7em) minmax(3ch, max-content) minmax(0, 1fr);
+  /* 「名前：個数」と説明の 2 列。 */
+  grid-template-columns: minmax(0, 10em) minmax(0, 1fr);
   align-items: baseline;
   gap: 14px;
   width: 100%;
@@ -1401,7 +1402,7 @@ body {
 .gmenu-body .item-row[aria-disabled='true'] > .item-name,
 .gmenu-body .item-row[aria-disabled='true'] > .item-count { opacity: 0.45; }
 .item-list .item-name { min-width: 0; overflow-wrap: anywhere; }
-.item-list .item-count { width: auto; }
+.item-list .item-count { width: auto; font-variant-numeric: tabular-nums; }
 .item-list .item-text { margin-left: 18px; font-size: 17px; white-space: normal; overflow-wrap: anywhere; line-height: 1.6; }
 
 /*
@@ -2667,6 +2668,9 @@ body {
  */
 .battle-list {
   position: absolute;
+  /* 中の分けた窓を縦いっぱいに伸ばす（右の説明の数を下端にそろえるため）。 */
+  display: flex;
+  flex-direction: column;
   left: 240px;
   right: 240px;
   top: var(--battle-top);
@@ -2702,6 +2706,8 @@ body {
 
 /* 特技・魔法・道具の窓は 3:1 に分ける。左が一覧、右が選んでいる物の説明と数。 */
 .battle-list-split {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
   gap: 0 16px;
@@ -3029,4 +3035,44 @@ body {
 .debug-battle:hover {
   background: rgba(0, 0, 0, 0.75);
   border-color: #ffd479;
+}
+
+/*
+ * スクロールバー（ゲーム画面の中の物すべて）。窓の色に合わせる——紺の溝に、枠と同じ水色のつまみ。
+ * Chrome / Electron は ::-webkit-scrollbar で形まで決める。決められないブラウザ（Firefox）は色だけ。
+ */
+.screen ::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.screen ::-webkit-scrollbar-track {
+  border-radius: 6px;
+  background: rgba(8, 10, 48, 0.55);
+}
+
+.screen ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 6px;
+  background: #8ea6c8 padding-box;
+}
+
+.screen ::-webkit-scrollbar-thumb:hover,
+.screen ::-webkit-scrollbar-thumb:active {
+  background: #ffd479 padding-box;
+}
+
+.screen ::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.screen ::-webkit-scrollbar-button {
+  display: none;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .screen * {
+    scrollbar-width: thin;
+    scrollbar-color: #8ea6c8 rgba(8, 10, 48, 0.55);
+  }
 }
