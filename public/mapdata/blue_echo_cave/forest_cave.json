@@ -2488,20 +2488,21 @@
   "editor": {
     "camera": {
       "target": [
-        -2.538617217390235,
-        5.255300859809074,
-        2.867180452726874
+        -8.154591845621937,
+        3.103202604708663,
+        2.823409919165404
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 17.605010192161803,
+      "distance": 10.395582468369623,
       "orthographic": false
     },
     "height": 0,
     "activeLayer": "objects",
     "brush": {
-      "shape": "wall",
-      "rotation": 1,
+      "shape": "floor",
+      "rotation": 0,
+      "chipTurn": 0,
       "color": "#c45c5c",
       "tileset": "_tileb_",
       "tile": 145,
@@ -22129,6 +22130,82 @@
             [
               -15.5,
               -4.5
+            ]
+          ]
+        },
+        {
+          "id": "obj_2",
+          "name": "kowaboa",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Character",
+              "type": "string",
+              "value": "kowaboa"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "kowaboa"
+            },
+            {
+              "name": "EnemyData",
+              "type": "string",
+              "value": "enemy04"
+            },
+            {
+              "name": "Face",
+              "type": "string",
+              "value": "down"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              -7.5,
+              -2.5
+            ]
+          ]
+        },
+        {
+          "id": "obj_3",
+          "name": "shikadigo",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Character",
+              "type": "string",
+              "value": "shikadigo"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "shikadigo"
+            },
+            {
+              "name": "EnemyData",
+              "type": "string",
+              "value": "enemy05"
+            },
+            {
+              "name": "Face",
+              "type": "string",
+              "value": "down"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              8.5,
+              -3.5
             ]
           ]
         }

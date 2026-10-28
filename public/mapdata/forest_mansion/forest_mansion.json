@@ -7530,37 +7530,6 @@
         }
       },
       {
-        "id": "p_water_and_fire_31_wall_o0_0_32",
-        "name": "water_and_fire #31 アニメ",
-        "shape": "wall",
-        "mat": "mat_water_and_fire",
-        "ts": "water_and_fire",
-        "tile": 31,
-        "anim": {
-          "frames": [
-            31,
-            32,
-            33,
-            34
-          ],
-          "durations": [
-            125,
-            125,
-            125,
-            125
-          ],
-          "mode": "loop",
-          "fps": 8,
-          "loop": true
-        },
-        "base": "p_water_and_fire_31_wall",
-        "offset": [
-          0,
-          0,
-          32
-        ]
-      },
-      {
         "id": "p_trees-green_379_wall_o0_-5_0",
         "name": "trees-green #379 wall",
         "shape": "wall",
@@ -8413,113 +8382,6 @@
     "cloudShadowSpeed": 0.021,
     "pointShadowShift": 6
   },
-  "pointLights": [
-    {
-      "id": "光源レイヤー_1",
-      "name": "光源レイヤー 1",
-      "kind": "group",
-      "visible": true,
-      "guides": true,
-      "x": 0,
-      "y": 0,
-      "z": 0,
-      "color": "#ffd9a0",
-      "intensity": 0.7,
-      "range": 6
-    },
-    {
-      "id": "light_1",
-      "name": "光源 1",
-      "kind": "light",
-      "parent": "光源レイヤー_1",
-      "visible": true,
-      "guides": true,
-      "x": 5.53125,
-      "y": 2.59375,
-      "z": 7.21875,
-      "color": "#ffd9a0",
-      "intensity": 5,
-      "range": 3.1875,
-      "yaw": 0,
-      "pitch": 0,
-      "cone": 40,
-      "width": 2,
-      "height": 1.5,
-      "bulb": 0,
-      "bulbGain": 1,
-      "pulseSpeed": 1,
-      "pulseAmount": 0.45
-    },
-    {
-      "id": "light_2",
-      "name": "光源 1 のコピー",
-      "kind": "light",
-      "parent": "光源レイヤー_1",
-      "visible": true,
-      "guides": true,
-      "x": 9.53125,
-      "y": 2.59375,
-      "z": 7.375,
-      "color": "#ffd9a0",
-      "intensity": 5,
-      "range": 3.1875,
-      "yaw": 0,
-      "pitch": 0,
-      "cone": 40,
-      "width": 2,
-      "height": 1.5,
-      "bulb": 0,
-      "bulbGain": 1,
-      "pulseSpeed": 1,
-      "pulseAmount": 0.45
-    },
-    {
-      "id": "light_3",
-      "name": "光源 1 のコピー 2",
-      "kind": "light",
-      "parent": "光源レイヤー_1",
-      "visible": true,
-      "guides": true,
-      "x": 14.5,
-      "y": 2.59375,
-      "z": 7.375,
-      "color": "#ffd9a0",
-      "intensity": 5,
-      "range": 3.1875,
-      "yaw": 0,
-      "pitch": 0,
-      "cone": 40,
-      "width": 2,
-      "height": 1.5,
-      "bulb": 0,
-      "bulbGain": 1,
-      "pulseSpeed": 1,
-      "pulseAmount": 0.45
-    },
-    {
-      "id": "light_4",
-      "name": "光源 1 のコピー 3",
-      "kind": "light",
-      "parent": "光源レイヤー_1",
-      "visible": true,
-      "guides": true,
-      "x": 18.4375,
-      "y": 2.59375,
-      "z": 7.375,
-      "color": "#ffd9a0",
-      "intensity": 5,
-      "range": 3.1875,
-      "yaw": 0,
-      "pitch": 0,
-      "cone": 40,
-      "width": 2,
-      "height": 1.5,
-      "bulb": 0,
-      "bulbGain": 1,
-      "pulseSpeed": 1,
-      "pulseAmount": 0.45
-    }
-  ],
   "lightingPresets": [
     {
       "id": "morning",
@@ -8659,20 +8521,20 @@
   "editor": {
     "camera": {
       "target": [
-        12.421332462742049,
-        2.382373471621811,
-        8.56257510250158
+        -7.505176634893609,
+        2.527056474078578,
+        2.971903887448307
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 5.956334135068255,
+      "distance": 6.318065961149528,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "タイルマップレイヤー_15",
+    "activeLayer": "オブジェクトレイヤー_3",
     "brush": {
-      "shape": "wall",
-      "rotation": 1,
+      "shape": "floor",
+      "rotation": 0,
       "chipTurn": 0,
       "color": "#c45c5c",
       "tileset": "terrain-v7",
@@ -8750,13 +8612,7 @@
       "parent": "",
       "visible": true,
       "opacity": 1,
-      "properties": [
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
+      "properties": [],
       "batches": [
         {
           "id": "ground-floor-0",
@@ -28312,13 +28168,7 @@
       "visible": true,
       "opacity": 1,
       "overlay": true,
-      "properties": [
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
+      "properties": [],
       "batches": [
         {
           "id": "タイルマップレイヤー_7-floor-0",
@@ -32170,9 +32020,20 @@
               0
             ]
           }
-        },
+        }
+      ]
+    },
+    {
+      "id": "地面2_垂直",
+      "name": "地面2_垂直",
+      "kind": "tile",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
         {
-          "id": "タイルマップレイヤー_7-wall-2",
+          "id": "地面2_垂直-wall-0",
           "shape": "wall",
           "mat": "solid",
           "ts": "",
@@ -39464,82 +39325,6 @@
       "opacity": 1,
       "properties": [],
       "batches": []
-    },
-    {
-      "id": "decoration",
-      "name": "装飾",
-      "kind": "tile",
-      "parent": "",
-      "visible": true,
-      "opacity": 1,
-      "overlay": true,
-      "properties": [
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "decoration-wall-0",
-          "shape": "wall",
-          "mat": "mat_water_and_fire",
-          "ts": "water_and_fire",
-          "mode": "instanced",
-          "anim": {
-            "frames": [
-              31,
-              32,
-              33,
-              34
-            ],
-            "durations": [
-              125,
-              125,
-              125,
-              125
-            ],
-            "mode": "loop",
-            "fps": 8,
-            "loop": true
-          },
-          "protos": [
-            "p_water_and_fire_31_wall_o0_0_32"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              5,
-              2,
-              7,
-              9,
-              2,
-              7,
-              14,
-              2,
-              7,
-              18,
-              2,
-              7
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ]
-          }
-        }
-      ]
     },
     {
       "id": "森の城_12_2",
@@ -64873,6 +64658,39 @@
               1.5
             ]
           ]
+        },
+        {
+          "id": "obj_7",
+          "name": "スケラビ",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Character",
+              "type": "string",
+              "value": "sukerabi"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "sukerabi"
+            },
+            {
+              "name": "EnemyData",
+              "type": "string",
+              "value": "enemy06"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              -11.5,
+              13.5
+            ]
+          ]
         }
       ]
     },
@@ -65103,22 +64921,6 @@
           ]
         }
       ]
-    },
-    {
-      "id": "光源レイヤー_1",
-      "name": "光源レイヤー 1",
-      "kind": "light",
-      "parent": "",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "ShowIn",
-          "type": "string",
-          "value": "morning,day,evening,night"
-        }
-      ],
-      "batches": []
     },
     {
       "id": "オブジェクトレイヤー_5",
@@ -66150,8 +65952,8 @@
     }
   ],
   "stats": {
-    "tiles": 9932,
-    "batches": 67,
-    "drawCalls": 67
+    "tiles": 9928,
+    "batches": 66,
+    "drawCalls": 66
   }
 }

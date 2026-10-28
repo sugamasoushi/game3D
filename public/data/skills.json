@@ -87,17 +87,16 @@
       "se": "slash"
     },
     "magic04": {
-      "name": "やすらぎ",
+      "name": "ヒール",
       "kind": "魔法",
       "type": "cure",
-      "text": "ざわめきを しずめる",
+      "text": "傷が治っていく",
       "mp": 8,
       "value": 0,
       "cure": [
-        "poison",
-        "sleep"
+        "poison"
       ],
-      "se": "fire"
+      "se": "levelup"
     }
   }
 }

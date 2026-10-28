@@ -3798,20 +3798,21 @@
   "editor": {
     "camera": {
       "target": [
-        -2.3070593584224923,
-        0.03568569975967475,
-        -2.7328360233729927
+        -5.055639732232393,
+        0.015908826500241394,
+        -4.121571842404508
       ],
       "yaw": 0,
       "pitch": -44,
-      "distance": 17.51970722417442,
+      "distance": 7.810354972479055,
       "orthographic": false
     },
-    "activeLayer": "レイヤー_4",
+    "activeLayer": "オブジェクトレイヤー_5",
     "height": 0,
     "brush": {
-      "shape": "wall",
+      "shape": "floor",
       "rotation": 0,
+      "chipTurn": 0,
       "color": "#d5dbe0",
       "tileset": "interior",
       "tile": 345,
@@ -8216,6 +8217,42 @@
             [
               6.072999398642578,
               -4.467976561234872
+            ]
+          ]
+        },
+        {
+          "id": "obj_5",
+          "name": "click0003",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "click0003"
+            }
+          ],
+          "space": "solid",
+          "y": 0.328125,
+          "height": 1,
+          "points": [
+            [
+              -6,
+              -2.8898252494065186
+            ],
+            [
+              -5.1708814050610705,
+              -2.8898252494065186
+            ],
+            [
+              -5.1708814050610705,
+              -1.8239121510701706
+            ],
+            [
+              -6,
+              -1.8239121510701706
             ]
           ]
         },

@@ -68,9 +68,10 @@
       "kind": "scenario",
       "trigger": "touch",
       "commands": [
+        { "type": "time", "to": "morning", "clock": "run" },
         {
           "type": "scroll",
-          "speed": 800,
+          "speed": 1000,
           "dim": 0.5,
           "lines": [
             "昔々（？）",
@@ -201,7 +202,7 @@
         {
           "type": "message",
           "talk": [
-            { "who": "grandpa", "lines": ["帰ってきたと思ったら", "シュランを連れてくるとはたまげたわい"] },
+            { "who": "grandpa", "lines": ["帰ってきたと思ったら", "ナーガを連れてくるとはたまげたわい"] },
             { "who": "grandpa", "lines": ["それにしてもよく食べるのぉ", "よほど腹減ってたんじゃな"] },
             { "who": "lamy", "lines": ["もぐも・・・鶏がしゃべった！？"] },
             { "who": "meina", "lines": ["あんたも蛇なのにしゃべってるじゃん？"] },
@@ -291,7 +292,7 @@
           "lead": 5,
           "hold": 4000,
           "lines": [
-            "シュラン娘ことラミィを仲間にしたメイナ。",
+            "ナーガ娘ことラミィを仲間にしたメイナ。",
             "ついに冒険に出る事を決意した。",
             "冒険の目的とは？",
             "",
@@ -347,7 +348,7 @@
           "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
           "else": [
             { "type": "playSe", "key": "chest" },
-            { "type": "getItem", "id": "おにぎり", "count": 1 },
+            { "type": "getItem", "id": "やくそう", "count": 1 },
             { "type": "layer", "id": "宝箱_家1_閉", "shown": false },
             { "type": "layer", "id": "宝箱_家1_開", "shown": true },
             { "type": "setSelfSwitch", "key": "開けた", "value": true },
@@ -372,6 +373,28 @@
             { "type": "layer", "id": "宝箱_家2_開", "shown": true },
             { "type": "setSelfSwitch", "key": "開けた", "value": true },
             { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！！！"] }] }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "click0003",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "if",
+          "when": { "self": "A" },
+          "then": [],
+          "else": [
+            { "type": "getItem", "id": "おにぎり", "count": 1 },
+            { "type": "message", "talk": [{ "lines": ["おにぎりを手に入れた"] }], "style": "window" },
+            {
+              "type": "message",
+              "talk": [{ "who": "meina", "lines": ["小腹がすいたら食べよう"], "at": "player" }],
+              "style": "bubble"
+            },
+            { "type": "setSelfSwitch", "key": "A", "value": true }
           ]
         }
       ]

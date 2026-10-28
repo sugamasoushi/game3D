@@ -32,17 +32,6 @@
           "range": 2
         }
       },
-      "slime2": {
-        "wander": {
-          "range": 2
-        },
-        "companions": [
-          {
-            "enemy": "enemy01",
-            "chance": 0.5
-          }
-        ]
-      },
       "BOSS_GreatBear": {
         "showWhen": [
           {
@@ -58,6 +47,15 @@
           "range": 4,
           "step": 2
         }
+      },
+      "sukowaimu": {
+        "wander": {},
+        "companions": [
+          {
+            "enemy": "enemy01",
+            "chance": 1
+          }
+        ]
       }
     },
     "forest_cave": {
@@ -65,6 +63,24 @@
         "wander": {
           "range": 2
         }
+      },
+      "kowaboa": {
+        "wander": {},
+        "companions": [
+          {
+            "enemy": "enemy04",
+            "chance": 0.5
+          }
+        ]
+      },
+      "shikadigo": {
+        "wander": {},
+        "companions": [
+          {
+            "enemy": "enemy06",
+            "chance": 0.5
+          }
+        ]
       }
     },
     "forest_mansion": {
@@ -90,6 +106,18 @@
         "wander": {
           "range": 2
         }
+      },
+      "sukerabi": {
+        "wander": {}
+      },
+      "sukowaimu": {
+        "wander": {},
+        "companions": [
+          {
+            "enemy": "enemy01",
+            "chance": 0.9
+          }
+        ]
       }
     },
     "home": {

@@ -11145,25 +11145,25 @@
   "editor": {
     "camera": {
       "target": [
-        -0.19091684467005443,
-        13.213850631192168,
-        9.803946785367415
+        5.227485200417089,
+        13.101712124880248,
+        2.69988295499806
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 9.135172474836418,
+      "distance": 9.043820750088056,
       "orthographic": false
     },
-    "activeLayer": "オブジェクトレイヤー_1",
+    "activeLayer": "壁_のコピー",
     "height": 2,
     "brush": {
-      "shape": "floor",
+      "shape": "billboard_fixed",
       "rotation": 0,
       "chipTurn": 0,
       "color": "#c45c5c",
-      "tileset": "terrain_mountain_summer_",
-      "tile": 50,
-      "paint": "color",
+      "tileset": "chests",
+      "tile": 0,
+      "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
@@ -26745,6 +26745,11 @@
           "name": "Shade",
           "type": "boolean",
           "value": true
+        },
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "block"
         }
       ],
       "batches": [
@@ -29858,11 +29863,6 @@
           "name": "Shade",
           "type": "boolean",
           "value": true
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
         }
       ],
       "batches": [
@@ -38321,27 +38321,6 @@
           }
         }
       ]
-    },
-    {
-      "id": "タイルマップレイヤー_14",
-      "name": "進入禁止",
-      "kind": "tile",
-      "parent": "",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "block"
-        },
-        {
-          "name": "Hidden",
-          "type": "boolean",
-          "value": true
-        }
-      ],
-      "batches": []
     }
   ],
   "stats": {

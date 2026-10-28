@@ -14,8 +14,8 @@ import { loadSpriteSheets, sheetUrl, spriteSheet, type SpriteSheetDef } from '..
 import type { SkillDef, Stats } from './rules';
 import { applyBattleSettings } from './settings';
 
-/** 立ち絵の置き場所。人の台帳（`characters.ts`）と同じ棚に敵も居る。 */
-const STAND_DIR = 'assets/img/CharaStand';
+/** 敵の絵の置き場所（2026-10-27）。人の立ち絵（`CharaStand`）とは棚を分けた。 */
+const ENEMY_DIR = 'assets/img/Enemy';
 
 /** 戦闘の背景の置き場所（GS-79）。 */
 const BACK_DIR = 'assets/img/background';
@@ -57,7 +57,7 @@ export interface EnemySkillRef {
 /** 敵 1 体ぶん。数値は `Stats` と同じ綴りにしてある——そのまま戦えるように。 */
 export interface EnemyDef extends Stats {
   name: string;
-  /** 絵の名前（拡張子なし）。無ければ絵なしで出す。 */
+  /** 絵の名前（`assets/img/Enemy` からの道。拡張子なし）。無ければ絵なしで出す。 */
   image?: string;
   /** 戦闘の絵の大きさの倍率（2026-10-17）。書かなければ 1（絵の高さから決めた大きさのまま）。 */
   scale?: number;
@@ -388,7 +388,7 @@ export function previewEffects(next: Record<string, EffectEntry>): void {
 /** 敵の絵の URL。無ければ null。 */
 export function enemyImage(id: string): string | null {
   const image = enemies[id]?.image;
-  return image ? assetUrl(`${STAND_DIR}/${image}.png`) : null;
+  return image ? assetUrl(`${ENEMY_DIR}/${image}.png`) : null;
 }
 
 /** 敵の絵の大きさの倍率（2026-10-17）。書かない・0 以下・数でない値は 1。 */

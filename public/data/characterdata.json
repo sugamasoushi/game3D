@@ -32,7 +32,7 @@
     "talk": "EventTalkImage002"
   },
   "lamyNPC": {
-    "name": "シュラン娘",
+    "name": "ナーガ娘",
     "kind": "npc",
     "sheet": "PlayerParty/lamy_01.png",
     "icon": "Icon_20240908",
@@ -158,5 +158,25 @@
     "name": "村長",
     "kind": "npc",
     "sheet": "elderly_village_chief_01.png"
+  },
+  "kowaboa": {
+    "name": "コワボア",
+    "kind": "npc",
+    "sheet": "NormalEnemy/コワボア.png"
+  },
+  "shikadigo": {
+    "name": "シカディゴ",
+    "kind": "npc",
+    "sheet": "NormalEnemy/シカディゴ.png"
+  },
+  "sukerabi": {
+    "name": "スケラビ",
+    "kind": "npc",
+    "sheet": "NormalEnemy/スケラビ.png"
+  },
+  "sukowaimu": {
+    "name": "スコワイム",
+    "kind": "npc",
+    "sheet": "NormalEnemy/スコワイム.png"
   }
 }

@@ -1,8 +1,8 @@
 {
-  "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/CharaStand の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は 190px で 1 マス）に掛ける）。hp/mp は満タンの値。倒すと exp と gold が入る。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
+  "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/Enemy の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は 190px で 1 マス）に掛ける）。hp/mp は満タンの値。倒すと exp と gold が入る。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
   "enemies": {
     "enemy00": {
-      "name": "シュラン娘",
+      "name": "ナーガ娘",
       "image": "enemy00",
       "level": 1,
       "hp": 40,
@@ -20,7 +20,7 @@
       ]
     },
     "enemy01": {
-      "name": "シュラン",
+      "name": "ナーガ",
       "image": "enemy01",
       "level": 2,
       "hp": 50,
@@ -46,7 +46,7 @@
       ]
     },
     "enemy02": {
-      "name": "いらすとやのスライム",
+      "name": "スライム",
       "image": "enemy02",
       "level": 1,
       "hp": 30,
@@ -62,7 +62,7 @@
       "image": "enemy03",
       "level": 1,
       "hp": 90,
-      "mp": 20,
+      "mp": 0,
       "attack": 45,
       "guard": 10,
       "speed": 5,
@@ -74,6 +74,54 @@
           "chance": 0.35
         }
       ]
+    },
+    "enemy04": {
+      "name": "コワボア",
+      "image": "コワボア",
+      "level": 1,
+      "hp": 50,
+      "mp": 0,
+      "attack": 30,
+      "guard": 5,
+      "speed": 5,
+      "exp": 5,
+      "gold": 0
+    },
+    "enemy05": {
+      "name": "シカディゴ",
+      "image": "シカディゴ",
+      "level": 1,
+      "hp": 10,
+      "mp": 0,
+      "attack": 1,
+      "guard": 5,
+      "speed": 10,
+      "exp": 5,
+      "gold": 0
+    },
+    "enemy06": {
+      "name": "スケラビ",
+      "image": "スケラビ",
+      "level": 1,
+      "hp": 40,
+      "mp": 0,
+      "attack": 10,
+      "guard": 3,
+      "speed": 1,
+      "exp": 0,
+      "gold": 0
+    },
+    "enemy07": {
+      "name": "スコワイム",
+      "image": "スコワイム",
+      "level": 1,
+      "hp": 60,
+      "mp": 0,
+      "attack": 20,
+      "guard": 10,
+      "speed": 1,
+      "exp": 5,
+      "gold": 0
     }
   }
 }

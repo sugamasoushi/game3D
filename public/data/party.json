@@ -14,7 +14,8 @@
       "skills": [
         "special01",
         "special02",
-        "magic01"
+        "magic01",
+        "magic04"
       ],
       "equip": {
         "weapon": "短剣",
@@ -36,9 +37,6 @@
         ],
         "7": [
           "magic03"
-        ],
-        "9": [
-          "magic04"
         ]
       }
     },
@@ -68,8 +66,7 @@
       "guard": 4,
       "speed": 12,
       "skills": [
-        "magic02",
-        "magic04"
+        "magic02"
       ],
       "equip": {
         "weapon": "木のぼう"
@@ -82,6 +79,9 @@
         "speed": 1
       },
       "learn": {
+        "3": [
+          "special03"
+        ],
         "6": [
           "magic03"
         ]
