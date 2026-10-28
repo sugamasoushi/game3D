@@ -56,7 +56,7 @@ import { PwaInstall } from './PwaInstall';
 import { fromSave, newState, resetState, restoreState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
 import { loadStoryBook, storyMeets, storyOrder } from '../game/story';
 import { advanceClock, loadTimeSettings, timeSettings } from '../game/timeClock';
-import { installFullscreenShortcut } from '../game/fullscreen';
+import { installFullscreenShortcut, isFullscreen, onFullscreenChange } from '../game/fullscreen';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
 import { canWalk, useUi } from './store';
 import { clearComic, useComic } from './comic';
@@ -146,9 +146,12 @@ export default function GameCanvas() {
 
   /**
    * 1280×720 の論理座標は変えず、端末に収まる倍率だけを外側へ適用する。
-   * **広い画面では拡大もする**（フルスクリーンで画面いっぱいに出すため）。縦横比は保ち、余りは黒い帯。
+   * **拡大するのはフルスクリーンのときだけ**（縦横比は保ち、余りは黒い帯）。ふだんは 1280×720 を基準に作っているので
+   * 等倍のまま出し、狭いときだけ縮める。ブラウザ自身の F11（Fullscreen API を通らない）も全画面として扱う。
    */
   useEffect(() => {
+    let full = false;
+    const fullMedia = window.matchMedia?.('(display-mode: fullscreen)');
     const fit = () => {
       const stage = stageRef.current;
       const screen = screenRef.current;
@@ -157,15 +160,30 @@ export default function GameCanvas() {
       // visualViewport と CSS の表示領域が異なる端末でも、狭い方へ収める。
       const width = Math.min(stage.clientWidth, viewport?.width ?? stage.clientWidth);
       const height = Math.min(stage.clientHeight, viewport?.height ?? stage.clientHeight);
-      const scale = Math.min(width / 1280, height / 720);
+      const fits = Math.min(width / 1280, height / 720);
+      const scale = full || fullMedia?.matches ? fits : Math.min(1, fits);
       screen.style.setProperty('--game-scale', String(scale));
     };
     fit();
+    let alive = true;
+    void isFullscreen().then((on) => {
+      if (!alive) return;
+      full = on;
+      fit();
+    });
+    const stopFull = onFullscreenChange((on) => {
+      full = on;
+      fit();
+    });
+    fullMedia?.addEventListener('change', fit);
     window.addEventListener('resize', fit);
     window.visualViewport?.addEventListener('resize', fit);
     const observer = new ResizeObserver(fit);
     observer.observe(stageRef.current!);
     return () => {
+      alive = false;
+      stopFull();
+      fullMedia?.removeEventListener('change', fit);
       window.removeEventListener('resize', fit);
       window.visualViewport?.removeEventListener('resize', fit);
       observer.disconnect();
