@@ -97,6 +97,8 @@ const WALK_NOTE_MS = 2200;
 const DEBUG_PARTY = ['meina', 'lamy', 'grandpa'];
 /** デバッグの「アイテム」（GS-210）で 1 回に足す数。台帳の持ち物それぞれに。 */
 const DEBUG_ITEM_COUNT = 2;
+/** デバッグの「アイテム」で所持金をこの額にする（足すのではなく置き換える）。 */
+const DEBUG_GOLD = 999999;
 /** 開発用の時間帯ボタンの名前（GS-224）。ここに無い id（足したプリセット）はそのまま出す。 */
 const DEBUG_TIME_LABELS: Record<string, string> = { '': '基準', morning: '朝', day: '昼', evening: '夕', night: '夜' };
 const DEBUG_ENEMIES = ['enemy02', 'enemy00', 'enemy01'];
@@ -1660,7 +1662,7 @@ export default function GameCanvas() {
                 </button>
               ))}
             </div>
-            {/* 台帳（`items.json`）の持ち物を全部 2 個ずつ足す（GS-210）。 */}
+            {/* 台帳（`items.json`）の持ち物を全部 2 個ずつ足し（GS-210）、所持金を 999999 にする。 */}
             <button
               type="button"
               className="debug-battle"
@@ -1671,6 +1673,7 @@ export default function GameCanvas() {
                 if (event.button !== 0) return;
                 const state = stateRef.current;
                 for (const { id } of itemList()) state.items.set(id, (state.items.get(id) ?? 0) + DEBUG_ITEM_COUNT);
+                state.gold = DEBUG_GOLD;
               }}
             >
               アイテム
