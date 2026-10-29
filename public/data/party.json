@@ -8,7 +8,7 @@
       "level": 1,
       "hp": 50,
       "mp": 20,
-      "attack": 30,
+      "attack": 20,
       "guard": 5,
       "speed": 10,
       "skills": [
@@ -31,9 +31,6 @@
       "learn": {
         "3": [
           "magic02"
-        ],
-        "5": [
-          "special03"
         ],
         "7": [
           "magic03"
@@ -62,11 +59,12 @@
       "level": 1,
       "hp": 40,
       "mp": 32,
-      "attack": 22,
+      "attack": 15,
       "guard": 4,
       "speed": 12,
       "skills": [
-        "magic02"
+        "magic02",
+        "special03"
       ],
       "equip": {
         "weapon": "木のぼう"
@@ -79,11 +77,11 @@
         "speed": 1
       },
       "learn": {
-        "3": [
-          "special03"
+        "4": [
+          "magic03"
         ],
         "6": [
-          "magic03"
+          "magic01"
         ]
       }
     }
