@@ -84,7 +84,7 @@
           ],
           "style": "bubble"
         },
-        { "type": "shop", "items": ["やくそう", "どく消し"], "sell": true },
+        { "type": "shop", "items": ["やくそう", "どく消し", "ターケマーツ"], "sell": true },
         {
           "type": "message",
           "talk": [{ "who": "middle_aunt_01", "lines": ["また見においで！"], "at": "VegetableSeller" }],
@@ -100,7 +100,13 @@
       "commands": [
         {
           "type": "message",
-          "talk": [{ "who": "elderly_male_01", "lines": ["道具屋じゃあ！", "商品が無いんじゃあ泣"], "at": "Tool Seller" }],
+          "talk": [{ "who": "elderly_male_01", "lines": ["道具屋じゃ"], "at": "Tool Seller" }],
+          "style": "bubble"
+        },
+        { "type": "shop", "items": ["ばんそうこう", "木のぼう", "マント"], "sell": true },
+        {
+          "type": "message",
+          "talk": [{ "who": "elderly_male_01", "lines": ["まいど！"], "at": "Tool Seller" }],
           "style": "bubble"
         }
       ],

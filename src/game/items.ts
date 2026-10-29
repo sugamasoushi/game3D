@@ -121,10 +121,33 @@ export function itemEquip(id: string): ItemEquip | null {
   return book.items[id]?.equip ?? null;
 }
 
-/** 買値。売り買いできない物は 0。 */
-export function itemPrice(id: string): number {
-  const price = book.items[id]?.price;
+/**
+ * 持ち物の種類（2026-10-29）。使える物（`use`）は道具、身に着ける物（`equip`）は装備、
+ * どちらも無い物は**大事な物**（鍵や手紙）。両方あれば道具。台帳エディタの「持ち物」の分け方と同じ。
+ */
+export type ItemKind = '道具' | '装備' | '大事な物';
+
+export function itemKindOf(def: ItemDef | undefined): ItemKind {
+  return def?.use ? '道具' : def?.equip ? '装備' : '大事な物';
+}
+
+export function itemKind(id: string): ItemKind {
+  return itemKindOf(book.items[id]);
+}
+
+/**
+ * 台帳の 1 つぶんの買値。**大事な物は値段が書いてあっても 0**——店に並ばないし売れない
+ * （「大事な物を売ってしまった」を防ぐ。2026-10-29）。値段の無い物も 0。
+ */
+export function priceOf(def: ItemDef | undefined): number {
+  if (itemKindOf(def) === '大事な物') return 0;
+  const price = def?.price;
   return typeof price === 'number' && price > 0 ? Math.round(price) : 0;
+}
+
+/** 買値。売り買いできない物（値段の無い物・大事な物）は 0。 */
+export function itemPrice(id: string): number {
+  return priceOf(book.items[id]);
 }
 
 /**
