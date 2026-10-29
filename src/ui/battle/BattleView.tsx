@@ -34,7 +34,7 @@ import { spendItem, type GameState } from '../../game/state';
 import { itemEquip, itemName, itemText, itemUse } from '../../game/items';
 import { skillUse, wouldHelp } from '../../game/battle/heal';
 import { playSe, stopBgm } from '../../game/audio';
-import { DEV_MODE } from '../../game/devMode';
+import { debugToolsShown } from '../../game/devMode';
 import { battleSettings, normalAttackOf } from '../../game/battle/settings';
 import type { BattlePresentationContext, BattlePresentationHook } from '../../game/battle/presentation';
 
@@ -452,10 +452,10 @@ export function BattleView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 戦闘演出エディタの試し再生（GS-105）。開発中だけ、**先頭の生きている敵**へ技の絵を出す。
+  // 戦闘演出エディタの試し再生（GS-105）。開発中かクリア後だけ、**先頭の生きている敵**へ技の絵を出す。
   // 戦いの進行（`act`）は通さない——HP も手番も動かさず、絵と音だけ見せる。
   useEffect(() => {
-    if (!DEV_MODE) return;
+    if (!debugToolsShown()) return;
     let timer = 0;
     const onPreview = (event: Event) => {
       const def = (event as CustomEvent<{ def?: EffectDef }>).detail?.def;

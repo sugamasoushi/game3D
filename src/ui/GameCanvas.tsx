@@ -21,7 +21,7 @@ import type { BattlePresentationContext, BattlePresentationHook } from '../game/
 import { ensureParty, joinParty, resetParty, revive } from '../game/battle/party';
 import * as dev from '../game/devMode';
 import { DEV_WINDOW, expose, withdraw, type BattleEffectEditorWindow, type CameraEditorWindow } from '../dev/devWindow';
-import { DEV_MODE, loadDevOptions } from '../game/devMode';
+import { debugToolsShown, loadDevOptions } from '../game/devMode';
 import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
 import { GameOver, type BattleOutcome } from '../game/battle/flow';
 import { createWalkAilments } from '../game/battle/walkAilment';
@@ -122,12 +122,11 @@ export default function GameCanvas() {
   const bridgeRef = useRef<EventBridge | null>(null);
   const [notice, setNotice] = useState('');
   const [, refreshParty] = useState(0);
-  /** デバッグのマップ移動（GS-216）。台帳（`maps.json`）の id と、セーブの一覧と同じ名前。開発モードのときだけ読む。 */
+  /** デバッグのマップ移動（GS-216）。台帳（`maps.json`）の id と、セーブの一覧と同じ名前。クリア後にも出すので、いつも読んでおく（台帳は使い回し）。 */
   const [debugMaps, setDebugMaps] = useState<Array<{ key: string; label: string }>>([]);
   /** いま居るマップの番号。リストの選択に出す（`mapRef` は描き直しを起こさないので別に持つ）。 */
   const [debugMapAt, setDebugMapAt] = useState('');
   useEffect(() => {
-    if (!DEV_MODE) return;
     void loadMapIndex().then((index) =>
       setDebugMaps(Object.keys(index).map((key) => ({ key, label: mapLabel(index, key) }))),
     );
@@ -1388,7 +1387,7 @@ export default function GameCanvas() {
       state.time = next;
       viewRef.current?.setTime(next, timeSettings().shiftMs);
       // 開発用の時間帯ボタン（GS-224）の押された印を合わせる。
-      if (DEV_MODE) refreshParty((value) => value + 1);
+      if (debugToolsShown()) refreshParty((value) => value + 1);
     }, CLOCK_MS);
     return () => window.clearInterval(timer);
   }, [phase]);
@@ -1559,10 +1558,10 @@ export default function GameCanvas() {
       {/* 画面は 1280×720（DEC-162）。会話も暗転も**この中**に重ねる。 */}
       <div className="screen" ref={screenRef}>
         {/*
-         * デバッグ用の戦闘ボタン（GS-91）。開発モードのときだけ、フィールドにいるあいだだけ出す。
+         * デバッグ用の戦闘ボタン（GS-91）。開発モードか、クリアした端末で（`debugToolsShown`）、フィールドにいるあいだだけ出す。
          * **マウスの左クリックだけ**——焦点を取らせない（Enter やパッドで押されると、歩いている最中に始まる）。
          */}
-        {DEV_MODE && phase === 'play' && !battle && !menu && !shop && !uiBusy ? (
+        {debugToolsShown() && phase === 'play' && !battle && !menu && !shop && !uiBusy ? (
           <div className="debug-tools">
             <button
               type="button"

@@ -4,8 +4,20 @@
 // 書き出したときだけ切れる（旧作 `main.ts` の `isProd`）。`NODE_ENV` で決めると、
 // 書き出した物を試しに遊ぶときにデバッグの道具まで消えてしまう。
 
+import { clearedHere } from './omake';
+
 /** 開発モードか。ビルドのときに値が埋め込まれる（`NEXT_PUBLIC_` の決まり）。 */
 export const DEV_MODE = process.env.NEXT_PUBLIC_PRODUCTION !== 'true';
+
+/**
+ * デバッグの道具（フィールドの戦闘・パーティ・マップ・時間帯・アイテム）を出すか（2026-10-29）。
+ * **クリア後の要素として本番でも開放する**——開発中か、この端末で一度でもクリアしていれば出す
+ * （おまけと同じ決め方。`ゲーム_クリア` で `markCleared` が覚える）。
+ * 設定画面の開発用のつまみ（`DevOptions`）は遊ぶ人には意味が無いので、`DEV_MODE` のままにする。
+ */
+export function debugToolsShown(): boolean {
+  return DEV_MODE || clearedHere();
+}
 
 /**
  * 開発中だけのつまみ（GS-126）。**遊ぶ人の設定（`options.ts`）とは別に持つ。**
