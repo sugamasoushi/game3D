@@ -28,6 +28,7 @@
         { "type": "shot", "id": "event010201_camera01" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
+        { "type": "emote", "target": "player", "id": "surprise", "wait": false },
         {
           "type": "message",
           "talk": [
@@ -42,15 +43,16 @@
           "talk": [{ "who": "lamyNPC", "lines": ["ふんっ・・・取り返すこともしないなんて弱っちいの。", "ま、あたしに勝てるわけないしね！"] }]
         },
         { "type": "move", "target": "player", "dir": "up", "cells": 1, "speed": 15 },
-        {
-          "type": "message",
-          "talk": [{ "who": "meina", "lines": ["あ\"？"] }, { "who": "lamyNPC", "lines": ["へぁ？"] }]
-        },
+        { "type": "emote", "target": "player", "id": "anger", "wait": false },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["あ\"？"] }] },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "surprise", "wait": false },
+        { "type": "message", "talk": [{ "who": "lamyNPC", "lines": ["へぁ？"] }] },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "battle", "enemies": ["enemy00"] },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "sweat", "wait": false },
         {
           "type": "message",
           "talk": [
@@ -71,13 +73,9 @@
       "when": [{ "story": "mansion_return", "is": "next" }],
       "commands": [
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        {
-          "type": "message",
-          "talk": [
-            { "who": "meina", "lines": ["なんか変わったナーガ族だったな。"] },
-            { "who": "meina", "lines": ["お腹すいたし、そろそろ帰ろうかな。"] }
-          ]
-        },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["なんか変わったナーガ族だったな。"] }] },
+        { "type": "emote", "target": "player", "id": "meat", "wait": false },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["お腹すいたし、そろそろ帰ろうかな。"] }] },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "story", "done": "mansion_return" },
         { "type": "fade", "to": "out", "ms": 400 },

@@ -40,6 +40,7 @@
           "type": "if",
           "when": { "story": "lamy_visits", "is": "notDone" },
           "then": [
+            { "type": "emote", "target": "player", "id": "meat" },
             {
               "type": "message",
               "talk": [
@@ -53,6 +54,7 @@
             }
           ],
           "else": [
+            { "type": "emote", "target": "npc:grandpaNpc", "id": "music" },
             {
               "type": "message",
               "talk": [{ "who": "grandpa", "lines": ["気を付けるんじゃぞ"] }],
@@ -92,8 +94,8 @@
             "今日は山を下りて近くを探索するようだ。"
           ]
         },
-        { "type": "emote", "target": "player", "id": "meat" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "emote", "target": "player", "id": "meat", "wait": false },
         {
           "type": "message",
           "talk": [{ "who": "meina", "lines": ["ごちそうさまでした。", "う～ん、そろそろ食料が尽きてきたし", "今日は狩にでも行くかな"] }],
@@ -120,12 +122,20 @@
         { "type": "turn", "target": "player", "to": "down" },
         { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "surprise", "wait": false },
+        { "type": "message", "talk": [{ "who": "lamyNPC", "lines": ["見つけたぁ！！！"] }] },
+        { "type": "emote", "target": "player", "id": "anger", "wait": false },
         {
           "type": "message",
           "talk": [
-            { "who": "lamyNPC", "lines": ["見つけたぁ！！！"] },
             { "who": "meina", "lines": ["痛\"っ！", "あ～～～もう！！なんなの！！！"] },
-            { "who": "lamyNPC", "lines": ["お前っ！！", "あたしにご飯を作れっ！！"] },
+            { "who": "lamyNPC", "lines": ["お前っ！！", "あたしにご飯を作れっ！！"] }
+          ]
+        },
+        { "type": "emote", "target": "player", "id": "anger", "wait": false },
+        {
+          "type": "message",
+          "talk": [
             { "who": "meina", "lines": ["・・・・・・・・・・・・・・・・・・・💢💢💢"] },
             { "who": "lamyNPC", "lines": ["・・・・・・・・・・・・・・・・・・・泣泣泣"] }
           ]
@@ -148,6 +158,7 @@
           "wait": false,
           "always": true
         },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "sweat", "wait": false },
         {
           "type": "message",
           "talk": [
@@ -166,12 +177,19 @@
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
         { "type": "shot", "id": "pan01", "wait": false },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "meat", "wait": false },
         {
           "type": "message",
           "talk": [
             { "who": "lamyNPC", "lines": ["もぐもぐ、もぐもぐ・・・", "ん～美味しい！"] },
             { "who": "meina", "lines": ["お～い、少しは遠慮したらどうなのよ？"] },
-            { "who": "lamyNPC", "lines": ["こんな美味しいご飯食べたのは生まれて初めて！", "もう美味しくて美味しくて！！"] },
+            { "who": "lamyNPC", "lines": ["こんな美味しいご飯食べたのは生まれて初めて！", "もう美味しくて美味しくて！！"] }
+          ]
+        },
+        { "type": "emote", "target": "player", "id": "question", "wait": false },
+        {
+          "type": "message",
+          "talk": [
             {
               "who": "meina",
               "lines": ["くっ・・・悪い気がしない・・・。", "まあ、あんたの口に合ったなら良かったよ。", "", "そういえば名前は？", "あたしはメイナ"]
@@ -203,9 +221,21 @@
           "type": "message",
           "talk": [
             { "who": "grandpa", "lines": ["帰ってきたと思ったら", "ナーガを連れてくるとはたまげたわい"] },
-            { "who": "grandpa", "lines": ["それにしてもよく食べるのぉ", "よほど腹減ってたんじゃな"] },
+            { "who": "grandpa", "lines": ["それにしてもよく食べるのぉ", "よほど腹減ってたんじゃな"] }
+          ]
+        },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "surprise", "wait": false },
+        {
+          "type": "message",
+          "talk": [
             { "who": "lamy", "lines": ["もぐも・・・鶏がしゃべった！？"] },
-            { "who": "meina", "lines": ["あんたも蛇なのにしゃべってるじゃん？"] },
+            { "who": "meina", "lines": ["あんたも蛇なのにしゃべってるじゃん？"] }
+          ]
+        },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "meat", "wait": false },
+        {
+          "type": "message",
+          "talk": [
             { "who": "lamy", "lines": ["もぐもぐ・・・それもそうね（？）", "", "じゅるり"] },
             { "who": "grandpa", "lines": ["やめておけ、ワシはまずいぞ"] }
           ]
@@ -216,6 +246,7 @@
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
         { "type": "stepInPlace", "target": "npc:lamyNPC", "steps": 4, "stop": true, "wait": false },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "music", "wait": false },
         {
           "type": "message",
           "talk": [
@@ -225,26 +256,31 @@
             {
               "who": "meina",
               "lines": ["あんたねぇ・・・", "食べた分はちゃんと返してもらうからね。", "明日デカいのを狩りに行くから付き合ってもらうよ！"]
-            },
-            { "who": "lamy", "lines": ["まかしとけって！", "あたしめっちゃ強いから期待しといてよ！！☆彡"] },
-            { "who": "meina", "lines": ["（私より弱いくせに・・・なんか不安だ・・・。）"] }
+            }
           ]
         },
+        { "type": "emote", "target": "npc:lamyNPC", "id": "music", "wait": false },
+        {
+          "type": "message",
+          "talk": [{ "who": "lamy", "lines": ["まかしとけって！", "あたしめっちゃ強いから期待しといてよ！！☆彡"] }]
+        },
+        { "type": "emote", "target": "player", "id": "sweat", "wait": false },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["（私より弱いくせに・・・なんか不安だ・・・。）"] }] },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "time", "to": "morning ", "clock": "run", "ms": 0 },
         { "type": "telop", "lines": ["━ 翌朝 ━"], "click": false },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
+        { "type": "emote", "target": "player", "id": "music", "wait": false },
         {
           "type": "message",
           "talk": [
             { "who": "meina", "lines": ["よし、それじゃあ狩に行くよ！"] },
-            { "who": "lamy", "lines": ["お～！腕が鳴��ね！"] }
+            { "who": "lamy", "lines": ["お～！腕が鳴るね！"] }
           ]
         },
         { "type": "telop", "lines": ["ラミィが仲間になった！！"], "dim": 0.5, "click": false, "hold": 1000 },
-        { "type": "party", "op": "join", "who": "lamy" },
         {
           "type": "message",
           "talk": [{ "who": "meina", "lines": ["ラミィと会った場所から更に東に洞窟があるから", "そこでデカいのを狩ろう。"] }]
@@ -252,6 +288,7 @@
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "hide", "target": "npc:lamyNPC" },
+        { "type": "party", "op": "join", "who": "lamy" },
         { "type": "story", "done": "lamy_visits" }
       ],
       "kind": "scenario"
@@ -276,9 +313,17 @@
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
         {
           "type": "message",
+          "talk": [{ "who": "lamy", "lines": ["お肉もうちょっと食べたかったぁ～", "けど美味しかったぁ～"] }]
+        },
+        { "type": "emote", "target": "player", "id": "question", "wait": false },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["ラミィはこれからどうするの？", "居つくなら・・・", "私はもうすぐ出ていくからこの家使っていいよ"] }]
+        },
+        { "type": "emote", "target": "party:lamy", "id": "surprise", "wait": false },
+        {
+          "type": "message",
           "talk": [
-            { "who": "lamy", "lines": ["お肉もうちょっと食べたかったぁ～", "けど美味しかったぁ～"] },
-            { "who": "meina", "lines": ["ラミィはこれからどうするの？", "居つくなら・・・", "私はもうすぐ出ていくからこの家使っていいよ"] },
             { "who": "lamy", "lines": ["え\"え\"！？", "それじゃ美味しいご飯食べれないじゃん・・・。", "私も付いていく！！"] },
             { "who": "meina", "lines": ["言うと思った", "分かった、準備が整ったら一緒に出よう。"] }
           ]

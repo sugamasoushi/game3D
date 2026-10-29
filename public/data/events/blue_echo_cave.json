@@ -28,12 +28,12 @@
         { "type": "fade", "to": "in", "ms": 300 },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
+        { "type": "emote", "target": "player", "id": "music", "wait": false },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["よ～し、こいつを狩るか", "足引っ張らないでよ！"] }] },
+        { "type": "emote", "target": "party:lamy", "id": "music", "wait": false },
         {
           "type": "message",
-          "talk": [
-            { "who": "meina", "lines": ["よ～し、こいつを狩るか", "足引っ張らないでよ！"] },
-            { "who": "lamy", "lines": ["任せときなって！", "まずあたしが軽くジャブ打ってぇ！", "それからぁ！"] }
-          ]
+          "talk": [{ "who": "lamy", "lines": ["任せときなって！", "まずあたしが軽くジャブ打ってぇ！", "それからぁ！"] }]
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
@@ -47,31 +47,38 @@
         },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
-        {
-          "type": "message",
-          "talk": [
-            { "who": "meina", "lines": ["あ、危なかった・・・。"] },
-            { "who": "lamy", "lines": ["ら、楽勝だったわぁ・・・。"] }
-          ]
-        },
+        { "type": "emote", "target": "player", "id": "sweat", "wait": false },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["あ、危なかった・・・。"] }] },
+        { "type": "emote", "target": "party:lamy", "id": "sweat", "wait": false },
+        { "type": "message", "talk": [{ "who": "lamy", "lines": ["ら、楽勝だったわぁ・・・。"] }] },
         { "type": "turn", "target": "player", "to": "left" },
         { "type": "turn", "target": "party:lamy", "to": "right" },
         { "type": "jump", "target": "player", "times": 3, "height": 0.5, "ms": 200, "wait": false },
+        { "type": "emote", "target": "player", "id": "anger", "wait": false },
         {
           "type": "message",
           "talk": [
             { "who": "meina", "lines": ["いきなり特攻するな馬鹿！！", "熊の肥やしにでもなるつもりだったの！？"] },
-            { "who": "lamy", "lines": ["あ、あたし不味いから吐き出されたって！！"] },
-            { "who": "meina", "lines": ["そういう話じゃないって！！", "・・・この蛇食わして太らせるべきだったか？"] },
-            { "who": "lamy", "lines": ["ちょっと！！そこまで言うな！！"] }
+            { "who": "lamy", "lines": ["あ、あたし不味いから吐き出されたって！！"] }
           ]
         },
+        { "type": "emote", "target": "player", "id": "anger", "wait": false },
+        {
+          "type": "message",
+          "talk": [{ "who": "meina", "lines": ["そういう話じゃないって！！", "・・・この蛇食わして太らせるべきだったか？"] }]
+        },
+        { "type": "emote", "target": "party:lamy", "id": "anger", "wait": false },
+        { "type": "message", "talk": [{ "who": "lamy", "lines": ["ちょっと！！そこまで言うな！！"] }] },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["よし、帰って処理しないとね"] }] },
+        { "type": "emote", "target": "party:lamy", "id": "question", "wait": false },
+        {
+          "type": "message",
+          "talk": [{ "who": "lamy", "lines": ["今日はどんな料理！？"] }, { "who": "meina", "lines": ["干し肉"] }]
+        },
+        { "type": "emote", "target": "party:lamy", "id": "surprise", "wait": false },
         {
           "type": "message",
           "talk": [
-            { "who": "meina", "lines": ["よし、帰って処理しないとね"] },
-            { "who": "lamy", "lines": ["今日はどんな料理！？"] },
-            { "who": "meina", "lines": ["干し肉"] },
             { "who": "lamy", "lines": ["なんで！こんなにあるのに！？"] },
             { "who": "meina", "lines": ["もしもの為に備蓄するの", "計画的に食べないとすぐ無くなっちゃうじゃない"] },
             { "who": "lamy", "lines": ["ちぇ～っ"] }

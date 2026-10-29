@@ -4,7 +4,19 @@
 // **式を 2 本持たない**——戦闘で 30 戻る薬がメニューでは 25 になる、が起きないように。
 
 import type { ItemUse } from '../items';
-import type { Stats } from './rules';
+import type { SkillDef, Stats } from './rules';
+
+/**
+ * 回復の技（`type: "cure"`）を、使った物と同じ形の効き目に直す（2026-10-29）。
+ * `value` は**最大 HP の何％を戻すか**（0〜100）。端数は切り上げ——1% でも 1 は戻す。
+ * 0 なら HP は戻さず、`cure` の状態異常を消すだけ。式は道具と同じ `applyUse` に任せる。
+ */
+export function skillUse(skill: SkillDef, max: Stats): ItemUse {
+  const percent = Math.min(100, Math.max(0, Number(skill.value) || 0));
+  const use: ItemUse = { cure: skill.cure ?? [] };
+  if (percent > 0) use.hp = Math.ceil((max.hp * percent) / 100);
+  return use;
+}
 
 /** 実際に戻った量。**0 なら何も起きなかった**（満タンに使った）。 */
 export interface Healed {

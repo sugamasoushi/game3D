@@ -15,6 +15,7 @@
           "x": -10,
           "id": "lamy"
         },
+        { "type": "emote", "target": "player", "id": "question", "wait": false },
         {
           "type": "message",
           "talk": [
@@ -50,13 +51,9 @@
           "ms": 500,
           "remember": false
         },
-        {
-          "type": "message",
-          "talk": [
-            { "who": "lamy", "lines": ["あの家にいるな！？", "待て！！"] },
-            { "who": "meina", "lines": ["入って大丈夫かな・・・"] }
-          ]
-        },
+        { "type": "message", "talk": [{ "who": "lamy", "lines": ["あの家にいるな！？", "待て！！"] }] },
+        { "type": "emote", "target": "player", "id": "sweat", "wait": false },
+        { "type": "message", "talk": [{ "who": "meina", "lines": ["入って大丈夫かな・・・"] }] },
         { "type": "portrait", "slot": "right", "face": "normal", "id": "meina" },
         { "type": "portrait", "slot": "right", "face": "normal", "id": "lamy" },
         { "type": "setSwitch", "key": "seen_gensou", "value": true }

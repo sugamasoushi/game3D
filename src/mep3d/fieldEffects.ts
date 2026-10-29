@@ -1,3 +1,5 @@
+import { fieldFlashFragmentShader, fieldFlashState } from './fieldFlash';
+import { lightningFragmentShader } from './lightning';
 import { createLightPillarGeometry, lightPillarVertexShader, lightPillarFragmentShader } from './lightPillar';
 import { createLightExplosionGeometry, lightExplosionVertexShader, lightExplosionFragmentShader } from './lightExplosion';
 // フィールドエフェクト（DEC-175 / DEC-177）。世界に置く。画面エフェクト（`screenEffects.ts`）と違い、
@@ -45,7 +47,7 @@ const NOISE_B = '/assets/noise/Super Perlin/Super Perlin 12 - 512x512.png';
 /** オブジェクトのプロパティ名。値がこの種類の名前ならフィールドエフェクトになる。 */
 export const EFFECT_PROPERTY_NAME = 'Effect';
 
-export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror', 'explosion', 'pillar', 'wind'] as const;
+export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror', 'explosion', 'pillar', 'wind', 'lightning', 'flash'] as const;
 export type FieldEffectKind = (typeof FIELD_EFFECT_KINDS)[number];
 
 export const FIELD_EFFECT_LABELS: Record<FieldEffectKind, string> = {
@@ -57,6 +59,8 @@ export const FIELD_EFFECT_LABELS: Record<FieldEffectKind, string> = {
   mote: '光の粒',
   explosion: '爆発',
   pillar: '光の柱',
+  lightning: '雷',
+  flash: 'フラッシュ',
   water: '水面',
   swell: '水面2',
   mirror: '鏡面',
@@ -261,6 +265,8 @@ const LAYERS: Record<FieldEffectKind, number> = {
   mote: 4,
   explosion: 1,
   pillar: 1,
+  lightning: 1,
+  flash: 1,
   water: 1,
   swell: 1,
   mirror: 1,
@@ -368,6 +374,8 @@ export function readRainTilt(value: unknown): number {
 }
 
 export const FIELD_EFFECT_DEFAULTS: Record<FieldEffectKind, FieldEffectSettings> = {
+  flash: { on: true, amount: 0.65, speed: 1, scale: 1.5, color: '#ffffff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
+  lightning: { on: true, amount: 0.9, speed: 1, scale: 1.5, color: '#a9caff', lift: 0, thick: 10, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   pillar: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   explosion: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 4, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   fog: { on: true, amount: 0.5, speed: 0.03, scale: 0.09, color: '#dbe6f0', lift: 0, thick: 3, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
@@ -1094,6 +1102,8 @@ void main() {
 const SHADERS: Record<FieldEffectKind, string> = {
   explosion: lightExplosionFragmentShader,
   pillar: lightPillarFragmentShader,
+  lightning: lightningFragmentShader,
+  flash: fieldFlashFragmentShader,
   fog: fogShader,
   smoke: smokeShader,
   rain: rainShader,
@@ -1111,6 +1121,8 @@ const SHADERS: Record<FieldEffectKind, string> = {
 const ADDITIVE: Record<FieldEffectKind, boolean> = {
   explosion: true,
   pillar: true,
+  lightning: true,
+  flash: true,
   fog: false,
   // 煙は光らない。下地を覆う。
   smoke: false,
@@ -1141,6 +1153,8 @@ const REFLECTS: Partial<Record<FieldEffectKind, boolean>> = { water: true, swell
 const FLAT: Record<FieldEffectKind, boolean> = {
   explosion: false,
   pillar: false,
+  lightning: false,
+  flash: false,
   fog: true,
   // 煙は立ち上がるので縦板（DEC-343）。
   smoke: false,
@@ -1427,6 +1441,12 @@ export function createFieldEffects(): FieldEffects {
    * （DEC-323）——歪み・映り込み・正面の映り・映りの染まりが抜けていて、
    * フィールドエフェクト編集で動かしても画に出なかった。
    */
+  const updateFlash = (material: ShaderMaterial) => {
+    if (!material.uniforms.flashPulse) return;
+    const state = fieldFlashState(clock, material.uniforms.speed.value);
+    material.uniforms.flashPulse.value = state.pulse;
+    material.uniforms.flashCycle.value = state.cycle;
+  };
   const applyLook = (look: FieldEffectSettings, material: ShaderMaterial, weight = 1, id = '') => {
     // イベントの出し入れ（GS-270）。表に在れば `on` より優先し、濃さに掛ける。
     const pick = id ? presetWeights.get(id) : undefined;
@@ -1434,6 +1454,7 @@ export function createFieldEffects(): FieldEffects {
     // 時間帯の切り替え（GS-226）。濃さと映り込みを薄めて出し入れする。
     material.uniforms.amount.value = Math.max(0, look.amount) * weight;
     material.uniforms.speed.value = Math.max(0, look.speed);
+    updateFlash(material);
     material.uniforms.scale.value = Math.max(0.001, look.scale);
     material.uniforms.tint.value = tintOf(look.color, 'ffffff');
     if (material.uniforms.rainSlope) material.uniforms.rainSlope.value = Math.tan(readRainTilt(look.rainTilt) * Math.PI / 180);
@@ -1485,7 +1506,7 @@ export function createFieldEffects(): FieldEffects {
         const cz = ((volume.minZ + volume.maxZ) / 2) * unit;
         // 縦の格子に置いたものは、その面 1 枚として立てる（DEC-198）。
         const wall = volume.plane !== 'xz';
-        const count = kind === 'explosion' || kind === 'pillar' ? 1 : wall ? WALL_LAYERS : LAYERS[kind];
+        const count = kind === 'flash' || kind === 'lightning' || kind === 'explosion' || kind === 'pillar' ? 1 : wall ? WALL_LAYERS : LAYERS[kind];
         for (let i = 0; i < count; i += 1) {
           const level = i / Math.max(1, count - 1);
           const key = poolKey(kind, wall);
@@ -1544,6 +1565,10 @@ export function createFieldEffects(): FieldEffects {
           if (kind === 'rain') {
             material.uniforms.rainSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
             material.uniforms.rainSlope ??= { value: 0 };
+          }
+          if (kind === 'lightning' || kind === 'flash') {
+            material.uniforms.flashPulse ??= { value: 1 };
+            material.uniforms.flashCycle ??= { value: 0 };
           }
           applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
           const mesh = new Mesh(kind === 'pillar' ? pillarGeometry : kind === 'explosion' ? explosionGeometry : geometry, material);
@@ -1726,7 +1751,10 @@ export function createFieldEffects(): FieldEffects {
     update(deltaSeconds) {
       if (!group.visible) return;
       clock += deltaSeconds;
-      for (const slice of slices) slice.mesh.material.uniforms.time.value = clock;
+      for (const slice of slices) {
+        slice.mesh.material.uniforms.time.value = clock;
+        updateFlash(slice.mesh.material);
+      }
     },
 
     dispose() {

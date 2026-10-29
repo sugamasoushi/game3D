@@ -13,6 +13,7 @@ import type { BattleOutcome } from '../game/battle/flow';
 import type { EffectDef, EffectEntry } from '../game/battle/book';
 import type { CameraCueBook } from '../game/cameraCues';
 import type { GameView, RestageOptions, RestageResult } from '../game/GameView';
+import type { BattleStageSource } from '../game/battleStageMarker';
 import type { EventBridge } from '../game/uiEventContext';
 import type { EventDef, MapMoveDef } from '../event/types';
 import type { useUi } from '../ui/store';
@@ -50,9 +51,9 @@ export interface BattleEffectEditorWindow {
   setEffects(next: Record<string, EffectEntry>): void;
   /**
    * いまのマップで**背景だけの戦闘**を出す（GS-219）。戦いは進めない——命令も文も出さず、キーも受けない。
-   * 舞台はふつうの戦闘と同じ決め方（`BattleStage=true` の点があれば 3D、無ければ `battleField` の 2D）。どちらになったかを返す。
+   * 舞台はふつうの戦闘と同じ決め方（`BattleStage=true` の点 → `default` の点 → マップの原点。2026-10-29）。どれを基準にしたかを返す。
    */
-  backdrop(enemies: string[]): Promise<'3d' | '2d'>;
+  backdrop(enemies: string[]): Promise<BattleStageSource>;
   /** 背景の戦闘を片付ける。出していなければ何もしない。 */
   clearBackdrop(): void;
   /** 戦闘中（背景の戦闘を含む）なら先頭の敵へ絵を出す。戦闘中でなければ偽。 */

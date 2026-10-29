@@ -7,6 +7,7 @@
       "trigger": "touch",
       "commands": [
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "emote", "target": "player", "id": "sweat", "wait": false },
         {
           "type": "message",
           "talk": [{ "who": "meina", "lines": ["う、崖になってる・・・", "通れそうにないな"] }],

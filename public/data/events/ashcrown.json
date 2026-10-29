@@ -31,6 +31,7 @@
           "flip": true
         },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "emote", "target": "npc:grandpaNpc", "id": "question", "wait": false },
         {
           "type": "message",
           "talk": [
@@ -95,6 +96,7 @@
       "when": [{ "story": "leave_home", "is": "next" }],
       "commands": [
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
+        { "type": "emote", "target": "player", "id": "sweat", "wait": false },
         {
           "type": "message",
           "talk": [

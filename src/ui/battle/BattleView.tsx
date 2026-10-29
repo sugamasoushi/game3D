@@ -15,8 +15,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   ailmentDef,
-  battleFieldImages,
-  battleFieldSky,
   effectDef,
   effectImage,
   effectList,
@@ -34,7 +32,7 @@ import { characterIcon, characterName, characterStand } from '../../game/charact
 import { STAGE_LUNGE_DELAY_S, STAGE_LUNGE_S, type BattleFigure, type BattleStageSpec, type FigurePose } from '../../game/GameView';
 import { spendItem, type GameState } from '../../game/state';
 import { itemEquip, itemName, itemText, itemUse } from '../../game/items';
-import { wouldHelp } from '../../game/battle/heal';
+import { skillUse, wouldHelp } from '../../game/battle/heal';
 import { playSe, stopBgm } from '../../game/audio';
 import { DEV_MODE } from '../../game/devMode';
 import { battleSettings, normalAttackOf } from '../../game/battle/settings';
@@ -105,8 +103,8 @@ type Stage =
   | { kind: 'items' }
   /** 敵を選ぶ。`skill` が null なら素手。 */
   | { kind: 'target'; skill: string | null }
-  /** 味方を選ぶ（持ち物の使い先）。 */
-  | { kind: 'friend'; item: string };
+  /** 味方を選ぶ（持ち物の使い先、回復の技の使い先）。`item` か `skill` のどちらか。 */
+  | { kind: 'friend'; item?: string; skill?: string };
 
 /** 攻め方の並び（旧作 `AttackSelectWindow.column` と同じ）。 */
 const ATTACK_COMMANDS: Array<{ label: string; group: string | null }> = [
@@ -311,7 +309,6 @@ interface Pick {
 
 export function BattleView({
   enemies,
-  field,
   scene3d,
   state,
   onPresentation,
@@ -327,13 +324,8 @@ export function BattleView({
    */
   backdrop?: boolean;
   /**
-   * 背景（GS-79 / GS-94）。`battlefields.json` のキー。呼び出し側は未指定を既定の hill に解決する。
-   * 裏で動いている画面の上に半透明の黒を敷いて「同じ場所で戦っている」ように見せる。
-   */
-  field?: string;
-  /**
-   * 3D の舞台（GS-87）。背景がマップの 3D（`view: "map"`）で場所を持つとき、
-   * 敵と味方を立ち絵の板としてマップに立たせる。
+   * 3D の舞台（GS-87）。敵と味方を立ち絵の板としてマップに立たせる。
+   * 戦闘はいつもこの舞台で行う（2026-10-29。2D の背景の戦闘はやめた）。
    */
   scene3d?: BattleStage;
   /** 遊んでいる記録。仲間の HP をここから作り、終わったら書き戻す。 */
@@ -406,7 +398,7 @@ export function BattleView({
   const party = fighters.filter((who) => who.side === 'party');
   const foes = fighters.filter((who) => who.side === 'enemy');
   /**
-   * 3D の舞台（GS-87 / GS-89）。**マップに舞台が書いてあるときだけ**（マップのプロパティ `BattleStage`）。
+   * 3D の舞台（GS-87 / GS-89）。場所は `BattleStage` の点 → `default` の点 → マップの原点（2026-10-29）。
    * 開いたときに 1 回だけ聞く——戦いの途中でマップは変わらない。
    */
   const [stageSpec] = useState(() => scene3d?.spec() ?? null);
@@ -783,8 +775,14 @@ export function BattleView({
             disabled: !skill || asking.mp < skill.mp,
             go: () => {
               if (!skill) return;
+              // 回復は味方を選ぶ（生きている味方が 1 人なら選ばせない）。
+              if (skill.type === 'cure') {
+                const alive1 = party.filter(alive);
+                if (alive1.length <= 1) decide({ kind: 'skill', skill: id, target: (alive1[0] ?? asking).id });
+                else setStage({ kind: 'friend', skill: id });
+              }
               // 守り・避けは相手を選ばない。
-              if (skill.type !== 'attack') decide({ kind: 'skill', skill: id });
+              else if (skill.type !== 'attack') decide({ kind: 'skill', skill: id });
               else setStage({ kind: 'target', skill: id });
             },
           };
@@ -805,7 +803,17 @@ export function BattleView({
     }
 
     if (stage.kind === 'friend') {
-      const id = stage.item;
+      const skillId = stage.skill;
+      if (skillId) {
+        const skill = skillDef(skillId);
+        return party.filter(alive).map((one) => ({
+          label: one.name,
+          // 効かない相手は押せなくする（MP だけ減って何も起きないのを防ぐ）。
+          disabled: !skill || !wouldHelp(one, one.stats, skillUse(skill, one.stats)),
+          go: () => decide({ kind: 'skill', skill: skillId, target: one.id }),
+        }));
+      }
+      const id = stage.item ?? '';
       const use = itemUse(id, 'battle');
       return party.filter(alive).map((one) => ({
         label: one.name,
@@ -852,7 +860,11 @@ export function BattleView({
     }
     if (now.kind === 'skills') setStage({ kind: 'attack' });
     else if (now.kind === 'items') setStage({ kind: 'party' });
-    else if (now.kind === 'friend') setStage({ kind: 'items' });
+    else if (now.kind === 'friend') {
+      // 技から来たなら技の一覧へ、道具から来たなら道具の一覧へ戻る。
+      const group = now.skill ? skillDef(now.skill)?.kind : null;
+      setStage(group ? { kind: 'skills', group } : { kind: 'items' });
+    }
     else {
       // 相手を選ぶ段は、素手なら攻め方へ、技なら技の一覧へ戻る。
       const group = now.skill ? skillDef(now.skill)?.kind : null;
@@ -998,19 +1010,11 @@ export function BattleView({
     }
   });
 
-  /** 用意した背景の絵（奥から手前）。3D舞台が有効なら使わない。 */
-  // 3D の舞台で戦うときは**絵を敷かない**（マップの 3D をそのまま見せる。GS-89）。
-  const backs = useMemo(() => (field && !on3d ? battleFieldImages(field) : []), [field, on3d]);
-  /** 絵のうしろに敷く空（旧作の丘は上側が透けている）。 */
-  const sky = field && !on3d ? battleFieldSky(field) : '';
-
   return (
     <div
       className={
         [
           'battle',
-          // 用意した背景を敷くときは**下地の黒を外す**（GS-79）。絵の上に黒を重ねると濁る。
-          backs.length > 0 ? 'has-back' : '',
           on3d ? 'has-3d' : '',
           // 揺らすのは**敵が攻めかかったとき**（GS-83。旧作 `EnemyAttack` のカメラゆれ）。
           // 食らったときにも揺らすと、1 手で 2 回揺れて目が疲れる。
@@ -1023,14 +1027,11 @@ export function BattleView({
       // 攻めかかる動きの遅れと長さ（GS-110）。2D の CSS もコードの値で動かす。
       style={{ '--lunge-delay': `${STAGE_LUNGE_DELAY_S * 1000}ms`, '--lunge-ms': `${STAGE_LUNGE_S * 1000}ms` } as CSSProperties}
     >
-      {backs.length > 0 ? (
-        <div className="battle-stage" style={sky ? { background: sky } : undefined} aria-hidden>
-          {backs.map((src) => (
-            <img key={src} src={src} alt="" />
-          ))}
-        </div>
-      ) : null}
-
+      {/*
+       * 舞台の点が無いマップ（2026-10-29）。舞台は default の点かマップの原点で組んでいるので、置き忘れに気付けるよう画面に出す。
+       * マップエディタ側には出さない（利用者の指定）。
+       */}
+      {stageSpec && stageSpec.source !== 'stage' ? <div className="battle-stage-unset">プロパティ BattleStage が未設定</div> : null}
       <div className={on3d ? 'battle-field on3d' : 'battle-field'}>
         {foes.map((foe) => {
           const src = enemyImage(enemyIdOf(foe));
@@ -1264,7 +1265,7 @@ export function BattleView({
         <div className="battle-list">
           {/* 何の一覧か。**窓の上に別の札**で出す。道具は誰の物でもないので「道具」だけ。 */}
           <p className="battle-list-label">
-            {stage.kind === 'friend' ? 'だれに つかう？' : stage.kind === 'items' ? '道具' : `${asking.name} の ${stage.group}`}
+            {stage.kind === 'friend' ? (stage.skill ? 'だれに かける？' : 'だれに つかう？') : stage.kind === 'items' ? '道具' : `${asking.name} の ${stage.group}`}
           </p>
           {stage.kind === 'skills' || stage.kind === 'items' ? (
             // 特技・魔法・道具は窓を 3:1 に分け、右に**選んでいる物**の説明と数を出す。

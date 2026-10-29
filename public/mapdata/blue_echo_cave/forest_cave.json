@@ -2473,7 +2473,27 @@
       "mirror": 0,
       "face": 0.22,
       "dye": 0,
-      "cast": false
+      "cast": false,
+      "angle": 90,
+      "rainTilt": 6
+    },
+    {
+      "on": true,
+      "amount": 0.9,
+      "speed": 1,
+      "scale": 1.5,
+      "color": "#a9caff",
+      "lift": 0,
+      "thick": 10,
+      "warp": 0,
+      "mirror": 0,
+      "face": 0.22,
+      "dye": 0,
+      "cast": true,
+      "angle": 90,
+      "id": "lightning1",
+      "name": "雷",
+      "kind": "lightning"
     }
   ],
   "screenEffects": [
@@ -2487,17 +2507,17 @@
   "editor": {
     "camera": {
       "target": [
-        -8.154591845621937,
-        3.103202604708663,
-        2.823409919165404
+        -1.4360473603088684,
+        3.753613644470355,
+        3.42723802815742
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 10.395582468369623,
+      "distance": 12.574428796972592,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "objects",
+    "activeLayer": "エフェクト",
     "brush": {
       "shape": "floor",
       "rotation": 0,

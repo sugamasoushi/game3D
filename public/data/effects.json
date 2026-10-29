@@ -5,11 +5,11 @@
       "name": "打撃",
       "image": "Effects/pipo-btleffect002.png",
       "frames": [0, 8],
-      "fps": 30,
+      "fps": 40,
       "scale": [1, 2],
       "scaleMs": 500,
       "yoyo": false,
-      "ms": 1000,
+      "ms": 500,
       "se": "strike"
     },
     "fire": {

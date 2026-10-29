@@ -38,7 +38,7 @@ import { createPhysicsWorld, loadRapier, type PhysicsBody, type PhysicsWorld } f
 import { createHitWires, type HitWires } from '../mep3d/hitWires';
 import type { HitRole } from '../mep3d/hitRules';
 import { createCameraRig, HD2D_PITCH, HD2D_YAW } from './cameraRig';
-import { battleStageMarker } from './battleStageMarker';
+import { battleStageAnchor, type BattleStageSource } from './battleStageMarker';
 import {
   cameraNumber,
   characterScaleOf,
@@ -165,6 +165,8 @@ export interface KeepAxes {
 export interface BattleStageSpec {
   /** 舞台の真ん中（マス）。点の位置。 */
   at: { x: number; y: number; z: number };
+  /** 何を基準にしたか（`BattleStage` の点・`default` の点・マップの原点。2026-10-29）。 */
+  source: BattleStageSource;
   /** 舞台を組む基準の向き（現在はマップの向き）。 */
   yaw: number;
   /** 場面の基準仰角。カメラ台帳で上書きできる。 */
@@ -484,8 +486,8 @@ export interface GameView {
   /** `px` はマス内のずれ（ピクセル。GS-192）。目印のマスの真ん中から。 */
   placeAtMarker(name: string, px?: { x: number; y?: number; z: number }): boolean;
   /**
-   * マップに書いた戦闘の舞台（GS-89）。点オブジェクトの `BattleStage=true` を検出し、
-   * その点の位置を舞台の真ん中にする。表示名には依存せず、無ければ null。
+   * マップの戦闘の舞台（GS-89）。点オブジェクトの `BattleStage=true` の位置を舞台の真ん中にする。
+   * 無ければ `default` の点、それも無ければマップの原点（2026-10-29）。マップを読んでいなければ null。
    */
   battleStage(formation?: string): BattleStageSpec | null;
   /**
@@ -3208,10 +3210,9 @@ export function createGameView(
     },
     battleStage(formation) {
       if (!mapDef) return null;
-      const marked = battleStageMarker(mapDef);
-      if (!marked) return null;
-      const at = { ...marked, face: '' };
-      return { at, yaw: 0, pitch: playPitch, zoom: 1,
+      // いつも 3D の舞台で戦う（2026-10-29。2D の背景の戦闘はやめた）。BattleStage → default → 原点。
+      const { source, ...at } = battleStageAnchor(mapDef);
+      return { at, source, yaw: 0, pitch: playPitch, zoom: 1,
         formation: chooseBattleFormation(formation, battleSetup?.formations, () => 0) };
     },
     stageBattle(spec, figures, debugGrid = false) {

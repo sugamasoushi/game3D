@@ -21,7 +21,7 @@ import {
 } from './rules';
 import { ailmentDef, enemyDef, skillDef } from './book';
 import { enemyIdOf } from './party';
-import { applyUse, healLine } from './heal';
+import { applyUse, healLine, skillUse, wouldHelp } from './heal';
 import { itemName, itemUse } from '../items';
 import { battleSettings } from './settings';
 
@@ -175,6 +175,19 @@ function pickTarget(list: Fighter[], random: () => number): Fighter | null {
   return living[Math.min(living.length - 1, Math.floor(random() * living.length))];
 }
 
+/**
+ * 回復の技の使い先を決める（相手を選ばなかったとき。2026-10-29）。
+ * 生きていて**何か効く**人のうち、HP の割合がいちばん低い人。誰にも効かなければ null。
+ */
+export function cureTarget(party: Fighter[], skill: SkillDef): Fighter | null {
+  let best: Fighter | null = null;
+  for (const one of party) {
+    if (!alive(one) || !wouldHelp(one, one.stats, skillUse(skill, one.stats))) continue;
+    if (!best || one.hp / one.stats.hp < best.hp / best.stats.hp) best = one;
+  }
+  return best;
+}
+
 /** 一撃。減った数を出して、倒れたら言う。 */
 async function strike(attacker: Fighter, defender: Fighter, skill: SkillDef | null, io: BattleIo): Promise<void> {
   // 見せ場は**かわす前に**（旧作も攻めかかってから「回避した」と出す）。
@@ -269,17 +282,20 @@ async function actParty(
       return false;
     }
     if (skill.type === 'cure') {
-      // 治すのは**自分たちの誰か**。相手を選んでいなければ、かかっている人を先に。
+      // 治すのは**自分たちの誰か**。相手を選んでいなければ、効く人のうち HP の割合が低い人を先に。
       const named = party.find((one) => one.id === action.target && alive(one));
-      const target = named ?? party.find((one) => alive(one) && one.ailments.length > 0) ?? who;
-      const gone = (skill.cure ?? []).filter((id) => dropAilment(target, id));
-      await io.hit?.(target.id, 0, gone.length > 0 ? 'heal' : 'miss');
+      const target = named ?? cureTarget(party, skill) ?? who;
+      // HP の戻りも状態異常の解除も、道具と同じ式（`applyUse`）で入れる。
+      const healed = applyUse(target, target.stats, skillUse(skill, target.stats));
+      const helped = healed.hp > 0 || healed.cured.length > 0;
+      await io.hit?.(target.id, healed.hp, helped ? 'heal' : 'miss');
       await io.update();
-      if (gone.length === 0) await io.say('しかし 何も 起きなかった……');
-      for (const id of gone) {
+      if (!helped) await io.say('しかし 何も 起きなかった……');
+      for (const id of healed.cured) {
         const def = ailmentDef(id);
         await io.say(`${target.name} は ${def?.gone ?? `${def?.name ?? id}が 消えた。`}`);
       }
+      if (healed.hp > 0) await io.say(healLine(target.name, healed));
       return false;
     }
     if (skill.type === 'ailment') {

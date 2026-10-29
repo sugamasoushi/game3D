@@ -84,7 +84,7 @@
           ],
           "style": "bubble"
         },
-        { "type": "shop", "items": ["やくそう"], "sell": true }
+        { "type": "shop", "items": ["やくそう", "どく消し"], "sell": true }
       ],
       "npc": "VegetableSeller"
     },
@@ -328,20 +328,43 @@
         {
           "type": "message",
           "style": "window",
-          "talk": [
-            { "who": "meina", "lines": ["着いた。ここがリッカ村だよ。", "買い物するから、勝手にどこか行かないでね。"] },
-            { "who": "lamy", "lines": ["わあ、あれ何？　あっちは？", "……なんか、すっごくいい匂い！"] },
-            { "who": "soldier_junior", "lines": ["おう、メイナ。今日は連れが……", "待て。その子、ナーガ族じゃないか！？"] },
-            { "who": "middle_aunt_01", "lines": ["ナーガ……？", "人を丸呑みにするって噂の……？"] },
-            { "who": "middle_uncle_01", "lines": ["お、おい。こっちに来るぞ。", "屋台は倒さんでくれよ……。"] },
-            { "who": "meina", "lines": ["この子は大丈夫。", "ご飯を食べるだけだから。"] }
-          ]
+          "talk": [{ "who": "meina", "lines": ["着いた。ここがリッカ村だよ。", "買い物するから、勝手にどこか行かないでね。"] }]
         },
+        { "type": "emote", "target": "party:lamy", "id": "meat", "wait": false },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [{ "who": "lamy", "lines": ["わあ、あれ何？　あっちは？", "……なんか、すっごくいい匂い！"] }]
+        },
+        { "type": "emote", "target": "npc:soldier_junior01", "id": "surprise", "wait": false },
         {
           "type": "message",
           "style": "window",
           "talk": [
-            { "who": "lamy", "lines": ["ねえメイナ！　あのお肉、串に刺さってる！", "隣の焼き菓子も……じゅる……。"] },
+            { "who": "soldier_junior", "lines": ["おう、メイナ。今日は連れが……", "待て。その子、ナーガ族じゃないか！？"] },
+            { "who": "middle_aunt_01", "lines": ["ナーガ……？", "人を丸呑みにするって噂の……？"] }
+          ]
+        },
+        { "type": "emote", "target": "npc:Butcher", "id": "sweat", "wait": false },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
+            { "who": "middle_uncle_01", "lines": ["お、おい。こっちに来るぞ。", "屋台は倒さんでくれよ……。"] },
+            { "who": "meina", "lines": ["この子は大丈夫。", "ご飯を食べるだけだから。"] }
+          ]
+        },
+        { "type": "emote", "target": "party:lamy", "id": "meat", "wait": false },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [{ "who": "lamy", "lines": ["ねえメイナ！　あのお肉、串に刺さってる！", "隣の焼き菓子も……じゅる……。"] }]
+        },
+        { "type": "emote", "target": "npc:soldier_junior01", "id": "sweat", "wait": false },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
             { "who": "soldier_junior", "lines": ["よだれ、垂れてるぞ……。", "本当に大丈夫なんだろうな？"] },
             { "who": "meina", "lines": ["……食べ物のことしか考えてないから。"] },
             { "who": "soldier_junior", "lines": ["それが心配なんだが。"] }
@@ -357,14 +380,28 @@
             { "who": "lamy", "lines": ["しないよ！", "初対面で何言ってんの！？"] },
             { "who": "meina", "lines": ["ほら、しないって。次は？"] },
             { "who": "soldier_junior", "lines": ["二つ。商品を勝手に食べないこと。"] },
-            { "who": "meina", "lines": ["ラミィ。ここ、ちゃんと聞いて。"] },
+            { "who": "meina", "lines": ["ラミィ。ここ、ちゃんと聞いて。"] }
+          ]
+        },
+        { "type": "emote", "target": "party:lamy", "id": "surprise", "wait": false },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
             { "who": "lamy", "lines": ["さっきより真剣じゃない！？"] },
             { "who": "meina", "lines": ["お店のものは、お金を払ってから。", "味見も勝手にしちゃだめ。"] },
             { "who": "lamy", "lines": ["……ひと口だけでも？"] },
             { "who": "meina", "lines": ["だめ。"] },
             { "who": "soldier_junior", "lines": ["三つ。尻尾で屋台を倒さないこと。"] },
             { "who": "lamy", "lines": ["わざと倒したりしないってば。", "……曲がるとき、気をつければいいんでしょ。"] },
-            { "who": "soldier_junior", "lines": ["四つ。鶏に近づかないこと。"] },
+            { "who": "soldier_junior", "lines": ["四つ。鶏に近づかないこと。"] }
+          ]
+        },
+        { "type": "emote", "target": "party:lamy", "id": "surprise", "wait": false },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [
             { "who": "lamy", "lines": ["鶏まで！？", "あたし、何しに来たと思われてるの？"] },
             { "who": "meina", "lines": ["買い物。だから、鶏は見なくていい。"] }
           ]
@@ -383,13 +420,17 @@
             { "who": "middle_uncle_01", "lines": ["……肉串なら、ちゃんと焼いて売ってるぞ。", "約束を守るお客なら歓迎だ。"] }
           ]
         },
+        { "type": "emote", "target": "party:lamy", "id": "music", "wait": false },
         {
           "type": "message",
           "style": "window",
-          "talk": [
-            { "who": "lamy", "lines": ["じゃあ、お金を払ったお肉は食べていいんだね！", "メイナ、早く！"] },
-            { "who": "meina", "lines": ["まず買い物の相談。", "……あと、よだれ拭いて。"] }
-          ]
+          "talk": [{ "who": "lamy", "lines": ["じゃあ、お金を払ったお肉は食べていいんだね！", "メイナ、早く！"] }]
+        },
+        { "type": "emote", "target": "player", "id": "sweat", "wait": false },
+        {
+          "type": "message",
+          "style": "window",
+          "talk": [{ "who": "meina", "lines": ["まず買い物の相談。", "……あと、よだれ拭いて。"] }]
         },
         { "type": "portrait", "slot": "left" },
         { "type": "portrait", "slot": "right" },

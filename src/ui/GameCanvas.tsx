@@ -205,12 +205,6 @@ export default function GameCanvas() {
   /** いま立っている起動場所。**出るまで二度と起こさない**ための控え。 */
   const steppingRef = useRef('');
   const mapRef = useRef('');
-  /**
-   * いまのマップの戦闘背景（GS-79）。`battlefields.json` のキー。
-   * **空なら既定の2D背景 hill**。BattleStage=true の点がある場合は3D舞台が優先される。
-   * 戦闘が始まってから引きに行くと、絵が出るまで一瞬 3D が見えてしまう。
-   */
-  const battleFieldRef = useRef('');
   /** いまのマップでは時計を止めるか（GS-223。`maps.json` の `time.stopClock`）。 */
   const stopClockRef = useRef(false);
   /** マップの読み直しを外の効果からも呼べるようにしておく。 */
@@ -755,9 +749,8 @@ export default function GameCanvas() {
     async (file: string) => {
       mapRef.current = file;
       setDebugMapAt(knownSaveMapId(file));
-      // 戦闘の背景は台帳から（GS-79）。台帳は 1 回読んで使い回すので、ここは待っても速い。
+      // 台帳は 1 回読んで使い回すので、ここは待っても速い。
       const mapEntry = await entryForFile(file);
-      battleFieldRef.current = mapEntry?.battleField ?? 'hill';
       // このマップでは時計を止めるか（GS-223）。
       stopClockRef.current = mapEntry?.time?.stopClock === true;
       // イベントの有無は**台帳で決める**（DEC-374）。無いマップを取りに行かない。
@@ -995,7 +988,7 @@ export default function GameCanvas() {
           idle();
           if (enemies.length === 0) throw new Error('背景に出す敵を選んでください');
           await loadBattleBook();
-          // 舞台の決め方はふつうの戦闘と同じ（隊形はマップの候補から。3D か 2D かはマップの点で決まる）。
+          // 舞台の決め方はふつうの戦闘と同じ（隊形はマップの候補から。場所は BattleStage → default → 原点）。
           const entry = await entryForFile(mapRef.current);
           battleFormationRef.current = chooseBattleFormation(undefined, entry?.battleStage?.formations);
           battleAbortRef.current = new AbortController();
@@ -1003,7 +996,7 @@ export default function GameCanvas() {
           battleBackdropRef.current = true;
           backdropSeqRef.current += 1;
           useUi.getState().setBattle(enemies);
-          return view.battleStage(battleFormationRef.current) ? '3d' : '2d';
+          return view.battleStage(battleFormationRef.current)?.source ?? 'origin';
         },
         clearBackdrop,
         // 戦闘の舞台（2026-10-19 / BPE-30）。下書きの台帳を差し替え、出している背景の舞台を組み直す。
@@ -1722,7 +1715,6 @@ export default function GameCanvas() {
             key={`${battle.join(',')}#${backdropSeqRef.current}`}
             enemies={battle}
             backdrop={battleBackdropRef.current}
-            field={battleFieldRef.current}
             scene3d={battleStageRef.current}
             state={stateRef.current}
             onPresentation={presentBattle}

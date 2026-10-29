@@ -17,8 +17,6 @@ import { applyBattleSettings } from './settings';
 /** 敵の絵の置き場所（2026-10-27）。人の立ち絵（`CharaStand`）とは棚を分けた。 */
 const ENEMY_DIR = 'assets/img/Enemy';
 
-/** 戦闘の背景の置き場所（GS-79）。 */
-const BACK_DIR = 'assets/img/background';
 
 
 /**
@@ -79,23 +77,6 @@ export interface MemberDef extends Stats {
   learn?: Record<string, string[]>;
   /** はじめから身に着けている物（GS-67）。置き場所 → 持ち物の id。 */
   equip?: Record<string, string>;
-}
-
-/**
- * 戦闘の背景 1 つぶん（GS-79）。**絵を並べるだけ**——旧作の丘は 3 枚重ねだった。
- * 空（シェーダー）や霧は付けない。要るようになったら画面エフェクトの方から重ねる。
- */
-export interface BattleFieldDef {
-  /** 台帳を読む人向けの名前。画面には出さない。 */
-  name?: string;
-  /** `assets/img/background/` の中のファイル名。**奥から手前の順**。 */
-  images?: string[];
-  /**
-   * 絵のうしろに敷く空（CSS の色かグラデーション）。
-   * 旧作の丘は**絵の上側が透けている**（空はシェーダーで描いていた）ので、
-   * ここで敷かないと上半分が黒くなる。1 枚で足りる絵には要らない。
-   */
-  sky?: string;
 }
 
 /**
@@ -173,7 +154,6 @@ let skills: Record<string, SkillDef> = {};
 let ailments: Record<string, AilmentDef> = {};
 let members: Record<string, MemberDef> = {};
 let party: string[] = [];
-let battlefields: Record<string, BattleFieldDef> = {};
 let formations: Record<string, BattleFormationDef> = {};
 let defaultFormation = '';
 let effects: Record<string, EffectEntry> = {};
@@ -205,12 +185,11 @@ export function loadBattleBook(): Promise<void> {
 }
 
 async function readBattleBook(): Promise<void> {
-  const [e, s, p, a, f, x, r, g] = await Promise.all([
+  const [e, s, p, a, x, r, g] = await Promise.all([
     readJson<{ enemies?: Record<string, EnemyDef> }>('data/enemies.json'),
     readJson<{ skills?: Record<string, SkillDef> }>('data/skills.json'),
     readJson<{ party?: string[]; members?: Record<string, MemberDef>; levelUp?: LevelUpDef }>('data/party.json'),
     readJson<{ ailments?: Record<string, AilmentDef> }>('data/ailments.json'),
-    readJson<{ battlefields?: Record<string, BattleFieldDef> }>('data/battlefields.json'),
     readJson<{ effects?: Record<string, EffectEntry> }>('data/effects.json'),
     readJson<{ default?: string; formations?: Record<string, BattleFormationDef> }>('data/battleFormations.json'),
     readJson<unknown>('data/battleSettings.json'),
@@ -225,7 +204,6 @@ async function readBattleBook(): Promise<void> {
   if (p?.party) party = p.party;
   if (p?.levelUp) levelUp = { ...DEFAULT_LEVEL_UP, ...p.levelUp };
   if (a?.ailments) ailments = a.ailments;
-  if (f?.battlefields) battlefields = f.battlefields;
   if (x?.effects && !effectsPreviewed) effects = x.effects;
   if (r?.formations) {
     formations = r.formations;
@@ -280,30 +258,6 @@ export function enemyList(): Array<{ id: string; name: string }> {
 
 export function skillList(): Array<{ id: string; name: string }> {
   return Object.entries(skills).map(([id, entry]) => ({ id, name: entry.name ?? id }));
-}
-
-/**
- * 戦闘の背景 1 つ（GS-79）。**台帳に無ければ null**——
- * 知らないキーは null。通常の未指定値は呼び出し側で既定の hill に解決する。
- */
-export function battleFieldDef(key: string): BattleFieldDef | null {
-  return battlefields[key] ?? null;
-}
-
-/** 背景のうしろに敷く空。無ければ空文字（下地の色のまま）。 */
-export function battleFieldSky(key: string): string {
-  return battlefields[key]?.sky ?? '';
-}
-
-/** 背景の絵の URL（奥から手前）。台帳に無いキーなら空。 */
-export function battleFieldImages(key: string): string[] {
-  const images = battlefields[key]?.images ?? [];
-  return images.map((name) => assetUrl(`${BACK_DIR}/${name}`));
-}
-
-/** 一覧（キーと名前）。エディタや道具に渡す用。 */
-export function battleFieldList(): Array<{ id: string; name: string }> {
-  return Object.entries(battlefields).map(([id, entry]) => ({ id, name: entry.name ?? id }));
 }
 
 /**

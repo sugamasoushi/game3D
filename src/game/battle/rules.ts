@@ -56,7 +56,7 @@ export interface SkillDef {
   text?: string;
   /** 使うと減る MP。 */
   mp: number;
-  /** 効き目。attack なら攻撃力に足す、guard なら守りに足す。 */
+  /** 効き目。attack なら攻撃力に足す、guard なら守りに足す、cure なら最大 HP の何％を戻すか（0〜100）。 */
   value: number;
   /**
    * 敵が攻めかかるときの音（`data/sounds.json` のキー）。無ければ重いパンチ。

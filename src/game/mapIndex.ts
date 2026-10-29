@@ -19,12 +19,8 @@ export interface MapEntry {
   /** 環境音（滝・風など）。曲と別に流し続ける。 */
   bgs?: string;
   /**
-   * 戦闘の背景（GS-79）。`battlefields.json` のキー。
-   * `BattleStage=true` の点が無い場合は、未指定なら既定の2D背景を使う。
-   */
-  battleField?: string;
-  /**
-   * 3D舞台設定。場所は `BattleStage=true` の点。formationsは通常戦闘でランダム選択する候補。
+   * 戦闘の舞台の設定。formationsは通常戦闘でランダム選択する候補。
+   * 舞台の場所は `BattleStage=true` の点、無ければ `default` の点、それも無ければマップの原点（2026-10-29。2D の背景の戦闘はやめた）。
    * カメラ演出は持たない（GS-97）——戦闘演出の割り当て（`battlePresentation.json`）と二重にかかった。
    */
   battleStage?: { formations?: string[] };
