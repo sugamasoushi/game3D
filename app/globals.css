@@ -2185,7 +2185,7 @@ body {
   max-width: calc(100% - 64px);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   padding: 18px 22px;
   border: 2px solid #8ea6c8;
   border-radius: 10px;
@@ -2198,6 +2198,8 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid rgba(142, 166, 200, 0.4);
 }
 
 .shop-tabs {
@@ -2206,8 +2208,10 @@ body {
   flex: 1;
 }
 
+/* タブは**同じ幅**にする。字数が違っても、切り替えで枠の位置が動かない。 */
 .shop-tabs button {
-  padding: 4px 16px;
+  width: 88px;
+  padding: 4px 0;
   border: 2px solid transparent;
   border-radius: 6px;
   background: transparent;
@@ -2229,16 +2233,58 @@ body {
   color: #ffd479;
 }
 
-.shop-note {
-  margin: 0;
-  min-height: 26px;
-  font-size: 17px;
-  opacity: 0.85;
+.shop-gold-label {
+  margin-right: 12px;
+  color: #f2f5ff;
+  opacity: 0.7;
+  font-size: 15px;
 }
 
+/*
+ * 並びは 1 か所で決める（見出しと行で同じ幅）。▶ の場所（`--shop-cursor`）は**いつも空けておく**——
+ * 選んだ行だけ字を足すと、その行の名前が右へずれる（会話の選択肢と同じ）。
+ */
+.shop-columns,
+.shop-list button {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  --shop-cursor: 1.2em;
+}
+
+.shop-columns {
+  /* 行の枠（2px）のぶんも足して、見出しと中身の端をそろえる。 */
+  padding: 0 12px 0 calc(12px + var(--shop-cursor) + 12px);
+  font-size: 14px;
+  opacity: 0.55;
+}
+
+.shop-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-price {
+  flex: none;
+  width: 110px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-have {
+  flex: none;
+  width: 56px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 一覧は**決まった高さ**（6 行ぶん）。行が少なくても多くても枠の大きさは変わらない。多ければ中で送る。 */
 .shop-body {
-  max-height: 260px;
-  overflow: auto;
+  height: calc(6 * 36px);
+  overflow-y: auto;
 }
 
 .shop-list {
@@ -2248,11 +2294,9 @@ body {
 }
 
 .shop-list button {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
   width: 100%;
-  padding: 4px 8px;
+  height: 36px;
+  padding: 0 10px;
   border: 2px solid transparent;
   border-radius: 6px;
   background: transparent;
@@ -2262,53 +2306,83 @@ body {
   cursor: pointer;
 }
 
-.shop-list button:hover:not(:disabled),
-.shop-list button:focus-visible {
-  border-color: #ffd479;
-  outline: none;
-}
-
-/* 買えない物（お金が足りない）。**消さずに押せなくする**——何が置いてあるかは見せる。 */
-.shop-list button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.shop-name { flex: none; min-width: 150px; }
-.shop-price {
+.shop-list button::before {
+  content: '▶';
   flex: none;
-  width: 70px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  width: var(--shop-cursor);
+  font-size: 0.85em;
+  color: #ffd479;
+  opacity: 0;
+}
+
+.shop-list button .shop-price {
   color: #ffd479;
 }
-.shop-have {
-  flex: none;
-  width: 60px;
-  text-align: right;
+
+.shop-list button .shop-have {
   opacity: 0.7;
-  font-size: 15px;
 }
+
+/* 選んでいる行。**枠と ▶ の両方**で示す。 */
+.shop-list button.on {
+  border-color: #ffd479;
+}
+
+.shop-list button.on::before {
+  opacity: 1;
+  animation: mep-cursor 500ms ease-in-out infinite alternate;
+}
+
+/* 買えない物（お金が足りない）。**消さずに沈める**——何が置いてあるかは見せ、選べば説明も読める。 */
+.shop-list button.short .shop-name,
+.shop-list button.short .shop-price,
+.shop-list button.short .shop-have {
+  opacity: 0.4;
+}
+
+.shop-empty {
+  margin: 0;
+  padding: 8px 10px;
+  opacity: 0.6;
+}
+
+/* 選んでいる物の説明。**2 行ぶんの高さを取っておく**——説明の長さで枠が伸び縮みしない。 */
 .shop-text {
-  flex: 1;
-  min-width: 0;
+  margin: 0;
+  height: calc(2 * 1.5em);
+  padding: 8px 10px 0;
+  border-top: 2px solid rgba(142, 166, 200, 0.4);
+  box-sizing: content-box;
+  font-size: 16px;
+  line-height: 1.5;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  opacity: 0.65;
-  font-size: 15px;
+  opacity: 0.85;
 }
 
 .shop-foot {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 10px;
   padding-top: 8px;
   border-top: 2px solid rgba(142, 166, 200, 0.4);
 }
 
+/* 買った・売ったの一言。**1 行ぶんの高さを取っておく**（空でも枠は縮まない）。 */
+.shop-note {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  height: 1.5em;
+  line-height: 1.5;
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
 .shop-foot button {
+  flex: none;
   padding: 4px 14px;
   border: 2px solid #8ea6c8;
   border-radius: 6px;
@@ -2316,6 +2390,10 @@ body {
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.shop-foot button:hover {
+  border-color: #ffd479;
 }
 
 /*
