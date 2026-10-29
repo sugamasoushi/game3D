@@ -1,4 +1,7 @@
 {
   "framework": "nextjs",
-  "buildCommand": "NEXT_PUBLIC_PRODUCTION=true npm run build"
+  "buildCommand": "NEXT_PUBLIC_PRODUCTION=true npm run build",
+  "git": {
+    "deploymentEnabled": false
+  }
 }
