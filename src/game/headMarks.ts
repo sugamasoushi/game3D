@@ -37,8 +37,6 @@ interface MarkSlot {
   pop: boolean;
   /** 消える時刻（秒）。無ければ出したまま。 */
   until?: number;
-  /** 止めるコマ（近づいた相手の話せる合図）。 */
-  hold?: number;
   /** 消えたら呼ぶ（イベントが待っている）。 */
   done?: (shown: boolean) => void;
 }
@@ -57,8 +55,8 @@ export interface HeadMarks {
   show(who: string, id: string | null, ms: number): Promise<boolean>;
   /** いつものマーク（`idleEmote`）。null で外す。 */
   setIdle(who: string, id: string | null): void;
-  /** 話せる合図を出す相手（毎フレーム全員ぶん）。ここに居ない人の合図は消す。 */
-  setTalk(list: Array<{ who: string; id: string; near: boolean }>): void;
+  /** 話せる合図を出す相手（毎フレーム全員ぶん）。ここに居ない人の合図は消す。近づいても動きは止めない。 */
+  setTalk(list: Array<{ who: string; id: string }>): void;
   /** その人のマークを全部外す（人が消えたとき）。 */
   forget(who: string): void;
   /** イベントのマークだけ全部外す（イベントの終わり）。 */
@@ -169,14 +167,8 @@ export function createHeadMarks(options: {
         seen.add(entry.who);
         const layers = layersOf(entry.who);
         const before = layers.talk;
-        const slot: MarkSlot = before && before.id === entry.id ? before : { id: entry.id, since: talkSince, pop: false };
-        if (!entry.near) delete slot.hold;
-        else if (slot.hold === undefined) {
-          const def = emote(entry.id);
-          // 近づいたら**そのときのコマで止める**（GS-49）。消さない。
-          if (def) slot.hold = emoteFrame(def, (now - slot.since) * 1000);
-        }
-        layers.talk = slot;
+        // 近づいても**止めずに回し続ける**（2026-10-29。それまでは近づいたコマで止めていた）。
+        layers.talk = before && before.id === entry.id ? before : { id: entry.id, since: talkSince, pop: false };
       }
       for (const [who, layers] of slots) if (layers.talk && !seen.has(who)) drop(who, 'talk', true);
     },
@@ -226,7 +218,7 @@ export function createHeadMarks(options: {
         }
         const slot = picked.mark;
         const elapsed = (now - slot.since) * 1000;
-        const frame = slot.hold ?? emoteFrame(def, elapsed);
+        const frame = emoteFrame(def, elapsed);
         const { col, row } = emoteCell(frame, cut.columns);
         // コマの切り出し（UV）。画像の上が v=1。
         const u0 = col / cut.columns;

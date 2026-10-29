@@ -326,9 +326,9 @@ export interface GameView {
   clearEmotes(): void;
   /**
    * 話せる合図（GS-49 / GS-267）を出す NPC（毎フレーム全員ぶん）。マークは NPC の設定の `talkEmote`、無ければ `talk`。
-   * `near` なら動きを止める（消さない）。
+   * 近づいても動きは止めない（2026-10-29）。
    */
-  setTalkMarks(list: Array<{ id: string; near: boolean }>): void;
+  setTalkMarks(list: Array<{ id: string }>): void;
   /**
    * 隠していた NPC を**マップに置いた場所に**出し直す（GS-222）。時間帯が変わって出す番になった人に使う。
    * 隠していなければ何もしない（false）。
@@ -3053,7 +3053,7 @@ export function createGameView(
     },
     clearEmotes: () => headMarks.clearEvent(),
     setTalkMarks(list) {
-      headMarks.setTalk(list.map((entry) => ({ who: `npc:${entry.id}`, id: talkEmoteOf(entry.id), near: entry.near })));
+      headMarks.setTalk(list.map((entry) => ({ who: `npc:${entry.id}`, id: talkEmoteOf(entry.id) })));
     },
     restoreNpc(id) {
       if (npcs.has(id) || !makeNpc) return false;

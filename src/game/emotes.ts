@@ -69,7 +69,7 @@ export function previewEmotes(next: Record<string, EmoteDef>): void {
 }
 
 /**
- * 出してから `elapsedMs` 経ったときのコマ番号。`hold` を渡すと**そのコマで止める**（近づいた相手の話せる合図）。
+ * 出してから `elapsedMs` 経ったときのコマ番号。
  * コマが無ければ 0。
  */
 export function emoteFrame(def: Pick<EmoteDef, 'frames' | 'fps' | 'loop'>, elapsedMs: number): number {

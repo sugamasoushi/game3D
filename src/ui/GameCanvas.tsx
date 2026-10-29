@@ -74,8 +74,6 @@ const EXAMINE_REACH = 1.25;
 const WATCH_MS = 100;
 /** 話せる合図を出す距離（マス。GS-49）。少し手前から見せて「近づけば話せる」と伝える。 */
 const TALK_MARK_SHOW = 3.5;
-/** 合図の動きを止める距離（マス）。話しかけが届く範囲（1.4）に少し余裕を足したもの。 */
-const TALK_MARK_NEAR = 1.6;
 /** 入口をくぐるときの暗転（ミリ秒）。CSS の `.fade` の遷移と同じ長さにする。 */
 const DOOR_FADE_MS = 400;
 /**
@@ -1500,13 +1498,13 @@ export default function GameCanvas() {
    * 重い判定はしない——距離と、そのイベントが動くかだけ。
    * 絵は 3D の板で、キャラと同じ割合の大きさ（GS-267。`GameView.setTalkMarks`）。
    */
-  const talkMarks = useCallback((): Array<{ id: string; near: boolean }> => {
+  const talkMarks = useCallback((): Array<{ id: string }> => {
     const view = viewRef.current;
     // 会話や暗転の最中は出さない。合図の役目は「押せば始まる」を伝えることなので。
     if (!view || useUi.getState().busy || useUi.getState().phase !== 'play') return [];
     const at = view.playerAt();
     if (!at) return [];
-    const out: Array<{ id: string; near: boolean }> = [];
+    const out: Array<{ id: string }> = [];
     for (const [npc, eventId] of npcTalkRef.current) {
       const event = eventsRef.current.get(eventId);
       if (!event || event.trigger !== 'action') continue;
@@ -1516,7 +1514,8 @@ export default function GameCanvas() {
       if (span > TALK_MARK_SHOW) continue;
       // 条件を満たさないイベント（もう終わった話など）には出さない。
       if (!runnableRef.current(event)) continue;
-      out.push({ id: npc, near: span <= TALK_MARK_NEAR });
+      // 近づいても合図の動きは止めない（2026-10-29）。止まっていると飾りに見える。
+      out.push({ id: npc });
     }
     return out;
   }, []);
