@@ -11,7 +11,7 @@
 //
 // **はじめは「買う」「売る」「店を出る」だけを選ぶ**（2026-10-29）。買う・売るを決めると一覧へ進み、
 // Esc（ゲームパッドの ✕）で一覧から戻る。戻った所で Esc か「店を出る」で閉じる。
-// キーはメニュー・戦闘と同じ約束: ↑↓（←→）で選ぶ／Enter 決定／Esc で戻る。
+// キー: 命令は ←→ で選び、Enter か ↓（買う・売るの上）で一覧へ。一覧は ↑↓ で選び Enter で決める。Esc で戻る。
 //
 // **枠の大きさは中身で変えない**（2026-10-29）。買う・売るを切り替えるたびに枠が伸び縮みすると、
 // 目で追う場所が毎回動く。一覧は決まった行数ぶんの高さを取り、説明と一言も決まった場所に出す。
@@ -159,13 +159,17 @@ export function ShopScreen({
       // **店の間はキーを通さない。** 通すと後ろで人が歩く（GS-59 と同じ穴）。
       event.preventDefault();
       event.stopPropagation();
-      const down = event.key === 'ArrowDown' || event.key === 'ArrowRight';
-      const up = event.key === 'ArrowUp' || event.key === 'ArrowLeft';
       const enter = event.key === 'Enter' || event.key === ' ';
       if (mode === 'command') {
-        // 命令は横に並ぶので、←→ でも ↑↓ でも動く。
+        // 命令は横に並ぶので ←→ で動く（↑↓ では動かさない）。
         if (event.key === 'Escape') onClose();
-        else if (down || up) hover((cmd + (down ? 1 : -1) + commands.length) % commands.length);
+        else if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+          hover((cmd + (event.key === 'ArrowRight' ? 1 : -1) + commands.length) % commands.length);
+        }
+        // 買う・売るの上で ↓ を押すと、下の一覧へ降りる（決めたのと同じ）。「店を出る」の上では何もしない。
+        else if (event.key === 'ArrowDown') {
+          if (commands[cmd] !== '店を出る') choose(cmd);
+        }
         // **合成のキーイベントでも効くよう、ボタンは押さずに直に決める**（ゲームパッド。GS-58）。
         else if (enter) choose(cmd);
         return;
