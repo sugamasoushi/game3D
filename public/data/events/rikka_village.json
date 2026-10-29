@@ -78,13 +78,18 @@
           "talk": [
             {
               "who": "middle_aunt_01",
-              "lines": ["いらっしゃい", "新鮮な野菜売ってるんだけど", "何故か今は やくそう 1個 しかないわ！"],
+              "lines": ["いらっしゃい！", "何か買って行っておくれよ"],
               "at": "VegetableSeller"
             }
           ],
           "style": "bubble"
         },
-        { "type": "shop", "items": ["やくそう", "どく消し"], "sell": true }
+        { "type": "shop", "items": ["やくそう", "どく消し"], "sell": true },
+        {
+          "type": "message",
+          "talk": [{ "who": "middle_aunt_01", "lines": ["また見においで！"], "at": "VegetableSeller" }],
+          "style": "bubble"
+        }
       ],
       "npc": "VegetableSeller"
     },
