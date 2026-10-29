@@ -1391,6 +1391,10 @@ export interface FieldEffectPresetDef {
   angle?: number;
   /** 雨の傾き（度）。0で真下、正で板の右、負で左へ。-75〜75、省略時6。 */
   rainTilt?: number;
+  /** 雷の1周期の本数。1〜5、既定3。 */
+  lightningCount?: number;
+  /** 雷1本の幅（マス）。0.2〜20、既定3。配置幅を超えるときは収める。 */
+  lightningWidth?: number;
 }
 
 /**

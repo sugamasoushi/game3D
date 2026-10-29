@@ -53,7 +53,9 @@ vec3 mepSwayOffset(float y) {
   #else
   int w = max(mepSwayDataWidth, 1);
   // 番号で直に読む。texture2D は頂点シェーダでは傾き（ミップ）が決まらず、D3D 越しだと 0 が返った。
-  vec4 data = texelFetch(mepSwayData, ivec2(gl_InstanceID % w, gl_InstanceID / w), 0);
+  // 番号は boxThick.w（loader が入れる）。組み込みのインスタンス番号は D3D11 で属性を 1 つ食い、16 個を超えて組めなかった。
+  int id = int(boxThick.w + 0.5);
+  vec4 data = texelFetch(mepSwayData, ivec2(id % w, id / w), 0);
   if (data.w < 0.5) return vec3(0.0);
   float h = y / mepSwayUnit - data.x;
   if (h <= 0.001) return vec3(0.0);
@@ -401,17 +403,21 @@ export interface AtlasLayout {
 const vertexShader = /* glsl */ `
 attribute vec4 chip;        // top, front, bottom, 回転フラグ
 attribute vec4 chipSides;   // back, left, right, w = 隠す面（GC-36）
-attribute float chipEdge;   // 縁の色。0 はなし
-attribute float chipEmit;   // 6bit 発光。順は top..right
 // 符号付きの厚み（セル）。0 はフル／箱以外。**3 本を 1 枠に畳んである**——
 // 頂点属性は 16 個で上限（GC-36）で、面ごとの引き延ばし（chipStretch）を入れる枠が要った（DEC-415）。
-attribute vec3 boxThick;    // x = 幅、y = 高さ、z = 奥行
+attribute vec4 boxThick;    // x = 幅、y = 高さ、z = 奥行、w = インスタンスの番号（揺れの表。GS-274）
 attribute vec4 chipStretch; // 面ごとの引き延ばし。1 成分に 8bit × 3 面。0 はマスいっぱい（DEC-415）
 // 面ごとのずらし。並びは chipStretch と同じで、1 バイトは 2 の補数。0 はずらし無し（DEC-422）。
-// **これで属性は 16 個ちょうど**。次に要るときは faceAnchor と faceFit を 1 本に畳めば 1 つ空く。
 attribute vec4 chipOffset;
-attribute float faceAnchor; // 6 面 × 2bit（bl=0 br=1 tl=2 tr=3）。順は top..right
-attribute float faceFit;    // 6 面 × 1bit。stretch が 1。同じ順
+// 数 1 つずつの印を 1 枠にまとめた物（2026-10-29）。名前は下の #define で今までどおり読む。
+// **属性は 13 枠**（instanceMatrix 4・position/normal/uv 3・ここの 6）。上限は 16 で、残り 3 枠。
+// 足す前に、表（テクスチャ）と番号（boxThick.w）で引けないかを考える。組み込みの番号（gl_InstanceID など）は
+// D3D11 で 1 枠食うので使わない（Game Checker の tests/shaderSlots.test.ts が止める）。
+attribute vec4 chipPack;
+#define chipEdge chipPack.x   // 縁の色。0 はなし
+#define chipEmit chipPack.y   // 6bit 発光。順は top..right
+#define faceAnchor chipPack.z // 6 面 × 2bit（bl=0 br=1 tl=2 tr=3）。順は top..right
+#define faceFit chipPack.w    // 6 面 × 1bit。stretch が 1。同じ順
 varying vec2 vChipUv;
 /** チップのアトラス矩形（xy=左上 zw=大きさ）。4 頂点とも同じ値なので補間で変わらない。 */
 varying vec4 vChipRect;
@@ -1312,12 +1318,10 @@ export function applyWindZones(material: ShaderMaterial, zones: readonly WindZon
 
 /** 属性を省いたバッチのための既定値。タイルと深度で同じ。 */
 function tileAttributeDefaults(material: ShaderMaterial): void {
-  material.defaultAttributeValues.boxThick = [0, 0, 0];
+  material.defaultAttributeValues.boxThick = [0, 0, 0, 0];
   material.defaultAttributeValues.chipStretch = [0, 0, 0, 0];
   material.defaultAttributeValues.chipOffset = [0, 0, 0, 0];
-  material.defaultAttributeValues.faceAnchor = [0];
-  material.defaultAttributeValues.faceFit = [0];
-  material.defaultAttributeValues.chipEmit = [0];
+  material.defaultAttributeValues.chipPack = [0, 0, 0, 0];
 }
 
 function withoutSway(defines: Record<string, unknown> | undefined): Record<string, unknown> {

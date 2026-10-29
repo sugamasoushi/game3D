@@ -20,7 +20,7 @@ import {
 import { DRAW_MODE_LABELS, drawMode, guessDrawMode, type DrawModeSetting } from '../../game/quality';
 import { DEV_MODE, devOptions, setDevOptions, type DevOptions } from '../../game/devMode';
 import { stopBgm, stopBgs } from '../../game/audio';
-import { fullscreenSupported, isDesktopApp, isFullscreen, onFullscreenChange, setFullscreen } from '../../game/fullscreen';
+import { fullscreenSupported, isFullscreen, onFullscreenChange, setFullscreen } from '../../game/fullscreen';
 
 /** 文字送りの目盛り。**小さいほど速い**ので、見せ方は左が速い。 */
 const CHAR_MIN = 10;
@@ -191,7 +191,6 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
                 void setFullscreen(on).then((now) => setFull(now));
               }}
             />
-            <span className="menu-hint">{isDesktopApp() ? '次の起動もこの状態' : ''}</span>
           </li>
         ) : null}
         {volume('全体', 'masterVolume')}

@@ -6,10 +6,10 @@
   "members": {
     "meina": {
       "level": 1,
-      "hp": 50,
+      "hp": 48,
       "mp": 20,
-      "attack": 20,
-      "guard": 5,
+      "attack": 14,
+      "guard": 4,
       "speed": 10,
       "skills": [
         "special01",
@@ -18,11 +18,11 @@
         "magic04"
       ],
       "equip": {
-        "weapon": "短剣",
-        "armor": "マント"
+        "armor": "マント",
+        "weapon": "短剣"
       },
       "growth": {
-        "hp": 6,
+        "hp": 8,
         "mp": 3,
         "attack": 3,
         "guard": 1,
@@ -39,18 +39,18 @@
     },
     "grandpa": {
       "level": 1,
-      "hp": 45,
-      "mp": 10,
-      "attack": 24,
+      "hp": 56,
+      "mp": 12,
+      "attack": 18,
       "guard": 8,
-      "speed": 7,
+      "speed": 6,
       "skills": [
         "special01"
       ],
       "growth": {
-        "hp": 5,
-        "mp": 1,
-        "attack": 2,
+        "hp": 9,
+        "mp": 2,
+        "attack": 3,
         "guard": 2,
         "speed": 1
       }
@@ -58,9 +58,9 @@
     "lamy": {
       "level": 1,
       "hp": 40,
-      "mp": 32,
-      "attack": 15,
-      "guard": 4,
+      "mp": 30,
+      "attack": 11,
+      "guard": 3,
       "speed": 12,
       "skills": [
         "magic02",
@@ -70,7 +70,7 @@
         "weapon": "木のぼう"
       },
       "growth": {
-        "hp": 4,
+        "hp": 6,
         "mp": 5,
         "attack": 2,
         "guard": 1,

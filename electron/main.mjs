@@ -1,30 +1,16 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import serve from 'electron-serve';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 // 旧 game と同じ静的配信。固定 origin にすることで IndexedDB の記録も保つ。
 const loadGame = serve({ directory: 'out', hostname: 'samplegame' });
 
-// ウィンドウの覚え（フルスクリーンか）。**最後の状態で次も開く。** 記録（IndexedDB）とは別に userData へ置く。
-const windowStateFile = () => path.join(app.getPath('userData'), 'window.json');
-
-function readWindowState() {
-  try {
-    const state = JSON.parse(readFileSync(windowStateFile(), 'utf8'));
-    return { fullscreen: state?.fullscreen === true };
-  } catch {
-    return { fullscreen: false };
-  }
-}
-
-function writeWindowState(state) {
-  try {
-    writeFileSync(windowStateFile(), JSON.stringify(state));
-  } catch (error) {
-    console.warn('window.json を書けません', error);
-  }
-}
+// ゲームの画面は 1280×720 が基準（`GameCanvas` の `--game-scale`）。窓の中身をこの大きさにし、
+// 窓の大きさは変えさせない（縮めると画面も縮み、最大化しても拡大はしないので、等倍のまま出すため）。
+// 大きく遊びたいときはフルスクリーン（F11 / Alt+Enter / 設定）。**起動はいつも窓**（前回の状態は覚えない）。
+const GAME_WIDTH = 1280;
+const GAME_HEIGHT = 720;
 
 // 画面（設定のフルスクリーン）から切り替える口。送ってきたウィンドウを相手にする。
 ipcMain.handle('fullscreen:get', (event) => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false);
@@ -41,12 +27,15 @@ async function createWindow() {
   }
 
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    useContentSize: true,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: true,
     title: 'SampleGame',
     autoHideMenuBar: true,
     backgroundColor: '#000000',
-    fullscreen: readWindowState().fullscreen,
     webPreferences: {
       preload: path.join(app.getAppPath(), 'electron', 'preload.cjs'),
       nodeIntegration: false,
@@ -65,14 +54,18 @@ async function createWindow() {
     event.preventDefault();
     win.setFullScreen(!win.isFullScreen());
   });
-  // 切り替わったら覚えて、画面（設定の印）にも知らせる。
+  // 切り替わったら画面（拡大と設定の印）に知らせる。大きさを変えられない窓では Windows で
+  // enter/leave-full-screen が来ないことがあるので、大きさが変わったときにも見て、変わった時だけ送る。
+  let lastFull = win.isFullScreen();
   const fullScreenChanged = () => {
     const on = win.isFullScreen();
-    writeWindowState({ fullscreen: on });
+    if (on === lastFull) return;
+    lastFull = on;
     if (!win.webContents.isDestroyed()) win.webContents.send('fullscreen:changed', on);
   };
   win.on('enter-full-screen', fullScreenChanged);
   win.on('leave-full-screen', fullScreenChanged);
+  win.on('resize', fullScreenChanged);
 
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, url) => {

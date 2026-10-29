@@ -2276,25 +2276,24 @@ function buildBatch(
   const chips = new Float32Array(count * 4);
   // w に隠す面を畳んである。頂点属性の枠が 16 しかないため（GC-36）。
   const sides = new Float32Array(count * 4);
-  const edges = new Float32Array(count);
-  const emitAttr = new Float32Array(count);
+  // 数 1 つずつの印は 1 枠にまとめる: x = 縁の色・y = 発光・z = 面の基準の角・w = 面に合わせる（`PACK_*`）。
+  // 頂点属性は 16 枠が上限で、1 つずつだと 4 枠使っていた（2026-10-29。3 枠空けた）。
+  const packAttr = new Float32Array(count * 4);
   // 厚みは [幅, 高さ, 奥行] の 1 枠にまとめてある。頂点属性が 16 個で上限のため（GC-36 / DEC-415）。
-  const thickAttr = new Float32Array(count * 3);
+  // 4 つ目はインスタンスの番号（揺れの表を引く。GS-274）。`gl_InstanceID` は D3D11 で属性を 1 つ食い、
+  // 16 個を超えてシェーダが組めず、揺らすレイヤーが消えた（Electron 版）。
+  const thickAttr = new Float32Array(count * 4);
+  for (let i = 0; i < count; i += 1) thickAttr[i * 4 + 3] = i;
   // 面ごとのチップの引き延ばし。1 成分に 8bit × 3 面（DEC-415）。
   const stretchAttr = new Float32Array(count * 4);
   // 面ごとのチップのずらし。並びは引き延ばしと同じ（DEC-422）。
   const chipOffsetAttr = new Float32Array(count * 4);
-  const faceAnchorAttr = new Float32Array(count);
-  const faceFitAttr = new Float32Array(count);
   geometry.setAttribute('chip', new InstancedBufferAttribute(chips, 4));
   geometry.setAttribute('chipSides', new InstancedBufferAttribute(sides, 4));
-  geometry.setAttribute('chipEdge', new InstancedBufferAttribute(edges, 1));
-  geometry.setAttribute('chipEmit', new InstancedBufferAttribute(emitAttr, 1));
-  geometry.setAttribute('boxThick', new InstancedBufferAttribute(thickAttr, 3));
+  geometry.setAttribute('chipPack', new InstancedBufferAttribute(packAttr, 4));
+  geometry.setAttribute('boxThick', new InstancedBufferAttribute(thickAttr, 4));
   geometry.setAttribute('chipStretch', new InstancedBufferAttribute(stretchAttr, 4));
   geometry.setAttribute('chipOffset', new InstancedBufferAttribute(chipOffsetAttr, 4));
-  geometry.setAttribute('faceAnchor', new InstancedBufferAttribute(faceAnchorAttr, 1));
-  geometry.setAttribute('faceFit', new InstancedBufferAttribute(faceFitAttr, 1));
 
   const facesCamera = billboardFacesCamera(batch.shape);
   const flatFollow = billboardFollowsYaw(batch.shape);
@@ -2333,13 +2332,13 @@ function buildBatch(
     const hx = thickness ? boxHeight(thickX) : 1;
     scale.set(context.unit, context.unit, context.unit);
     if (thickness && Math.abs(hy - 1) > 1e-6) {
-      thickAttr[i * 3 + 1] = thickY < 0 ? -hy : hy;
+      thickAttr[i * 4 + 1] = thickY < 0 ? -hy : hy;
     }
     if (thickness && Math.abs(hz - 1) > 1e-6) {
-      thickAttr[i * 3 + 2] = thickZ < 0 ? -hz : hz;
+      thickAttr[i * 4 + 2] = thickZ < 0 ? -hz : hz;
     }
     if (thickness && Math.abs(hx - 1) > 1e-6) {
-      thickAttr[i * 3] = thickX < 0 ? -hx : hx;
+      thickAttr[i * 4] = thickX < 0 ? -hx : hx;
     }
 
     // 立体の部品（DEC-479）は高さぶん縦に縮め、マスの床にそろえる（上から削る）。
@@ -2379,16 +2378,16 @@ function buildBatch(
     sides[i * 4] = faces.back;
     sides[i * 4 + 1] = faces.left;
     sides[i * 4 + 2] = faces.right;
-    edges[i] = EDGE_SHAPES.has(batch.shape) ? (proto?.edge ?? 0) : 0;
-    emitAttr[i] = emitMaskOf(proto);
+    packAttr[i * 4 + PACK_EDGE] = EDGE_SHAPES.has(batch.shape) ? (proto?.edge ?? 0) : 0;
+    packAttr[i * 4 + PACK_EMIT] = emitMaskOf(proto);
     // 板の切り取りの目印。隠す面（bit 0..5）とぶつからない 128 の位に置く（DEC-96）。
     if (cropsFace) sides[i * 4 + 3] = PLANE_CROP_BIT;
     // 上向きの明るさ（DEC-125）。面の向きに関わらず、光は真上から受けたことにする。
     if (shadeUpOf(proto)) sides[i * 4 + 3] |= SHADE_UP_BIT;
     if (roundSolid) sides[i * 4 + 3] |= ROUND_SOLID_BIT;
     if (batch.shape === 'box') {
-      faceAnchorAttr[i] = packFaceAnchorAttr(proto?.faceAnchor);
-      faceFitAttr[i] = packFaceFitAttr(proto?.faceFit);
+      packAttr[i * 4 + PACK_ANCHOR] = packFaceAnchorAttr(proto?.faceAnchor);
+      packAttr[i * 4 + PACK_FIT] = packFaceFitAttr(proto?.faceFit);
       // 面ごとのチップの引き延ばし（DEC-415）。マスいっぱいなら 0 のまま。
       const stretch = packChipStretchAttr(proto?.chipStretch);
       stretchAttr[i * 4] = stretch[0];
@@ -2470,36 +2469,33 @@ function buildBatch(
     sides[index * 4 + 1] = pick('left');
     sides[index * 4 + 2] = pick('right');
     // `sides[3]` は隠す面・切り取りの目印。**隣のマスで決まる話**なので触らない。
-    edges[index] = EDGE_SHAPES.has(batch.shape) ? (look.edge ?? 0) : 0;
-    emitAttr[index] = emitMaskOf(look as ProtoDef);
+    packAttr[index * 4 + PACK_EDGE] = EDGE_SHAPES.has(batch.shape) ? (look.edge ?? 0) : 0;
+    packAttr[index * 4 + PACK_EMIT] = emitMaskOf(look as ProtoDef);
     if (batch.shape === 'box' || cropsFaceShape(batch.shape)) {
       const [ty, tz, tx] = readThickness(look.thickness);
       const hy = boxHeight(ty);
       const hz = boxHeight(tz);
       const hx = boxHeight(tx);
-      thickAttr[index * 3] = Math.abs(hx - 1) > 1e-6 ? (tx < 0 ? -hx : hx) : 0;
-      thickAttr[index * 3 + 1] = Math.abs(hy - 1) > 1e-6 ? (ty < 0 ? -hy : hy) : 0;
-      thickAttr[index * 3 + 2] = Math.abs(hz - 1) > 1e-6 ? (tz < 0 ? -hz : hz) : 0;
+      thickAttr[index * 4] = Math.abs(hx - 1) > 1e-6 ? (tx < 0 ? -hx : hx) : 0;
+      thickAttr[index * 4 + 1] = Math.abs(hy - 1) > 1e-6 ? (ty < 0 ? -hy : hy) : 0;
+      thickAttr[index * 4 + 2] = Math.abs(hz - 1) > 1e-6 ? (tz < 0 ? -hz : hz) : 0;
       (geometry.getAttribute('boxThick') as InstancedBufferAttribute).needsUpdate = true;
     }
     if (batch.shape === 'box') {
-      faceAnchorAttr[index] = packFaceAnchorAttr(look.faceAnchor);
-      faceFitAttr[index] = packFaceFitAttr(look.faceFit);
+      packAttr[index * 4 + PACK_ANCHOR] = packFaceAnchorAttr(look.faceAnchor);
+      packAttr[index * 4 + PACK_FIT] = packFaceFitAttr(look.faceFit);
       const stretch = packChipStretchAttr(look.chipStretch);
       stretchAttr[index * 4] = stretch[0];
       stretchAttr[index * 4 + 1] = stretch[1];
       stretchAttr[index * 4 + 2] = stretch[2];
       stretchAttr[index * 4 + 3] = stretch[3];
       chipOffsetAttr.set(packChipOffsetAttr(look.chipOffset), index * 4);
-      (geometry.getAttribute('faceAnchor') as InstancedBufferAttribute).needsUpdate = true;
-      (geometry.getAttribute('faceFit') as InstancedBufferAttribute).needsUpdate = true;
       (geometry.getAttribute('chipStretch') as InstancedBufferAttribute).needsUpdate = true;
       (geometry.getAttribute('chipOffset') as InstancedBufferAttribute).needsUpdate = true;
     }
     (geometry.getAttribute('chip') as InstancedBufferAttribute).needsUpdate = true;
     (geometry.getAttribute('chipSides') as InstancedBufferAttribute).needsUpdate = true;
-    (geometry.getAttribute('chipEdge') as InstancedBufferAttribute).needsUpdate = true;
-    (geometry.getAttribute('chipEmit') as InstancedBufferAttribute).needsUpdate = true;
+    (geometry.getAttribute('chipPack') as InstancedBufferAttribute).needsUpdate = true;
     return true;
   };
 
@@ -2550,6 +2546,12 @@ function writeChip(target: Float32Array, index: number, rect: [number, number, n
 function shadeUpOf(proto: ProtoDef | undefined): boolean {
   return proto?.shadeUp === true;
 }
+
+/** `chipPack` の並び（シェーダの `chipEdge` などの名前と同じ順。material.ts）。 */
+const PACK_EDGE = 0;
+const PACK_EMIT = 1;
+const PACK_ANCHOR = 2;
+const PACK_FIT = 3;
 
 function emitMaskOf(proto: ProtoDef | undefined): number {
   if (!proto) return 0;

@@ -61,7 +61,8 @@ import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRou
 import type { IfCondition } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
 import { drawMode, heavyOn } from './quality';
-import { battlePartyFiguresShown } from './devMode';
+import { battlePartyFiguresShown, DEV_MODE } from './devMode';
+import { watchShaderErrors } from '../mep3d/shaderErrors';
 import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
@@ -608,6 +609,8 @@ export function createGameView(
   const switchOn = (key: string, owner?: string): boolean => options.switchOn?.(key, owner) ?? false;
   // ブロック影がステンシルを使うので stencil は要る（DEC-29）。
   const renderer = new WebGLRenderer({ canvas, antialias: true, stencil: true });
+  // シェーダが組めなかったら知らせる。画面に出すのは開発中だけ（遊ぶ人にはコンソールだけ）。
+  watchShaderErrors(renderer, { banner: DEV_MODE });
   // 画面が 1280×720 固定なので、描くのもちょうどその画素数にする（DEC-162）。
   // 高 DPI で 2 倍に焼くと、ドット絵の 1 画素が画面の 1 画素と一致しなくなる。
   renderer.setPixelRatio(1);

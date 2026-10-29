@@ -185,7 +185,7 @@ export function swayAnchors(cells: readonly SwayCell[]): SwayAnchor[] {
 const DATA_WIDTH = 1024;
 
 /**
- * チップ 1 枚ずつの塊の情報（GS-274）。RGBA = 根元・中心 X・中心 Z・1（揺らす印）。シェーダが `gl_InstanceID` で引く。
+ * チップ 1 枚ずつの塊の情報（GS-274）。RGBA = 根元・中心 X・中心 Z・1（揺らす印）。シェーダがインスタンスの番号（`boxThick.w`）で引く。
  */
 export function createSwayDataTexture(anchors: readonly SwayAnchor[]): DataTexture {
   const width = Math.max(1, Math.min(DATA_WIDTH, anchors.length));

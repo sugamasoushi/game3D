@@ -50,10 +50,10 @@
     "木のぼう": {
       "name": "木のぼう",
       "text": "どこにでも ある ぼう。",
-      "price": 20,
+      "price": 15,
       "equip": {
         "slot": "weapon",
-        "attack": 2,
+        "attack": 10,
         "strike": {
           "effect": "normal"
         }
@@ -62,32 +62,34 @@
     "短剣": {
       "name": "短剣",
       "text": "小さくて 軽い 剣。",
-      "price": 80,
+      "price": 60,
       "equip": {
         "slot": "weapon",
-        "attack": 5,
+        "attack": 20,
         "strike": {
           "effect": "normal_dagger_slash",
           "se": "剣の素振り3"
-        }
+        },
+        "speed": 1
       }
     },
     "マント": {
       "name": "マント",
       "text": "風を ふせぐ ぬの。",
-      "price": 60,
+      "price": 40,
       "equip": {
         "slot": "armor",
-        "guard": 3
+        "guard": 2,
+        "speed": 1
       }
     },
     "皮のよろい": {
       "name": "皮のよろい",
       "text": "しっかりした つくり。",
-      "price": 120,
+      "price": 100,
       "equip": {
         "slot": "armor",
-        "guard": 5,
+        "guard": 6,
         "speed": -1
       }
     },

@@ -1,4 +1,5 @@
 import { fieldFlashFragmentShader, fieldFlashState } from './fieldFlash';
+import { lightningCount, lightningWidth, lightningSeed, lightningStrike, LIGHTNING_MAX_COUNT } from './lightningScatter';
 import { lightningFragmentShader } from './lightning';
 import { createLightPillarGeometry, lightPillarVertexShader, lightPillarFragmentShader } from './lightPillar';
 import { createLightExplosionGeometry, lightExplosionVertexShader, lightExplosionFragmentShader } from './lightExplosion';
@@ -107,6 +108,8 @@ export function readFieldPreset(raw: FieldEffectPresetDef): FieldEffectPreset | 
     cast: raw.cast !== false,
     angle: num(raw.angle, base.angle),
     rainTilt: readRainTilt(raw.rainTilt),
+    lightningCount: lightningCount(raw.lightningCount),
+    lightningWidth: lightningWidth(raw.lightningWidth),
   };
 }
 
@@ -367,6 +370,8 @@ export interface FieldEffectSettings {
   angle: number;
   /** 雨だけ。鉛直からの傾き（度、-75〜75）。省略時6。 */
   rainTilt?: number;
+  lightningCount?: number;
+  lightningWidth?: number;
 }
 
 export function readRainTilt(value: unknown): number {
@@ -1420,6 +1425,7 @@ export function createFieldEffects(): FieldEffects {
     /** 元の見た目と、時間帯の切り替えで薄めるか（GS-226）。 */
     look: FieldEffectSettings;
     fade?: 'in' | 'out';
+    lightning?: { slot: number; seed: number; volume: FieldEffectVolume; unit: number };
   }> = [];
   /** 風の置き場所（GS-274）。板は作らず、範囲と見た目だけ覚える。 */
   const winds: Array<{ id: string; volume: FieldEffectVolume; look: FieldEffectSettings; fade?: 'in' | 'out' }> = [];
@@ -1443,9 +1449,28 @@ export function createFieldEffects(): FieldEffects {
    */
   const updateFlash = (material: ShaderMaterial) => {
     if (!material.uniforms.flashPulse) return;
-    const state = fieldFlashState(clock, material.uniforms.speed.value);
+    const rig = material.userData.lightning as { slot: number; seed: number; count: number; wall: boolean } | undefined;
+    const state = rig ? lightningStrike(clock, material.uniforms.speed.value, rig.count, rig.slot, rig.seed, rig.wall) : fieldFlashState(clock, material.uniforms.speed.value);
     material.uniforms.flashPulse.value = state.pulse;
-    material.uniforms.flashCycle.value = state.cycle;
+    material.uniforms.flashCycle.value = 'shape' in state ? state.shape : state.cycle;
+  };
+  const updateLightning = (slice: (typeof slices)[number]) => {
+    const rig = slice.lightning;
+    if (!rig) return;
+    const v = rig.volume, unit = rig.unit, mesh = slice.mesh;
+    const count = lightningCount(slice.look.lightningCount);
+    mesh.visible = rig.slot < count;
+    const wall = v.plane !== 'xz';
+    const state = lightningStrike(clock, Math.max(0, slice.look.speed), count, rig.slot, rig.seed, wall);
+    const wide = Math.max(0.2, (v.plane === 'yz' ? v.maxZ - v.minZ : v.maxX - v.minX));
+    const width = Math.min(wide, lightningWidth(slice.look.lightningWidth));
+    const x = (v.minX + v.maxX) / 2;
+    const z = (v.minZ + v.maxZ) / 2;
+    const offset = (state.x - 0.5) * (wide - width);
+    mesh.scale.set(width * unit, Math.max(0.2, v.maxY - v.minY) * unit, 1);
+    mesh.rotation.y = v.plane === 'yz' ? Math.PI / 2 : 0;
+    mesh.position.set((x + (v.plane === 'yz' ? 0 : offset)) * unit, (v.minY + v.maxY) / 2 * unit,
+      (z + (v.plane === 'yz' ? offset : wall ? 0 : (state.z - 0.5) * (v.maxZ - v.minZ))) * unit);
   };
   const applyLook = (look: FieldEffectSettings, material: ShaderMaterial, weight = 1, id = '') => {
     // イベントの出し入れ（GS-270）。表に在れば `on` より優先し、濃さに掛ける。
@@ -1454,6 +1479,7 @@ export function createFieldEffects(): FieldEffects {
     // 時間帯の切り替え（GS-226）。濃さと映り込みを薄めて出し入れする。
     material.uniforms.amount.value = Math.max(0, look.amount) * weight;
     material.uniforms.speed.value = Math.max(0, look.speed);
+    if (material.userData.lightning) material.userData.lightning.count = lightningCount(look.lightningCount);
     updateFlash(material);
     material.uniforms.scale.value = Math.max(0.001, look.scale);
     material.uniforms.tint.value = tintOf(look.color, 'ffffff');
@@ -1506,7 +1532,7 @@ export function createFieldEffects(): FieldEffects {
         const cz = ((volume.minZ + volume.maxZ) / 2) * unit;
         // 縦の格子に置いたものは、その面 1 枚として立てる（DEC-198）。
         const wall = volume.plane !== 'xz';
-        const count = kind === 'flash' || kind === 'lightning' || kind === 'explosion' || kind === 'pillar' ? 1 : wall ? WALL_LAYERS : LAYERS[kind];
+        const count = kind === 'lightning' ? LIGHTNING_MAX_COUNT : kind === 'flash' || kind === 'explosion' || kind === 'pillar' ? 1 : wall ? WALL_LAYERS : LAYERS[kind];
         for (let i = 0; i < count; i += 1) {
           const level = i / Math.max(1, count - 1);
           const key = poolKey(kind, wall);
@@ -1570,6 +1596,8 @@ export function createFieldEffects(): FieldEffects {
             material.uniforms.flashPulse ??= { value: 1 };
             material.uniforms.flashCycle ??= { value: 0 };
           }
+          const lightning = kind === 'lightning' ? { slot: i, seed: lightningSeed(look.id, volume.minX, volume.minY, volume.minZ), volume, unit } : undefined;
+          if (lightning) material.userData.lightning = { slot: i, seed: lightning.seed, count: lightningCount(look.lightningCount), wall };
           applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
           const mesh = new Mesh(kind === 'pillar' ? pillarGeometry : kind === 'explosion' ? explosionGeometry : geometry, material);
           if (REFLECTS[kind]) {
@@ -1664,7 +1692,11 @@ export function createFieldEffects(): FieldEffects {
            * 「鏡面を描く前の画」を写してしまい、下の鏡が見えなくなる。
            */
           mesh.renderOrder = (kind === 'mirror' ? 4 : 8) + i;
-          slices.push({ id: look.id, mesh, poolKey: key, reflects: REFLECTS[kind] === true, cast: look.cast, look, fade: volume.fade });
+          const slice = { id: look.id, mesh, poolKey: key, reflects: REFLECTS[kind] === true, cast: look.cast, look, fade: volume.fade, lightning };
+          updateLightning(slice);
+          // 同じ描画順にそろえ、奥行きはthreeの透明物ソートに任せる。
+          if (lightning) mesh.renderOrder = 8;
+          slices.push(slice);
           group.add(mesh);
         }
       }
@@ -1706,6 +1738,7 @@ export function createFieldEffects(): FieldEffects {
         if (!look) continue;
         slice.look = look;
         applyLook(look, slice.mesh.material, sliceWeight(slice), slice.id);
+        updateLightning(slice);
         // 映すかは uniform ではないので、板の側に憶える（DEC-345）。
         slice.cast = look.cast;
       }
@@ -1754,6 +1787,7 @@ export function createFieldEffects(): FieldEffects {
       for (const slice of slices) {
         slice.mesh.material.uniforms.time.value = clock;
         updateFlash(slice.mesh.material);
+        updateLightning(slice);
       }
     },
 
