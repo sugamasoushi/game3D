@@ -2221,10 +2221,24 @@ body {
   opacity: 0.6;
 }
 
-/* 開いているタブ。**枠と濃さの両方**で示す（色だけだと分かりにくい）。 */
+/* 選んでいる命令。**枠と濃さの両方**で示す（色だけだと分かりにくい）。 */
 .shop-tabs button.on {
   border-color: #ffd479;
   opacity: 1;
+}
+
+/* 一覧を選んでいるあいだは、決めた命令を金の地で残す（いま何をしているかが分かる）。 */
+.shop-box.listing .shop-tabs button.on {
+  background: rgba(255, 212, 121, 0.15);
+}
+
+/* 命令を選んでいるあいだの一覧は**見本**。沈めて出し、押せない。 */
+.shop-box:not(.listing) .shop-body {
+  opacity: 0.5;
+}
+
+.shop-list button:disabled {
+  cursor: default;
 }
 
 /* 所持金は右端で桁をそろえる。買うたびに動くので、位置が動くと読みにくい。 */
@@ -2244,10 +2258,11 @@ body {
  * 並びは 1 か所で決める（見出しと行で同じ幅）。▶ の場所（`--shop-cursor`）は**いつも空けておく**——
  * 選んだ行だけ字を足すと、その行の名前が右へずれる（会話の選択肢と同じ）。
  */
+/* 行は**縦の真ん中にそろえる**。`baseline` だと高さを決めた行の中で字が上へ寄り、枠が下にずれて見えた。 */
 .shop-columns,
 .shop-list button {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   --shop-cursor: 1.2em;
 }
@@ -2367,7 +2382,14 @@ body {
   border-top: 2px solid rgba(142, 166, 200, 0.4);
 }
 
-/* 買った・売ったの一言。**1 行ぶんの高さを取っておく**（空でも枠は縮まない）。 */
+/*
+ * 買った・売ったの一言。**1 行ぶんの高さを取っておく**（空でも枠は縮まない）。
+ * 帯の高さは「もどる」のボタンが有っても無くても同じにする（`min-height`）。
+ */
+.shop-foot {
+  min-height: 42px;
+}
+
 .shop-note {
   flex: 1;
   min-width: 0;

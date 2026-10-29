@@ -9,11 +9,13 @@
 // 売値は買値の半分（`itemSellPrice`）。**買い直すと損をする**ぶんが、
 // 何を持っておくかを選ぶ重みになる。値段の無い物（鍵や手紙）は並ばないし売れない。
 //
-// キーはメニュー・戦闘と同じ約束: ↑↓ で選ぶ／←→ でタブ／Enter 決定／Esc で閉じる。
+// **はじめは「買う」「売る」「店を出る」だけを選ぶ**（2026-10-29）。買う・売るを決めると一覧へ進み、
+// Esc（ゲームパッドの ✕）で一覧から戻る。戻った所で Esc か「店を出る」で閉じる。
+// キーはメニュー・戦闘と同じ約束: ↑↓（←→）で選ぶ／Enter 決定／Esc で戻る。
 //
 // **枠の大きさは中身で変えない**（2026-10-29）。買う・売るを切り替えるたびに枠が伸び縮みすると、
 // 目で追う場所が毎回動く。一覧は決まった行数ぶんの高さを取り、説明と一言も決まった場所に出す。
-// 選んでいる行は**番号で持ち、▶ と枠で見せる**（GS-77 と同じ。焦点だとゲームパッドで見えない）。
+// 選んでいる命令と行は**番号で持ち、▶ と枠で見せる**（GS-77 と同じ。焦点だとゲームパッドで見えない）。
 // 買えない物も選べる——説明は読めて、押すと「足りない」と言う。
 // 開いたときの挨拶は出さない（画面に決め打ちの台詞は書き換えられない。挨拶は前の会話でする）。
 
@@ -23,6 +25,8 @@ import { playUi } from '../../game/audio';
 
 /** 並べ方。売らない店では「買う」だけになる。 */
 type Tab = '買う' | '売る';
+/** はじめに選ぶ命令。 */
+type Command = Tab | '店を出る';
 
 export function ShopScreen({
   items,
@@ -49,6 +53,12 @@ export function ShopScreen({
   onSell(id: string): boolean;
   onClose(): void;
 }) {
+  const commands: Command[] = canSell ? ['買う', '売る', '店を出る'] : ['買う', '店を出る'];
+  /** `command` は命令を選んでいるところ、`list` は品物を選んでいるところ。 */
+  const [mode, setMode] = useState<'command' | 'list'>('command');
+  /** 選んでいる命令の番号。 */
+  const [cmd, setCmd] = useState(0);
+  /** 一覧に出している並べ方。命令で「店を出る」を選んでいるあいだは、直前の並べ方を出しておく。 */
   const [tab, setTab] = useState<Tab>('買う');
   /** 買った・売ったの一言。開いたときは空（挨拶は出さない）。 */
   const [note, setNote] = useState('');
@@ -58,7 +68,6 @@ export function ShopScreen({
   const [tick, setTick] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const tabs: Tab[] = canSell ? ['買う', '売る'] : ['買う'];
   // 描き直すたびに読み直す。`tick` が動けばここも新しくなる。
   const gold = readGold();
 
@@ -82,15 +91,38 @@ export function ShopScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, goods, items, gold, tick]);
 
+  const listing = mode === 'list';
   // 売って行が減ったら、はみ出した番号を最後の行へ戻す。
-  const pick = rows.length === 0 ? -1 : Math.min(at, rows.length - 1);
+  const pick = !listing || rows.length === 0 ? -1 : Math.min(at, rows.length - 1);
   const picked = pick >= 0 ? rows[pick] : null;
 
-  const changeTab = (next: Tab) => {
-    if (next === tab) return;
-    setTab(next);
+  /** 命令にカーソルを置く。買う・売るなら、その一覧を先に見せておく。 */
+  const hover = (index: number) => {
+    setCmd(index);
+    const name = commands[index];
+    if (name !== '店を出る') setTab(name);
+  };
+
+  /** 命令を決める。 */
+  const choose = (index: number) => {
+    const name = commands[index];
+    if (!name) return;
+    if (name === '店を出る') {
+      onClose();
+      return;
+    }
+    playUi('decide');
+    setCmd(index);
+    setTab(name);
     setAt(0);
     setNote('');
+    setMode('list');
+  };
+
+  /** 一覧から命令へ戻る。 */
+  const back = () => {
+    playUi('cancel');
+    setMode('command');
   };
 
   const act = (index: number) => {
@@ -118,7 +150,8 @@ export function ShopScreen({
 
   // 選んでいる行が見えるところまで一覧を送る（行が多い店）。
   useEffect(() => {
-    listRef.current?.children[pick]?.scrollIntoView({ block: 'nearest' });
+    if (pick >= 0) listRef.current?.children[pick]?.scrollIntoView({ block: 'nearest' });
+    else if (listRef.current) listRef.current.parentElement?.scrollTo({ top: 0 });
   }, [pick, tab]);
 
   useEffect(() => {
@@ -126,14 +159,19 @@ export function ShopScreen({
       // **店の間はキーを通さない。** 通すと後ろで人が歩く（GS-59 と同じ穴）。
       event.preventDefault();
       event.stopPropagation();
-      if (event.key === 'Escape') {
-        onClose();
+      const down = event.key === 'ArrowDown' || event.key === 'ArrowRight';
+      const up = event.key === 'ArrowUp' || event.key === 'ArrowLeft';
+      const enter = event.key === 'Enter' || event.key === ' ';
+      if (mode === 'command') {
+        // 命令は横に並ぶので、←→ でも ↑↓ でも動く。
+        if (event.key === 'Escape') onClose();
+        else if (down || up) hover((cmd + (down ? 1 : -1) + commands.length) % commands.length);
+        // **合成のキーイベントでも効くよう、ボタンは押さずに直に決める**（ゲームパッド。GS-58）。
+        else if (enter) choose(cmd);
         return;
       }
-      if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-        if (tabs.length < 2) return;
-        const now = tabs.indexOf(tab);
-        changeTab(tabs[(now + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length]);
+      if (event.key === 'Escape') {
+        back();
         return;
       }
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -142,21 +180,29 @@ export function ShopScreen({
         setAt((pick + delta + rows.length) % rows.length);
         return;
       }
-      // **合成のキーイベントでも効くよう、ボタンは押さずに直に決める**（ゲームパッド。GS-58）。
-      if (event.key === 'Enter' || event.key === ' ') act(pick);
+      if (enter) act(pick);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, canSell, onClose, rows, pick]);
+  }, [mode, cmd, tab, canSell, onClose, rows, pick]);
 
   return (
     <div className="shop" data-tick={tick}>
-      <div className="shop-box">
+      <div className={'shop-box' + (listing ? ' listing' : '')}>
         <div className="shop-head">
           <nav className="shop-tabs">
-            {tabs.map((name) => (
-              <button key={name} type="button" tabIndex={-1} className={name === tab ? 'on' : ''} onClick={() => changeTab(name)}>
+            {commands.map((name, index) => (
+              <button
+                key={name}
+                type="button"
+                tabIndex={-1}
+                className={index === cmd ? 'on' : ''}
+                onMouseEnter={() => {
+                  if (!listing) hover(index);
+                }}
+                onClick={() => choose(index)}
+              >
                 {name}
               </button>
             ))}
@@ -183,6 +229,7 @@ export function ShopScreen({
                   <button
                     type="button"
                     tabIndex={-1}
+                    disabled={!listing}
                     className={(index === pick ? 'on' : '') + (row.short ? ' short' : '')}
                     onMouseEnter={() => setAt(index)}
                     onClick={() => act(index)}
@@ -201,9 +248,12 @@ export function ShopScreen({
 
         <div className="shop-foot">
           <p className="shop-note">{note}</p>
-          <button type="button" tabIndex={-1} onClick={onClose}>
-            店を出る
-          </button>
+          {/* 一覧から戻る。キーは Esc（ゲームパッドは ✕）。マウス・タッチのために押せる形でも置く。 */}
+          {listing ? (
+            <button type="button" tabIndex={-1} onClick={back}>
+              もどる
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
