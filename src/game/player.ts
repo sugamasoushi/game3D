@@ -565,6 +565,31 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
   let facing: Facing = 'south';
   let stepTime = 0;
   let stepIndex = 0;
+  /** 前のフレームで歩きのコマを回していたか。止まっていた所から動き出した瞬間を知るため。 */
+  let stepping = false;
+  /**
+   * 歩きのコマを進める（`per` は 1 コマの秒数）。**動き出した瞬間に 1 コマ進める**（2026-10-30）——
+   * 止まり絵のまま 1 コマぶん（歩き 0.16 秒）待ってから足が出ると、最初の数フレームは滑って見えた。
+   */
+  const advanceStep = (dt: number, per: number) => {
+    if (!stepping) {
+      stepping = true;
+      stepTime = 0;
+      stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
+      return;
+    }
+    stepTime += dt;
+    while (stepTime >= per) {
+      stepTime -= per;
+      stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
+    }
+  };
+  /** 止まる。止まり絵へ戻し、次に動き出したらまた 1 コマ目から出す。 */
+  const stopStep = () => {
+    stepping = false;
+    stepTime = 0;
+    stepIndex = STAND;
+  };
 
   /**
    * シートのコマを選ぶ。UV は左下原点なので行は下から数える。
@@ -646,7 +671,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     position,
     face(to) {
       facing = to;
-      stepIndex = STAND;
+      stopStep();
       refreshFrame();
     },
     // 足を 1 回踏み替える時間（GS-168）。台帳の `walk.ms` から出す。
@@ -684,15 +709,9 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
       if (distance > 0.0001 * unit && dt > 0) {
         if (lead) facing = lead;
         else if (Math.hypot(dx, dz) > 0.0001 * unit) facing = facingForWorld(dx, dz, yaw);
-        stepTime += dt;
-        const per = distance / dt > 6 * unit ? RUN_STEP_S : STEP_S;
-        while (stepTime >= per) {
-          stepTime -= per;
-          stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
-        }
+        advanceStep(dt, distance / dt > 6 * unit ? RUN_STEP_S : STEP_S);
       } else {
-        stepTime = 0;
-        stepIndex = STAND;
+        stopStep();
       }
       position.set(at.x, at.y, at.z);
       group.position.copy(position);
@@ -836,15 +855,9 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
         // 絵は歩きのまま。**常に背中を見せる**ので向きは北で固定。
         facing = 'north';
         if (axis.y !== 0) {
-          stepTime += deltaSeconds;
-          const per = input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S;
-          while (stepTime >= per) {
-            stepTime -= per;
-            stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
-          }
+          advanceStep(deltaSeconds, input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S);
         } else {
-          stepTime = 0;
-          stepIndex = STAND;
+          stopStep();
         }
         // はしごは背中を見せて登る。向きを合わせてから絵を出す。
         facing = 'north';
@@ -883,17 +896,10 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
               ? facingForWorld(lane.x, lane.z, input.yaw)
               : facingFor(axis);
         }
-        const stepping = !input.slide && (axis.x !== 0 || axis.y !== 0);
-        if (stepping) {
-          stepTime += deltaSeconds;
-          const per = input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S;
-          while (stepTime >= per) {
-            stepTime -= per;
-            stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
-          }
+        if (!input.slide && (axis.x !== 0 || axis.y !== 0)) {
+          advanceStep(deltaSeconds, input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S);
         } else {
-          stepTime = 0;
-          stepIndex = STAND;
+          stopStep();
         }
         refreshFrame();
         group.position.copy(position);
