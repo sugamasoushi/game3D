@@ -41,7 +41,7 @@ export function prepareSilhouetteOccluders(scene: Object3D): void {
  * 足元のこの帯を外せば、白くなるのは壁など立っている物に隠れたときだけになる。
  * 壁に隠れたときは体の高さまで隠れるので、足元の帯が白くならなくても見分けられる。
  */
-const FLOOR_CLEAR_CELLS = 0.3;
+const FLOOR_CLEAR_CELLS = 0.03;
 
 /**
  * 地形の深度の後、隊列の通常描画（50〜）の前に描く。仲間同士では白くならない。
