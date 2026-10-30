@@ -53,7 +53,14 @@ import {
 import { createInput } from './input';
 import { BODY_TALL_CELLS, BODY_WIDTH_HALF, createPlayer, type Facing, type Player } from './player';
 import { PartyTrail } from './partyTrail';
-import { prepareSilhouetteOccluders } from './partySilhouette';
+import {
+  createOcclusionMeter,
+  prepareSilhouetteOccluders,
+  SILHOUETTE_FADE_S,
+  SILHOUETTE_HIDE_RATIO,
+  SILHOUETTE_SHOW_RATIO,
+  type PartySilhouette,
+} from './partySilhouette';
 import { actorSheet, loadActorBook } from './actors';import { loadEmotes, TALK_EMOTE } from './emotes';
 import { createHeadMarks } from './headMarks';
 import { characterBookReady, characterSheet, PLAYER_CHARACTER } from './characters';
@@ -698,6 +705,22 @@ export function createGameView(
   let followerBook: Awaited<ReturnType<typeof loadActorBook>> = {};
   const followers = new Map<string, Player>();
   const followerGroup = new Group();
+  /**
+   * 白シルエットを出すか（2026-10-30）。**隠れた割合が 1/2 以上で出し、2/5 を切ったら消す**。
+   * 割合は数える係（`createOcclusionMeter`）が数フレームおきに数え、濃さは毎フレーム少しずつ寄せる。
+   */
+  const silhouetteMeter = createOcclusionMeter(renderer);
+  const silhouetteWanted = new WeakMap<PartySilhouette, boolean>();
+  const partySilhouettes = (): PartySilhouette[] => {
+    const list: PartySilhouette[] = [];
+    const lead = player?.silhouette();
+    if (lead) list.push(lead);
+    for (const actor of followers.values()) {
+      const one = actor.silhouette();
+      if (one) list.push(one);
+    }
+    return list;
+  };
   followerGroup.name = 'party-followers';
   scene.add(followerGroup);
   const partyTrail = new PartyTrail();
@@ -2569,6 +2592,13 @@ export function createGameView(
     const showSilhouette = status.mode === 'play' && !useUi.getState().battle;
     player?.setSilhouette(showSilhouette);
     for (const actor of followers.values()) actor.setSilhouette(showSilhouette);
+    // 白の濃さを寄せる（ふわっと出し入れ）。出すかどうかは前に数えた結果。
+    for (const one of partySilhouettes()) {
+      const goal = showSilhouette && silhouetteWanted.get(one) ? 1 : 0;
+      const step = dt / SILHOUETTE_FADE_S;
+      const now = one.fade();
+      one.setFade(goal > now ? Math.min(goal, now + step) : Math.max(goal, now - step));
+    }
     elapsed += dt;
     player?.setTime(elapsed);
     for (const npc of npcs.values()) npc.actor.setTime(elapsed);
@@ -2620,6 +2650,19 @@ export function createGameView(
     // 舞台の板（敵味方のイラスト）とマスの線はチルトシフトでぼかさない（2026-10-19）。ぼかした後に重ねて描く。
     prepareSilhouetteOccluders(scene);
     tilt.render(renderer, scene, rig.active(), stage ? STAGE_SHARP_LAYER : undefined);
+    // 白シルエットの「隠れた割合」を数える（2026-10-30）。描いた直後なので、遮蔽物の印もキャラの位置もこのフレームのまま。
+    // 数えるときは隊列と、もう一度描くと重いエフェクト（水面の映り込み・揺らぎの写し）を外して地形だけ描く。
+    {
+      const party = partySilhouettes();
+      const ratios = party.some((one) => one.group.visible)
+        ? silhouetteMeter.measure(scene, rig.active(), party, player ? [player.group, followerGroup, fieldEffects.group] : [followerGroup, fieldEffects.group])
+        : null;
+      ratios?.forEach((ratio, index) => {
+        const one = party[index];
+        const was = silhouetteWanted.get(one) === true;
+        silhouetteWanted.set(one, was ? ratio >= SILHOUETTE_HIDE_RATIO : ratio >= SILHOUETTE_SHOW_RATIO);
+      });
+    }
     // 画面エフェクト（DEC-389）。**一番上**に重ねる（絵ができてから貼る 1 枚）。
     screenEffects.render(renderer, dt);
     renderedFrames += 1;
@@ -3520,6 +3563,7 @@ export function createGameView(
       fieldEffects.dispose();
       screenEffects.dispose();
       tilt.dispose();
+      silhouetteMeter.dispose();
       renderer.dispose();
     },
   };

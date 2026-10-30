@@ -15,7 +15,7 @@ import {
   type Texture,
 } from 'three';
 import { createActorMaterial, createActorShadowMaterial } from '../mep3d/actorMaterial';
-import { createPartySilhouette } from './partySilhouette';
+import { createPartySilhouette, type PartySilhouette } from './partySilhouette';
 import { blockShadowLength, resolveLighting, shadowDirection } from '../mep3d/lighting';
 import { MAX_WALK, SEGMENTS_PER_CELL, drape, profile } from '../mep3d/shadowCast';
 import { cellOf } from '../mep3d/collision';
@@ -155,6 +155,8 @@ export interface PlayerInput {
 export interface Player {
   /** フィールドの隊列だけ、遮蔽物の裏を白く表示する。 */
   setSilhouette(on: boolean): void;
+  /** 白シルエットの口（入れたことが無ければ null）。隠れた割合を数えて濃さを決める（2026-10-30）。 */
+  silhouette(): PartySilhouette | null;
   group: Group;
   /** 足元のワールド座標。 */
   position: Vector3;
@@ -363,7 +365,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
   const width = (sheet.framePx[0] / tilePx) * unit * art;
   const height = (sheet.framePx[1] / tilePx) * unit * art;
   const body = new Mesh(new PlaneGeometry(width, height), skin.material);
-  let silhouette: Group | null = null;
+  let silhouette: PartySilhouette | null = null;
   /** 絵を下げる量（GS-52）。台帳の `footPx` をワールドの長さへ直したもの。 */
   const footLift = ((sheet.footPx ?? 0) / tilePx) * unit * art;
   body.position.y = height / 2 - footLift;
@@ -936,7 +938,10 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     },
     setSilhouette(on) {
       if (on && !silhouette) silhouette = createPartySilhouette(body, skin.material, unit);
-      if (silhouette) silhouette.visible = on;
+      if (silhouette) silhouette.group.visible = on;
+    },
+    silhouette() {
+      return silhouette;
     },
     setTime(seconds) {
       skin.setTime(seconds);
@@ -944,9 +949,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     hop(lift) {
       body.position.y = height / 2 - footLift + lift * unit;
       // 白シルエットの「足元の帯」は地面から測る（跳んでいる間は板ごと上がる）。
-      const mesh = silhouette?.children[0] as Mesh | undefined;
-      const uniforms = (mesh?.material as ShaderMaterial | undefined)?.uniforms;
-      if (uniforms?.silhouetteLift) uniforms.silhouetteLift.value = body.position.y;
+      silhouette?.setLift(body.position.y);
     },
     bodyMaterial: skin.material,
     texture,
@@ -962,8 +965,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     radius: bodyHalf,
     dispose() {
       if (silhouette) {
-        ((silhouette.children[0] as Mesh).material as ShaderMaterial).dispose();
-        silhouette.removeFromParent();
+        silhouette.dispose();
       }
       body.geometry.dispose();
       skin.dispose();
