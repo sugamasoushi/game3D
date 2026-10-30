@@ -32,15 +32,38 @@ export function prepareSilhouetteOccluders(scene: Object3D): void {
   });
 }
 
-/** 地形の深度の後、隊列の通常描画（50〜）の前に描く。仲間同士では白くならない。 */
-export function createPartySilhouette(body: Mesh, source: ShaderMaterial): Group {
+/**
+ * 足元からこの高さ（マス）までは白くしない（2026-10-30）。
+ *
+ * 地面に敷いた装飾（「下に重ねる」レイヤー）は、地面とちらつかないよう**深度だけ手前へ寄せて**描く
+ * （`material.ts` の `polygonOffset`。DEC-123）。そのぶん、すぐ後ろに立つキャラの足元が
+ * 「装飾の後ろ」と判定され、足元が白く抜けていた。床に平らに敷いた物が隠せるのは**その高さより下**だけなので、
+ * 足元のこの帯を外せば、白くなるのは壁など立っている物に隠れたときだけになる。
+ * 壁に隠れたときは体の高さまで隠れるので、足元の帯が白くならなくても見分けられる。
+ */
+const FLOOR_CLEAR_CELLS = 0.3;
+
+/**
+ * 地形の深度の後、隊列の通常描画（50〜）の前に描く。仲間同士では白くならない。
+ * `unit` は 1 マスの長さ。足元からの高さは本体の `position.y`（板の中心の高さ）から測る。
+ */
+export function createPartySilhouette(body: Mesh, source: ShaderMaterial, unit: number): Group {
   const material = new ShaderMaterial({
-    uniforms: source.uniforms,
+    // 元の uniform は**同じ物を指す**（コマ・濃さの更新がそのまま効く）。足元の帯の 2 つだけ足す。
+    uniforms: {
+      ...source.uniforms,
+      silhouetteLift: { value: body.position.y },
+      silhouetteClear: { value: FLOOR_CLEAR_CELLS * unit },
+    },
     vertexShader: `
       uniform vec4 frame;
+      uniform float silhouetteLift;
       varying vec2 vChipUv;
+      varying float vAboveFoot;
       void main() {
         vChipUv = frame.xy + uv * frame.zw;
+        // 足元からの高さ。板は縦に立つので、板の中の y に中心の高さを足せばよい。
+        vAboveFoot = position.y + silhouetteLift;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }
     `,
@@ -49,9 +72,13 @@ export function createPartySilhouette(body: Mesh, source: ShaderMaterial): Group
       uniform vec4 frameClamp;
       uniform float alphaCutoff;
       uniform float actorOpacity;
+      uniform float silhouetteClear;
       varying vec2 vChipUv;
+      varying float vAboveFoot;
       void main() {
         if (actorOpacity <= 0.0) discard;
+        // 足元の帯は白くしない（地面の装飾に隠れた所。上の FLOOR_CLEAR_CELLS）。
+        if (vAboveFoot < silhouetteClear) discard;
         if (texture2D(map, clamp(vChipUv, frameClamp.xy, frameClamp.zw)).a < alphaCutoff) discard;
         gl_FragColor = vec4(1.0, 1.0, 1.0, actorOpacity);
       }

@@ -929,7 +929,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
       skin.setLook(opacity, glow);
     },
     setSilhouette(on) {
-      if (on && !silhouette) silhouette = createPartySilhouette(body, skin.material);
+      if (on && !silhouette) silhouette = createPartySilhouette(body, skin.material, unit);
       if (silhouette) silhouette.visible = on;
     },
     setTime(seconds) {
@@ -937,6 +937,10 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     },
     hop(lift) {
       body.position.y = height / 2 - footLift + lift * unit;
+      // 白シルエットの「足元の帯」は地面から測る（跳んでいる間は板ごと上がる）。
+      const mesh = silhouette?.children[0] as Mesh | undefined;
+      const uniforms = (mesh?.material as ShaderMaterial | undefined)?.uniforms;
+      if (uniforms?.silhouetteLift) uniforms.silhouetteLift.value = body.position.y;
     },
     bodyMaterial: skin.material,
     texture,
