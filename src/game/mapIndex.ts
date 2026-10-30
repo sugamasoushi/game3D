@@ -7,6 +7,7 @@
 // 台帳に無い名前は、そのまま `<名前>.json` を試す（音は無し）。
 
 import { assetUrl } from './assets';
+import type { AmbienceDef } from './ambience';
 
 /** 台帳の 1 行。 */
 export interface MapEntry {
@@ -16,8 +17,11 @@ export interface MapEntry {
   file: string;
   /** そのマップで流す曲（`sounds.json` のキー）。 */
   bgm?: string;
-  /** 環境音（滝・風など）。曲と別に流し続ける。 */
-  bgs?: string;
+  /**
+   * 環境音（GS-278）。**行の並び**で、何本でも同時に流す。行ごとにエフェクトのプリセットへ合わせられる
+   * （出し入れで音もついてくる。雷は光るたびに鳴らせる）。決まりは `ambience.ts`。
+   */
+  bgs?: AmbienceDef[];
   /**
    * 戦闘の舞台の設定。formationsは通常戦闘でランダム選択する候補。
    * 舞台の場所は `BattleStage=true` の点、無ければ `default` の点、それも無ければマップの原点（2026-10-29。2D の背景の戦闘はやめた）。

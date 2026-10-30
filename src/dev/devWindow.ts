@@ -67,11 +67,26 @@ export interface BattleEffectEditorWindow {
    * `formation` は見る隊形、`party` / `enemy` は立たせる人数（今の面子の絵をくり返して使う）、`showParty` は味方の板を見せるか。
    * 床の無い所に立った人を返す。3D の舞台を出していなければ null。
    */
-  restage(options: RestageOptions): RestageResult | null;
+  restage(options: RestageOptions & {
+    /** 味方の何人目にどの人の絵を使うか（キャラクターの台帳のキー。GS-282）。戦闘の絵 → 立ち絵の順で引く。`partyImages` より先に効く。 */
+    partyArt?: Array<string | null>;
+  }): RestageResult | null;
+  /** 味方の板に使える人（キャラクターの台帳で、戦闘の絵か立ち絵がある人。GS-282）。仲間（player）が先。 */
+  partyArtChoices(): Array<{ id: string; name: string; kind: string; battle: boolean }>;
   /** 戦闘のマスの線を出す・消す。 */
   showCells(on: boolean): void;
   /** 戦闘開始の構図を流し直す。返すのは長さ（ミリ秒）。 */
   replayStart(): number;
+  /**
+   * 組んでいる舞台の、マスの範囲ぜんぶの地形（2026-10-29 / GS-285）。舞台の点の床からの高さ（フィールドのマス。床が無ければ null）と
+   * 分け方（床・高台・空）。舞台を組み直したら聞き直す。舞台が無ければ空。
+   */
+  cellTerrain(): Array<{ col: number; row: number; ground: 'floor' | 'high' | 'sky'; height: number | null }>;
+  /**
+   * コマンド選択の見本（2026-10-29 / GS-281）。背景の戦闘で `member` 人目（0 始まり）が手を聞かれている形にする
+   * （板が左端へ寄り、命令の窓が出る。手は決めない）。null で戻す。舞台を組み直したら、もう一度呼ぶ。背景の戦闘でなければ偽。
+   */
+  previewCommand(member: number | null): boolean;
 }
 
 export interface DevWindow {

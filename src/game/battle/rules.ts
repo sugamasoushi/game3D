@@ -44,6 +44,13 @@ export interface Fighter {
   ailments: string[];
   /** 着けている武器（持ち物のキー。味方だけ）。通常攻撃の絵と音を選ぶのに使う（2026-10-28 / GS-273）。 */
   weapon?: string;
+  /**
+   * 戦闘のマス（2026-10-29 / GS-280）。`col` は横、`row` は奥（手前が正）。**`|row|` が小さいほど前**。
+   * 戦いの始めに `cells.ts` が決める。無い人は前衛・後衛の決まりの外（かばわず、かばわれない）。
+   * `ground` はマスの分け方（床・高台・空。2026-10-29 / GS-285。地形から拾う）、`height` は舞台の点の床からの高さ（フィールドのマス）。
+   * どちらも無ければ床の扱い（高さの決まりの外）。
+   */
+  cell?: { col: number; row: number; ground?: CellGround; height?: number };
 }
 
 /** 技 1 つぶん。台帳（`data/skills.json`）の行と同じ形。 */
@@ -71,7 +78,24 @@ export interface SkillDef {
   chance?: number;
   /** 消す状態異常（`type` が `cure` の技）。 */
   cure?: string[];
+  /**
+   * 届き方（2026-10-29 / GS-280。相手に使う技だけ）。書かなければ `single`。
+   * `single` 単体 / `pierce` 選んだ人とその後ろ（後衛は倍率 `rates.back`）/ `all` 全体（いつも貫通の扱い）。
+   */
+  reach?: SkillReach;
+  /**
+   * 直接攻撃か（2026-10-29 / GS-285。`melee` 直接 / `ranged` 離れた）。書かなければ種類で決める（魔法は離れた、ほかは直接）。
+   * 高台にいる人が受けるダメージ（直接攻撃だけ軽くなる）の見分けに使う。`height.ts` の `rangeOf`。
+   */
+  range?: SkillRange;
 }
+
+import type { CellGround, SkillRange } from './height';
+
+/** 技の届き方（GS-280）。広げるときはここと `cover.ts` の `hitsOf` に足す。 */
+export type SkillReach = 'single' | 'pierce' | 'all';
+/** 届き方の一覧（台帳の検査と台帳エディタの選択に使う）。 */
+export const SKILL_REACHES: readonly SkillReach[] = ['single', 'pierce', 'all'];
 
 /** 生きているか。**0 以下は死んでいる**（負の HP を持ち回らない）。 */
 export function alive(who: Fighter): boolean {

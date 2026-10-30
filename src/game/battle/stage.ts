@@ -36,6 +36,22 @@ export interface BattleCommandFigure {
 export interface BattleStageGrid {
   across: [number, number];
   depth: [number, number];
+  /**
+   * 床を探し始める高さ（2026-10-29 / GS-285）。舞台の点より何マス上から下へ探すか（フィールドのマス。0〜20）。
+   * 書かなければ 0（舞台の点の 1 段上から。今までと同じ）。上げると崖の上にも立てる（屋根のある所では屋根に乗るので、マップごとに上げる）。
+   */
+  climb?: number;
+  /** 高台とみなす高さ（舞台の点の床から何マス以上高いか。フィールドのマス。0.25〜20。書かなければ 1。GS-285）。 */
+  highStep?: number;
+}
+
+/** 床を探し始める高さの既定（GS-285）。 */
+export const DEFAULT_GRID_CLIMB = 0;
+/** 高台とみなす高さの既定（GS-285）。 */
+export const DEFAULT_HIGH_STEP = 1;
+/** 書いていなければ既定を入れた高さの値。 */
+export function gridHeights(grid: BattleStageGrid): { climb: number; highStep: number } {
+  return { climb: grid.climb ?? DEFAULT_GRID_CLIMB, highStep: grid.highStep ?? DEFAULT_HIGH_STEP };
 }
 
 /** 構図 1 つ。台帳を読む人向けの名前を持てる。 */
@@ -111,9 +127,13 @@ function readFigure(raw: unknown, base: BattleCommandFigure): BattleCommandFigur
 
 function readGrid(raw: unknown, base: BattleStageGrid): BattleStageGrid {
   const next: BattleStageGrid = { across: [...base.across], depth: [...base.depth] };
+  if (base.climb !== undefined) next.climb = base.climb;
+  if (base.highStep !== undefined) next.highStep = base.highStep;
   if (!object(raw)) return next;
   if (pair(raw.across)) next.across = [raw.across[0], raw.across[1]];
   if (pair(raw.depth)) next.depth = [raw.depth[0], raw.depth[1]];
+  if (finite(raw.climb) && raw.climb >= 0 && raw.climb <= 20) next.climb = raw.climb;
+  if (finite(raw.highStep) && raw.highStep >= 0.25 && raw.highStep <= 20) next.highStep = raw.highStep;
   return next;
 }
 

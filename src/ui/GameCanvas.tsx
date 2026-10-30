@@ -11,7 +11,7 @@ import { mapEntryOf, entryForFile, knownMapLabel, knownSaveMapId, loadMapIndex, 
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
 import { loadItemBook } from '../game/items';
-import { characterName, loadCharacterBook } from '../game/characters';
+import { character, characterBattleImage, characterIds, characterName, characterStand, loadCharacterBook } from '../game/characters';
 import { loadIllustrations } from '../game/illustrations';
 import { startGamepad } from '../game/gamepad';
 import { chooseBattleFormation, loadBattleBook, previewEffects, previewFormations, type EffectDef, type EffectEntry } from '../game/battle/book';
@@ -243,6 +243,7 @@ export default function GameCanvas() {
     hide: () => viewRef.current?.unstageBattle(),
     rect: (id) => viewRef.current?.figureRect(id) ?? null,
     pose: (id, pose) => viewRef.current?.figurePose(id, pose),
+    terrain: (cell) => viewRef.current?.battleCellTerrain(cell) ?? null,
   });
   const battle = useUi((s) => s.battle);
   /**
@@ -859,6 +860,8 @@ export default function GameCanvas() {
       layerState: (name, id) => stateRef.current.self.get(layerKey(mapKey(name), id)),
       // マップのエフェクトの出し入れの覚え（GS-270）。組んでいるマップの分。
       effectState: (name, id) => stateRef.current.self.get(mapEffectKey(mapKey(name), id)),
+      // 環境音をエフェクトに合わせる（GS-278）。行は `applyMapSound` が台帳から入れる。
+      onEffectLevels: (levels) => audio.updateAmbience(levels),
     });
     viewRef.current = view;
     view.setDisplayScale(displayScaleRef.current);
@@ -1001,12 +1004,29 @@ export default function GameCanvas() {
         // 戦闘の舞台（2026-10-19 / BPE-30）。下書きの台帳を差し替え、出している背景の舞台を組み直す。
         setStages: (next: unknown) => previewBattleStages(next),
         setFormations: (next: unknown) => previewFormations(next),
-        restage(options) {
+        restage({ partyArt, ...options }) {
           if (!battleBackdropRef.current) return null;
-          return view.restageBattle(options);
+          // 人のキーを絵の URL へ（GS-282）。戦闘の絵が無ければ立ち絵。どちらも無い人は今の面子の絵のまま。
+          const partyImages = partyArt
+            ? partyArt.map((who) => (who ? characterBattleImage(who) ?? characterStand(who) : null))
+            : options.partyImages;
+          return view.restageBattle({ ...options, ...(partyImages ? { partyImages } : {}) });
+        },
+        partyArtChoices() {
+          const list = characterIds()
+            .map((id) => ({ id, entry: character(id)! }))
+            .filter(({ entry }) => entry.battle || entry.normal)
+            .map(({ id, entry }) => ({ id, name: entry.name ?? id, kind: entry.kind ?? '', battle: !!entry.battle }));
+          return list.sort((a, b) => Number(b.kind === 'player') - Number(a.kind === 'player'));
         },
         showCells: (on: boolean) => view.showStageCells(on),
         replayStart: () => view.playBattleStart(),
+        cellTerrain: () => view.battleStageTerrain(),
+        previewCommand(member: number | null) {
+          if (!battleBackdropRef.current || !useUi.getState().battle) return false;
+          window.dispatchEvent(new CustomEvent('battle-command-preview', { detail: { member } }));
+          return true;
+        },
         playEffect(def: EffectDef) {
           if (!useUi.getState().battle) return false;
           window.dispatchEvent(new CustomEvent('battle-effect-preview', { detail: { def } }));

@@ -18,12 +18,15 @@ import {
   turnOrder,
   type Fighter,
   type SkillDef,
+  type SkillReach,
 } from './rules';
+import { hitsOf, reachOf, scaledDamage, targetables, type Hit } from './cover';
+import { heightRate } from './height';
 import { ailmentDef, enemyDef, skillDef } from './book';
 import { enemyIdOf } from './party';
 import { applyUse, healLine, skillUse, wouldHelp } from './heal';
 import { itemName, itemUse } from '../items';
-import { battleSettings } from './settings';
+import { backRowRate, battleSettings, heightRates } from './settings';
 
 /**
  * ゲームオーバーの合図（GS-60）。**エラーではなく「ここで話は終わり」の印。**
@@ -188,10 +191,25 @@ export function cureTarget(party: Fighter[], skill: SkillDef): Fighter | null {
   return best;
 }
 
-/** 一撃。減った数を出して、倒れたら言う。 */
-async function strike(attacker: Fighter, defender: Fighter, skill: SkillDef | null, io: BattleIo): Promise<void> {
+/**
+ * 当たる相手を決める（2026-10-29 / GS-280）。選んだ相手が狙えなければ（倒れた・前に守られている）、狙える相手からくじで選ぶ。
+ * 全体は選ばずに全員。**選ぶのは呼ぶ側の乱数**。
+ */
+function aim(chosen: Fighter | null | undefined, side: Fighter[], reach: SkillReach, random: () => number): Hit[] {
+  const backRate = backRowRate();
+  if (reach === 'all') return hitsOf(null, side, reach, backRate);
+  const open = targetables(side, reach);
+  const pick = chosen && open.includes(chosen) ? chosen : pickTarget(open, random);
+  return hitsOf(pick, side, reach, backRate);
+}
+
+/**
+ * 一撃。減った数を出して、倒れたら言う。`rate` は位置の倍率（GS-280。後衛は `rates.back`）。
+ * `show` が偽なら見せ場（`act`）を出さない——貫通・全体で 2 人目からは、絵を 1 回で済ませる。
+ */
+async function strike(attacker: Fighter, defender: Fighter, skill: SkillDef | null, io: BattleIo, rate = 1, show = true): Promise<void> {
   // 見せ場は**かわす前に**（旧作も攻めかかってから「回避した」と出す）。
-  await io.act?.(attacker, defender, skill);
+  if (show) await io.act?.(attacker, defender, skill);
   if (defender.avoiding) {
     io.se?.(battleSettings().se.dodge);
     await io.hit?.(defender.id, 0, 'miss');
@@ -202,7 +220,8 @@ async function strike(attacker: Fighter, defender: Fighter, skill: SkillDef | nu
   }
   // 当たった瞬間の音は**どれも同じ打撃**（旧作 `SE_attack`）。技ごとの音は見せ場で鳴っている。
   io.se?.(battleSettings().se.hit);
-  const done = hurt(defender, damageOf(attacker, defender, skill));
+  // 位置の倍率（後衛。GS-280）に高さの倍率（高台。GS-285）を重ねてから丸める（必ず 1 は通す）。
+  const done = hurt(defender, scaledDamage(damageOf(attacker, defender, skill), rate * heightRate(attacker, defender, skill, heightRates())));
   await io.hit?.(defender.id, done, 'damage');
   await io.update();
   await io.say(`${defender.name} に ${done} のダメージ！`);
@@ -299,9 +318,8 @@ async function actParty(
       return false;
     }
     if (skill.type === 'ailment') {
-      const named = enemies.find((one) => one.id === action.target && alive(one));
-      const target = named ?? pickTarget(enemies, io.random);
-      if (target) await inflict(target, skill, io);
+      const named = enemies.find((one) => one.id === action.target);
+      for (const hit of aim(named, enemies, reachOf(skill), io.random)) await inflict(hit.who, skill, io);
       return false;
     }
   } else {
@@ -309,10 +327,10 @@ async function actParty(
   }
 
   const named = enemies.find((one) => one.id === action.target);
-  // 選んだ相手が先に倒れていたら、生きている別の相手へ回す（空振りで 1 手損させない）。
-  const target = named && alive(named) ? named : pickTarget(enemies, io.random);
-  if (!target) return false;
-  await strike(who, target, skill, io);
+  // 選んだ相手が先に倒れていたら、狙える別の相手へ回す（空振りで 1 手損させない）。
+  // 通常攻撃はいつも単体（GS-280。武器ごとの届き方は後で）。
+  const hits = aim(named, enemies, reachOf(skill), io.random);
+  for (const [at, hit] of hits.entries()) await strike(who, hit.who, skill, io, hit.rate, at === 0);
   return false;
 }
 
@@ -332,22 +350,24 @@ function enemySkill(who: Fighter, io: BattleIo): SkillDef | null {
 
 /** 敵 1 体ぶん。技を持っていれば出し、なければ殴る。 */
 async function actEnemy(who: Fighter, party: Fighter[], io: BattleIo): Promise<void> {
-  const target = pickTarget(party, io.random);
-  if (!target) return;
+  if (!party.some(alive)) return;
   const skill = enemySkill(who, io);
+  // 狙うのも味方と同じ決まり（GS-280）。前に守られた人は単体では狙わない。
+  const hits = aim(null, party, reachOf(skill), io.random);
+  if (!hits.length) return;
   if (!skill) {
     await io.say(`${who.name} の こうげき！`);
-    await strike(who, target, null, io);
+    await strike(who, hits[0]!.who, null, io);
     return;
   }
   payMp(who, skill);
   await io.update();
   await io.say(`${who.name} の ${skill.name}！`);
   if (skill.type === 'attack') {
-    await strike(who, target, skill, io);
+    for (const [at, hit] of hits.entries()) await strike(who, hit.who, skill, io, hit.rate, at === 0);
     return;
   }
-  await inflict(target, skill, io);
+  for (const hit of hits) await inflict(hit.who, skill, io);
 }
 
 /**

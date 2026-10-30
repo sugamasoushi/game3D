@@ -12,7 +12,7 @@
       ]
     },
     "command": null,
-    "commandFigure": { "x": 0.1, "depth": 2, "scale": 1, "moveS": 0.25, "offsetX": 0, "offsetY": 0, "offsetZ": 0 },
+    "commandFigure": { "x": 0, "depth": 2, "scale": 1, "moveS": 0.2, "offsetX": -0.25, "offsetY": -0.1, "offsetZ": 0 },
     "maxEnemies": 3,
     "grid": {
       "across": [-4, 4],

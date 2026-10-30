@@ -53,6 +53,7 @@ import {
 import { createInput } from './input';
 import { BODY_TALL_CELLS, BODY_WIDTH_HALF, createPlayer, type Facing, type Player } from './player';
 import { PartyTrail } from './partyTrail';
+import { prepareSilhouetteOccluders } from './partySilhouette';
 import { actorSheet, loadActorBook } from './actors';import { loadEmotes, TALK_EMOTE } from './emotes';
 import { createHeadMarks } from './headMarks';
 import { characterBookReady, characterSheet, PLAYER_CHARACTER } from './characters';
@@ -68,6 +69,7 @@ import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { coreCells, overlaps, symbolTouching } from './symbolTouch';
 import { withoutHiddenLayers } from './hiddenLayers';
+import type { EffectLevel } from './ambience';
 import { mapEffectStartWeights, readMapEffects, startMapEffectFade, stepMapEffectFade, type MapEffectFade } from './mapEffectSwitch';
 import { backdropLoaded, preloadBackdrop } from '../mep3d/backdrop';
 import { readSwitchLayers, switchLayerShown, withStartHiddenBuilt } from './layerSwitch';
@@ -81,9 +83,11 @@ import {
 import { battleCameraPose, battleCameraStartView, createBattleCameraPlayer, type BattleCamera, type BattleCameraView } from './battle/battleCamera';
 import { entryForFile, mapKeyForFile, type MapEntry } from './mapIndex';
 import { mapUrl } from './assets';
-import { battleFormationSlots, chooseBattleFormation, stageFigureCells } from './battle/book';
+import { battleFormationSlots, chooseBattleFormation, stageFigureCells, type BattleFormationSlot } from './battle/book';
 import { LEAN_BACK_S, leanBackOffset } from './battle/leanBack';
-import { battleStageBook, battleStageSettingsOf, loadBattleStages, stageCellOffset, type BattleStageSettings } from './battle/stage';
+import { battleStageBook, battleStageSettingsOf, gridHeights, loadBattleStages, stageCellOffset, type BattleStageSettings } from './battle/stage';
+import { groundOf, type CellGround } from './battle/height';
+import type { CellTerrain } from './battle/cells';
 
 /** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
 const APPEAR_MS = 1200;
@@ -187,6 +191,11 @@ export interface RestageOptions {
   enemy?: number;
   /** 味方の板を見せる（ふだんは開発中のつまみ `battlePartyFigures` しだい）。 */
   showParty?: boolean;
+  /**
+   * 味方の何人目（0 始まり）の板にどの絵を使うか（URL。2026-10-29 / GS-282。戦闘演出エディタの見本）。
+   * 空・null の番は今の面子の絵のまま。組み直すたびに渡す（覚えない）。
+   */
+  partyImages?: Array<string | null>;
 }
 
 /** 組み直した結果。床の無い所に立った人（陣営と、その陣営の何人目か。0 始まり）。 */
@@ -208,6 +217,8 @@ export interface BattleFigure {
   image: string;
   height: number;
   scale: number;
+  /** この戦闘で立つマス（2026-10-29 / GS-280。`cells.ts` が決める）。無ければ隊形の枠を並び順に使う（戦闘演出エディタの見本）。 */
+  cell?: BattleFormationSlot;
 }
 
 /** 舞台の板の見せ方（GS-87）。立ち上がり（偽→真）で動きが始まる。 */
@@ -224,6 +235,8 @@ export interface FigurePose {
   gone?: boolean;
   /** コマンドを選んでいる味方（画面の左端へ立つ。GS-103）。位置は戦闘の舞台の台帳の `commandFigure`（`battle/stage.ts`）。 */
   commanding?: boolean;
+  /** 前に守られていて狙えない（相手を選んでいる間だけ。GS-280）。少し暗くする。 */
+  guarded?: boolean;
 }
 
 export interface GameView {
@@ -302,6 +315,13 @@ export interface GameView {
    * 戦闘開始の構図を流し直す。舞台が無ければ偽。
    */
   restageBattle(options: RestageOptions): RestageResult | null;
+  /**
+   * 戦闘のマス 1 つの地形（2026-10-29 / GS-285）。舞台の点の床からの高さ（フィールドのマス。床が無ければ null）と分け方。
+   * 舞台を組む前でも聞ける（戦闘を開くときのマスの割り当てが使う）。マップを読んでいなければ null。
+   */
+  battleCellTerrain(cell: { col: number; row: number }): CellTerrain | null;
+  /** 組んでいる舞台の、マスの範囲ぜんぶの地形（戦闘演出エディタのマスの色）。舞台が無ければ空。 */
+  battleStageTerrain(): Array<{ col: number; row: number; ground: CellGround; height: number | null }>;
   /** エディタが次のキーへ引き継ぐ、直前の演出状態。場面の既定値だけなら null。 */
   cameraCueState(): CameraCueState | null;
   seekCameraCue(ms: number): void;
@@ -598,6 +618,11 @@ export interface GameViewOptions {
    * 決めていなければ undefined（最初の形 = プリセットの `on`）。記録は React 側が持つ。
    */
   effectState?: (map: string, id: string) => boolean | undefined;
+  /**
+   * 毎フレーム、マップのエフェクトの今の濃さを渡す（GS-278。環境音をエフェクトに合わせるため）。
+   * キーはプリセット id。値は濃さ（出し入れ × 時間帯。0..1）と、雷なら今が何回目の光か。
+   */
+  onEffectLevels?: (levels: ReadonlyMap<string, EffectLevel>) => void;
 }
 
 export function createGameView(
@@ -1588,6 +1613,11 @@ export function createGameView(
     commandLift: number;
     /** 隊形の位置にいるときの描く順（戦闘のマスの列で決める。2026-10-19 / BPE-30）。 */
     order: number;
+    /**
+     * 舞台にいつも出すか。敵と、味方の板を出すつまみ（GS-247）が入っているとき。
+     * 偽の味方は**コマンドを選んでいる間だけ**左端に出す（2026-10-29 / GS-280）。
+     */
+    shownAlways: boolean;
   }
   let stage: {
     /** BattleStage の床（ワールド）。構図の見る点とカメラの高さの基準。 */
@@ -1661,6 +1691,32 @@ export function createGameView(
       transparent: true, opacity: 0.82, depthTest: false, depthWrite: false }));
     axes.renderOrder = -9;
     return axes;
+  };
+
+  /**
+   * 戦闘のマス 1 つの地形（2026-10-29 / GS-285）。舞台の点からカメラ基準の横・奥へずらした所の床を、
+   * 舞台の点の `climb` マス上から下へ探す。高さは舞台の点の床から（フィールドのマス）。床が無ければ空。
+   * 板を立たせるのも、マスの分け方を決めるのも、エディタのマスの色もここ 1 本。
+   */
+  const stageTerrainAt = (
+    at: BattleStageSpec['at'],
+    yawDeg: number,
+    settings: BattleStageSettings,
+    cell: { col: number; row: number },
+  ): { x: number; z: number; y: number; height: number | null; ground: CellGround } => {
+    const unit = collision?.unit || 1;
+    const camYaw = (yawDeg * Math.PI) / 180;
+    const { across, depth } = stageCellOffset(cell, characterScaleOf(mapDef?.properties));
+    const x = at.x + Math.cos(camYaw) * across + Math.sin(camYaw) * depth;
+    const z = at.z - Math.sin(camYaw) * across + Math.cos(camYaw) * depth;
+    const { climb, highStep } = gridHeights(settings.grid);
+    const fx = Math.floor(x);
+    const fz = Math.floor(z);
+    const from = (Math.floor(at.y) + 1 + climb) * unit;
+    const top = collision?.surfaceUnder(fx, fz, from, x - fx, z - fz) ?? null;
+    const floor = standExact(at.x, at.y, at.z, unit).y;
+    const height = top === null ? null : (top - floor) / unit;
+    return { x, z, y: top ?? Math.floor(at.y) * unit, height, ground: groundOf(height, highStep) };
   };
 
   /**
@@ -1807,7 +1863,7 @@ export function createGameView(
         : 1 + STAGE_BREATH * Math.sin((elapsed / STAGE_BREATH_S) * Math.PI * 2 + figure.breathPhase);
       figure.mesh.scale.set(grow, grow * breath, grow);
       // 明るさ: 選ばれていれば 1⇄0.5 を 400ms で往復（旧作の 255⇄128）。倒れたら暗く。
-      const tone = pose.gone ? 0.45 : pose.picking ? 0.75 + 0.25 * Math.cos((elapsed / 0.4) * Math.PI) : 1;
+      const tone = pose.gone ? 0.45 : pose.picking ? 0.75 + 0.25 * Math.cos((elapsed / 0.4) * Math.PI) : pose.guarded ? 0.55 : 1;
       figure.material.color.setScalar(tone);
       // 透け: 当たった点滅は 100ms ごとに半透明（旧作 `blinking`）。倒れたら 0.4 秒でうすく。
       // **倒した敵は消しきる**（残すと倒したのか分かりにくい）。味方は薄く残す。透明度 0 は `alphaTest` で描かれない。
@@ -1815,7 +1871,8 @@ export function createGameView(
       const flash = pose.flash && Math.floor(elapsed * 10) % 2 === 0 ? 0.5 : 1;
       const faded = figure.def.side === 'enemy' ? 1 : 0.82;
       figure.material.opacity = flash * (1 - faded * fade);
-      figure.shadow.visible = figure.mesh.visible && !pose.gone;
+      // 左端にだけ出す味方の板（GS-280）は影を出さない（宙に浮いた影になる）。
+      figure.shadow.visible = figure.mesh.visible && !pose.gone && figure.shownAlways;
     }
   };
 
@@ -1829,7 +1886,9 @@ export function createGameView(
   const applyCommandFigures = (dt: number) => {
     if (!stage) return;
     const look = stage.settings.commandFigure;
-    const unit = collision?.unit || 1;
+    // 長さ（カメラからの距離・ずらし）はマスで、マップの CharacterScale を掛ける（構図・マスと同じ。2026-10-29 / GS-284）。
+    // 板の高さにも同じ倍率が掛かっているので、どのマップでも画面の上では同じ大きさ・同じ位置に出る。
+    const unit = (collision?.unit || 1) * characterScaleOf(mapDef?.properties);
     const camera = rig.active();
     camera.updateMatrixWorld();
     const step = look.moveS > 0 ? dt / look.moveS : 1;
@@ -1840,6 +1899,8 @@ export function createGameView(
     for (const figure of stage.figures.values()) {
       const want = figure.pose.commanding && !figure.pose.gone;
       figure.commandK = want ? Math.min(1, figure.commandK + step) : Math.max(0, figure.commandK - step);
+      // いつもは出さない味方の板（GS-247）は、**左端へ寄っている間だけ**出す（2026-10-29 / GS-280）。絵が来る前は出さない。
+      if (!figure.shownAlways) figure.mesh.visible = figure.width > 0 && figure.commandK > 0;
       // 左端にいるあいだは手前に重ねて描く。戻り切ったら元の描き方へ。
       const front = figure.commandK > 0;
       figure.material.depthTest = !front;
@@ -2505,6 +2566,9 @@ export function createGameView(
     applySunActors();
     // 透過レイヤーの入切も毎フレーム（DEC-252）。カメラが動くだけでも変わる。
     applySeeThrough(dt);
+    const showSilhouette = status.mode === 'play' && !useUi.getState().battle;
+    player?.setSilhouette(showSilhouette);
+    for (const actor of followers.values()) actor.setSilhouette(showSilhouette);
     elapsed += dt;
     player?.setTime(elapsed);
     for (const npc of npcs.values()) npc.actor.setTime(elapsed);
@@ -2522,6 +2586,17 @@ export function createGameView(
       pushEffectWeights();
     }
     fieldEffects.update(dt);
+    // 環境音をエフェクトに合わせる（GS-278）。フィールドは置き場所と時間帯の切り替えを見た濃さ、
+    // 画面エフェクトはその時間帯に在れば出し入れの濃さ。
+    if (options.onEffectLevels && mapDef) {
+      const levels: Map<string, EffectLevel> = fieldEffects.presetLevels();
+      for (const screen of screenEffectsAtTime(mapDef.screenEffects ?? [], shownTimeId)) {
+        const id = String(screen.id ?? '');
+        if (!id || levels.has(id)) continue;
+        levels.set(id, { level: effectWeights.get(id) ?? (screen.on === false ? 0 : 1) });
+      }
+      options.onEffectLevels(levels);
+    }
     // 風で揺らす（GS-274）。出し入れと時間帯の濃さを掛けた後の風を、`Sway` のレイヤーへ渡す。
     built?.setWind(fieldEffects.windZones());
     // マップか太陽が変わった次のフレームで 1 回だけ焼く（DEC-145）。
@@ -2543,6 +2618,7 @@ export function createGameView(
     advanceTimeShift(dt);
     tilt.setVeil(shot.veil, shot.veilAlpha);
     // 舞台の板（敵味方のイラスト）とマスの線はチルトシフトでぼかさない（2026-10-19）。ぼかした後に重ねて描く。
+    prepareSilhouetteOccluders(scene);
     tilt.render(renderer, scene, rig.active(), stage ? STAGE_SHARP_LAYER : undefined);
     // 画面エフェクト（DEC-389）。**一番上**に重ねる（絵ができてから貼る 1 枚）。
     screenEffects.render(renderer, dt);
@@ -2903,6 +2979,28 @@ export function createGameView(
       if (!stage) return 0;
       return this.playBattleCamera(stage.settings.start);
     },
+    battleCellTerrain(cell) {
+      if (!mapDef || !collision) return null;
+      // 舞台を組んだ後はその向き、組む前（戦闘を開く瞬間のマスの割り当て）は今のカメラの向き。どちらも同じ値になる。
+      const spec = stage?.spec ?? this.battleStage();
+      if (!spec) return null;
+      const settings = stage?.settings ?? battleStageSettingsOf(battleStageBook(), mapKey);
+      const yaw = (stage ? stage.saved.yaw : rig.yaw) + spec.yaw;
+      const { ground, height } = stageTerrainAt(spec.at, yaw, settings, cell);
+      return { ground, height };
+    },
+    battleStageTerrain() {
+      if (!stage || !collision) return [];
+      const { across, depth } = stage.settings.grid;
+      const out: Array<{ col: number; row: number; ground: CellGround; height: number | null }> = [];
+      for (let row = depth[0]; row <= depth[1]; row += 1) {
+        for (let col = across[0]; col <= across[1]; col += 1) {
+          const { ground, height } = stageTerrainAt(stage.spec.at, stage.saved.yaw + stage.spec.yaw, stage.settings, { col, row });
+          out.push({ col, row, ground, height: height === null ? null : Math.round(height * 100) / 100 });
+        }
+      }
+      return out;
+    },
     restageBattle(options) {
       if (!stage) return null;
       const cells = !!stage.cells;
@@ -2918,7 +3016,11 @@ export function createGameView(
           return index < from.length ? base : { ...base, id: `${base.id}#${index + 1}` };
         });
       };
-      const figures = [...pick('party', options.party), ...pick('enemy', options.enemy)];
+      const party = pick('party', options.party).map((one, index) => {
+        const image = options.partyImages?.[index];
+        return image ? { ...one, image } : one;
+      });
+      const figures = [...party, ...pick('enemy', options.enemy)];
       const spec = { ...stage.spec, ...(options.formation ? { formation: options.formation } : {}) };
       const original = stageOriginal;
       this.stageBattle(spec, figures);
@@ -3255,9 +3357,6 @@ export function createGameView(
       }
       // 立ち位置（GS-95）。人数別スロットは隊形台帳だけを正本とする。
       // 戦闘のマス（2026-10-19 / BPE-30）はカメラ基準なので、マップの向きによらず画面上で同じ隊形になる。
-      const camYaw = ((rig.yaw + spec.yaw) * Math.PI) / 180;
-      const right = { x: Math.cos(camYaw), z: -Math.sin(camYaw) };
-      const toward = { x: Math.sin(camYaw), z: Math.cos(camYaw) };
       const count = {
         party: figures.filter((one) => one.side === 'party').length,
         enemy: figures.filter((one) => one.side === 'enemy').length,
@@ -3267,22 +3366,21 @@ export function createGameView(
         party: battleFormationSlots(spec.formation, 'party', count.party),
         enemy: battleFormationSlots(spec.formation, 'enemy', count.enemy),
       };
-      for (const side of ['party', 'enemy'] as const) if (count[side] > 0 && !formation[side]) {
+      const uncelled = (side: 'party' | 'enemy') => figures.some((one) => one.side === side && !one.cell);
+      for (const side of ['party', 'enemy'] as const) if (count[side] > 0 && !formation[side] && uncelled(side)) {
         console.warn(`[battle-formation] ${spec.formation || '（未指定）'} に ${side} ${count[side]}人の配置がありません`);
       }
       for (const [order, def] of figures.entries()) {
         const index = seen[def.side]++;
-        const slot = formation[def.side]?.[index];
+        // この戦闘のマス（GS-280。味方は横一列・敵はくじ）。無ければ隊形の枠を並び順に（戦闘演出エディタの見本）。
+        const slot = def.cell ?? formation[def.side]?.[index];
         const row = slot?.row ?? 0;
-        const { across, depth } = stageCellOffset({ col: slot?.col ?? 0, row }, characterScale);
-        const cx = at.x + right.x * across + toward.x * depth;
-        const cz = at.z + right.z * across + toward.z * depth;
-        // 高さは**その位置の地形の床**（起伏に沿う）。フィールドのマスには寄せない。
-        const spot = standExact(cx, at.y, cz, unit);
-        const fx = Math.floor(cx);
-        const fz = Math.floor(cz);
-        if (collision.surfaceUnder(fx, fz, (Math.floor(at.y) + 1) * unit, cx - fx, cz - fz) === null) current.floorless.push({ side: def.side, index });
-        const base = new Vector3(cx * unit, spot.y + (slot?.height ?? 0) * characterScale * unit, cz * unit);
+        // 高さは**その位置の地形の床**（起伏に沿う。探し始めは `grid.climb`。GS-285）。フィールドのマスには寄せない。
+        const terrain = stageTerrainAt(at, rig.yaw + spec.yaw, settings, { col: slot?.col ?? 0, row });
+        const cx = terrain.x;
+        const cz = terrain.z;
+        if (terrain.ground === 'sky') current.floorless.push({ side: def.side, index });
+        const base = new Vector3(cx * unit, terrain.y + (slot?.height ?? 0) * characterScale * unit, cz * unit);
         const material = new MeshBasicMaterial({ transparent: true, alphaTest: 0.05, side: DoubleSide });
         const mesh = new Mesh(new PlaneGeometry(1, 1), material);
         mesh.visible = false;
@@ -3291,7 +3389,7 @@ export function createGameView(
           new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false }),
         );
         shadow.rotation.x = -Math.PI / 2;
-        shadow.position.set(base.x, spot.y + 0.02 * unit, base.z);
+        shadow.position.set(base.x, terrain.y + 0.02 * unit, base.z);
         shadow.visible = false;
         const figure: StageFigure = {
           def,
@@ -3299,7 +3397,7 @@ export function createGameView(
           material,
           shadow,
           base,
-          groundY: spot.y,
+          groundY: terrain.y,
           width: 0,
           height: 0,
           pose: {},
@@ -3312,6 +3410,8 @@ export function createGameView(
           commandLift: 0,
           // 前後関係は戦闘のマスの列（手前ほど後に描く）。同じ列なら並び順。
           order: STAGE_ROW_ORDER + row * STAGE_ROW_STEP + Math.min(order, STAGE_ROW_STEP - 1),
+          // 味方の板を出すかは開発中のつまみ（GS-247。既定は出さない）。敵はいつも出す。
+          shownAlways: def.side === 'enemy' || stagePartyShown || battlePartyFiguresShown(),
         };
         mesh.renderOrder = figure.order;
         mesh.layers.set(STAGE_SHARP_LAYER);
@@ -3335,9 +3435,8 @@ export function createGameView(
           material.map = texture;
           material.needsUpdate = true;
           shadow.scale.set(figure.width * 0.9, figure.width * 0.35, 1);
-          // 味方の板を出すかは開発中のつまみ（GS-247。既定は出さない）。敵はいつも出す。
-          // 出さなくても大きさは決めて枠を測る。
-          mesh.visible = def.side === 'enemy' || stagePartyShown || battlePartyFiguresShown();
+          // 出さない味方の板（GS-247）も大きさは決めて枠を測る。コマンドを選んでいる間だけ出す（GS-280）。
+          mesh.visible = figure.shownAlways;
         });
       }
       // カメラの基準は BattleStage の床（2026-10-19）。見る点とカメラの位置は構図が決める（`applyStageCamera`）。

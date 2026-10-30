@@ -166,10 +166,10 @@
         "filter": "nearest"
       },
       {
-        "id": "tex_collision",
-        "src": "assets/tilesets/collision.png",
-        "w": 48,
-        "h": 48,
+        "id": "tex_dwelling_animated_fire",
+        "src": "assets/tilesets/Dwelling/Animated fire.png",
+        "w": 576,
+        "h": 768,
         "filter": "nearest"
       }
     ],
@@ -365,12 +365,12 @@
         "spacing": 0
       },
       {
-        "id": "collision",
-        "tex": "tex_collision",
-        "mat": "mat_collision",
+        "id": "dwelling_animated_fire",
+        "tex": "tex_dwelling_animated_fire",
+        "mat": "mat_dwelling_animated_fire",
         "tile": 48,
-        "cols": 1,
-        "rows": 1,
+        "cols": 12,
+        "rows": 16,
         "margin": 0,
         "spacing": 0
       }
@@ -577,16 +577,6 @@
         "depthWrite": true
       },
       {
-        "id": "mat_collision",
-        "tex": "tex_collision",
-        "kind": "tiles",
-        "shading": "unlit",
-        "alphaTest": 0.5,
-        "transparent": false,
-        "side": "double",
-        "depthWrite": true
-      },
-      {
         "id": "solid_a50",
         "tex": "solid",
         "kind": "tiles",
@@ -596,6 +586,16 @@
         "side": "double",
         "depthWrite": false,
         "opacity": 0.5
+      },
+      {
+        "id": "mat_dwelling_animated_fire",
+        "tex": "tex_dwelling_animated_fire",
+        "kind": "tiles",
+        "shading": "unlit",
+        "alphaTest": 0.5,
+        "transparent": false,
+        "side": "double",
+        "depthWrite": true
       }
     ],
     "protos": [
@@ -6624,70 +6624,6 @@
         }
       },
       {
-        "id": "p_walls_4500_wall",
-        "name": "walls #4500 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4500
-      },
-      {
-        "id": "p_walls_4501_wall",
-        "name": "walls #4501 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4501
-      },
-      {
-        "id": "p_walls_4502_wall",
-        "name": "walls #4502 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4502
-      },
-      {
-        "id": "p_walls_4503_wall",
-        "name": "walls #4503 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4503
-      },
-      {
-        "id": "p_walls_4375_wall",
-        "name": "walls #4375 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4375
-      },
-      {
-        "id": "p_walls_4374_wall",
-        "name": "walls #4374 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4374
-      },
-      {
-        "id": "p_walls_4373_wall",
-        "name": "walls #4373 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4373
-      },
-      {
-        "id": "p_walls_4372_wall",
-        "name": "walls #4372 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4372
-      },
-      {
         "id": "p_hipped_shingle_roof_a_135_floor_ramp2_lo",
         "name": "hipped_shingle_roof_a #135 floor_ramp2_lo",
         "shape": "floor_ramp2_lo",
@@ -6704,134 +6640,6 @@
         "tile": 135
       },
       {
-        "id": "p_hipped_shingle_roof_a_136_floor_ridge_quarter_o0_16_0",
-        "name": "hipped_shingle_roof_a #136 floor_ridge_quarter",
-        "shape": "floor_ridge_quarter",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 136,
-        "base": "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
-        "offset": [
-          0,
-          16,
-          0
-        ]
-      },
-      {
-        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_lo",
-        "name": "hipped_shingle_roof_a #137 floor_ramp2_lo",
-        "shape": "floor_ramp2_lo",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 137
-      },
-      {
-        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_hi",
-        "name": "hipped_shingle_roof_a #137 floor_ramp2_hi",
-        "shape": "floor_ramp2_hi",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 137
-      },
-      {
-        "id": "p_walls_4505_wall",
-        "name": "walls #4505 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4505
-      },
-      {
-        "id": "p_walls_4505_wall_tri2_b_tip",
-        "name": "walls #4505 wall_tri2_b_tip",
-        "shape": "wall_tri2_b_tip",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4505
-      },
-      {
-        "id": "p_walls_4505_wall_tri2_b_base",
-        "name": "walls #4505 wall_tri2_b_base",
-        "shape": "wall_tri2_b_base",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4505
-      },
-      {
-        "id": "p_walls_4377_wall_tri2_b_tip_flip",
-        "name": "walls #4377 wall_tri2_b_tip_flip",
-        "shape": "wall_tri2_b_tip_flip",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4377
-      },
-      {
-        "id": "p_walls_4377_wall_tri2_b_tip",
-        "name": "walls #4377 wall_tri2_b_tip",
-        "shape": "wall_tri2_b_tip",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4377
-      },
-      {
-        "id": "p_walls_4377_wall_gable_quarter",
-        "name": "walls #4377 wall_gable_quarter",
-        "shape": "wall_gable_quarter",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4377
-      },
-      {
-        "id": "p_walls_4505_wall_tri2_b_base_flip",
-        "name": "walls #4505 wall_tri2_b_base_flip",
-        "shape": "wall_tri2_b_base_flip",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4505
-      },
-      {
-        "id": "p_walls_4505_wall_tri2_b_tip_flip",
-        "name": "walls #4505 wall_tri2_b_tip_flip",
-        "shape": "wall_tri2_b_tip_flip",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4505
-      },
-      {
-        "id": "p_walls_4373_wall_t17",
-        "name": "walls #4373 wall",
-        "shape": "wall",
-        "mat": "mat_walls",
-        "ts": "walls",
-        "tile": 4373,
-        "base": "p_walls_4373_wall",
-        "thickness": 17
-      },
-      {
-        "id": "p_hipped_shingle_roof_a_135_floor_ramp2_hi_flip",
-        "name": "hipped_shingle_roof_a #135 floor_ramp2_hi_flip",
-        "shape": "floor_ramp2_hi_flip",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 135
-      },
-      {
-        "id": "p_hipped_shingle_roof_a_135_floor_ramp2_lo_flip",
-        "name": "hipped_shingle_roof_a #135 floor_ramp2_lo_flip",
-        "shape": "floor_ramp2_lo_flip",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 135
-      },
-      {
-        "id": "p_hipped_shingle_roof_a_136_floor_ridge_quarter_up",
-        "name": "hipped_shingle_roof_a #136 floor_ridge_quarter_up",
-        "shape": "floor_ridge_quarter_up",
-        "mat": "mat_hipped_shingle_roof_a",
-        "ts": "hipped_shingle_roof_a",
-        "tile": 136
-      },
-      {
         "id": "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip",
         "name": "hipped_shingle_roof_a #137 floor_ramp2_lo_flip",
         "shape": "floor_ramp2_lo_flip",
@@ -6846,150 +6654,6 @@
         "mat": "mat_hipped_shingle_roof_a",
         "ts": "hipped_shingle_roof_a",
         "tile": 137
-      },
-      {
-        "id": "p_roof_trim_44_wall_o0_-14_0",
-        "name": "roof_trim #44 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 44,
-        "base": "p_roof_trim_44_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_92_wall_o0_-14_0",
-        "name": "roof_trim #92 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 92,
-        "base": "p_roof_trim_92_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_91_wall_o0_-14_0",
-        "name": "roof_trim #91 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 91,
-        "base": "p_roof_trim_91_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_90_wall_o0_-14_0",
-        "name": "roof_trim #90 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 90,
-        "base": "p_roof_trim_90_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_138_wall_o0_-14_0",
-        "name": "roof_trim #138 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 138,
-        "base": "p_roof_trim_138_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_93_wall_o0_-14_0",
-        "name": "roof_trim #93 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 93,
-        "base": "p_roof_trim_93_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_142_wall_o0_-14_0",
-        "name": "roof_trim #142 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 142,
-        "base": "p_roof_trim_142_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_roof_trim_94_wall_o0_-14_0",
-        "name": "roof_trim #94 wall",
-        "shape": "wall",
-        "mat": "mat_roof_trim",
-        "ts": "roof_trim",
-        "tile": 94,
-        "base": "p_roof_trim_94_wall",
-        "offset": [
-          0,
-          -14,
-          0
-        ]
-      },
-      {
-        "id": "p_windows_doors_12_wall",
-        "name": "windows_doors #12 wall",
-        "shape": "wall",
-        "mat": "mat_windows_doors",
-        "ts": "windows_doors",
-        "tile": 12
-      },
-      {
-        "id": "p_windows_doors_44_wall",
-        "name": "windows_doors #44 wall",
-        "shape": "wall",
-        "mat": "mat_windows_doors",
-        "ts": "windows_doors",
-        "tile": 44
-      },
-      {
-        "id": "p_windows_doors_833_wall",
-        "name": "windows_doors #833 wall",
-        "shape": "wall",
-        "mat": "mat_windows_doors",
-        "ts": "windows_doors",
-        "tile": 833
-      },
-      {
-        "id": "p_windows_doors_865_wall",
-        "name": "windows_doors #865 wall",
-        "shape": "wall",
-        "mat": "mat_windows_doors",
-        "ts": "windows_doors",
-        "tile": 865
       },
       {
         "id": "p_terrain_grass-dirt_summer__10_floor",
@@ -10967,6 +10631,406 @@
           -2
         ],
         "offsetUnit": 48
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
+        "name": "hipped_shingle_roof_a #136 floor_ridge_quarter",
+        "shape": "floor_ridge_quarter",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 136
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip_t-32_16_32",
+        "name": "hipped_shingle_roof_a #137 floor_ramp2_lo_flip",
+        "shape": "floor_ramp2_lo_flip",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 137,
+        "base": "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_135_floor_ramp2_hi_t-32_16_32",
+        "name": "hipped_shingle_roof_a #135 floor_ramp2_hi",
+        "shape": "floor_ramp2_hi",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 135,
+        "base": "p_hipped_shingle_roof_a_135_floor_ramp2_hi",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_135_floor_ramp2_lo_t-32_16_32",
+        "name": "hipped_shingle_roof_a #135 floor_ramp2_lo",
+        "shape": "floor_ramp2_lo",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 135,
+        "base": "p_hipped_shingle_roof_a_135_floor_ramp2_lo",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip_t-32_16_32",
+        "name": "hipped_shingle_roof_a #137 floor_ramp2_hi_flip",
+        "shape": "floor_ramp2_hi_flip",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 137,
+        "base": "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_hipped_shingle_roof_a_136_floor_ridge_quarter_t-32_16_32",
+        "name": "hipped_shingle_roof_a #136 floor_ridge_quarter",
+        "shape": "floor_ridge_quarter",
+        "mat": "mat_hipped_shingle_roof_a",
+        "ts": "hipped_shingle_roof_a",
+        "tile": 136,
+        "base": "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
+        "thickness": [
+          -32,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_44_wall_o0_2_16",
+        "name": "roof_trim #44 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 44,
+        "base": "p_roof_trim_44_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_92_wall_o0_2_16",
+        "name": "roof_trim #92 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 92,
+        "base": "p_roof_trim_92_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_93_wall_o0_2_16",
+        "name": "roof_trim #93 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 93,
+        "base": "p_roof_trim_93_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_94_wall_o0_2_16",
+        "name": "roof_trim #94 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 94,
+        "base": "p_roof_trim_94_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_91_wall_o0_2_16",
+        "name": "roof_trim #91 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 91,
+        "base": "p_roof_trim_91_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_90_wall_o0_2_16",
+        "name": "roof_trim #90 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 90,
+        "base": "p_roof_trim_90_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_142_wall_o0_2_16",
+        "name": "roof_trim #142 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 142,
+        "base": "p_roof_trim_142_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_roof_trim_138_wall_o0_2_16",
+        "name": "roof_trim #138 wall",
+        "shape": "wall",
+        "mat": "mat_roof_trim",
+        "ts": "roof_trim",
+        "tile": 138,
+        "base": "p_roof_trim_138_wall",
+        "offset": [
+          0,
+          2,
+          16
+        ]
+      },
+      {
+        "id": "p_windows_doors_847_wall",
+        "name": "windows_doors #847 wall",
+        "shape": "wall",
+        "mat": "mat_windows_doors",
+        "ts": "windows_doors",
+        "tile": 847
+      },
+      {
+        "id": "p_windows_doors_879_wall",
+        "name": "windows_doors #879 wall",
+        "shape": "wall",
+        "mat": "mat_windows_doors",
+        "ts": "windows_doors",
+        "tile": 879
+      },
+      {
+        "id": "p_terrain_dirt_non-winter__3_floor",
+        "name": "terrain_dirt_non-winter_ #3 floor",
+        "shape": "floor",
+        "mat": "mat_terrain_dirt_non-winter_",
+        "ts": "terrain_dirt_non-winter_",
+        "tile": 3
+      },
+      {
+        "id": "p_terrain_dirt_non-winter__5_floor",
+        "name": "terrain_dirt_non-winter_ #5 floor",
+        "shape": "floor",
+        "mat": "mat_terrain_dirt_non-winter_",
+        "ts": "terrain_dirt_non-winter_",
+        "tile": 5
+      },
+      {
+        "id": "p_terrain_dirt_non-winter__2_floor",
+        "name": "terrain_dirt_non-winter_ #2 floor",
+        "shape": "floor",
+        "mat": "mat_terrain_dirt_non-winter_",
+        "ts": "terrain_dirt_non-winter_",
+        "tile": 2
+      },
+      {
+        "id": "p_dwelling_animated_fire_3_wall_o0_0_-16_u48",
+        "name": "dwelling_animated_fire #3 wall",
+        "shape": "wall",
+        "mat": "mat_dwelling_animated_fire",
+        "ts": "dwelling_animated_fire",
+        "tile": 3,
+        "base": "p_dwelling_animated_fire_3_wall",
+        "offset": [
+          0,
+          0,
+          -16
+        ],
+        "offsetUnit": 48
+      },
+      {
+        "id": "p_outside_objects_493_wall",
+        "name": "outside_objects #493 wall",
+        "shape": "wall",
+        "mat": "mat_outside_objects",
+        "ts": "outside_objects",
+        "tile": 493
+      },
+      {
+        "id": "p_outside_objects_498_wall",
+        "name": "outside_objects #498 wall",
+        "shape": "wall",
+        "mat": "mat_outside_objects",
+        "ts": "outside_objects",
+        "tile": 498
+      },
+      {
+        "id": "p_walls_4374_wall",
+        "name": "walls #4374 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4374
+      },
+      {
+        "id": "p_walls_4502_wall",
+        "name": "walls #4502 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4502
+      },
+      {
+        "id": "p_walls_4372_wall",
+        "name": "walls #4372 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4372
+      },
+      {
+        "id": "p_walls_4500_wall",
+        "name": "walls #4500 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4500
+      },
+      {
+        "id": "p_walls_4373_wall",
+        "name": "walls #4373 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4373
+      },
+      {
+        "id": "p_walls_4373_wall_t16",
+        "name": "walls #4373 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4373,
+        "base": "p_walls_4373_wall",
+        "thickness": 16
+      },
+      {
+        "id": "p_walls_4501_wall",
+        "name": "walls #4501 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4501
+      },
+      {
+        "id": "p_walls_4375_wall",
+        "name": "walls #4375 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4375
+      },
+      {
+        "id": "p_walls_4503_wall",
+        "name": "walls #4503 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4503
+      },
+      {
+        "id": "p_windows_doors_12_wall",
+        "name": "windows_doors #12 wall",
+        "shape": "wall",
+        "mat": "mat_windows_doors",
+        "ts": "windows_doors",
+        "tile": 12
+      },
+      {
+        "id": "p_windows_doors_44_wall",
+        "name": "windows_doors #44 wall",
+        "shape": "wall",
+        "mat": "mat_windows_doors",
+        "ts": "windows_doors",
+        "tile": 44
+      },
+      {
+        "id": "p_walls_4497_wall_tri2_b_base_flip",
+        "name": "walls #4497 wall_tri2_b_base_flip",
+        "shape": "wall_tri2_b_base_flip",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4497
+      },
+      {
+        "id": "p_walls_4497_wall_tri2_b_base",
+        "name": "walls #4497 wall_tri2_b_base",
+        "shape": "wall_tri2_b_base",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4497
+      },
+      {
+        "id": "p_walls_4497_wall",
+        "name": "walls #4497 wall",
+        "shape": "wall",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4497
+      },
+      {
+        "id": "p_walls_4433_wall_gable_quarter_o0_-16_0",
+        "name": "walls #4433 wall_gable_quarter",
+        "shape": "wall_gable_quarter",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4433,
+        "base": "p_walls_4433_wall_gable_quarter",
+        "offset": [
+          0,
+          -16,
+          0
+        ]
+      },
+      {
+        "id": "p_walls_4497_wall_tri2_b_tip_flip",
+        "name": "walls #4497 wall_tri2_b_tip_flip",
+        "shape": "wall_tri2_b_tip_flip",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4497
+      },
+      {
+        "id": "p_walls_4497_wall_tri2_b_tip",
+        "name": "walls #4497 wall_tri2_b_tip",
+        "shape": "wall_tri2_b_tip",
+        "mat": "mat_walls",
+        "ts": "walls",
+        "tile": 4497
       }
     ]
   },
@@ -11176,24 +11240,24 @@
   "editor": {
     "camera": {
       "target": [
-        -7.988467777046676,
-        3.9077981135692426,
-        -24.139538203176073
+        5.485741931440025,
+        8.722046971672224,
+        -12.413803394544093
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 35.79742793022241,
+      "distance": 19.123274053753622,
       "orthographic": false
     },
-    "activeLayer": "タイルマップレイヤー_10",
-    "height": 2,
+    "activeLayer": "屋根_2_2",
+    "height": 9,
     "brush": {
-      "shape": "floor",
+      "shape": "wall",
       "rotation": 0,
       "chipTurn": 0,
       "color": "#c45c5c",
-      "tileset": "chests",
-      "tile": 0,
+      "tileset": "walls",
+      "tile": 4497,
       "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
@@ -11209,13 +11273,14 @@
       ],
       "faceAnchor": "bl",
       "faceFit": "clip",
-      "prefabId": "宝箱スプライト（閉）"
+      "prefabId": "Wood_Small_House"
     },
     "prefabs": [
       "block_5",
       "house",
       "宝箱スプライト（閉）",
-      "宝箱スプライト（開）"
+      "宝箱スプライト（開）",
+      "Wood_Small_House"
     ]
   },
   "properties": [
@@ -17800,21 +17865,21 @@
             "p_terrain_grass-dirt_summer__18_floor",
             "p_terrain_grass-dirt_summer__4_floor",
             "p_terrain_grass-dirt_summer__13_floor",
-            "p_terrain_grass-dirt_summer__3_floor",
-            "p_terrain_grass-dirt_summer__1_floor",
             "p_terrain_grass-dirt_summer__0_floor",
+            "p_terrain_grass-dirt_summer__1_floor",
+            "p_terrain_grass-dirt_summer__3_floor",
             "p_terrain_grass-dirt_summer__2_floor",
             "p_terrain_grass-dirt_summer__5_floor",
+            "p_terrain_grass-dirt_summer__6_floor",
             "p_terrain_grass-dirt_summer__12_floor",
+            "p_terrain_grass-dirt_summer__10_floor",
+            "p_terrain_grass-dirt_summer__9_floor",
             "p_terrain_grass-dirt_summer__14_floor",
             "p_terrain_grass-dirt_summer__11_floor",
             "p_terrain_grass-dirt_summer__7_floor",
-            "p_terrain_grass-dirt_summer__8_floor",
-            "p_terrain_grass-dirt_summer__9_floor",
-            "p_terrain_grass-dirt_summer__10_floor",
-            "p_terrain_grass-dirt_summer__6_floor"
+            "p_terrain_grass-dirt_summer__8_floor"
           ],
-          "count": 718,
+          "count": 722,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -18694,13 +18759,7 @@
               -2,
               8,
               10,
-              -1,
-              8,
-              10,
               0,
-              7,
-              10,
-              -1,
               7,
               10,
               0,
@@ -18752,9 +18811,6 @@
               3,
               10,
               0,
-              2,
-              10,
-              -3,
               2,
               10,
               -2,
@@ -19067,9 +19123,6 @@
               1,
               10,
               4,
-              2,
-              10,
-              -4,
               3,
               10,
               -4,
@@ -19085,9 +19138,6 @@
               7,
               10,
               -4,
-              2,
-              10,
-              -5,
               3,
               10,
               -5,
@@ -19298,9 +19348,6 @@
               10,
               10,
               -4,
-              11,
-              10,
-              -4,
               12,
               10,
               -4,
@@ -19314,9 +19361,6 @@
               10,
               -4,
               10,
-              10,
-              -3,
-              11,
               10,
               -3,
               12,
@@ -19972,7 +20016,40 @@
               13,
               6,
               10,
-              8
+              8,
+              8,
+              10,
+              -2,
+              -5,
+              10,
+              -6,
+              -6,
+              10,
+              -6,
+              -7,
+              10,
+              -7,
+              -7,
+              10,
+              -6,
+              -7,
+              10,
+              -5,
+              -6,
+              10,
+              -5,
+              -7,
+              10,
+              -4,
+              -7,
+              10,
+              -3,
+              7,
+              10,
+              -1,
+              8,
+              10,
+              -1
             ],
             "proto": [
               0,
@@ -20263,26 +20340,20 @@
               5,
               4,
               6,
-              4,
-              4,
-              4,
               7,
+              7,
+              5,
               4,
               8,
-              6,
               9,
               10,
               4,
               4,
               4,
               4,
-              6,
-              9,
               11,
-              7,
-              4,
-              4,
-              4,
+              9,
+              12,
               7,
               4,
               4,
@@ -20291,8 +20362,11 @@
               4,
               4,
               7,
-              4,
-              4,
+              13,
+              5,
+              7,
+              14,
+              12,
               4,
               4,
               7,
@@ -20306,7 +20380,7 @@
               4,
               4,
               9,
-              11,
+              12,
               4,
               4,
               3,
@@ -20333,368 +20407,379 @@
               4,
               4,
               4,
-              6,
-              6,
-              6,
-              6,
-              6,
+              8,
+              8,
+              8,
+              8,
+              8,
               5,
-              9,
               10,
               10,
               10,
               10,
-              11,
-              4,
-              11,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              3,
-              4,
-              4,
-              4,
-              4,
-              3,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              12,
-              13,
-              14,
-              14,
-              14,
-              14,
-              15,
-              4,
-              4,
-              16,
-              14,
-              17,
-              4,
-              4,
-              6,
-              4,
-              4,
-              18,
-              14,
-              14,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              17,
-              4,
-              4,
-              6,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              17,
-              18,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              16,
-              15,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              14,
-              9,
-              4,
-              4,
-              14,
-              4,
-              17,
-              18,
-              4,
-              14,
+              10,
               12,
               4,
-              14,
               4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              3,
+              4,
+              4,
+              4,
+              4,
+              3,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              15,
               16,
-              10,
-              10,
-              10,
-              10,
-              8,
-              7,
-              10,
-              8,
-              5,
-              4,
-              11,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              6,
-              4,
-              4,
-              11,
-              10,
-              9,
-              6,
+              17,
+              17,
+              17,
               17,
               18,
+              4,
+              4,
+              14,
+              17,
               13,
+              4,
+              4,
+              8,
+              4,
+              4,
+              11,
+              17,
+              17,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              13,
+              14,
+              12,
+              8,
+              4,
+              4,
+              4,
+              13,
+              5,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              17,
+              13,
+              4,
+              4,
+              4,
+              4,
+              10,
+              11,
+              13,
+              4,
+              4,
+              18,
+              6,
+              5,
+              4,
+              4,
+              13,
+              11,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              14,
+              18,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              17,
+              9,
+              4,
+              4,
+              17,
+              4,
+              4,
+              14,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              6,
+              7,
+              4,
+              6,
+              5,
+              4,
+              12,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              8,
+              14,
+              4,
+              12,
+              10,
+              9,
+              8,
+              13,
+              11,
+              16,
               4,
               3,
               4,
               4,
               4,
               7,
-              8,
-              9,
-              11,
-              10,
               6,
+              9,
+              12,
+              10,
+              8,
               5,
-              11,
+              12,
               7,
               7,
               5,
-              17,
+              13,
               2,
               4,
+              14,
+              4,
+              4,
+              4,
+              4,
+              14,
+              4,
+              14,
+              18,
+              18,
               16,
-              4,
-              4,
-              4,
-              4,
-              16,
-              4,
-              16,
-              15,
+              11,
               15,
               13,
-              18,
-              12,
-              17,
-              6,
-              6,
-              18,
+              8,
+              8,
+              11,
               4,
               4,
               4,
               10,
+              18,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
               15,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              4,
-              12
+              15,
+              18,
+              14,
+              4,
+              4,
+              14,
+              18,
+              10,
+              10,
+              6,
+              7
             ],
             "rf": [
+              0,
+              0,
+              0,
+              0,
               0,
               0,
               0,
@@ -21725,14 +21810,11 @@
               0,
               0,
               0,
+              436,
+              436,
               0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
+              436,
+              436,
               0,
               0,
               0,
@@ -21866,7 +21948,14 @@
               0,
               0,
               0,
+              435,
+              435,
               0,
+              0,
+              0,
+              0,
+              435,
+              435,
               0,
               0,
               0,
@@ -22137,68 +22226,38 @@
           }
         },
         {
-          "id": "ground-floor_tri_nw-2",
-          "shape": "floor_tri_nw",
-          "mat": "mat_terrain_mountain_summer_",
-          "ts": "terrain_mountain_summer_",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_terrain_mountain_summer__51_floor_tri_nw",
-            "p_terrain_mountain_summer__16_floor_tri_nw"
-          ],
-          "count": 5,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -3,
-              7,
-              10,
-              -11,
-              10,
-              4,
-              -12,
-              10,
-              5,
-              0,
-              6,
-              8,
-              -1,
-              6,
-              9
-            ],
-            "proto": [
-              0,
-              0,
-              0,
-              1,
-              1
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0
-            ]
-          }
-        },
-        {
-          "id": "ground-floor-3",
+          "id": "ground-floor-2",
           "shape": "floor",
           "mat": "mat_terrain_dirt_non-winter_",
           "ts": "terrain_dirt_non-winter_",
           "mode": "instanced",
           "anim": null,
           "protos": [
-            "p_terrain_dirt_non-winter__0_floor"
+            "p_terrain_dirt_non-winter__0_floor",
+            "p_terrain_dirt_non-winter__5_floor",
+            "p_terrain_dirt_non-winter__3_floor",
+            "p_terrain_dirt_non-winter__2_floor"
           ],
-          "count": 65,
+          "count": 61,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
             "cell": [
+              2,
+              10,
+              -3,
+              2,
+              10,
+              -4,
+              2,
+              10,
+              -5,
+              11,
+              10,
+              -4,
+              11,
+              10,
+              -3,
               2,
               10,
               -6,
@@ -22217,9 +22276,6 @@
               7,
               10,
               -6,
-              8,
-              10,
-              -2,
               7,
               10,
               -2,
@@ -22306,34 +22362,10 @@
               -5,
               -5,
               10,
-              -6,
               -5,
-              10,
-              -5,
-              -6,
-              10,
-              -6,
-              -7,
-              10,
-              -7,
-              -7,
-              10,
-              -6,
-              -7,
-              10,
-              -5,
-              -6,
-              10,
-              -5,
-              -7,
-              10,
-              -4,
               -6,
               10,
               -4,
-              -7,
-              10,
-              -3,
               5,
               10,
               6,
@@ -22344,9 +22376,6 @@
               10,
               5,
               7,
-              10,
-              5,
-              8,
               10,
               5,
               8,
@@ -22393,12 +22422,17 @@
               3,
               7,
               10,
-              4
+              4,
+              8,
+              10,
+              5
             ],
             "proto": [
               0,
               0,
               0,
+              1,
+              2,
               0,
               0,
               0,
@@ -22413,6 +22447,8 @@
               0,
               0,
               0,
+              3,
+              3,
               0,
               0,
               0,
@@ -22427,6 +22463,17 @@
               0,
               0,
               0,
+              3,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              3,
+              3,
               0,
               0,
               0,
@@ -22436,26 +22483,7 @@
               0,
               0,
               0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
+              1,
               0,
               0,
               0,
@@ -22523,6 +22551,50 @@
               0,
               0,
               0,
+              0
+            ]
+          }
+        },
+        {
+          "id": "ground-floor_tri_nw-3",
+          "shape": "floor_tri_nw",
+          "mat": "mat_terrain_mountain_summer_",
+          "ts": "terrain_mountain_summer_",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_terrain_mountain_summer__51_floor_tri_nw",
+            "p_terrain_mountain_summer__16_floor_tri_nw"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -3,
+              7,
+              10,
+              -11,
+              10,
+              4,
+              -12,
+              10,
+              5,
+              0,
+              6,
+              8,
+              -1,
+              6,
+              9
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              1,
+              1
+            ],
+            "rf": [
               0,
               0,
               0,
@@ -26823,14 +26895,14 @@
             "p_outside_objects_612_billboard_fixed",
             "p_outside_objects_613_billboard_fixed",
             "p_outside_objects_685_billboard_fixed",
+            "p_outside_objects_790_billboard_fixed_o0_-23_0",
+            "p_outside_objects_822_billboard_fixed_o0_-23_0",
             "p_outside_objects_30_billboard_fixed_o0_-4_0",
             "p_outside_objects_62_billboard_fixed_o0_-4_0",
             "p_outside_objects_836_billboard_fixed_o0_-10_0",
             "p_outside_objects_837_billboard_fixed_o0_-10_0",
             "p_outside_objects_868_billboard_fixed_o0_-10_0",
-            "p_outside_objects_869_billboard_fixed_o0_-10_0",
-            "p_outside_objects_790_billboard_fixed_o0_-23_0",
-            "p_outside_objects_822_billboard_fixed_o0_-23_0"
+            "p_outside_objects_869_billboard_fixed_o0_-10_0"
           ],
           "count": 15,
           "enc": "json",
@@ -26858,30 +26930,30 @@
               8,
               10,
               -3,
-              0,
-              11,
-              -3,
-              0,
-              10,
-              -3,
-              -1,
-              11,
-              -5,
-              0,
-              11,
-              -5,
-              -1,
-              10,
-              -5,
-              0,
-              10,
-              -5,
-              5,
+              7,
               11,
               -2,
-              5,
+              7,
               10,
-              -2
+              -2,
+              2,
+              11,
+              -3,
+              2,
+              10,
+              -3,
+              1,
+              11,
+              -5,
+              2,
+              11,
+              -5,
+              1,
+              10,
+              -5,
+              2,
+              10,
+              -5
             ],
             "proto": [
               0,
@@ -26925,14 +26997,14 @@
               305,
               305,
               0,
-              333,
-              333,
-              336,
-              336,
-              336,
-              336,
               370,
-              370
+              370,
+              333,
+              333,
+              336,
+              336,
+              336,
+              336
             ]
           }
         },
@@ -29318,57 +29390,6 @@
         {
           "id": "decoration-billboard_fixed-7",
           "shape": "billboard_fixed",
-          "mat": "mat_interior",
-          "ts": "interior",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_interior_275_billboard_fixed_o0_-10_0",
-            "p_interior_276_billboard_fixed_o0_-10_0",
-            "p_interior_307_billboard_fixed_o0_-10_0",
-            "p_interior_308_billboard_fixed_o0_-10_0"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              11,
-              -2,
-              3,
-              11,
-              -2,
-              2,
-              10,
-              -2,
-              3,
-              10,
-              -2
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              337,
-              337,
-              337,
-              337
-            ]
-          }
-        },
-        {
-          "id": "decoration-billboard_fixed-8",
-          "shape": "billboard_fixed",
           "mat": "mat_trees-green",
           "ts": "trees-green",
           "mode": "instanced",
@@ -29876,6 +29897,117 @@
               403,
               403,
               403
+            ]
+          }
+        },
+        {
+          "id": "decoration-billboard_fixed-8",
+          "shape": "billboard_fixed",
+          "mat": "mat_interior",
+          "ts": "interior",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_interior_275_billboard_fixed_o0_-10_0",
+            "p_interior_276_billboard_fixed_o0_-10_0",
+            "p_interior_307_billboard_fixed_o0_-10_0",
+            "p_interior_308_billboard_fixed_o0_-10_0"
+          ],
+          "count": 4,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              4,
+              11,
+              -2,
+              5,
+              11,
+              -2,
+              4,
+              10,
+              -2,
+              5,
+              10,
+              -2
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              337,
+              337,
+              337,
+              337
+            ]
+          }
+        },
+        {
+          "id": "decoration-wall-9",
+          "shape": "wall",
+          "mat": "mat_dwelling_animated_fire",
+          "ts": "dwelling_animated_fire",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_dwelling_animated_fire_3_wall_o0_0_-16_u48"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              11,
+              10,
+              -4
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ]
+          }
+        },
+        {
+          "id": "decoration-wall-10",
+          "shape": "wall",
+          "mat": "mat_outside_objects",
+          "ts": "outside_objects",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_outside_objects_493_wall",
+            "p_outside_objects_498_wall"
+          ],
+          "count": 2,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              10,
+              -4,
+              -1,
+              10,
+              -5
+            ],
+            "proto": [
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0
             ]
           }
         }
@@ -33056,6 +33188,16 @@
       ]
     },
     {
+      "id": "wood_small_house",
+      "name": "家",
+      "kind": "group",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": []
+    },
+    {
       "id": "グループ_1",
       "name": "滝",
       "kind": "group",
@@ -35482,1109 +35624,6 @@
       ]
     },
     {
-      "id": "house_2",
-      "name": "house",
-      "kind": "group",
-      "parent": "",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Shade",
-          "type": "boolean",
-          "value": true
-        },
-        {
-          "name": "NoEntry",
-          "type": "boolean",
-          "value": false
-        }
-      ],
-      "batches": []
-    },
-    {
-      "id": "壁_3",
-      "name": "壁 2",
-      "kind": "tile",
-      "parent": "house_2",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Shade",
-          "type": "boolean",
-          "value": true
-        }
-      ],
-      "batches": [
-        {
-          "id": "壁_3-wall-0",
-          "shape": "wall",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4501_wall",
-            "p_walls_4502_wall",
-            "p_walls_4372_wall",
-            "p_walls_4373_wall",
-            "p_walls_4374_wall",
-            "p_walls_4375_wall",
-            "p_walls_4505_wall",
-            "p_walls_4500_wall",
-            "p_walls_4373_wall_t17",
-            "p_walls_4503_wall"
-          ],
-          "count": 45,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              3,
-              10,
-              -3,
-              4,
-              10,
-              -3,
-              5,
-              10,
-              -3,
-              1,
-              11,
-              -3,
-              2,
-              11,
-              -3,
-              5,
-              11,
-              -3,
-              3,
-              11,
-              -3,
-              4,
-              11,
-              -3,
-              7,
-              11,
-              -3,
-              4,
-              12,
-              -3,
-              5,
-              12,
-              -3,
-              3,
-              12,
-              -3,
-              2,
-              10,
-              -3,
-              7,
-              10,
-              -4,
-              7,
-              11,
-              -3,
-              7,
-              11,
-              -4,
-              7,
-              10,
-              -5,
-              7,
-              11,
-              -5,
-              1,
-              10,
-              -3,
-              1,
-              10,
-              -3,
-              1,
-              11,
-              -3,
-              1,
-              10,
-              -4,
-              1,
-              10,
-              -5,
-              1,
-              11,
-              -5,
-              1,
-              11,
-              -4,
-              7,
-              10,
-              -6,
-              1,
-              10,
-              -6,
-              2,
-              10,
-              -6,
-              3,
-              10,
-              -6,
-              4,
-              10,
-              -6,
-              5,
-              10,
-              -6,
-              6,
-              10,
-              -6,
-              1,
-              11,
-              -6,
-              2,
-              11,
-              -6,
-              3,
-              11,
-              -6,
-              4,
-              11,
-              -6,
-              5,
-              11,
-              -6,
-              6,
-              11,
-              -6,
-              7,
-              11,
-              -6,
-              3,
-              12,
-              -6,
-              5,
-              12,
-              -6,
-              4,
-              12,
-              -6,
-              6,
-              11,
-              -3,
-              7,
-              10,
-              -3,
-              7,
-              10,
-              -3
-            ],
-            "proto": [
-              0,
-              0,
-              1,
-              2,
-              3,
-              4,
-              3,
-              3,
-              5,
-              6,
-              6,
-              6,
-              0,
-              0,
-              2,
-              3,
-              1,
-              4,
-              7,
-              7,
-              2,
-              0,
-              1,
-              4,
-              3,
-              1,
-              7,
-              0,
-              0,
-              0,
-              0,
-              0,
-              2,
-              3,
-              3,
-              3,
-              3,
-              3,
-              4,
-              6,
-              6,
-              6,
-              8,
-              9,
-              7
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              1,
-              1,
-              1,
-              1,
-              1,
-              0,
-              3,
-              3,
-              3,
-              3,
-              3,
-              3,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              1
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "壁_3-wall_tri2_b_tip-1",
-          "shape": "wall_tri2_b_tip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4505_wall_tri2_b_tip",
-            "p_walls_4377_wall_tri2_b_tip"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              1,
-              12,
-              -3,
-              3,
-              13,
-              -3,
-              1,
-              12,
-              -6,
-              3,
-              13,
-              -5
-            ],
-            "proto": [
-              0,
-              1,
-              0,
-              1
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              2
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "壁_3-wall_tri2_b_base-2",
-          "shape": "wall_tri2_b_base",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4505_wall_tri2_b_base"
-          ],
-          "count": 2,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              12,
-              -3,
-              2,
-              12,
-              -6
-            ],
-            "proto": [
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0
-            ],
-            "gid": [
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "壁_3-wall_tri2_b_tip_flip-3",
-          "shape": "wall_tri2_b_tip_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4377_wall_tri2_b_tip_flip",
-            "p_walls_4505_wall_tri2_b_tip_flip"
-          ],
-          "count": 4,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              5,
-              13,
-              -3,
-              7,
-              12,
-              -3,
-              7,
-              12,
-              -6,
-              5,
-              13,
-              -5
-            ],
-            "proto": [
-              0,
-              1,
-              1,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              2
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "壁_3-wall_gable_quarter-4",
-          "shape": "wall_gable_quarter",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4377_wall_gable_quarter"
-          ],
-          "count": 2,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              4,
-              13,
-              -3,
-              4,
-              13,
-              -6
-            ],
-            "proto": [
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0
-            ],
-            "gid": [
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "壁_3-wall_tri2_b_base_flip-5",
-          "shape": "wall_tri2_b_base_flip",
-          "mat": "mat_walls",
-          "ts": "walls",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_walls_4505_wall_tri2_b_base_flip"
-          ],
-          "count": 2,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              6,
-              12,
-              -3,
-              6,
-              12,
-              -6
-            ],
-            "proto": [
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0
-            ],
-            "gid": [
-              9,
-              9
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "屋根_2",
-      "name": "屋根",
-      "kind": "tile",
-      "parent": "house_2",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Shade",
-          "type": "boolean",
-          "value": true
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "屋根_2-floor_ramp2_lo-0",
-          "shape": "floor_ramp2_lo",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_lo",
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo"
-          ],
-          "count": 14,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              7,
-              12,
-              -3,
-              7,
-              12,
-              -2,
-              1,
-              12,
-              -3,
-              1,
-              12,
-              -2,
-              3,
-              13,
-              -2,
-              3,
-              13,
-              -3,
-              5,
-              13,
-              -3,
-              5,
-              13,
-              -2,
-              7,
-              12,
-              -4,
-              5,
-              13,
-              -4,
-              3,
-              13,
-              -5,
-              1,
-              12,
-              -5,
-              7,
-              12,
-              -6,
-              5,
-              13,
-              -6
-            ],
-            "proto": [
-              0,
-              0,
-              1,
-              1,
-              1,
-              1,
-              0,
-              0,
-              0,
-              0,
-              1,
-              1,
-              0,
-              0
-            ],
-            "rf": [
-              2,
-              2,
-              0,
-              0,
-              0,
-              0,
-              2,
-              2,
-              2,
-              2,
-              0,
-              0,
-              2,
-              2
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "屋根_2-floor_ramp2_hi-1",
-          "shape": "floor_ramp2_hi",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_137_floor_ramp2_hi",
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi"
-          ],
-          "count": 7,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              6,
-              12,
-              -2,
-              6,
-              12,
-              -3,
-              2,
-              12,
-              -3,
-              2,
-              12,
-              -2,
-              6,
-              12,
-              -4,
-              2,
-              12,
-              -5,
-              6,
-              12,
-              -6
-            ],
-            "proto": [
-              0,
-              0,
-              1,
-              1,
-              0,
-              1,
-              0
-            ],
-            "rf": [
-              2,
-              2,
-              0,
-              0,
-              2,
-              0,
-              2
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "屋根_2-floor_ridge_quarter-2",
-          "shape": "floor_ridge_quarter",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter_o0_16_0"
-          ],
-          "count": 2,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              4,
-              13,
-              -3,
-              4,
-              13,
-              -2
-            ],
-            "proto": [
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0
-            ],
-            "gid": [
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "屋根_2-floor_ramp2_hi_flip-3",
-          "shape": "floor_ramp2_hi_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_hi_flip",
-            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              12,
-              -4,
-              6,
-              12,
-              -5,
-              2,
-              12,
-              -6
-            ],
-            "proto": [
-              0,
-              1,
-              0
-            ],
-            "rf": [
-              2,
-              0,
-              2
-            ],
-            "gid": [
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "屋根_2-floor_ramp2_lo_flip-4",
-          "shape": "floor_ramp2_lo_flip",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_135_floor_ramp2_lo_flip",
-            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip"
-          ],
-          "count": 6,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              1,
-              12,
-              -4,
-              3,
-              13,
-              -4,
-              5,
-              13,
-              -5,
-              7,
-              12,
-              -5,
-              1,
-              12,
-              -6,
-              3,
-              13,
-              -6
-            ],
-            "proto": [
-              0,
-              0,
-              1,
-              1,
-              0,
-              0
-            ],
-            "rf": [
-              2,
-              2,
-              0,
-              0,
-              2,
-              2
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "屋根_2-floor_ridge_quarter_up-5",
-          "shape": "floor_ridge_quarter_up",
-          "mat": "mat_hipped_shingle_roof_a",
-          "ts": "hipped_shingle_roof_a",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_hipped_shingle_roof_a_136_floor_ridge_quarter_up"
-          ],
-          "count": 3,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              4,
-              13,
-              -4,
-              4,
-              13,
-              -5,
-              4,
-              13,
-              -6
-            ],
-            "proto": [
-              0,
-              0,
-              0
-            ],
-            "rf": [
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              9,
-              9,
-              9
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "id": "装飾_3",
-      "name": "装飾 2",
-      "kind": "tile",
-      "parent": "house_2",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Shade",
-          "type": "boolean",
-          "value": true
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
-      "batches": [
-        {
-          "id": "装飾_3-wall-0",
-          "shape": "wall",
-          "mat": "mat_roof_trim",
-          "ts": "roof_trim",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_roof_trim_44_wall_o0_-14_0",
-            "p_roof_trim_92_wall_o0_-14_0",
-            "p_roof_trim_91_wall_o0_-14_0",
-            "p_roof_trim_90_wall_o0_-14_0",
-            "p_roof_trim_138_wall_o0_-14_0",
-            "p_roof_trim_93_wall_o0_-14_0",
-            "p_roof_trim_142_wall_o0_-14_0",
-            "p_roof_trim_94_wall_o0_-14_0"
-          ],
-          "count": 10,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              4,
-              14,
-              -2,
-              4,
-              13,
-              -2,
-              3,
-              13,
-              -2,
-              1,
-              12,
-              -2,
-              2,
-              13,
-              -2,
-              2,
-              12,
-              -2,
-              5,
-              13,
-              -2,
-              6,
-              12,
-              -2,
-              6,
-              13,
-              -2,
-              7,
-              12,
-              -2
-            ],
-            "proto": [
-              0,
-              1,
-              2,
-              2,
-              3,
-              4,
-              5,
-              6,
-              7,
-              5
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        },
-        {
-          "id": "装飾_3-wall-1",
-          "shape": "wall",
-          "mat": "mat_windows_doors",
-          "ts": "windows_doors",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_windows_doors_12_wall",
-            "p_windows_doors_44_wall",
-            "p_windows_doors_833_wall",
-            "p_windows_doors_865_wall"
-          ],
-          "count": 6,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              4,
-              11,
-              -3,
-              4,
-              10,
-              -3,
-              2,
-              11,
-              -3,
-              2,
-              10,
-              -3,
-              6,
-              11,
-              -3,
-              6,
-              10,
-              -3
-            ],
-            "proto": [
-              0,
-              1,
-              0,
-              1,
-              2,
-              3
-            ],
-            "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0
-            ],
-            "gid": [
-              9,
-              9,
-              9,
-              9,
-              9,
-              9
-            ]
-          }
-        }
-      ]
-    },
-    {
       "id": "オブジェクトレイヤー_2_2",
       "name": "エフェクト",
       "kind": "object",
@@ -36743,8 +35782,8 @@
           "y": 10,
           "points": [
             [
-              14.294883834610651,
-              -3.443803705513357
+              14.5,
+              -3.5
             ]
           ]
         },
@@ -37160,19 +36199,19 @@
           "height": 1,
           "points": [
             [
-              1,
+              3,
               -2
             ],
             [
-              2,
+              4,
               -2
             ],
             [
-              2,
+              4,
               -1
             ],
             [
-              1,
+              3,
               -1
             ]
           ]
@@ -37188,6 +36227,130 @@
       "opacity": 1,
       "properties": [],
       "batches": []
+    },
+    {
+      "id": "宝箱スプライト（開）",
+      "name": "宝箱スプライト（開）",
+      "kind": "group",
+      "parent": "グループ_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": []
+    },
+    {
+      "id": "宝箱スプライト（開）_2",
+      "name": "宝箱スプライト（開）",
+      "kind": "tile",
+      "parent": "宝箱スプライト（開）",
+      "visible": true,
+      "opacity": 1,
+      "properties": [
+        {
+          "name": "Id",
+          "type": "string",
+          "value": "Chest_Map0102_開"
+        },
+        {
+          "name": "StartHidden",
+          "type": "boolean",
+          "value": true
+        },
+        {
+          "name": "Hit",
+          "type": "string",
+          "value": "nowall"
+        }
+      ],
+      "batches": [
+        {
+          "id": "宝箱スプライト（開）_2-billboard_fixed-0",
+          "shape": "billboard_fixed",
+          "mat": "mat_chests",
+          "ts": "chests",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_chests_4_billboard_fixed"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              3,
+              10,
+              -2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              423
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "宝箱スプライト（閉）",
+      "name": "宝箱スプライト（閉）",
+      "kind": "group",
+      "parent": "グループ_2",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": []
+    },
+    {
+      "id": "宝箱スプライト（閉）_2",
+      "name": "宝箱スプライト（閉）",
+      "kind": "tile",
+      "parent": "宝箱スプライト（閉）",
+      "visible": true,
+      "opacity": 1,
+      "properties": [
+        {
+          "name": "Id",
+          "type": "string",
+          "value": "Chest_Map0102_閉"
+        }
+      ],
+      "batches": [
+        {
+          "id": "宝箱スプライト（閉）_2-billboard_fixed-0",
+          "shape": "billboard_fixed",
+          "mat": "mat_chests",
+          "ts": "chests",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_chests_0_billboard_fixed"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              3,
+              10,
+              -2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              424
+            ]
+          }
+        }
+      ]
     },
     {
       "id": "壁_のコピー",
@@ -38270,115 +37433,250 @@
       ]
     },
     {
-      "id": "宝箱スプライト（開）",
-      "name": "宝箱スプライト（開）",
-      "kind": "group",
-      "parent": "グループ_2",
+      "id": "壁_3_2",
+      "name": "壁 3",
+      "kind": "tile",
+      "parent": "wood_small_house",
       "visible": true,
       "opacity": 1,
       "properties": [],
-      "batches": []
-    },
-    {
-      "id": "宝箱スプライト（開）_2",
-      "name": "宝箱スプライト（開）",
-      "kind": "tile",
-      "parent": "宝箱スプライト（開）",
-      "visible": true,
-      "opacity": 1,
-      "properties": [
-        {
-          "name": "Id",
-          "type": "string",
-          "value": "Chest_Map0102_開"
-        },
-        {
-          "name": "StartHidden",
-          "type": "boolean",
-          "value": true
-        },
-        {
-          "name": "Hit",
-          "type": "string",
-          "value": "nowall"
-        }
-      ],
       "batches": [
         {
-          "id": "宝箱スプライト（開）_2-billboard_fixed-0",
-          "shape": "billboard_fixed",
-          "mat": "mat_chests",
-          "ts": "chests",
+          "id": "壁_3_2-wall-0",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
           "mode": "instanced",
           "anim": null,
           "protos": [
-            "p_chests_4_billboard_fixed"
+            "p_walls_4501_wall",
+            "p_walls_4503_wall",
+            "p_walls_4502_wall",
+            "p_walls_4373_wall",
+            "p_walls_4374_wall",
+            "p_walls_4375_wall",
+            "p_walls_4500_wall",
+            "p_walls_4372_wall",
+            "p_walls_4373_wall_t16"
           ],
-          "count": 1,
+          "count": 21,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
             "cell": [
-              1,
+              4,
               10,
-              -2
+              -3,
+              7,
+              10,
+              -3,
+              5,
+              10,
+              -3,
+              4,
+              11,
+              -3,
+              5,
+              11,
+              -3,
+              7,
+              11,
+              -3,
+              3,
+              10,
+              -3,
+              3,
+              11,
+              -3,
+              3,
+              10,
+              -3,
+              3,
+              10,
+              -4,
+              3,
+              10,
+              -5,
+              3,
+              11,
+              -5,
+              3,
+              11,
+              -4,
+              3,
+              11,
+              -3,
+              7,
+              10,
+              -3,
+              7,
+              10,
+              -4,
+              7,
+              10,
+              -5,
+              7,
+              11,
+              -5,
+              7,
+              11,
+              -4,
+              7,
+              11,
+              -3,
+              6,
+              11,
+              -3
             ],
             "proto": [
-              0
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              6,
+              0,
+              2,
+              4,
+              3,
+              7,
+              8
             ],
             "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
               0
             ],
             "gid": [
-              423
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428
             ]
           }
         }
       ]
     },
     {
-      "id": "宝箱スプライト（閉）",
-      "name": "宝箱スプライト（閉）",
-      "kind": "group",
-      "parent": "グループ_2",
-      "visible": true,
-      "opacity": 1,
-      "properties": [],
-      "batches": []
-    },
-    {
-      "id": "宝箱スプライト（閉）_2",
-      "name": "宝箱スプライト（閉）",
+      "id": "装飾（朝昼）",
+      "name": "装飾",
       "kind": "tile",
-      "parent": "宝箱スプライト（閉）",
+      "parent": "wood_small_house",
       "visible": true,
       "opacity": 1,
-      "properties": [
-        {
-          "name": "Id",
-          "type": "string",
-          "value": "Chest_Map0102_閉"
-        }
-      ],
+      "overlay": true,
+      "properties": [],
       "batches": [
         {
-          "id": "宝箱スプライト（閉）_2-billboard_fixed-0",
-          "shape": "billboard_fixed",
-          "mat": "mat_chests",
-          "ts": "chests",
+          "id": "装飾（朝昼）-wall-0",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
           "mode": "instanced",
           "anim": null,
           "protos": [
-            "p_chests_0_billboard_fixed"
+            "p_windows_doors_12_wall",
+            "p_windows_doors_44_wall"
+          ],
+          "count": 2,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              4,
+              11,
+              -3,
+              4,
+              10,
+              -3
+            ],
+            "proto": [
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0
+            ],
+            "gid": [
+              437,
+              437
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根_2_2",
+      "name": "屋根 2",
+      "kind": "tile",
+      "parent": "wood_small_house",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根_2_2-wall_tri2_b_tip_flip-0",
+          "shape": "wall_tri2_b_tip_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4497_wall_tri2_b_tip_flip"
           ],
           "count": 1,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
             "cell": [
-              1,
-              10,
-              -2
+              7,
+              12,
+              -3
             ],
             "proto": [
               0
@@ -38387,7 +37685,556 @@
               0
             ],
             "gid": [
-              424
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_2-wall_tri2_b_tip-1",
+          "shape": "wall_tri2_b_tip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4497_wall_tri2_b_tip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              3,
+              12,
+              -3
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_2-wall_tri2_b_base-2",
+          "shape": "wall_tri2_b_base",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4497_wall_tri2_b_base"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              4,
+              12,
+              -3
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_2-wall_gable_quarter-3",
+          "shape": "wall_gable_quarter",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4433_wall_gable_quarter_o0_-16_0"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              5,
+              13,
+              -3
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_2-wall-4",
+          "shape": "wall",
+          "mat": "mat_windows_doors",
+          "ts": "windows_doors",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_windows_doors_847_wall",
+            "p_windows_doors_879_wall"
+          ],
+          "count": 2,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              6,
+              11,
+              -3,
+              6,
+              10,
+              -3
+            ],
+            "proto": [
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0
+            ],
+            "gid": [
+              430,
+              430
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_2-wall-5",
+          "shape": "wall",
+          "mat": "mat_roof_trim",
+          "ts": "roof_trim",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_roof_trim_44_wall_o0_2_16",
+            "p_roof_trim_93_wall_o0_2_16",
+            "p_roof_trim_94_wall_o0_2_16",
+            "p_roof_trim_91_wall_o0_2_16",
+            "p_roof_trim_90_wall_o0_2_16",
+            "p_roof_trim_142_wall_o0_2_16",
+            "p_roof_trim_138_wall_o0_2_16",
+            "p_roof_trim_92_wall_o0_2_16"
+          ],
+          "count": 8,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              5,
+              13,
+              -2,
+              6,
+              12,
+              -2,
+              7,
+              12,
+              -2,
+              4,
+              12,
+              -2,
+              3,
+              12,
+              -2,
+              7,
+              11,
+              -2,
+              3,
+              11,
+              -2,
+              5,
+              12,
+              -2
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428,
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_2-wall_tri2_b_base_flip-6",
+          "shape": "wall_tri2_b_base_flip",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4497_wall_tri2_b_base_flip"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              6,
+              12,
+              -3
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ],
+            "gid": [
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_2-wall-7",
+          "shape": "wall",
+          "mat": "mat_walls",
+          "ts": "walls",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_walls_4497_wall"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              5,
+              12,
+              -3
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "屋根_2_斜め",
+      "name": "屋根 2_斜め",
+      "kind": "tile",
+      "parent": "wood_small_house",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "屋根_2_斜め-floor_ramp2_lo_flip-0",
+          "shape": "floor_ramp2_lo_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_lo_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              7,
+              12,
+              -3,
+              7,
+              12,
+              -4,
+              7,
+              12,
+              -5,
+              7,
+              12,
+              -6,
+              7,
+              12,
+              -2
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              428,
+              428,
+              428,
+              428,
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_斜め-floor_ramp2_hi_flip-1",
+          "shape": "floor_ramp2_hi_flip",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip",
+            "p_hipped_shingle_roof_a_137_floor_ramp2_hi_flip_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              6,
+              12,
+              -3,
+              6,
+              12,
+              -4,
+              6,
+              12,
+              -5,
+              6,
+              12,
+              -6,
+              6,
+              12,
+              -2
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              428,
+              428,
+              428,
+              428,
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_斜め-floor_ridge_quarter-2",
+          "shape": "floor_ridge_quarter",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter",
+            "p_hipped_shingle_roof_a_136_floor_ridge_quarter_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              5,
+              13,
+              -3,
+              5,
+              13,
+              -4,
+              5,
+              13,
+              -5,
+              5,
+              13,
+              -2,
+              5,
+              13,
+              -6
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              1,
+              0
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              428,
+              428,
+              428,
+              428,
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_斜め-floor_ramp2_hi-3",
+          "shape": "floor_ramp2_hi",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_hi_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              4,
+              12,
+              -3,
+              4,
+              12,
+              -4,
+              4,
+              12,
+              -5,
+              4,
+              12,
+              -6,
+              4,
+              12,
+              -2
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              428,
+              428,
+              428,
+              428,
+              428
+            ]
+          }
+        },
+        {
+          "id": "屋根_2_斜め-floor_ramp2_lo-4",
+          "shape": "floor_ramp2_lo",
+          "mat": "mat_hipped_shingle_roof_a",
+          "ts": "hipped_shingle_roof_a",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo",
+            "p_hipped_shingle_roof_a_135_floor_ramp2_lo_t-32_16_32"
+          ],
+          "count": 5,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              3,
+              12,
+              -3,
+              3,
+              12,
+              -4,
+              3,
+              12,
+              -5,
+              3,
+              12,
+              -6,
+              3,
+              12,
+              -2
+            ],
+            "proto": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              428,
+              428,
+              428,
+              428,
+              428
             ]
           }
         }
@@ -38395,8 +38242,8 @@
     }
   ],
   "stats": {
-    "tiles": 4147,
-    "batches": 74,
-    "drawCalls": 74
+    "tiles": 4104,
+    "batches": 77,
+    "drawCalls": 77
   }
 }

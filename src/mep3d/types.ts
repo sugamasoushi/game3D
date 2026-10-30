@@ -1395,6 +1395,12 @@ export interface FieldEffectPresetDef {
   lightningCount?: number;
   /** 雷1本の幅（マス）。0.2〜20、既定3。配置幅を超えるときは収める。 */
   lightningWidth?: number;
+  /** 雷の休む割合（GS-279）。0〜0.9、既定0（毎回光る）。3.2秒の区切りごとにこの割合で休み、間隔がばらつく。 */
+  lightningGap?: number;
+  /** 爆発・光の柱の円と光輪のぼかし。0〜1、省略時0。 */
+  ringBlur?: number;
+  /** テクスチャ系の華やかさ。0〜1、省略時1。0で従来の簡素な表示。 */
+  richness?: number;
 }
 
 /**

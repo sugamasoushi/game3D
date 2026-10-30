@@ -28,7 +28,10 @@ import { enemyFighters, enemyIdOf, gainExp, partyFighters, writeBack } from '../
 import { skillName } from '../../game/battle/book';
 import { runBattle, type BattleAction, type BattleOutcome, type BattleSpoils } from '../../game/battle/flow';
 import { alive, type Fighter } from '../../game/battle/rules';
-import { characterIcon, characterName, characterStand } from '../../game/characters';
+import { characterBattleImage, characterIcon, characterName, characterStand } from '../../game/characters';
+import { assignBattleCells, type CellTerrain } from '../../game/battle/cells';
+import { hitsOf, reachOf, shielded, targetables } from '../../game/battle/cover';
+import { battleFormationDef, enemyDef } from '../../game/battle/book';
 import { STAGE_LUNGE_DELAY_S, STAGE_LUNGE_S, type BattleFigure, type BattleStageSpec, type FigurePose } from '../../game/GameView';
 import { spendItem, type GameState } from '../../game/state';
 import { itemEquip, itemName, itemText, itemUse } from '../../game/items';
@@ -85,6 +88,8 @@ export interface BattleStage {
   hide(): void;
   rect(id: string): FigureRect | null;
   pose(id: string, pose: FigurePose): void;
+  /** マスの地形（2026-10-29 / GS-285。床・高台・空と高さ）。地形を知らなければ null。 */
+  terrain?(cell: { col: number; row: number }): CellTerrain | null;
 }
 
 /**
@@ -116,7 +121,8 @@ const ATTACK_COMMANDS: Array<{ label: string; group: string | null }> = [
 
 /** オートの手（GS-80）。**生きている敵から 1 体を無作為に**（旧作 `getPlayerAutoAttackTarget`）。 */
 function autoAttack(fighters: Fighter[], random: () => number): BattleAction {
-  const foes = fighters.filter((who) => who.side === 'enemy' && alive(who));
+  // 前に守られた敵は狙わない（GS-280。通常攻撃は単体）。
+  const foes = targetables(fighters.filter((who) => who.side === 'enemy'), 'single');
   const foe = foes[Math.floor(random() * foes.length)] ?? foes[0];
   return { kind: 'attack', target: foe?.id ?? '' };
 }
@@ -403,6 +409,17 @@ export function BattleView({
    */
   const [stageSpec] = useState(() => scene3d?.spec() ?? null);
   const on3d = !!stageSpec;
+  /**
+   * この戦闘のマス（2026-10-29 / GS-280）。味方は横一列の前衛・敵はくじ。**開いたときに 1 回だけ**決め、`Fighter.cell` に入れる
+   * （前衛・後衛の決まりが読む）。背景だけの戦闘（戦闘演出エディタの見本）は決めない——隊形の並び順のまま見せる。
+   */
+  const [cells] = useState(() => (stageSpec && !backdrop
+    ? assignBattleCells(fighters, battleFormationDef(stageSpec.formation), Math.random, {
+      ...(scene3d?.terrain ? { terrainOf: (cell: { col: number; row: number }) => scene3d.terrain!(cell) } : {}),
+      // 敵ごとの前衛に出る確率（GS-286。`enemies.json` の `front`）。
+      frontOf: (who) => enemyDef(enemyIdOf(who))?.front,
+    })
+    : new Map()));
   /** 板の画面位置。毎フレーム見て、変わったときだけ描き直す。 */
   const [rects, setRects] = useState<Record<string, FigureRect>>({});
 
@@ -410,14 +427,25 @@ export function BattleView({
   useEffect(() => {
     if (!scene3d || !stageSpec) return;
     const figures: BattleFigure[] = [
-      ...party.map((who) => ({
-        id: who.id,
-        side: 'party' as const,
-        image: characterStand(who.id) ?? characterIcon(who.id) ?? '',
-        height: PARTY_FIGURE_CELLS,
-        scale: 1,
+      ...party.map((who) => {
+        // 戦闘の絵（GS-280。斜め後ろ向き）があればそれを、無ければ立ち絵。
+        return {
+          id: who.id,
+          side: 'party' as const,
+          image: characterBattleImage(who.id) ?? characterStand(who.id) ?? characterIcon(who.id) ?? '',
+          height: PARTY_FIGURE_CELLS,
+          scale: 1,
+          cell: cells.get(who.id),
+        };
+      }),
+      ...foes.map((foe) => ({
+        id: foe.id,
+        side: 'enemy' as const,
+        image: enemyImage(enemyIdOf(foe)) ?? '',
+        height: 0,
+        scale: enemyScale(enemyIdOf(foe)),
+        cell: cells.get(foe.id),
       })),
-      ...foes.map((foe) => ({ id: foe.id, side: 'enemy' as const, image: enemyImage(enemyIdOf(foe)) ?? '', height: 0, scale: enemyScale(enemyIdOf(foe)) })),
     ].filter((figure) => figure.image);
     scene3d.show(stageSpec, figures);
     let raf = 0;
@@ -478,6 +506,38 @@ export function BattleView({
     // 面子は最初の 1 回しか作らない（`fightersRef`）。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // コマンド選択の見本（2026-10-29 / GS-281。戦闘演出エディタ）。背景だけの戦闘で、`member` 人目（0 始まり）が
+  // 手を聞かれている形にする——左端へ寄る板と命令の窓を見せるだけで、手は決めない（窓は押せない）。null で戻す。
+  // 舞台を組み直すと板の形が消えるので、同じ人でも描き直す（`tick`）。
+  // エディタが人数を増やした板（`restageBattle` が今の面子をくり返して立てる `<id>#<番号>`）も選べる。窓はくり返し元の人。
+  const [previewFigure, setPreviewFigure] = useState<string | null>(null);
+  const scene3dRef = useRef(scene3d);
+  scene3dRef.current = scene3d;
+  useEffect(() => {
+    if (!backdrop) return;
+    const onCommand = (event: Event) => {
+      const member = (event as CustomEvent<{ member: number | null }>).detail?.member;
+      const index = typeof member === 'number' && member >= 0 && party.length ? Math.floor(member) : -1;
+      const who = index >= 0 ? party[index % party.length]! : null;
+      const figure = who && index >= party.length ? `${who.id}#${index + 1}` : null;
+      // 前に選んでいた、くり返しの板は元へ戻す（ふだんの形の更新では触らない板なので）。
+      setPreviewFigure((before) => {
+        if (before && before !== figure) scene3dRef.current?.pose(before, {});
+        return figure;
+      });
+      setAsking(who);
+      // 左端の板が出る段（攻め方を選ぶ段。GS-287）で見せる。
+      setStage({ kind: 'attack' });
+      setAt(0);
+      setOpened(!!who);
+      setTick((now) => now + 1);
+    };
+    window.addEventListener('battle-command-preview', onCommand);
+    return () => window.removeEventListener('battle-command-preview', onCommand);
+    // 面子は最初の 1 回しか作らない（`fightersRef`）。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backdrop]);
 
   // 攻撃の絵を先に読んでおく（GS-85）。1 手目から動きが途切れないように。
   useEffect(() => {
@@ -783,6 +843,8 @@ export function BattleView({
               }
               // 守り・避けは相手を選ばない。
               else if (skill.type !== 'attack') decide({ kind: 'skill', skill: id });
+              // 全体（GS-280）も相手を選ばない。
+              else if (reachOf(skill) === 'all') decide({ kind: 'skill', skill: id });
               else setStage({ kind: 'target', skill: id });
             },
           };
@@ -824,8 +886,8 @@ export function BattleView({
     }
 
     const skill = stage.skill;
-    return foes
-      .filter(alive)
+    // 狙えるのは前に守られていない敵だけ（GS-280）。
+    return targetables(foes, reachOf(skill ? skillDef(skill) : null))
       .map((foe) => ({
         label: foe.name,
         foe: foe.id,
@@ -987,13 +1049,23 @@ export function BattleView({
     return () => window.removeEventListener('keydown', onKey, true);
   }, [back, picks, at, backdrop, stage.kind]);
 
+  /**
+   * いま狙っている敵（GS-280）。貫通なら選んだ敵とその後ろの敵を**まとめて**点滅させる。
+   * 相手を選んでいないときは空。
+   */
+  const aimedFoe = stage.kind === 'target' ? foes.find((foe) => foe.id === picks[at]?.foe) ?? null : null;
+  const aimed = new Set(aimedFoe && stage.kind === 'target'
+    ? hitsOf(aimedFoe, foes, reachOf(stage.skill ? skillDef(stage.skill) : null), 1).map((one) => one.who.id)
+    : []);
+
   // 舞台の板へ見せ方を渡す（GS-87）。点滅・仰け反り・攻めかかり・選ばれている・倒れた。
   // 描き直すたびに渡す（軽い。板の側は立ち上がりだけを見る）。
   useEffect(() => {
     if (!scene3d || !stageSpec) return;
     for (const foe of foes) {
       scene3d.pose(foe.id, {
-        picking: picks[at]?.foe === foe.id,
+        picking: aimed.has(foe.id),
+        guarded: stage.kind === 'target' && hpOf(foe) > 0 && shielded(foe, foes),
         flash: !!hit && hit.id === foe.id && hit.kind === 'damage',
         lean: lean === foe.id,
         lunge: lunge === foe.id,
@@ -1004,10 +1076,14 @@ export function BattleView({
       scene3d.pose(who.id, {
         flash: !!hit && hit.id === who.id && hit.kind === 'damage',
         gone: hpOf(who) <= 0,
-        // コマンドを選んでいる味方は画面の左端へ立つ（GS-103）。
-        commanding: asking?.id === who.id,
+        // コマンドを選んでいる味方は画面の左端へ立つ（GS-103）。**隊列の命令（戦う／オート／アイテム／逃げる）の段では出さず**、
+        // 「戦う」を選んでその人の攻め方を聞く段から出す（2026-10-30 / GS-287。まだ誰の番でもないので）。
+        // **敵を選ぶ段では引っ込める**（板が敵に重なって選びにくい。GS-283）。選び終える・戻ると、また左端へ出る。
+        commanding: asking?.id === who.id && stage.kind !== 'party' && stage.kind !== 'target' && !previewFigure,
       });
     }
+    // コマンド選択の見本で、くり返して立てた板を選んだとき（GS-281）。
+    if (previewFigure) scene3d.pose(previewFigure, { commanding: true });
   });
 
   return (
@@ -1038,7 +1114,9 @@ export function BattleView({
           const mark = hit && hit.id === foe.id ? hit : null;
           // 相手を選んでいる最中は、**選んでいる 1 体だけ点滅**させる（GS-78）。
           // 文字の一覧ではなく絵で選ばせるので、どれを狙っているかは絵で示すしかない。
-          const picking = picks[at]?.foe === foe.id;
+          const picking = aimed.has(foe.id);
+          // 前に守られていて狙えない敵（GS-280）。相手を選んでいる間だけ暗くする。
+          const guarded = stage.kind === 'target' && hpOf(foe) > 0 && shielded(foe, foes);
           // **マウスでも選べる**（GS-83）。触れたら点滅をそこへ移し、押したら決める。
           const pickIndex = picks.findIndex((row) => row.foe === foe.id);
           const pickable = stage.kind === 'target' && pickIndex >= 0;
@@ -1072,6 +1150,9 @@ export function BattleView({
                 on3d ? 'on3d' : '',
                 hpOf(foe) > 0 ? '' : 'gone',
                 picking ? 'picking' : '',
+                guarded ? 'guarded' : '',
+                // 高台に立つ敵（GS-285）。帯の左に印を出す（与えるダメージが増え、直接攻撃が通りにくい）。
+                foe.cell?.ground === 'high' ? 'high' : '',
                 pickable ? 'pickable' : '',
                 lean === foe.id ? 'lean' : '',
                 lunge === foe.id ? 'lunge' : '',
@@ -1136,7 +1217,8 @@ export function BattleView({
        * 「文が出ている → 命令と顔が出る」の順に見せたいだけなので、
        * 一度出したら敵の手番でも消さない——出し入れを繰り返すと画面が忙しい。
        */}
-      <div className={opened ? 'battle-bottom' : 'battle-bottom hidden'}>
+      {/* 背景だけの戦闘（コマンド選択の見本。GS-281）では窓を見せるだけで押させない。 */}
+      <div className={opened ? 'battle-bottom' : 'battle-bottom hidden'} style={backdrop ? { pointerEvents: 'none' } : undefined}>
         {/*
          * 命令の窓は**文が出ているあいだ引っ込める**（GS-79）。
          * 旧作は出来事の窓（深度 9999999）が同じ場所に重なる作りで、遊ぶ側には

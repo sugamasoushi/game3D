@@ -9487,20 +9487,21 @@
   "editor": {
     "camera": {
       "target": [
-        5.5673421556381815,
-        5.954543907871215,
-        22.641970712652057
+        -5.2569578104589585,
+        7.204998128524171,
+        26.870130256331702
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 2.1517234679308865,
+      "distance": 2.6035853961963733,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "decoration",
+    "activeLayer": "objects",
     "brush": {
       "shape": "floor",
       "rotation": 0,
+      "chipTurn": 0,
       "color": "#c45c5c",
       "tileset": "purplering_purple-ring-terrain",
       "tile": 71,
@@ -24680,8 +24681,8 @@
           "y": 0,
           "points": [
             [
-              -13.5,
-              12.5
+              -0.5,
+              16.5
             ]
           ]
         },

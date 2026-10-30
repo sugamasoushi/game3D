@@ -1,5 +1,7 @@
 import { fieldFlashFragmentShader, fieldFlashState } from './fieldFlash';
-import { lightningCount, lightningWidth, lightningSeed, lightningStrike, LIGHTNING_MAX_COUNT } from './lightningScatter';
+import { NOISE_EFFECTS, NOISE_EFFECT_KINDS, isNoiseEffect, noiseEffectShader, noiseEffectVertexShader } from './noiseEffects';
+import { createNoiseDissolve, type DissolveRegion } from './noiseDissolve';
+import { lightningCount, lightningCycle, lightningGap, lightningGapSeed, lightningLit, lightningWidth, lightningSeed, lightningStrike, LIGHTNING_MAX_COUNT } from './lightningScatter';
 import { lightningFragmentShader } from './lightning';
 import { createLightPillarGeometry, lightPillarVertexShader, lightPillarFragmentShader } from './lightPillar';
 import { createLightExplosionGeometry, lightExplosionVertexShader, lightExplosionFragmentShader } from './lightExplosion';
@@ -25,6 +27,7 @@ import {
   Matrix4,
   Mesh,
   NearestFilter,
+  NormalBlending,
   PerspectiveCamera,
   PlaneGeometry,
   RepeatWrapping,
@@ -44,16 +47,20 @@ import type { FieldEffectPresetDef, MapObjectDef } from './types';
 /** 霧と木漏れ日で使う。速さを変えて重ねる。 */
 const NOISE_A = '/assets/noise/Super Perlin/Super Perlin 14 - 512x512.png';
 const NOISE_B = '/assets/noise/Super Perlin/Super Perlin 12 - 512x512.png';
+const FIRE_NOISE_A = '/assets/noise/Melt/Melt 1 - 512x512.png';
+const FIRE_NOISE_B = '/assets/noise/Turbulence/Turbulence 3 - 512x512.png';
 
 /** オブジェクトのプロパティ名。値がこの種類の名前ならフィールドエフェクトになる。 */
 export const EFFECT_PROPERTY_NAME = 'Effect';
 
-export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror', 'explosion', 'pillar', 'wind', 'lightning', 'flash'] as const;
+export const FIELD_EFFECT_KINDS = ['fog', 'smoke', 'fire', 'rain', 'snow', 'dapple', 'mote', 'water', 'swell', 'mirror', 'explosion', 'pillar', 'wind', 'lightning', 'flash', ...NOISE_EFFECT_KINDS] as const;
 export type FieldEffectKind = (typeof FIELD_EFFECT_KINDS)[number];
 
 export const FIELD_EFFECT_LABELS: Record<FieldEffectKind, string> = {
+  ...Object.fromEntries(NOISE_EFFECT_KINDS.map(kind => [kind, NOISE_EFFECTS[kind].label])) as Record<keyof typeof NOISE_EFFECTS, string>,
   fog: '霧',
   smoke: '煙',
+  fire: '炎（焚き火・魔法）',
   rain: '雨',
   snow: '雪',
   dapple: '木漏れ日',
@@ -110,6 +117,9 @@ export function readFieldPreset(raw: FieldEffectPresetDef): FieldEffectPreset | 
     rainTilt: readRainTilt(raw.rainTilt),
     lightningCount: lightningCount(raw.lightningCount),
     lightningWidth: lightningWidth(raw.lightningWidth),
+    lightningGap: lightningGap(raw.lightningGap),
+    ringBlur: readRingBlur(raw.ringBlur),
+    richness: readRichness(raw.richness),
   };
 }
 
@@ -260,6 +270,8 @@ export function readFieldVolumes(map: FieldEffectSource, time = ''): FieldEffect
 
 /** その種類で何枚の板を使うか。増やすと厚く見えるが重くなる。 */
 const LAYERS: Record<FieldEffectKind, number> = {
+  ...Object.fromEntries(NOISE_EFFECT_KINDS.map(kind => [kind, NOISE_EFFECTS[kind].layers])) as Record<keyof typeof NOISE_EFFECTS, number>,
+  fire: 3,
   fog: 7,
   smoke: 5,
   rain: 5,
@@ -372,13 +384,29 @@ export interface FieldEffectSettings {
   rainTilt?: number;
   lightningCount?: number;
   lightningWidth?: number;
+  /** 雷だけ。休む割合（0〜0.9。GS-279）。 */
+  lightningGap?: number;
+  /** 爆発・光柱の円の輪郭をぼかす。0〜1。 */
+  ringBlur?: number;
+  /** テクスチャ系の追加の光と粒。0〜1、既定1。 */
+  richness?: number;
 }
 
 export function readRainTilt(value: unknown): number {
   return Math.max(-75, Math.min(75, num(value, 6)));
 }
 
+export function readRingBlur(value: unknown): number {
+  return Math.max(0, Math.min(1, num(value, 0)));
+}
+
+export function readRichness(value: unknown): number {
+  return Math.max(0, Math.min(1, num(value, 1)));
+}
+
 export const FIELD_EFFECT_DEFAULTS: Record<FieldEffectKind, FieldEffectSettings> = {
+  ...Object.fromEntries(NOISE_EFFECT_KINDS.map(kind => [kind, { on: true, amount: 0.8, speed: NOISE_EFFECTS[kind].speed, scale: NOISE_EFFECTS[kind].scale, color: NOISE_EFFECTS[kind].color, lift: kind === 'dissolve' || kind === 'appear' ? 0.05 : 0, thick: NOISE_EFFECTS[kind].thick, warp: kind === 'heat' ? 0.7 : 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 }])) as Record<keyof typeof NOISE_EFFECTS, FieldEffectSettings>,
+  fire: { on: true, amount: 0.85, speed: 1, scale: 1.5, color: '#ff650d', lift: 0, thick: 2, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   flash: { on: true, amount: 0.65, speed: 1, scale: 1.5, color: '#ffffff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   lightning: { on: true, amount: 0.9, speed: 1, scale: 1.5, color: '#a9caff', lift: 0, thick: 10, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
   pillar: { on: true, amount: 0.85, speed: 1, scale: 1, color: '#b45cff', lift: 0, thick: 8, warp: 0, mirror: 0, face: 0.22, dye: 0, cast: true, angle: 90 },
@@ -426,6 +454,15 @@ export interface WindZone {
 export function windDirection(angle: number): { x: number; z: number } {
   const rad = (angle * Math.PI) / 180;
   return { x: Math.sin(rad), z: -Math.cos(rad) };
+}
+
+/** プリセット 1 つの今の濃さ（`presetLevels`）。 */
+export interface FieldEffectLevel {
+  level: number;
+  /** 雷だけ。今が何回目の光か。増えた時が光った時。 */
+  strike?: number;
+  /** 雷だけ。その回に光るか（休む回は false。GS-279）。 */
+  lit?: boolean;
 }
 
 export interface FieldEffects {
@@ -476,6 +513,13 @@ export interface FieldEffects {
    * 毎フレーム `Mep3DScene.setWind` へ渡す。`setVisible(false)` のあいだは空。
    */
   windZones(): WindZone[];
+  /**
+   * プリセットごとの今の濃さ（SampleGame GS-278。環境音をエフェクトに合わせるため）。
+   * `level` は置き場所のうち一番濃い物（出し入れ × 時間帯の切り替え。0..1）。置き場所が無い（その時間帯に無い）
+   * プリセットは入らない。雷は `strike` に今が何回目の光か（`lightningCycle`。止めた絵は無し）。
+   * `setVisible(false)` でも返す——絵を軽くしても音は消さない。
+   */
+  presetLevels(): Map<string, FieldEffectLevel>;
   /** 毎フレーム。時間を進める。 */
   update(deltaSeconds: number): void;
   dispose(): void;
@@ -676,27 +720,48 @@ void main() {
 }
 `;
 
-/** 雪。格子に 1 粒ずつ置き、格子ごと下へ流しながら横に揺らす。 */
+/** 雪。マス単位の粒を散らし、列ごとの落下と粒ごとの揺れで漂わせる。 */
 const snowShader = `
 precision highp float;
+uniform vec2 snowSize;
 ${COMMON_UNIFORMS}
-${EDGE_FADE}
 ${HASH}
 void main() {
-  float cells = max(3.0, 22.0 * scale);
-  vec2 p = vUv * vec2(cells, cells * 0.62);
-  p.y += time * speed * (0.6 + level * 0.5);
-  // 高さで揺らす。まっすぐ落ちると雨に見える。
-  p.x += sin(time * 0.7 + p.y * 1.6 + level * 4.0) * 0.3;
-  vec2 id = floor(p);
-  vec2 f = fract(p) - 0.5;
-  float r = mepHash2(id + level * 17.0);
-  float radius = 0.10 + 0.16 * r;
-  float d = length(f);
-  float grain = 1.0 - smoothstep(radius * 0.4, radius, d);
-  // 半分ほどの格子だけ使う。全部だと粒が整列して見える。
-  float pick = step(0.45, r);
-  float alpha = grain * pick * mepEdgeFade(vUv, 0.12) * amount;
+  float density = clamp(scale, 0.1, 8.0);
+  vec2 p = vUv * snowSize * density;
+  float clock = time * speed;
+  float flakes = 0.0;
+  // 隣の区画の粒も描く。横揺れで区画をまたいでも切れない。
+  float column = floor(p.x);
+  for (int dx = -1; dx <= 1; dx++) {
+    float col = column + float(dx);
+    float seed = col + level * 137.0;
+    float fall = mix(0.45, 0.95, mepHash(seed + 5.0));
+    float y = p.y + clock * fall * density + mepHash(seed + 13.0);
+    float row = floor(y);
+    for (int dy = -1; dy <= 1; dy++) {
+      vec2 id = vec2(col, row + float(dy));
+      float r = mepHash2(id + level * 71.0);
+      vec2 center = vec2(mix(0.25, 0.75, r), mix(0.2, 0.8, mepHash(r * 83.0 + 2.0)));
+      float phase = r * 6.283185;
+      center.x += sin(clock * mix(0.55, 1.1, r) + phase) * 0.20
+                + sin(clock * 0.29 + phase * 2.0) * 0.08;
+      vec2 delta = vec2(p.x, y) - id - center;
+      // 少し楕円にして回転を与える。遠い層は小さく淡く。
+      float angle = phase + sin(clock * 0.6 + phase) * 0.65;
+      delta = mat2(cos(angle), -sin(angle), sin(angle), cos(angle)) * delta;
+      delta.y *= mix(1.0, 1.35, r);
+      float radius = min(0.22, mix(0.035, 0.085, r * r) * density * mix(1.0, 0.65, level));
+      float d = length(delta);
+      float aa = max(length(fwidth(p)), 0.001);
+      float grain = 1.0 - smoothstep(radius * 0.35, radius + aa, d);
+      grain *= min(1.0, radius * radius / (aa * aa));
+      flakes += grain * step(0.30, r) * mix(0.55, 1.0, r);
+    }
+  }
+  vec2 edge = min(vUv, 1.0 - vUv) * snowSize;
+  float fade = smoothstep(0.0, 0.35, edge.x) * smoothstep(0.0, 0.3, edge.y);
+  float alpha = min(1.0, flakes) * fade * amount * mix(0.85, 0.38, level);
   if (alpha <= 0.004) discard;
   gl_FragColor = vec4(tint, alpha);
 }
@@ -1104,7 +1169,50 @@ void main() {
 }
 `;
 
+/** 縦へ流すMeltとTurbulenceで、裾を残して先端をちぎる炎。 */
+const fireShader = `
+precision highp float;
+uniform sampler2D mapA;
+uniform sampler2D mapB;
+uniform float richness;
+${COMMON_UNIFORMS}
+void main() {
+  float t = time * speed;
+  float y = vUv.y;
+  vec2 p = vec2(vUv.x * 1.4, y * 0.65) * scale;
+  float a = texture2D(mapA, p + vec2(level * 0.71, -t * 0.65)).r;
+  float b = texture2D(mapB, p * 1.73 + vec2(-level * 0.93, -t * 0.91)).r;
+  float sway = sin(t * 2.7 + y * 7.0 + level * 4.0) * y * 0.07;
+  float x = abs(vUv.x - 0.5 + sway + (a - 0.5) * y * 0.2);
+  float width = (1.0 - y) * 0.40 + 0.015;
+  float body = 1.0 - smoothstep(width * 0.55, width, x);
+  float tongue = smoothstep(y * 0.75, y * 0.75 + 0.20, a * 0.65 + b * 0.45);
+  float alpha = body * tongue * smoothstep(0.0, 0.055, y)
+    * (1.0 - smoothstep(0.80, 1.0, y)) * amount * 0.65;
+  float core = pow(max(0.0, 1.0 - x / max(width, 0.01)), 3.0) * (1.0 - y);
+  vec3 colour = mix(tint, vec3(1.0, 0.95, 0.72), core * 0.8);
+  if (richness > 0.001) {
+    float inner = texture2D(mapB,p*1.3+vec2(level,-t*1.3)).r;
+    float halo = exp(-x*x/(0.025+width*width*0.5))*(1.0-y);
+    vec2 emberGrid=vec2(vUv.x*9.0,(y-t*0.17)*8.0);
+    vec2 id=floor(emberGrid);
+    vec2 local=fract(emberGrid)-0.5;
+    float random=fract(sin(dot(id+level,vec2(127.1,311.7)))*43758.5453);
+    local.x+=(random-0.5)*0.3;
+    float ember=exp(-dot(local*vec2(1.0,0.5),local*vec2(1.0,0.5))*220.0)
+      *pow(0.5+0.5*sin(t*3.0+random*6.28318),3.0)
+      *smoothstep(0.2,0.5,y)*(1.0-smoothstep(0.8,1.0,y));
+    colour+=richness*(tint*halo*0.65+vec3(1.0,0.9,0.65)*(core*inner+ember*2.0));
+    alpha+=richness*amount*(halo*0.12+ember*0.65);
+  }
+  if (alpha < 0.002) discard;
+  gl_FragColor = vec4(colour, alpha);
+}
+`;
+
 const SHADERS: Record<FieldEffectKind, string> = {
+  ...Object.fromEntries(NOISE_EFFECT_KINDS.map(kind => [kind, noiseEffectShader(kind)])) as Record<keyof typeof NOISE_EFFECTS, string>,
+  fire: fireShader,
   explosion: lightExplosionFragmentShader,
   pillar: lightPillarFragmentShader,
   lightning: lightningFragmentShader,
@@ -1124,6 +1232,8 @@ const SHADERS: Record<FieldEffectKind, string> = {
 
 /** 加算で重ねる種類。光るものだけ。 */
 const ADDITIVE: Record<FieldEffectKind, boolean> = {
+  ...Object.fromEntries(NOISE_EFFECT_KINDS.map(kind => [kind, NOISE_EFFECTS[kind].additive])) as Record<keyof typeof NOISE_EFFECTS, boolean>,
+  fire: true,
   explosion: true,
   pillar: true,
   lightning: true,
@@ -1156,6 +1266,8 @@ const REFLECTS: Partial<Record<FieldEffectKind, boolean>> = { water: true, swell
 
 /** 水平の板を使う種類。それ以外は縦の板。 */
 const FLAT: Record<FieldEffectKind, boolean> = {
+  ...Object.fromEntries(NOISE_EFFECT_KINDS.map(kind => [kind, NOISE_EFFECTS[kind].flat])) as Record<keyof typeof NOISE_EFFECTS, boolean>,
+  fire: false,
   explosion: false,
   pillar: false,
   lightning: false,
@@ -1406,6 +1518,25 @@ export function createFieldEffects(): FieldEffects {
   };
   const mapA = load(NOISE_A);
   const mapB = load(NOISE_B);
+  const fireMapA = load(FIRE_NOISE_A);
+  const fireMapB = load(FIRE_NOISE_B);
+  // 未使用の素材を読まない。初めて配置した種類の画像だけ保持する。
+  const noiseTextures = new Map<string, Texture>();
+  const noiseTexture = (url: string) => {
+    const known = noiseTextures.get(url);
+    if (known) return known;
+    const texture = load(url);
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+    noiseTextures.set(url, texture);
+    return texture;
+  };
+  let dissolve: ReturnType<typeof createNoiseDissolve> | undefined;
+  let dissolveVolumes: Array<{ volume: FieldEffectVolume; unit: number }> = [];
+  for (const texture of [fireMapA, fireMapB]) {
+    texture.minFilter = LinearFilter;
+    texture.magFilter = LinearFilter;
+  }
 
   const group = new Group();
   group.name = 'field-effects';
@@ -1449,8 +1580,8 @@ export function createFieldEffects(): FieldEffects {
    */
   const updateFlash = (material: ShaderMaterial) => {
     if (!material.uniforms.flashPulse) return;
-    const rig = material.userData.lightning as { slot: number; seed: number; count: number; wall: boolean } | undefined;
-    const state = rig ? lightningStrike(clock, material.uniforms.speed.value, rig.count, rig.slot, rig.seed, rig.wall) : fieldFlashState(clock, material.uniforms.speed.value);
+    const rig = material.userData.lightning as { slot: number; seed: number; count: number; wall: boolean; gap: number; gapSeed: number } | undefined;
+    const state = rig ? lightningStrike(clock, material.uniforms.speed.value, rig.count, rig.slot, rig.seed, rig.wall, rig.gap, rig.gapSeed) : fieldFlashState(clock, material.uniforms.speed.value);
     material.uniforms.flashPulse.value = state.pulse;
     material.uniforms.flashCycle.value = 'shape' in state ? state.shape : state.cycle;
   };
@@ -1461,7 +1592,7 @@ export function createFieldEffects(): FieldEffects {
     const count = lightningCount(slice.look.lightningCount);
     mesh.visible = rig.slot < count;
     const wall = v.plane !== 'xz';
-    const state = lightningStrike(clock, Math.max(0, slice.look.speed), count, rig.slot, rig.seed, wall);
+    const state = lightningStrike(clock, Math.max(0, slice.look.speed), count, rig.slot, rig.seed, wall, lightningGap(slice.look.lightningGap), lightningGapSeed(slice.id));
     const wide = Math.max(0.2, (v.plane === 'yz' ? v.maxZ - v.minZ : v.maxX - v.minX));
     const width = Math.min(wide, lightningWidth(slice.look.lightningWidth));
     const x = (v.minX + v.maxX) / 2;
@@ -1479,9 +1610,14 @@ export function createFieldEffects(): FieldEffects {
     // 時間帯の切り替え（GS-226）。濃さと映り込みを薄めて出し入れする。
     material.uniforms.amount.value = Math.max(0, look.amount) * weight;
     material.uniforms.speed.value = Math.max(0, look.speed);
-    if (material.userData.lightning) material.userData.lightning.count = lightningCount(look.lightningCount);
+    if (material.userData.lightning) {
+      material.userData.lightning.count = lightningCount(look.lightningCount);
+      material.userData.lightning.gap = lightningGap(look.lightningGap);
+    }
     updateFlash(material);
     material.uniforms.scale.value = Math.max(0.001, look.scale);
+    material.uniforms.ringBlur.value = readRingBlur(look.ringBlur);
+    material.uniforms.richness.value = readRichness(look.richness);
     material.uniforms.tint.value = tintOf(look.color, 'ffffff');
     if (material.uniforms.rainSlope) material.uniforms.rainSlope.value = Math.tan(readRainTilt(look.rainTilt) * Math.PI / 180);
     if (material.uniforms.warp) material.uniforms.warp.value = Math.max(0, look.warp);
@@ -1516,10 +1652,15 @@ export function createFieldEffects(): FieldEffects {
 
     setVolumes(list, unit) {
       clear();
+      dissolveVolumes = [];
       winds.length = 0;
       for (const volume of list) {
         const look = volume.look;
         const kind = look.kind;
+        if (kind === 'dissolve' || kind === 'appear') {
+          dissolve ??= createNoiseDissolve(noiseTexture(NOISE_EFFECTS.dissolve.a));
+          dissolveVolumes.push({ volume, unit });
+        }
         if (kind === 'wind') {
           winds.push({ id: look.id, volume, look, fade: volume.fade });
           continue;
@@ -1532,21 +1673,24 @@ export function createFieldEffects(): FieldEffects {
         const cz = ((volume.minZ + volume.maxZ) / 2) * unit;
         // 縦の格子に置いたものは、その面 1 枚として立てる（DEC-198）。
         const wall = volume.plane !== 'xz';
-        const count = kind === 'lightning' ? LIGHTNING_MAX_COUNT : kind === 'flash' || kind === 'explosion' || kind === 'pillar' ? 1 : wall ? WALL_LAYERS : LAYERS[kind];
+        const count = isNoiseEffect(kind) ? NOISE_EFFECTS[kind].layers : kind === 'lightning' ? LIGHTNING_MAX_COUNT : kind === 'flash' || kind === 'explosion' || kind === 'pillar' ? 1 : wall ? WALL_LAYERS : LAYERS[kind];
         for (let i = 0; i < count; i += 1) {
           const level = i / Math.max(1, count - 1);
           const key = poolKey(kind, wall);
           const spare = pool.get(key)?.pop();
           const material = spare ?? new ShaderMaterial({
-            vertexShader: kind === 'pillar' ? lightPillarVertexShader : kind === 'explosion' ? lightExplosionVertexShader : REFLECTS[kind] ? waterVertexShader : vertexShader,
+            vertexShader: isNoiseEffect(kind) ? noiseEffectVertexShader : kind === 'pillar' ? lightPillarVertexShader : kind === 'explosion' ? lightExplosionVertexShader : REFLECTS[kind] ? waterVertexShader : vertexShader,
             fragmentShader: (wall && WALL_SHADERS[kind]) || SHADERS[kind],
             uniforms: {
-              mapA: { value: mapA },
-              mapB: { value: mapB },
+              mapA: { value: isNoiseEffect(kind) ? noiseTexture(NOISE_EFFECTS[kind].a) : kind === 'fire' ? fireMapA : mapA },
+              mapB: { value: isNoiseEffect(kind) ? noiseTexture(NOISE_EFFECTS[kind].b) : kind === 'fire' ? fireMapB : mapB },
+              noisePixel: { value: new Vector2(1 / 1280, 1 / 720) },
               tint: { value: tintOf(look.color, 'ffffff') },
               amount: { value: look.amount },
               speed: { value: look.speed },
               scale: { value: look.scale },
+              ringBlur: { value: readRingBlur(look.ringBlur) },
+              richness: { value: readRichness(look.richness) },
               time: { value: 0 },
               level: { value: level },
               // 水面の下地（DEC-302）。ほかの種類では使わない。
@@ -1571,7 +1715,7 @@ export function createFieldEffects(): FieldEffects {
             transparent: true,
             depthWrite: false,
             side: DoubleSide,
-            blending: ADDITIVE[kind] ? AdditiveBlending : undefined,
+            blending: ADDITIVE[kind] ? AdditiveBlending : NormalBlending,
           });
           // 取り置きを使うときは値を入れ直す。形（シェーダ）は同じ。
           if (spare) {
@@ -1588,6 +1732,9 @@ export function createFieldEffects(): FieldEffects {
             u.mirror.value = look.mirror;
           }
           // UV の縦横比ではなくマスで雨粒を描く。取り置き材質でも必ず更新。
+          if (kind === 'snow') {
+            material.uniforms.snowSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
+          }
           if (kind === 'rain') {
             material.uniforms.rainSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
             material.uniforms.rainSlope ??= { value: 0 };
@@ -1597,9 +1744,18 @@ export function createFieldEffects(): FieldEffects {
             material.uniforms.flashCycle ??= { value: 0 };
           }
           const lightning = kind === 'lightning' ? { slot: i, seed: lightningSeed(look.id, volume.minX, volume.minY, volume.minZ), volume, unit } : undefined;
-          if (lightning) material.userData.lightning = { slot: i, seed: lightning.seed, count: lightningCount(look.lightningCount), wall };
+          if (lightning) material.userData.lightning = { slot: i, seed: lightning.seed, count: lightningCount(look.lightningCount), wall, gap: lightningGap(look.lightningGap), gapSeed: lightningGapSeed(look.id) };
           applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
           const mesh = new Mesh(kind === 'pillar' ? pillarGeometry : kind === 'explosion' ? explosionGeometry : geometry, material);
+          if (kind === 'heat') {
+            mesh.onBeforeRender = renderer => {
+              grabScreen(renderer);
+              material.uniforms.sceneMap.value = screenGrab;
+              material.uniforms.sceneOn.value = screenGrab ? 1 : 0;
+              renderer.getDrawingBufferSize(bufferSize);
+              material.uniforms.noisePixel.value.set(1 / bufferSize.x, 1 / bufferSize.y);
+            };
+          }
           if (REFLECTS[kind]) {
             mesh.onBeforeRender = (renderer, _scene, drawCamera) => {
               // 映り込みが先（DEC-303）。別の的へ描くので、画面の写しより前に済ませる。
@@ -1660,6 +1816,20 @@ export function createFieldEffects(): FieldEffects {
             const diameter = wall ? (volume.plane === 'yz' ? deep : wide) : Math.min(wide, deep);
             mesh.scale.set(diameter / 2, tall, diameter / 2);
             mesh.position.set(cx, volume.minY * unit, cz);
+          } else if (isNoiseEffect(kind) && wall) {
+            mesh.rotation.y = volume.plane === 'yz' ? Math.PI / 2 : 0;
+            mesh.scale.set(volume.plane === 'yz' ? deep : wide, tall, 1);
+            mesh.position.set(cx, cy, cz);
+          } else if (isNoiseEffect(kind) && NOISE_EFFECTS[kind].flat && kind !== 'miasma') {
+            mesh.rotation.x = -Math.PI / 2;
+            mesh.scale.set(wide, deep, 1);
+            mesh.position.set(cx, volume.minY * unit + 0.02, cz);
+          } else if (kind === 'fire') {
+            // 交差する縦板で、見る向きが変わっても立ち上がる炎にする。
+            const diameter = wall ? (volume.plane === 'yz' ? deep : wide) : Math.min(wide, deep);
+            mesh.rotation.y = i * Math.PI / 3;
+            mesh.scale.set(diameter, tall, 1);
+            mesh.position.set(cx, cy, cz);
           } else if (kind === 'explosion') {
             // 球の半径は置いた四角と高さの短い辺。縦面でも奥行きを持つ。
             const diameter = Math.min(tall, volume.plane === 'yz' ? deep : wide);
@@ -1691,7 +1861,7 @@ export function createFieldEffects(): FieldEffects {
            * 鏡面は**必ず水面より先**（DEC-308）。後から描くと、上の水が
            * 「鏡面を描く前の画」を写してしまい、下の鏡が見えなくなる。
            */
-          mesh.renderOrder = (kind === 'mirror' ? 4 : 8) + i;
+          mesh.renderOrder = (kind === 'heat' ? 10000 : kind === 'mirror' ? 4 : 8) + i;
           const slice = { id: look.id, mesh, poolKey: key, reflects: REFLECTS[kind] === true, cast: look.cast, look, fade: volume.fade, lightning };
           updateLightning(slice);
           // 同じ描画順にそろえ、奥行きはthreeの透明物ソートに任せる。
@@ -1709,6 +1879,8 @@ export function createFieldEffects(): FieldEffects {
     },
 
     setReflectSources(objects, hooks) {
+      // マップの組み直しで使わなくなった材質を保持し続けない。
+      dissolve?.dispose();
       reflectSources = objects;
       reflectHooks = hooks;
     },
@@ -1729,6 +1901,10 @@ export function createFieldEffects(): FieldEffects {
     },
 
     setLooks(looks) {
+      for (const entry of dissolveVolumes) {
+        const look = looks[entry.volume.look.id];
+        if (look) entry.volume = { ...entry.volume, look: { ...entry.volume.look, ...look } };
+      }
       for (const wind of winds) {
         const look = looks[wind.id];
         if (look) wind.look = look;
@@ -1781,9 +1957,48 @@ export function createFieldEffects(): FieldEffects {
       return out;
     },
 
+    presetLevels() {
+      const out = new Map<string, FieldEffectLevel>();
+      const add = (id: string, level: number, strike: number | undefined, lit?: boolean) => {
+        const before = out.get(id);
+        const next: FieldEffectLevel = { level: Math.max(before?.level ?? 0, Math.max(0, Math.min(1, level))) };
+        const hit = strike ?? before?.strike;
+        if (hit !== undefined) next.strike = hit;
+        const shown = lit ?? before?.lit;
+        if (shown !== undefined) next.lit = shown;
+        out.set(id, next);
+      };
+      for (const slice of slices) {
+        const cycle = slice.lightning ? lightningCycle(clock, Math.max(0, slice.look.speed)) : undefined;
+        add(slice.id, sliceWeight(slice), cycle, cycle === undefined ? undefined : lightningLit(cycle, lightningGap(slice.look.lightningGap), lightningGapSeed(slice.id)));
+      }
+      for (const wind of winds) {
+        const pick = presetWeights.get(wind.id);
+        add(wind.id, weightOf(wind.fade) * (pick ?? (wind.look.on ? 1 : 0)), undefined, undefined);
+      }
+      return out;
+    },
+
     update(deltaSeconds) {
-      if (!group.visible) return;
+      if (!group.visible) {
+        dissolve?.update([], reflectSources, group, clock);
+        return;
+      }
       clock += deltaSeconds;
+      if (dissolve) {
+        const regions: DissolveRegion[] = [];
+        for (const { volume: v, unit } of dissolveVolumes) {
+          const pick = presetWeights.get(v.look.id);
+          if (!(pick === undefined ? v.look.on : pick > 0)) continue;
+          const amount = v.look.amount * weightOf(v.fade) * (pick ?? 1);
+          if (amount <= 0) continue;
+          // 縦面でも対象を選べるよう、ゼロ厚の軸は前後0.5マスずつ広げる。
+          const padX = v.plane === 'yz' ? 0.5 : 0;
+          const padZ = v.plane === 'xy' ? 0.5 : 0;
+          regions.push({ min: new Vector3((v.minX-padX)*unit,v.minY*unit,(v.minZ-padZ)*unit), max: new Vector3((v.maxX+padX)*unit,v.maxY*unit,(v.maxZ+padZ)*unit), color: v.look.color, scale: v.look.scale/unit, amount, weight: weightOf(v.fade)*(pick ?? 1), speed: v.look.speed, progress: v.look.warp, appear: v.look.kind === 'appear', richness: readRichness(v.look.richness) });
+        }
+        dissolve.update(regions, reflectSources, group, clock);
+      }
       for (const slice of slices) {
         slice.mesh.material.uniforms.time.value = clock;
         updateFlash(slice.mesh.material);
@@ -1792,12 +2007,16 @@ export function createFieldEffects(): FieldEffects {
     },
 
     dispose() {
+      dissolve?.dispose();
       clear();
       geometry.dispose();
       explosionGeometry.dispose();
       pillarGeometry.dispose();
       mapA.dispose();
       mapB.dispose();
+      fireMapA.dispose();
+      fireMapB.dispose();
+      for (const texture of noiseTextures.values()) texture.dispose();
       screenGrab?.dispose();
       screenGrab = null;
       for (const rig of rigs) rig.target.dispose();

@@ -9,7 +9,8 @@
     "smile": "",
     "unger": "",
     "menu": "menu_meina",
-    "talk": "EventTalkImage001"
+    "talk": "EventTalkImage001",
+    "battle": "Battle_maina"
   },
   "grandpa": {
     "name": "じいちゃん",
@@ -29,7 +30,8 @@
     "smile": "20240907_3",
     "unger": "",
     "menu": "menu_lamy",
-    "talk": "EventTalkImage002"
+    "talk": "EventTalkImage002",
+    "battle": "Battle_lamy"
   },
   "lamyNPC": {
     "name": "ナーガ娘",

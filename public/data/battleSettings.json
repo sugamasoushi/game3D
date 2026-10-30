@@ -1,5 +1,5 @@
 {
-  "information": "戦闘の共通の演出（GS-106）。台帳エディタの「戦闘共通」で編集する。bgm と se は sounds.json のキー、ms はミリ秒。書かない値・壊れた値はゲームの既定値（src/game/battle/settings.ts）を使う。技ごとの絵と音は skills.json、持ち物の音は items.json、画面の音は sounds.json の ui。",
+  "information": "戦闘の共通の演出（GS-106）。台帳エディタの「戦闘共通」で編集する。bgm と se は sounds.json のキー、ms はミリ秒、rates は位置で変わるダメージの倍率（back は貫通・全体が前衛に守られた後衛に当たるときの倍率。GS-280。high は高台から攻めたとき、highGuard は高台で直接攻撃を受けたときの倍率。GS-285）。書かない値・壊れた値はゲームの既定値（src/game/battle/settings.ts）を使う。技ごとの絵と音は skills.json、持ち物の音は items.json、画面の音は sounds.json の ui。",
   "bgm": "battle",
   "normalAttack": {
     "party": {
@@ -27,5 +27,10 @@
     "lean": 200,
     "enemyAct": 500,
     "noItem": 1200
+  },
+  "rates": {
+    "back": 0.5,
+    "high": 1.2,
+    "highGuard": 0.8
   }
 }

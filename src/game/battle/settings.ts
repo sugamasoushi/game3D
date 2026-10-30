@@ -2,6 +2,7 @@
 // 台帳エディタの「戦闘共通」で編集する。台帳が読めない・値が壊れているときは、ここの既定値（直書きしていた値）を使う。
 
 import type { ItemStrike } from '../items';
+import type { HeightRates } from './height';
 
 /**
  * 通常攻撃（素手）の見せ方（GS-123）。**味方と敵で別に持つ。**
@@ -50,6 +51,15 @@ export interface BattleSettings {
     /** 「何も持ってない！」を出しておく時間。 */
     noItem: number;
   };
+  /** 位置で変わるダメージの倍率（2026-10-29 / GS-280）。台帳に書かなければ既定（後衛 0.5）。 */
+  rates?: {
+    /** 貫通・全体の技が、前衛に守られた後衛に当たるときの倍率（0 より大きく 1 まで）。 */
+    back: number;
+    /** 高台から、高台でない相手を攻めたときの倍率（1〜5。既定 1.2。2026-10-29 / GS-285）。 */
+    high?: number;
+    /** 高台にいる人が、高台でない相手から直接攻撃を受けたときの倍率（0 より大きく 1 まで。既定 0.8。GS-285）。 */
+    highGuard?: number;
+  };
 }
 
 /** 既定値。直書きしていた値と同じ（敵の攻めかかる音は重いパンチ1＝punch。GS-112 で strike にして GS-113 で戻した）。 */
@@ -60,9 +70,21 @@ export const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
   normalAttack: { party: { effect: 'normal', se: '' }, enemy: { effect: '', se: 'punch' } },
   se: { hit: 'hit', dodge: 'dodge', win: 'fanfare', enemyAttack: 'punch', item: 'levelup', levelUp: 'levelup', walkPoison: 'hit' },
   ms: { say: 900, beat: 260, hit: 520, lean: 200, enemyAct: 500, noItem: 1200 },
+  rates: { back: 0.5, high: 1.2, highGuard: 0.8 },
 };
 
 let settings: BattleSettings = structuredClone(DEFAULT_BATTLE_SETTINGS);
+
+/** 後衛の倍率（GS-280）。台帳に無ければ既定の 0.5。 */
+export function backRowRate(): number {
+  return settings.rates?.back ?? DEFAULT_BATTLE_SETTINGS.rates!.back;
+}
+
+/** 高さの倍率（GS-285）。台帳に無ければ既定の 1.2・0.8。 */
+export function heightRates(): HeightRates {
+  const base = DEFAULT_BATTLE_SETTINGS.rates!;
+  return { high: settings.rates?.high ?? base.high!, highGuard: settings.rates?.highGuard ?? base.highGuard! };
+}
 
 /** いまの設定。読み終わる前は既定値。 */
 export function battleSettings(): BattleSettings {
@@ -96,6 +118,15 @@ export function applyBattleSettings(raw: unknown): BattleSettings {
         const value = raw.ms[key];
         if (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 60000) next.ms[key] = value;
       }
+    }
+    if (object(raw.rates)) {
+      const within = (value: unknown, low: number, high: number, open = false): value is number =>
+        typeof value === 'number' && Number.isFinite(value) && (open ? value > low : value >= low) && value <= high;
+      const rates = { ...next.rates! };
+      if (within(raw.rates.back, 0, 1, true)) rates.back = raw.rates.back;
+      if (within(raw.rates.high, 1, 5)) rates.high = raw.rates.high;
+      if (within(raw.rates.highGuard, 0, 1, true)) rates.highGuard = raw.rates.highGuard;
+      next.rates = rates;
     }
   }
   settings = next;

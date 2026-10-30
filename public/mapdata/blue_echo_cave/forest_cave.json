@@ -2464,7 +2464,7 @@
       "kind": "rain",
       "on": true,
       "amount": 0.19,
-      "speed": 1.6,
+      "speed": 2.8,
       "scale": 3,
       "color": "#a4c0db",
       "lift": 0,
@@ -2475,9 +2475,14 @@
       "dye": 0,
       "cast": false,
       "angle": 90,
-      "rainTilt": 6
+      "rainTilt": 23,
+      "lightningCount": 3,
+      "lightningWidth": 3
     },
     {
+      "id": "lightning1",
+      "name": "雷",
+      "kind": "lightning",
       "on": true,
       "amount": 0.9,
       "speed": 1,
@@ -2491,9 +2496,30 @@
       "dye": 0,
       "cast": true,
       "angle": 90,
-      "id": "lightning1",
-      "name": "雷",
-      "kind": "lightning"
+      "rainTilt": 6,
+      "lightningCount": 3,
+      "lightningWidth": 3
+    },
+    {
+      "id": "wind1",
+      "name": "風",
+      "kind": "wind",
+      "on": true,
+      "amount": 0.5,
+      "speed": 1,
+      "scale": 0.35,
+      "color": "#ffffff",
+      "lift": 0,
+      "thick": 8,
+      "warp": 0.4,
+      "mirror": 0,
+      "face": 0.22,
+      "dye": 0,
+      "cast": true,
+      "angle": 90,
+      "rainTilt": 6,
+      "lightningCount": 3,
+      "lightningWidth": 3
     }
   ],
   "screenEffects": [
@@ -2507,17 +2533,17 @@
   "editor": {
     "camera": {
       "target": [
-        -1.4360473603088684,
-        3.753613644470355,
-        3.42723802815742
+        -7.956037646576348,
+        2.6140661574604014,
+        2.445705244316207
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 12.574428796972592,
+      "distance": 8.756998423634943,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "エフェクト",
+    "activeLayer": "タイルマップレイヤー_7",
     "brush": {
       "shape": "floor",
       "rotation": 0,
@@ -15556,6 +15582,11 @@
           "name": "Hit",
           "type": "string",
           "value": "all"
+        },
+        {
+          "name": "Sway",
+          "type": "float",
+          "value": 1
         }
       ],
       "batches": [
@@ -21448,6 +21479,79 @@
             [
               -25,
               13.289198431636272
+            ]
+          ]
+        },
+        {
+          "id": "obj_1",
+          "name": "雷",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Effect",
+              "type": "string",
+              "value": "lightning1"
+            }
+          ],
+          "space": "plane",
+          "plane": "xy",
+          "y": 0,
+          "z": -7,
+          "points": [
+            [
+              -27.663974413643377,
+              -0.6259695447728078
+            ],
+            [
+              9.870928813191664,
+              -0.6259695447728078
+            ],
+            [
+              9.870928813191664,
+              11.058480058170387
+            ],
+            [
+              -27.663974413643377,
+              11.058480058170387
+            ]
+          ]
+        },
+        {
+          "id": "obj_3",
+          "name": "風",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Effect",
+              "type": "string",
+              "value": "wind1"
+            }
+          ],
+          "space": "plane",
+          "plane": "xz",
+          "y": 0,
+          "points": [
+            [
+              -27.02456570789168,
+              -15
+            ],
+            [
+              10.83140319989877,
+              -15
+            ],
+            [
+              10.83140319989877,
+              5.740236137780915
+            ],
+            [
+              -27.02456570789168,
+              5.740236137780915
             ]
           ]
         }

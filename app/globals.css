@@ -3229,6 +3229,43 @@ body {
   cursor: pointer;
 }
 
+/*
+ * 前に守られていて狙えない敵（GS-280）。相手を選んでいる間だけ、帯を薄くして盾の印を出す。
+ * 3D の板そのものは `FigurePose.guarded` で暗くする。
+ */
+.battle-foe.guarded .battle-bar {
+  opacity: 0.45;
+}
+
+.battle-foe.guarded::after {
+  content: '🛡';
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translateX(-50%);
+  font-size: 30px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+}
+
+/* 高台に立つ敵（GS-285）。帯の左に小さな山の印。 */
+/* 帯は中身を切り抜く（overflow: hidden）ので、印は敵の箱に付けて帯の左へ置く。帯は箱の上に 168px・高さ 14px＋枠。 */
+.battle-foe.high::before {
+  content: '▲';
+  position: absolute;
+  right: calc(50% + 90px);
+  top: -29px;
+  height: 21px;
+  display: flex;
+  align-items: center;
+  color: #ffd479;
+  font-size: 14px;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
 /* 狙っている敵は帯も明るく（絵が暗いときでも分かるように）。 */
 .battle-foe.picking .battle-bar {
   border-color: #ffd479;

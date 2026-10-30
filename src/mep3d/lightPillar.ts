@@ -2,7 +2,7 @@ import { BufferGeometry, CylinderGeometry, Float32BufferAttribute, Sphere, Spher
 
 /** 地面を原点にした立体の光柱。円筒・足元の輪・上昇する光粒を1メッシュへまとめる。 */
 export function createLightPillarGeometry(): BufferGeometry {
-  const positions: number[] = [], normals: number[] = [], parts: number[] = [], seeds: number[] = [];
+  const positions: number[] = [], normals: number[] = [], parts: number[] = [], seeds: number[] = [], soft: number[] = [];
   const add = (source: BufferGeometry, part: number, seed = 0) => {
     const g = source.toNonIndexed();
     const p = g.getAttribute('position'), n = g.getAttribute('normal');
@@ -10,6 +10,9 @@ export function createLightPillarGeometry(): BufferGeometry {
       positions.push(p.getX(i), p.getY(i), p.getZ(i));
       normals.push(n.getX(i), n.getY(i), n.getZ(i));
       parts.push(part); seeds.push(seed);
+      const across=part===1 ? Math.cos(g.getAttribute('uv').getY(i)*Math.PI*2) : 0;
+      const radial=new Vector3(p.getX(i),0,p.getZ(i)).normalize().multiplyScalar(across);
+      soft.push(radial.x,radial.y,radial.z,across);
     }
     g.dispose(); source.dispose();
   };
@@ -20,7 +23,7 @@ export function createLightPillarGeometry(): BufferGeometry {
     add(tube, 0, i);
   }
   for (let i = 0; i < 2; i++) {
-    const ring = new TorusGeometry(0.65 + i * 0.25, 0.014, 6, 96);
+    const ring = new TorusGeometry(0.65 + i * 0.25, 0.014, 16, 96);
     ring.rotateX(-Math.PI / 2); ring.translate(0, 0.02, 0);
     add(ring, 1, i);
   }
@@ -34,8 +37,9 @@ export function createLightPillarGeometry(): BufferGeometry {
   result.setAttribute('normal', new Float32BufferAttribute(normals, 3));
   result.setAttribute('pillarPart', new Float32BufferAttribute(parts, 1));
   result.setAttribute('pillarSeed', new Float32BufferAttribute(seeds, 1));
+  result.setAttribute('ringSoft', new Float32BufferAttribute(soft, 4));
   // 上昇する粒を含む。GPUで動かすため静止頂点からは求めない。
-  result.boundingSphere = new Sphere(new Vector3(0, 0.5, 0), 1.1);
+  result.boundingSphere = new Sphere(new Vector3(0, 0.5, 0), 1.2);
   return result;
 }
 
@@ -43,8 +47,11 @@ export const lightPillarVertexShader = `
 uniform float time;
 uniform float speed;
 uniform float scale;
+uniform float ringBlur;
 attribute float pillarPart;
 attribute float pillarSeed;
+attribute vec4 ringSoft;
+varying float ringAcross;
 varying vec3 pillarNormal;
 varying vec3 pillarView;
 varying vec3 pillarLocal;
@@ -59,11 +66,13 @@ void main() {
   pillarKind = pillarPart;
   pillarLayer = pillarSeed;
   pillarLocal = position;
+  ringAcross = ringSoft.w;
   if (pillarPart < 0.5) {
     p.y *= rise;
     p.xz *= 0.8 + 0.2 * rise;
     pillarAlpha = rise * fade;
   } else if (pillarPart < 1.5) {
+    p += ringSoft.xyz * ringBlur * 0.10;
     p.xz *= 0.55 + 0.45 * smoothstep(0.0, 0.8, t);
     pillarAlpha = smoothstep(0.0, 0.18, t) * fade;
   } else {
@@ -87,12 +96,14 @@ uniform float amount;
 uniform float time;
 uniform float speed;
 uniform float scale;
+uniform float ringBlur;
 varying vec3 pillarNormal;
 varying vec3 pillarView;
 varying vec3 pillarLocal;
 varying float pillarAlpha;
 varying float pillarKind;
 varying float pillarLayer;
+varying float ringAcross;
 void main() {
   float alpha = pillarAlpha * amount;
   vec3 colour = tint;
@@ -109,6 +120,11 @@ void main() {
   } else {
     colour = mix(tint, vec3(1.0, 0.82, 1.0), 0.35);
   }
+  if (pillarKind < 0.5) {
+    float softFacing = abs(dot(normalize(pillarNormal), normalize(pillarView)));
+    alpha *= mix(1.0, pow(softFacing, 1.7), ringBlur);
+  }
+  else if(pillarKind < 1.5) alpha *= mix(1.0, exp(-ringAcross*ringAcross*5.0)*(1.0-smoothstep(0.8,1.0,abs(ringAcross))), ringBlur);
   if (alpha < 0.003) discard;
   gl_FragColor = vec4(colour, min(alpha, 1.0));
 }

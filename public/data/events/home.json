@@ -403,26 +403,6 @@
       ]
     },
     {
-      "id": "宝箱_家2",
-      "kind": "click",
-      "trigger": "action",
-      "commands": [
-        {
-          "type": "if",
-          "when": { "self": "開けた" },
-          "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
-          "else": [
-            { "type": "playSe", "key": "chest" },
-            { "type": "getItem", "id": "ばんそうこう", "count": 1 },
-            { "type": "layer", "id": "宝箱_家2_閉", "shown": false },
-            { "type": "layer", "id": "宝箱_家2_開", "shown": true },
-            { "type": "setSelfSwitch", "key": "開けた", "value": true },
-            { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！！！"] }] }
-          ]
-        }
-      ]
-    },
-    {
       "id": "click0003",
       "kind": "click",
       "trigger": "action",
@@ -443,6 +423,12 @@
           ]
         }
       ]
+    },
+    {
+      "id": "click0004",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [{ "type": "message", "talk": [{ "lines": ["じいちゃんの部屋"] }], "style": "window" }]
     }
   ],
   "mapMoves": [

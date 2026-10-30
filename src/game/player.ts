@@ -15,6 +15,7 @@ import {
   type Texture,
 } from 'three';
 import { createActorMaterial, createActorShadowMaterial } from '../mep3d/actorMaterial';
+import { createPartySilhouette } from './partySilhouette';
 import { blockShadowLength, resolveLighting, shadowDirection } from '../mep3d/lighting';
 import { MAX_WALK, SEGMENTS_PER_CELL, drape, profile } from '../mep3d/shadowCast';
 import { cellOf } from '../mep3d/collision';
@@ -152,6 +153,8 @@ export interface PlayerInput {
 }
 
 export interface Player {
+  /** フィールドの隊列だけ、遮蔽物の裏を白く表示する。 */
+  setSilhouette(on: boolean): void;
   group: Group;
   /** 足元のワールド座標。 */
   position: Vector3;
@@ -360,6 +363,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
   const width = (sheet.framePx[0] / tilePx) * unit * art;
   const height = (sheet.framePx[1] / tilePx) * unit * art;
   const body = new Mesh(new PlaneGeometry(width, height), skin.material);
+  let silhouette: Group | null = null;
   /** 絵を下げる量（GS-52）。台帳の `footPx` をワールドの長さへ直したもの。 */
   const footLift = ((sheet.footPx ?? 0) / tilePx) * unit * art;
   body.position.y = height / 2 - footLift;
@@ -924,6 +928,10 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     setLook(opacity, glow) {
       skin.setLook(opacity, glow);
     },
+    setSilhouette(on) {
+      if (on && !silhouette) silhouette = createPartySilhouette(body, skin.material);
+      if (silhouette) silhouette.visible = on;
+    },
     setTime(seconds) {
       skin.setTime(seconds);
     },
@@ -943,6 +951,10 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
     // 壁のマスに描いた起動場所（扉など）に届かなくなる。
     radius: bodyHalf,
     dispose() {
+      if (silhouette) {
+        ((silhouette.children[0] as Mesh).material as ShaderMaterial).dispose();
+        silhouette.removeFromParent();
+      }
       body.geometry.dispose();
       skin.dispose();
       texture.dispose();

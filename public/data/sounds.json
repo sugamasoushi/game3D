@@ -2,7 +2,7 @@
   "information": "音の台帳。key → ファイルと音量。ここに 1 行足せば、イベントの playBgm / playSe から呼べる。",
   "sounds": {
     "field": { "file": "BGM/おとぼけダンス(Silly_dance).mp3", "volume": 0.5, "loop": true },
-    "opening": { "file": "opening.mp3", "volume": 0.5, "loop": true },
+    "opening": { "file": "BGM/opening.mp3", "volume": 0.5, "loop": true },
     "waterfall": { "file": "EnvironmentalSE/滝1.mp3", "volume": 0.15, "loop": true },
     "message": { "file": "UI/メッセージ表示音3.mp3", "volume": 0.25 },
     "decide": { "file": "UI/決定ボタンを押す44.mp3", "volume": 0.6 },
@@ -16,12 +16,16 @@
     "strike": { "file": "BattleSE/打撃6.mp3", "volume": 0.7 },
     "punch": { "file": "BattleSE/重いパンチ1.mp3", "volume": 0.7 },
     "dodge": { "file": "BattleSE/高速移動.mp3", "volume": 0.7 },
-    "fanfare": { "file": "SE/ジャジャーン.mp3", "volume": 0.7 },
-    "levelup": { "file": "SE/ひらめく2.mp3", "volume": 0.6 },
+    "fanfare": { "file": "BattleSE/ジャジャーン.mp3", "volume": 0.7 },
+    "levelup": { "file": "BattleSE/ひらめく2.mp3", "volume": 0.6 },
     "Crystal_Cave": { "file": "BGM/Crystal Cave.mp3", "volume": 0.5, "loop": true },
     "The_Cave": { "file": "BGM/The Cave.mp3", "volume": 0.5, "loop": true },
     "幽霊出現": { "file": "SE/幽霊出現.wav", "volume": 0.5 },
-    "剣の素振り3": { "file": "BattleSE/剣の素振り3.mp3", "volume": 0.5 }
+    "剣の素振り3": { "file": "BattleSE/剣の素振り3.mp3", "volume": 0.5 },
+    "雨が降る1": { "file": "EnvironmentalSE/雨が降る1.mp3", "volume": 0.5, "loop": true },
+    "風が吹く3": { "file": "EnvironmentalSE/風が吹く3.mp3", "volume": 0.5, "loop": true },
+    "落雷2": { "file": "EnvironmentalSE/落雷2.mp3", "volume": 0.5 },
+    "雷雨": { "file": "EnvironmentalSE/雷雨.mp3", "volume": 0.5, "loop": true }
   },
   "ui": {
     "message": "message",

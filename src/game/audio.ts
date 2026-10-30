@@ -10,6 +10,7 @@
 import { assetUrl } from './assets';
 import { bgmAllowed, seAllowed } from './devMode';
 import { onOptionsChanged, options } from './options';
+import { ambienceGain, readAmbience, strikeDue, strikeOverlap, type AmbienceDef, type EffectLevel } from './ambience';
 
 /** 台帳の 1 行。 */
 export interface SoundDef {
@@ -105,7 +106,14 @@ interface Channel {
 }
 
 const bgm: Channel = { el: null, key: '', gain: 1, fade: null };
-const bgs: Channel = { el: null, key: '', gain: 1, fade: null };
+/**
+ * 環境音（GS-278）。**何本でも同時に流す**。キーは音の名前（同じ音を 2 行に書かない。検査で止める）。
+ * `ambienceRows` はいまのマップの台帳の行。`strikes` は雷の行ごとの前に見た光の回数。
+ */
+const bgsChannels = new Map<string, Channel>();
+let ambienceRows: AmbienceDef[] = [];
+let strikes = new Map<number, number | undefined>();
+const channels = (): Channel[] => [bgm, ...bgsChannels.values()];
 
 const levelOf = (def: SoundDef, gain: number, kind: 'bgm' | 'se'): number =>
   Math.max(0, Math.min(1, (def.volume ?? 1) * gain * volumeOf(kind)));
@@ -162,7 +170,7 @@ function stop(channel: Channel, ms: number): void {
 // 設定で音量が変わったら、**いま鳴っているもの**にもすぐ効かせる（GS-25）。
 // 次の曲から、では設定画面で動かしても手応えが無い。
 onOptionsChanged(() => {
-  for (const channel of [bgm, bgs]) {
+  for (const channel of channels()) {
     const def = channel.key ? book[channel.key] : null;
     if (channel.el && def) channel.el.volume = levelOf(def, channel.gain, 'bgm');
   }
@@ -174,7 +182,7 @@ export function unlockAudio(): void {
   unlocked = true;
   const context = audioContext();
   if (context?.state === 'suspended') void context.resume();
-  for (const channel of [bgm, bgs]) {
+  for (const channel of channels()) {
     if (channel.el) void channel.el.play().catch(() => undefined);
   }
 }
@@ -193,18 +201,136 @@ export function stopBgm(ms = 0): void {
   stop(bgm, ms);
 }
 
-/** 環境音（滝・洞窟など）。BGM と別に流すので、曲を変えても続く。 */
-export function playBgs(key: string, gain = 1): void {
+/**
+ * 環境音を差し替える（GS-278。マップの台帳の `bgs` の行）。流す行（`strike` でない行）を 1 本ずつ流し、
+ * 行から消えた音は薄れて止まる。**同じ音は切らずに続ける**（マップを移っても滝の音が途切れない）。
+ * エフェクトに合わせる行は、次の `updateAmbience` までは今の音量のまま（新しく始める物は 0 から）。
+ */
+export function setAmbience(rows: readonly AmbienceDef[], ms = 400): void {
+  ambienceRows = [...rows];
+  strikes = new Map();
+  // 前のマップの雷は薄れさせて消す（行の番号が別の行を指すことになるため。GS-279）。
+  for (const list of strikeVoices.values()) for (const voice of list) fadeVoice(voice, ms);
+  strikeVoices.clear();
   // 環境音は BGM と同じつまみで止める（GS-129）。音量の設定も両者を 1 つとして扱っている。
-  if (!bgmAllowed()) {
-    stop(bgs, 0);
-    return;
+  const allowed = bgmAllowed();
+  const wanted = new Map<string, number>();
+  if (allowed) {
+    for (const row of ambienceRows) {
+      if (row.on === 'strike' || wanted.has(row.key)) continue;
+      wanted.set(row.key, row.effect ? (bgsChannels.get(row.key)?.gain ?? 0) : ambienceGain(row, new Map()));
+    }
   }
-  start(bgs, key, gain);
+  for (const [key, channel] of bgsChannels) {
+    if (wanted.has(key)) continue;
+    stop(channel, ms);
+    bgsChannels.delete(key);
+  }
+  for (const [key, gain] of wanted) {
+    let channel = bgsChannels.get(key);
+    if (!channel) {
+      channel = { el: null, key: '', gain, fade: null };
+      bgsChannels.set(key, channel);
+    }
+    start(channel, key, gain);
+    if (!channel.el) bgsChannels.delete(key);
+  }
 }
 
+/**
+ * 毎フレーム（GS-278）。エフェクトの今の濃さ（プリセット id → 濃さと雷の回数）で、合わせる行の音量を動かし、
+ * 雷が光ったら鳴らす。マップの音が止まっている（戦闘中・タイトルへ）あいだは行が空なので何もしない。
+ */
+export function updateAmbience(levels: ReadonlyMap<string, EffectLevel>): void {
+  // 「BGM を鳴らさない」（GS-129）は環境音も黙らせる。雷も環境音の行なので一緒に止める。
+  if (!bgmAllowed()) return;
+  ambienceRows.forEach((row, index) => {
+    if (row.on === 'strike') {
+      const due = strikeDue(row, levels, strikes.get(index));
+      strikes.set(index, due.seen);
+      if (!due.play) return;
+      const key = row.key;
+      const gain = due.gain;
+      const limit = strikeOverlap(row);
+      if (row.delay && row.delay > 0) window.setTimeout(() => playStrike(index, key, gain, limit), row.delay);
+      else playStrike(index, key, gain, limit);
+      return;
+    }
+    if (!row.effect) return;
+    const channel = bgsChannels.get(row.key);
+    const def = book[row.key];
+    if (!channel?.el || !def) return;
+    const gain = ambienceGain(row, levels);
+    if (Math.abs(gain - channel.gain) < 0.001) return;
+    channel.gain = gain;
+    channel.el.volume = levelOf(def, gain, 'bgm');
+  });
+}
+
+/** 環境音を全部止める。`ms` を渡すと薄れて消える。行も空にする（戻すときは `applyMapSound` で台帳から）。 */
 export function stopBgs(ms = 0): void {
-  stop(bgs, ms);
+  ambienceRows = [];
+  strikes = new Map();
+  for (const channel of bgsChannels.values()) stop(channel, ms);
+  bgsChannels.clear();
+  for (const list of strikeVoices.values()) for (const voice of list) fadeVoice(voice, ms);
+  strikeVoices.clear();
+}
+
+/** 雷の行ごとの鳴っている音（GS-279）。古い順。 */
+interface StrikeVoice {
+  source: AudioBufferSourceNode;
+  volume: GainNode;
+}
+const strikeVoices = new Map<number, StrikeVoice[]>();
+/** 上限を超えて消す古い雷の音が薄れる時間（ミリ秒）。ぷつっと切れないように。 */
+const STRIKE_FADE_MS = 300;
+
+function fadeVoice(voice: StrikeVoice, ms: number): void {
+  const context = voice.source.context;
+  const now = context.currentTime;
+  const end = now + Math.max(0, ms) / 1000;
+  try {
+    voice.volume.gain.cancelScheduledValues(now);
+    voice.volume.gain.setValueAtTime(voice.volume.gain.value, now);
+    voice.volume.gain.linearRampToValueAtTime(0, end);
+    voice.source.stop(end + 0.02);
+  } catch {
+    /* もう止まっている */
+  }
+}
+
+/**
+ * 雷を 1 回鳴らす（GS-279）。行ごとに鳴っている数を数え、`limit` を超えたら一番古い音を薄れさせて消す。
+ * 事前のデコードが済んでいなければ、ふつうの効果音として鳴らす（数えない）。
+ */
+function playStrike(row: number, key: string, gain: number, limit: number): void {
+  const def = book[key];
+  const context = audioContext();
+  const buffer = effectBuffers.get(key);
+  if (!def || !context || !buffer || !unlocked || !seAllowed()) {
+    playSe(key, gain);
+    return;
+  }
+  if (context.state === 'suspended') void context.resume();
+  const list = strikeVoices.get(row) ?? [];
+  while (list.length >= limit) {
+    const old = list.shift();
+    if (old) fadeVoice(old, STRIKE_FADE_MS);
+  }
+  const source = context.createBufferSource();
+  const volume = context.createGain();
+  source.buffer = buffer;
+  volume.gain.value = levelOf(def, gain, 'se');
+  source.connect(volume).connect(context.destination);
+  const voice: StrikeVoice = { source, volume };
+  source.onended = () => {
+    const at = list.indexOf(voice);
+    if (at >= 0) list.splice(at, 1);
+  };
+  list.push(voice);
+  strikeVoices.set(row, list);
+  source.start();
 }
 
 /**
@@ -216,10 +342,10 @@ export function audioUnlocked(): boolean {
 }
 
 /** いま鳴っているもの（開発中の確認用）。 */
-export function nowPlaying(): { bgm: string; bgs: string; playing: boolean; unlocked: boolean } {
+export function nowPlaying(): { bgm: string; bgs: string[]; playing: boolean; unlocked: boolean } {
   return {
     bgm: bgm.key,
-    bgs: bgs.key,
+    bgs: [...bgsChannels.keys()],
     playing: Boolean(bgm.el && !bgm.el.paused),
     unlocked,
   };
@@ -298,10 +424,9 @@ export function playUi(kind: UiSound): void {
   if (key) playSe(key);
 }
 
-/** マップが決める音（GS-21）。曲と環境音をまとめて切り替える。 */
-export function applyMapSound(next: { bgm?: string; bgs?: string }): void {
+/** マップが決める音（GS-21）。曲と環境音をまとめて切り替える。環境音は行の並び（GS-278）。 */
+export function applyMapSound(next: { bgm?: string; bgs?: readonly AmbienceDef[] }): void {
   if (next.bgm) playBgm(next.bgm);
   else stopBgm(400);
-  if (next.bgs) playBgs(next.bgs);
-  else stopBgs(400);
+  setAmbience(readAmbience(next.bgs));
 }

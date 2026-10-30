@@ -41,7 +41,16 @@ export interface CharacterEntry {
   /** メニューに出す絵（旧作の `menu_meina` など）。無ければ絵なし。 */
   menu?: string;
   talk?: string;
+  /**
+   * 戦闘の絵（2026-10-29 / GS-280）。`assets/img/BattleParty` からの道で、拡張子を外した名前
+   * （`Battle_lamy` → `Battle_lamy.png`）。コマンド選択で左端に出す（息遣いは板の上下の伸び縮み。GS-88）。
+   * 無ければ立ち絵（`normal`）。
+   */
+  battle?: string;
 }
+
+/** 戦闘の絵の置き場（GS-280）。 */
+const BATTLE_DIR = 'assets/img/BattleParty';
 
 /** `information` のような**人ではない行**も混じるので、値は string も受ける。 */
 export type CharacterBook = Record<string, CharacterEntry | string>;
@@ -75,6 +84,11 @@ export function characterSheet(who: string): string | null {
   return character(who)?.sheet || null;
 }
 
+/** 台帳に載っている人のキー（人ではない行は除く。2026-10-29 / GS-282。戦闘演出エディタが絵を選ぶ）。 */
+export function characterIds(): string[] {
+  return Object.keys(book).filter((key) => character(key));
+}
+
 /** 1 人ぶん。人ではない行（`information`）は null。 */
 export function character(who: string): CharacterEntry | null {
   const entry = book[who];
@@ -97,6 +111,17 @@ export function characterMenuImage(who: string): string | null {
 export function characterStand(who: string): string | null {
   const entry = character(who);
   return entry?.normal ? assetUrl(`${STAND_DIR}/${entry.normal}.png`) : null;
+}
+
+/** 戦闘の絵の道（`public/` から。GS-280）。 */
+export function battleImagePath(name: string): string {
+  return `${BATTLE_DIR}/${name}.png`;
+}
+
+/** 戦闘の絵の URL（GS-280）。書いていない人は null（立ち絵を使う）。 */
+export function characterBattleImage(who: string): string | null {
+  const name = character(who)?.battle;
+  return name ? assetUrl(battleImagePath(name)) : null;
 }
 
 export function characterIcon(who: string): string | null {

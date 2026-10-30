@@ -65,6 +65,11 @@ export interface EnemyDef extends Stats {
   gold?: number;
   /** 使う技（GS-69）。書かなければ殴るだけ。 */
   skills?: EnemySkillRef[];
+  /**
+   * 前衛に出る確率（0〜1。2026-10-29 / GS-286）。戦闘のたびの並べ方のくじで、前の行の枠に入る見込み。
+   * 書かなければ 0.5（前と後ろで同じ。前と後ろの枠の数が同じなら、ちょうどこの確率で前に出る）。1 でも前の枠が埋まっていれば後ろへ。
+   */
+  front?: number;
 }
 
 /** はじめの仲間 1 人ぶん。数値は**レベル 1 のとき**の値（GS-63）。 */
@@ -278,6 +283,11 @@ export function battleFormationSlots(
     && (slot.height === undefined || Number.isFinite(slot.height)))) return null;
   const shift = formation?.center === false ? 0 : centerShift(slots);
   return slots.map((slot) => ({ ...slot, col: slot.col + shift }));
+}
+
+/** 隊形 1 つ（2026-10-29 / GS-280。戦闘のマスの割り当て `cells.ts` が読む）。無ければ null。 */
+export function battleFormationDef(id: string | undefined): BattleFormationDef | null {
+  return (id && formations[id]) || null;
 }
 
 /** 横の真ん中へ寄せる量（マスの番号。列の平均の逆を整数に丸める）。 */

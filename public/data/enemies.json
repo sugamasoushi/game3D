@@ -1,5 +1,5 @@
 {
-  "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/Enemy の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は 190px で 1 マス）に掛ける）。hp/mp は満タンの値。倒すと exp と gold が入る。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
+  "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/Enemy の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は 190px で 1 マス）に掛ける）。hp/mp は満タンの値。倒すと exp と gold が入る。front は前衛に出る確率（0〜1。書かなければ 0.5。GS-286）。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
   "enemies": {
     "enemy00": {
       "name": "ナーガ娘",
@@ -30,6 +30,7 @@
       "speed": 9,
       "exp": 16,
       "gold": 14,
+      "front": 0.2,
       "skills": [
         {
           "id": "enemy02",
@@ -55,7 +56,8 @@
       "guard": 2,
       "speed": 7,
       "exp": 3,
-      "gold": 3
+      "gold": 3,
+      "front": 0.8
     },
     "enemy03": {
       "name": "グレートベア",
@@ -121,7 +123,8 @@
       "guard": 25,
       "speed": 5,
       "exp": 18,
-      "gold": 16
+      "gold": 16,
+      "front": 0.8
     }
   }
 }

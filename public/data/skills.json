@@ -6,7 +6,7 @@
       "kind": "特技",
       "type": "guard",
       "text": "がっちりガード！",
-      "mp": 5,
+      "mp": 0,
       "value": 20
     },
     "special02": {
@@ -14,13 +14,14 @@
       "kind": "特技",
       "type": "avoid",
       "text": "馬鹿め！後ろだ！",
-      "mp": 15,
+      "mp": 5,
       "value": 0
     },
     "special03": {
       "name": "投石",
       "kind": "特技",
       "type": "attack",
+      "range": "ranged",
       "text": "恐っ！",
       "mp": 0,
       "value": 10,

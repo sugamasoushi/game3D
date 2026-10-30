@@ -16,7 +16,11 @@
       "name": "灰冠山地",
       "file": "ashcrown/ashcrown.json",
       "bgm": "field",
-      "bgs": "waterfall",
+      "bgs": [
+        {
+          "key": "waterfall"
+        }
+      ],
       "battleStage": {
         "formations": [
           "standard"
@@ -36,7 +40,12 @@
     "forest_cave": {
       "name": "青鳴洞・入口",
       "file": "blue_echo_cave/forest_cave.json",
-      "bgm": "The_Cave"
+      "bgm": "The_Cave",
+      "bgs": [
+        {
+          "key": "雷雨"
+        }
+      ]
     },
     "blue_echo_cave": {
       "name": "青鳴洞",
