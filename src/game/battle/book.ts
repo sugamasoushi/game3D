@@ -371,16 +371,14 @@ export function enemyScale(id: string): number {
   return typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : 1;
 }
 
-/** 戦闘の舞台の絵の、何 px で 1 マスと見るか（GS-87）。 */
-export const STAGE_PX_PER_CELL = 190;
-
 /**
  * 戦闘の舞台の板の高さ（マス。GS-87）。`fixed` が 0 より大きければそれ、
- * 0 なら絵の高さから決める（190px で 1 マス）。それに倍率を掛ける。
+ * 0 なら絵の高さから決める。**絵の 1 画素をマップの 1 画素にそろえる**（2026-11-01）——
+ * 高さは「絵の画素 ÷ マップの 1 マスの画素（`tilePx`）」で、フィールドのキャラ（`createPlayer`）と同じ数え方。
+ * それに倍率を掛ける。ドットを崩さないなら倍率は整数（か 1/2・1/4）にする。
  * **上限・下限で収めない**（2026-10-17）——元の大きさ × 倍率だけにして、大きさは倍率で直す。
- * 収めると、描き直した絵が思った大きさにならない。
  */
-export function stageFigureCells(fixed: number, imagePx: number, scale = 1): number {
-  const cells = fixed > 0 ? fixed : imagePx / STAGE_PX_PER_CELL;
+export function stageFigureCells(fixed: number, imagePx: number, tilePx: number, scale = 1): number {
+  const cells = fixed > 0 ? fixed : imagePx / (tilePx > 0 ? tilePx : 32);
   return cells * scale;
 }
