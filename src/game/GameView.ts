@@ -844,6 +844,9 @@ export function createGameView(
     followers.delete(to);
     fresh.group.removeFromParent();
     const old = player;
+    // 光らせている途中で入れ替えたら、後ろへ回る板の白を消す（2026-11-01）。
+    // 光は毎フレーム「いまの先頭」にだけ書くので、消さないと白いまま仲間の列に残る。
+    if (leaderFlash) old.setLook(1, 0);
     fresh.placeAt(old.position.x, old.position.y, old.position.z);
     fresh.face(old.facingNow());
     fresh.faceCamera((rig.yaw * Math.PI) / 180);
