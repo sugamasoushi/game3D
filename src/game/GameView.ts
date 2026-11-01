@@ -12,6 +12,7 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  NearestFilter,
   Plane,
   PlaneGeometry,
   Raycaster,
@@ -3652,8 +3653,13 @@ export function createGameView(
             return;
           }
           texture.colorSpace = SRGBColorSpace;
+          // ドット絵のまま出す（2026-11-01）。フィールドのキャラ（`createPlayer`）と同じく、ぼかさずミップマップも作らない。
+          texture.magFilter = NearestFilter;
+          texture.minFilter = NearestFilter;
+          texture.generateMipmaps = false;
           const img = texture.image as { width: number; height: number };
-          const cells = stageFigureCells(def.height, img.height, def.scale);
+          // 絵の 1 画素 = マップの 1 画素（`tilePx`）。フィールドのキャラとそろう。
+          const cells = stageFigureCells(def.height, img.height, mapDef?.grid?.tilePx ?? 32, def.scale);
           // 戦闘の絵にもマップのキャラクターの大きさを掛ける（2026-10-11）。
           figure.height = cells * unit * characterScaleOf(mapDef?.properties);
           figure.width = (figure.height * img.width) / img.height;

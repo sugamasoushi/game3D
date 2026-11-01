@@ -62,8 +62,11 @@ const HIT_WAIT: Record<'damage' | 'heal' | 'miss' | 'ailment', number> = {
 
 /** 画面ゆれの長さ（CSS の `mep-shake` と同じ）。揺れの途中で次へ進まないように待つ（GS-109）。 */
 const SHAKE_MS = 260;
-/** 3D の舞台に立たせる味方の立ち絵の高さ（マス。GS-87）。絵の大きさがまちまちなので揃える。 */
-const PARTY_FIGURE_CELLS = 2.2;
+/**
+ * 3D の舞台に立たせる味方の絵の高さ（マス。GS-87）。0 は「絵の画素から決める」——
+ * 敵と同じく絵の 1 画素をマップの 1 画素にそろえる（2026-11-01。前は 2.2 マスに揃えていた）。
+ */
+const PARTY_FIGURE_CELLS = 0;
 /** 2D の敵の絵の倍率。1 なら何も足さない（元の大きさのまま）。 */
 const scaleStyle = (scale: number) => (scale === 1 ? undefined : { zoom: scale });
 
