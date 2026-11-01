@@ -240,7 +240,7 @@ export const STAGE_FIGURE_MATERIAL = { transparent: true, alphaTest: 0.05, depth
 
 /**
  * 敵の板の頭の上に要る高さ（px）。体力の帯（間 8 + 帯 22）と状態の札（帯の上へ 12）に、画面の縁との間 4。
- * CSS の `.battle-foe.on3d .battle-bar` / `.ail-tags` の置き方と合わせる。
+ * CSS の `.battle-foe .battle-bar` / `.ail-tags` の置き方と合わせる。
  */
 export const FOE_HEAD_ROOM = 46;
 
