@@ -573,7 +573,7 @@ export default function GameCanvas() {
   const walkAilmentsRef = useRef(createWalkAilments());
   const [walkNote, setWalkNote] = useState('');
   const walkNoteTimer = useRef(0);
-  /** 上に一瞬だけ出す札（毒・フィールドアタックの取り分・先頭の入れ替え）。 */
+  /** 一瞬だけ出す札（毒・フィールドアタックの取り分・先頭の入れ替え）。画面の上から 3/4 に出す（`.walk-note`）。 */
   const showNote = useCallback((text: string) => {
     setWalkNote(text);
     window.clearTimeout(walkNoteTimer.current);

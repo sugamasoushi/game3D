@@ -2757,13 +2757,14 @@ body {
 /*
  * 歩いているあいだの毒（GS-71）。**会話ウィンドウは使わない**——
  * 出すたびに歩きが止まると、宿へ急いでいる最中に何度も足を取られる。
- * 上のほうに一瞬だけ出して、自分で消える札にする。
+ * 一瞬だけ出して、自分で消える札にする。フィールドアタックの取り分・先頭の入れ替えも同じ札。
+ * 置き場所は**画面の上から 3/4**（札の真ん中。2026-11-01。前は上端）。
  */
 .walk-note {
   position: absolute;
-  top: 18px;
+  top: 75%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   padding: 5px 16px;
   border: 2px solid #7a4bb5;
   border-radius: 8px;
@@ -2779,9 +2780,9 @@ body {
 }
 
 @keyframes mep-walk-note {
-  0% { opacity: 0; transform: translate(-50%, -6px); }
-  10%, 80% { opacity: 1; transform: translate(-50%, 0); }
-  100% { opacity: 0; transform: translate(-50%, -6px); }
+  0% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)); }
+  10%, 80% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)); }
 }
 
 /* 並べ替えのボタンを人の一覧から少し離す（GS-72）。押し間違いを減らす。 */
