@@ -234,6 +234,7 @@ export function stageFigureOrder(row: number, index: number): number {
  * 舞台の板の材質（2026-10-30 / GS-289）。**深度を書かない**。
  * 板はどれもカメラの向きへ回した縦の板なので、同じ列の板は同じ平面に重なり、深度が引き分けてフレームごとに前後が入れ替わる（チラつく）。
  * 板どうしの前後は描く順（`stageFigureOrder`）で決め、地形に隠れるのは深度を読む（`depthTest`）ことで今までどおり。
+ * 材質そのものはフィールドのキャラと同じ `createActorMaterial`（2026-11-01）で、この値を上書きして使う。
  */
 export const STAGE_FIGURE_MATERIAL = { transparent: true, alphaTest: 0.05, depthWrite: false } as const;
 

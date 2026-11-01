@@ -70,6 +70,8 @@ uniform vec4 frameClamp;  // コマの内側（半画素ぶん締めた UV の�
 // 見た目（GS-207）。不透明度（幽霊のような半透明）と、白く光らせる量（0〜1。出現の光）。
 uniform float actorOpacity;
 uniform float actorGlow;
+// 明るさの倍率（2026-11-01。既定 1）。戦闘の板の「選ばれている」「倒れた」の暗さ。光の後・霧の前に掛ける。
+uniform float actorTone;
 varying vec2 vChipUv;
 varying vec3 vWorldPos;
 varying vec3 vShadowPos;
@@ -103,6 +105,7 @@ void main() {
   vec3 colour = texel.rgb * (mepLightRgb(shade) + pointLightRgb(vec3(0.0, 1.0, 0.0), vWorldPos));
   // 旧方式のブロック影（L-3.12）。新方式が入のときは mepShadowOn が 0 なので何もしない。
   colour = mepBlockShadow(colour, vShadowPos);
+  colour *= actorTone;
   if (mepFogOn) {
     colour = mix(colour, mepFogColor, mepFogFactor(length(vFogView)));
   }
@@ -233,6 +236,8 @@ export interface ActorMaterial {
    * 1 未満にすると半透明で描く（深度は書かない——後ろの物が消えないように）。地面の影も同じ割合で薄くなる。
    */
   setLook(opacity: number, glow: number): void;
+  /** 明るさの倍率（既定 1）。光と影を当てた後に掛ける。 */
+  setTone(tone: number): void;
   dispose(): void;
 }
 
@@ -270,6 +275,7 @@ export function createActorMaterial(
       actorShadowAlpha: { value: ACTOR_SHADOW_ALPHA },
       actorOpacity: { value: 1 },
       actorGlow: { value: 0 },
+      actorTone: { value: 1 },
       mepShadowMap: { value: emptyShadowMap() },
       mepShadowOrigin: { value: new Vector2() },
       mepShadowSize: { value: new Vector2(1, 1) },
@@ -370,6 +376,9 @@ export function createActorMaterial(
       const clear = alpha < 0.999;
       material.transparent = clear;
       material.depthWrite = !clear;
+    },
+    setTone(tone) {
+      material.uniforms.actorTone.value = Math.max(0, tone);
     },
     dispose() {
       material.dispose();
