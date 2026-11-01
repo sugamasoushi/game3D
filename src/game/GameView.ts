@@ -3,7 +3,6 @@
 
 import {
   BufferGeometry,
-  CircleGeometry,
   DoubleSide,
   Float32BufferAttribute,
   Group,
@@ -18,6 +17,7 @@ import {
   Raycaster,
   SRGBColorSpace,
   Scene,
+  Texture,
   TextureLoader,
   Vector2,
   type ShaderMaterial,
@@ -26,6 +26,7 @@ import {
 } from 'three';
 import { buildMep3DScene, type Mep3DScene } from '../mep3d/loader';
 import { MAX_SUN_ACTORS, type SunActor } from '../mep3d/material';
+import { createActorMaterial, type ActorMaterial } from '../mep3d/actorMaterial';
 import { collectMapModels, createMapModels, type MapModels } from '../mep3d/mapModels';
 import { createSkyBinder } from '../mep3d/camera';
 import { createTiltShiftPass } from '../mep3d/tiltshift';
@@ -1715,11 +1716,14 @@ export function createGameView(
   interface StageFigure {
     def: BattleFigure;
     mesh: Mesh;
-    material: MeshBasicMaterial;
-    shadow: Mesh;
+    /**
+     * 板の材質（2026-11-01）。**フィールドのキャラと同じ**（`createActorMaterial`）——マップの光・点光源・霧・
+     * 建物と雲の影を受ける。足元の影は太陽の影を落とすキャラ（`applySunActors`）として地面に落とす。
+     */
+    skin: ActorMaterial;
+    /** 太陽の影の板の大きさ（ワールド。`SunActor.size`）。毎フレーム、伸び縮みを入れて書き直す。 */
+    sunSize: { width: number; height: number };
     base: Vector3;
-    /** 影を置く床の高さ。初期位置を持ち上げても影は床に残す。 */
-    groundY: number;
     width: number;
     height: number;
     pose: FigurePose;
@@ -1741,8 +1745,6 @@ export function createGameView(
      * 偽の味方は**コマンドを選んでいる間だけ**左端に出す（2026-10-29 / GS-280）。
      */
     shownAlways: boolean;
-    /** 影を床に出すか（床の無い空のマスでは出さない。GS-288）。 */
-    floorShadow: boolean;
   }
   let stage: {
     /** BattleStage の床（ワールド）。構図の見る点とカメラの高さの基準。 */
@@ -1770,12 +1772,10 @@ export function createGameView(
   const stageCorner = new Vector3();
   const disposeFigure = (figure: StageFigure) => {
     scene.remove(figure.mesh);
-    scene.remove(figure.shadow);
     figure.mesh.geometry.dispose();
-    figure.material.map?.dispose();
-    figure.material.dispose();
-    figure.shadow.geometry.dispose();
-    (figure.shadow.material as MeshBasicMaterial).dispose();
+    (figure.skin.material.uniforms.map.value as Texture | null)?.dispose();
+    built?.detachMaterial(figure.skin.material);
+    figure.skin.dispose();
   };
 
   const createStageGrid = (at: { x: number; y: number; z: number }, unit: number): LineSegments => {
@@ -1982,8 +1982,6 @@ export function createGameView(
       const grow = lungeK >= 0 && lungeK < 1 ? 1 + STAGE_LUNGE_GROW * Math.sin(Math.PI * lungeK) : 1;
       figure.mesh.position.set(figure.base.x + backX, figure.base.y, figure.base.z + backZ);
       figure.mesh.rotation.y = yawR;
-      figure.shadow.position.set(figure.base.x + backX, figure.groundY + 0.02 * unit, figure.base.z + backZ);
-      figure.shadow.scale.set(figure.width * 0.9, figure.width * 0.35, 1);
       // 呼吸（GS-88）。**足元を支点に縦へわずかに伸び縮み**（板の原点は足元）。倒れたら止める。
       const breath = pose.gone
         ? 1
@@ -1991,15 +1989,13 @@ export function createGameView(
       figure.mesh.scale.set(grow, grow * breath, grow);
       // 明るさ: 選ばれていれば 1⇄0.5 を 400ms で往復（旧作の 255⇄128）。倒れたら暗く。
       const tone = pose.gone ? 0.45 : pose.picking ? 0.75 + 0.25 * Math.cos((elapsed / 0.4) * Math.PI) : pose.guarded ? 0.55 : 1;
-      figure.material.color.setScalar(tone);
+      figure.skin.setTone(tone);
       // 透け: 当たった点滅は 100ms ごとに半透明（旧作 `blinking`）。倒れたら 0.4 秒でうすく。
       // **倒した敵は消しきる**（残すと倒したのか分かりにくい）。味方は薄く残す。透明度 0 は `alphaTest` で描かれない。
       const fade = pose.gone && figure.goneAt >= 0 ? Math.min(1, (elapsed - figure.goneAt) / 0.4) : 0;
       const flash = pose.flash && Math.floor(elapsed * 10) % 2 === 0 ? 0.5 : 1;
       const faded = figure.def.side === 'enemy' ? 1 : 0.82;
-      figure.material.opacity = flash * (1 - faded * fade);
-      // 左端にだけ出す味方の板（GS-280）は影を出さない（宙に浮いた影になる）。
-      figure.shadow.visible = figure.mesh.visible && !pose.gone && figure.shownAlways && figure.floorShadow;
+      figure.skin.material.uniforms.actorOpacity.value = flash * (1 - faded * fade);
     }
   };
 
@@ -2030,7 +2026,7 @@ export function createGameView(
       if (!figure.shownAlways) figure.mesh.visible = figure.width > 0 && figure.commandK > 0;
       // 左端にいるあいだは手前に重ねて描く。戻り切ったら元の描き方へ。
       const front = figure.commandK > 0;
-      figure.material.depthTest = !front;
+      figure.skin.material.depthTest = !front;
       figure.mesh.renderOrder = front ? STAGE_COMMAND_RENDER_ORDER : figure.order;
       figure.commandLift = 0;
       if (!front) continue;
@@ -2054,9 +2050,6 @@ export function createGameView(
       figure.mesh.position.y += figure.commandLift;
       figure.mesh.position.z += dz;
       figure.mesh.scale.multiplyScalar(grow);
-      figure.shadow.position.x += dx;
-      figure.shadow.position.z += dz;
-      figure.shadow.scale.multiplyScalar(grow);
     }
   };
 
@@ -2076,10 +2069,13 @@ export function createGameView(
    * 隠している人（戦闘の舞台で隠したプレイヤーやシンボル）も渡さない。
    * 影を受ける側にはキャラの材質も入れる（NPC どうし・プレイヤーにも影が落ちる）。
    */
-  const sunActorPicks: Array<{ actor: Player; far: number }> = [];
+  /** 影を落とす人の候補。フィールドのキャラ（`actor`）か、戦闘の舞台の板（`figure`。2026-11-01）。 */
+  const sunActorPicks: Array<{ actor: Player | null; figure: StageFigure | null; far: number }> = [];
   const sunActorList: SunActor[] = [];
   const sunActorMaterials: ShaderMaterial[] = [];
   const sunActorFacing = new Vector3();
+  /** 絵 1 枚がそのまま 1 コマ（戦闘の舞台の板）。 */
+  const FULL_FRAME = { x: 0, y: 0, width: 1, height: 1 } as const;
   const applySunActors = () => {
     if (!built) return;
     sunActorPicks.length = 0;
@@ -2090,16 +2086,35 @@ export function createGameView(
       sunActorMaterials.push(actor.bodyMaterial);
       if (!actor.group.visible) return;
       const far = Math.hypot(actor.position.x - rig.target.x, actor.position.z - rig.target.z);
-      if (far <= reach) sunActorPicks.push({ actor, far });
+      if (far <= reach) sunActorPicks.push({ actor, figure: null, far });
     };
     if (player) consider(player);
     for (const actor of followers.values()) consider(actor);
     for (const npc of npcs.values()) consider(npc.actor);
+    // 戦闘の舞台の板も影を落とし、受ける（フィールドのキャラと同じ。2026-11-01）。
+    // 出ていない板・倒れた板・左端に寄せた味方（宙に浮いた影になる）は落とさない。
+    for (const figure of stage?.figures.values() ?? []) {
+      sunActorMaterials.push(figure.skin.material);
+      if (!figure.mesh.visible || figure.width <= 0 || figure.pose.gone || figure.commandK > 0) continue;
+      const far = Math.hypot(figure.mesh.position.x - rig.target.x, figure.mesh.position.z - rig.target.z);
+      sunActorPicks.push({ actor: null, figure, far });
+    }
     sunActorPicks.sort((a, b) => a.far - b.far);
     sunActorList.length = 0;
     for (let i = 0; i < Math.min(sunActorPicks.length, MAX_SUN_ACTORS); i += 1) {
-      const actor = sunActorPicks[i]!.actor;
-      sunActorList.push({ texture: actor.texture, frame: actor.frame(), foot: actor.boardFoot(), size: actor.size });
+      const { actor, figure } = sunActorPicks[i]!;
+      if (actor) sunActorList.push({ texture: actor.texture, frame: actor.frame(), foot: actor.boardFoot(), size: actor.size });
+      else if (figure) {
+        // 板の原点が足元。仰け反り・攻めかかり・呼吸の伸び縮みも影に入れる。
+        figure.sunSize.width = figure.width * figure.mesh.scale.x;
+        figure.sunSize.height = figure.height * figure.mesh.scale.y;
+        sunActorList.push({
+          texture: figure.skin.material.uniforms.map.value as Texture,
+          frame: FULL_FRAME,
+          foot: figure.mesh.position,
+          size: figure.sunSize,
+        });
+      }
     }
     // 板はカメラを向く（`faceCamera(yaw)`）。その向き＝カメラ側の水平ベクトル。
     const yaw = (rig.yaw * Math.PI) / 180;
@@ -2712,6 +2727,10 @@ export function createGameView(
 
     // キャラが動くたびに遮光の位置とコマを渡し直す（GC-39）。
     applyActorOccluder();
+    // 戦闘の舞台の板の影を引く柱（足元）。左端へ寄せた後の位置で（2026-11-01）。
+    for (const figure of stage?.figures.values() ?? []) {
+      figure.skin.setShadowBase(figure.mesh.position.x, figure.mesh.position.y, figure.mesh.position.z);
+    }
     // 太陽の影を落とすキャラ（DEC-393）。位置・コマ・カメラの向きが変わるので毎フレーム。
     applySunActors();
     // 透過レイヤーの入切も毎フレーム（DEC-252）。カメラが動くだけでも変わる。
@@ -2729,6 +2748,7 @@ export function createGameView(
     elapsed += dt;
     player?.setTime(elapsed);
     for (const npc of npcs.values()) npc.actor.setTime(elapsed);
+    for (const figure of stage?.figures.values() ?? []) figure.skin.setTime(elapsed);
     built?.update(dt);
     // 置いた 3D の実ライトも点滅させる（DEC-294）。時計はチップと同じ物を使う。
     if (built && mapModels) mapModels.tick(built.time);
@@ -2844,6 +2864,10 @@ export function createGameView(
     player?.setLighting(lighting, lights, unit, built.cameraFx);
     for (const actor of followers.values()) actor.setLighting(lighting, lights, unit, built.cameraFx);
     for (const npc of npcs.values()) npc.actor.setLighting(lighting, lights, unit, built.cameraFx);
+    for (const figure of stage?.figures.values() ?? []) {
+      figure.skin.setLighting(lighting, lights, unit);
+      figure.skin.setCameraFx(built.cameraFx);
+    }
   };
   /**
    * 出し入れ（GS-222）。`ShowIn` の付いたレイヤー（親もたどる）と、イベントの出し入れ（`layerWants`。GS-233）。
@@ -3603,27 +3627,28 @@ export function createGameView(
         const cz = terrain.z;
         // 立てないマス（空は飛ぶ敵だけ。`block` は誰も。GS-288）に立った人は、戦闘演出エディタが ⚠ で知らせる。
         if (!canStand(terrain.ground, !!def.flying)) current.floorless.push({ side: def.side, index });
-        // 飛ぶ敵（GS-288）は床から `grid.flyHeight`（戦闘のマス）浮かせる。影は床に残す。
+        // 飛ぶ敵（GS-288）は床から `grid.flyHeight`（戦闘のマス）浮かせる。影は太陽の向きに床へ落ちる。
         const lift = (slot?.height ?? 0) + (def.flying ? gridHeights(settings.grid).flyHeight : 0);
         const base = new Vector3(cx * unit, terrain.y + lift * characterScale * unit, cz * unit);
+        // 光と影の当て方はフィールドのキャラと同じ材質（2026-11-01）。絵は読み終わってから入れる。
+        const skin = createActorMaterial(new Texture(), { alphaTest: STAGE_FIGURE_MATERIAL.alphaTest });
         // 板どうしは深度を書かず、描く順で前後を決める（同じ列の板が同じ平面に重なってチラつくため。GS-289）。
-        const material = new MeshBasicMaterial({ ...STAGE_FIGURE_MATERIAL, side: DoubleSide });
-        const mesh = new Mesh(new PlaneGeometry(1, 1), material);
+        // 点滅・倒れたで薄くするので、いつも混ぜて描く。
+        skin.material.transparent = STAGE_FIGURE_MATERIAL.transparent;
+        skin.material.depthWrite = STAGE_FIGURE_MATERIAL.depthWrite;
+        if (built && mapDef) {
+          skin.setLighting(shownLighting(mapDef), shownLights(mapDef), mapDef.grid?.unit ?? 1);
+          skin.setCameraFx(built.cameraFx);
+          built.attachShadowMask(skin.material);
+        }
+        const mesh = new Mesh(new PlaneGeometry(1, 1), skin.material);
         mesh.visible = false;
-        const shadow = new Mesh(
-          new CircleGeometry(0.5, 24),
-          new MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false }),
-        );
-        shadow.rotation.x = -Math.PI / 2;
-        shadow.position.set(base.x, terrain.y + 0.02 * unit, base.z);
-        shadow.visible = false;
         const figure: StageFigure = {
           def,
           mesh,
-          material,
-          shadow,
+          skin,
+          sunSize: { width: 0, height: 0 },
           base,
-          groundY: terrain.y,
           width: 0,
           height: 0,
           pose: {},
@@ -3638,14 +3663,11 @@ export function createGameView(
           order: stageFigureOrder(row, order),
           // 味方の板を出すかは開発中のつまみ（GS-247。既定は出さない）。敵はいつも出す。
           shownAlways: def.side === 'enemy' || stagePartyShown || battlePartyFiguresShown(),
-          // 床が無い所（空）では影を出さない（GS-288。浮いた敵の真下に地面が無い）。
-          floorShadow: terrain.height !== null,
         };
         mesh.renderOrder = figure.order;
         mesh.layers.set(STAGE_SHARP_LAYER);
         current.figures.set(def.id, figure);
         scene.add(mesh);
-        scene.add(shadow);
         // 絵が来てから大きさを決める（縦横比は絵しだい）。**来る前に片付いていたら何もしない**。
         stageLoader.load(def.image, (texture) => {
           if (stage !== current) {
@@ -3665,9 +3687,11 @@ export function createGameView(
           figure.width = (figure.height * img.width) / img.height;
           mesh.geometry.dispose();
           mesh.geometry = new PlaneGeometry(figure.width, figure.height).translate(0, figure.height / 2, 0);
-          material.map = texture;
-          material.needsUpdate = true;
-          shadow.scale.set(figure.width * 0.9, figure.width * 0.35, 1);
+          skin.material.uniforms.map.value = texture;
+          // 絵 1 枚で 1 コマ。コマの内側へ締める枠もここで決まる（絵の画素数が要る）。
+          skin.setFrame(0, 0, 1, 1);
+          // 太陽の影は頭の少し上で引く（フィールドのキャラと同じ。DEC-156）。
+          skin.material.uniforms.sunLift.value = figure.height * 1.1;
           // 出さない味方の板（GS-247）も大きさは決めて枠を測る。コマンドを選んでいる間だけ出す（GS-280）。
           mesh.visible = figure.shownAlways;
         });
