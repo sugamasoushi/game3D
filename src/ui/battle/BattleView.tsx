@@ -50,7 +50,7 @@ import type { BattlePresentationContext, BattlePresentationHook } from '../../ga
 // 当たった印は**数が動く間より長く**——次の行が出た後も少し残るほうが、何が起きたか追いやすい。
 /**
  * 当たった印の動きが終わるまで（GS-85）。**CSS の長さと同じにする**——
- * 点滅（`mep-flicker` 400ms）・回復（`mep-healed` 400ms）・かわす（`mep-jolt` 300ms）・状態異常（`mep-ailed` 400ms）。
+ * 点滅（`mep-flicker` 400ms）・回復（`mep-healed` 400ms）・状態異常（`mep-ailed` 400ms）。かわすは数字（`mep-pop`）が出る間だけ。
  * ここで待ってから帯を動かすので、点滅と帯が重ならない。
  */
 const HIT_WAIT: Record<'damage' | 'heal' | 'miss' | 'ailment', number> = {
@@ -67,8 +67,6 @@ const SHAKE_MS = 260;
  * 敵と同じく絵の 1 画素をマップの 1 画素にそろえる（2026-11-01。前は 2.2 マスに揃えていた）。
  */
 const PARTY_FIGURE_CELLS = 0;
-/** 2D の敵の絵の倍率。1 なら何も足さない（元の大きさのまま）。 */
-const scaleStyle = (scale: number) => (scale === 1 ? undefined : { zoom: scale });
 
 /** 舞台の板が画面のどこにあるか（画素）。 */
 type FigureRect = { left: number; top: number; width: number; height: number };
@@ -388,7 +386,6 @@ export function BattleView({
    * 開いたときに 1 回だけ聞く——戦いの途中でマップは変わらない。
    */
   const [stageSpec] = useState(() => scene3d?.spec() ?? null);
-  const on3d = !!stageSpec;
   /**
    * この戦闘のマス（2026-10-29 / GS-280）。味方は横一列の前衛・敵はくじ。**開いたときに 1 回だけ**決め、`Fighter.cell` に入れる
    * （前衛・後衛の決まりが読む）。背景だけの戦闘（戦闘演出エディタの見本）は決めない——隊形の並び順のまま見せる。
@@ -1069,7 +1066,6 @@ export function BattleView({
       className={
         [
           'battle',
-          on3d ? 'has-3d' : '',
           // 揺らすのは**敵が攻めかかったとき**（GS-83。旧作 `EnemyAttack` のカメラゆれ）。
           // 食らったときにも揺らすと、1 手で 2 回揺れて目が疲れる。
           quake ? 'shake' : '',
@@ -1078,17 +1074,14 @@ export function BattleView({
           .join(' ')
       }
       data-tick={tick}
-      // 攻めかかる動きの遅れと長さ（GS-110）。2D の CSS もコードの値で動かす。
-      style={{ '--lunge-delay': `${STAGE_LUNGE_DELAY_S * 1000}ms`, '--lunge-ms': `${STAGE_LUNGE_S * 1000}ms` } as CSSProperties}
     >
       {/*
        * 舞台の点が無いマップ（2026-10-29）。舞台は default の点かマップの原点で組んでいるので、置き忘れに気付けるよう画面に出す。
        * マップエディタ側には出さない（利用者の指定）。
        */}
       {stageSpec && stageSpec.source !== 'stage' ? <div className="battle-stage-unset">プロパティ BattleStage が未設定</div> : null}
-      <div className={on3d ? 'battle-field on3d' : 'battle-field'}>
+      <div className="battle-field">
         {foes.map((foe) => {
-          const src = enemyImage(enemyIdOf(foe));
           const mark = hit && hit.id === foe.id ? hit : null;
           // 相手を選んでいる最中は、**選んでいる 1 体だけ点滅**させる（GS-78）。
           // 文字の一覧ではなく絵で選ばせるので、どれを狙っているかは絵で示すしかない。
@@ -1101,20 +1094,18 @@ export function BattleView({
           return (
             <div
               key={foe.id}
-              // 3D の舞台では**板の位置へ重ねる**（GS-87）。絵は 3D 側が描くので、ここは帯と数字と当たり。
+              // **板の位置へ重ねる**（GS-87）。絵は 3D 側が描くので、ここは帯と数字と当たり。
               style={
-                on3d
-                  ? rects[foe.id]
-                    ? {
-                        left: rects[foe.id]!.left,
-                        top: rects[foe.id]!.top,
-                        width: rects[foe.id]!.width,
-                        height: rects[foe.id]!.height,
-                        // 頭の上の帯が画面の上へ出るなら、その分だけ下げる（高台の敵。2026-10-31）。
-                        '--head-drop': `${foeHeadDrop(rects[foe.id]!.top)}px`,
-                      } as CSSProperties
-                    : { display: 'none' }
-                  : undefined
+                rects[foe.id]
+                  ? {
+                      left: rects[foe.id]!.left,
+                      top: rects[foe.id]!.top,
+                      width: rects[foe.id]!.width,
+                      height: rects[foe.id]!.height,
+                      // 頭の上の帯が画面の上へ出るなら、その分だけ下げる（高台の敵。2026-10-31）。
+                      '--head-drop': `${foeHeadDrop(rects[foe.id]!.top)}px`,
+                    } as CSSProperties
+                  : { display: 'none' }
               }
               onMouseEnter={pickable ? () => setAt(pickIndex) : undefined}
               onClick={
@@ -1127,15 +1118,12 @@ export function BattleView({
               }
               className={[
                 'battle-foe',
-                on3d ? 'on3d' : '',
                 hpOf(foe) > 0 ? '' : 'gone',
                 picking ? 'picking' : '',
                 guarded ? 'guarded' : '',
                 // 高台に立つ敵（GS-285）。帯の左に印を出す（与えるダメージが増え、直接攻撃が通りにくい）。
                 foe.cell?.ground === 'high' ? 'high' : '',
                 pickable ? 'pickable' : '',
-                lean === foe.id ? 'lean' : '',
-                lunge === foe.id ? 'lunge' : '',
                 // **倒れた相手には印を出さない**（消えていく絵の上で数字が跳ねると読めない）。
                 mark && hpOf(foe) > 0 ? `hit-${mark.kind}` : '',
               ]
@@ -1165,8 +1153,6 @@ export function BattleView({
                 );
               })()}
               <AilmentTags who={foe} />
-              {/* 2D でも元の大きさ × 敵の倍率（`enemies.json` の `scale`）。 */}
-              {on3d ? null : src ? <img src={src} alt={foe.name} style={scaleStyle(enemyScale(enemyIdOf(foe)))} /> : <span className="battle-foe-name">{foe.name}</span>}
             </div>
           );
         })}

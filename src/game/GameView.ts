@@ -583,7 +583,7 @@ export interface GameView {
 /**
  * 敵が攻めかかる動き（GS-109 / GS-110）。**溜め `STAGE_LUNGE_DELAY_S` の後に、`STAGE_LUNGE_S` かけて大きくなって戻る**。
  * 全体で 0.3 ＋ 0.2 ＝ 500ms（GS-110 で 800ms にして、戻した）。戦闘画面は溜めが終わる瞬間に音と揺れを出し、動きが終わるまで次（味方の点滅）へ進まない。
- * 2D の CSS（`mep-lunge`）も戦闘画面がこの値を `--lunge-delay` / `--lunge-ms` で渡すので、ここだけ変えればよい。
+ * 戦闘画面も音と揺れ・待ちにこの値を使うので、ここだけ変えればよい。
  */
 export const STAGE_LUNGE_DELAY_S = 0.3;
 export const STAGE_LUNGE_S = 0.2;

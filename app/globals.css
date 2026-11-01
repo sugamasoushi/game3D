@@ -1860,18 +1860,11 @@ body {
   --battle-top: 560px;
   position: absolute;
   inset: 0;
-  background: rgba(4, 8, 18, 0.72);
+  /* マップの 3D を背景に使う（GS-86 / GS-87）。**暗くしない**——3D の舞台そのものを見せる。窓の字は窓の地が支える。 */
+  background: transparent;
   color: #f2f5ff;
   font-size: 22px;
   z-index: 40;
-}
-
-/*
- * マップの 3D を背景に使う（GS-86 / GS-87）。**暗くしない**——
- * 3D の舞台そのものを見せる。窓の字は窓の地が支える。
- */
-.battle.has-3d {
-  background: transparent;
 }
 
 /* 舞台の点（BattleStage）が無いマップの知らせ（2026-10-29）。左上に小さく出し、クリックは素通し。 */
@@ -1889,22 +1882,23 @@ body {
 
 /*
  * 3D の舞台（GS-87）。敵の絵は 3D の板が描くので、ここは**板の位置へ重ねる箱**だけ
- * （帯・数字・技の絵・クリックの当たり）。箱の位置と大きさは画面が毎フレーム合わせる。
+ * （帯・数字・クリックの当たり）。箱の位置と大きさは画面が毎フレーム合わせる。
+ * 2D の絵で戦う画面はやめた（2026-10-29）。
  */
-.battle-field.on3d {
-  display: block;
-  height: auto;
-  bottom: 0;
-  padding: 0;
+.battle-field {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
 }
 
-.battle-foe.on3d {
+.battle-foe {
   position: absolute;
   display: block;
+  transition: opacity 400ms linear;
 }
 
 /* 帯は**板の頭の上**。 */
-.battle-foe.on3d .battle-bar {
+.battle-foe .battle-bar {
   position: absolute;
   left: 50%;
   bottom: 100%;
@@ -1913,57 +1907,17 @@ body {
   transform: translate(-50%, var(--head-drop, 0px));
 }
 
-.battle-foe.on3d .ail-tags {
+.battle-foe .ail-tags {
   position: absolute;
   left: 50%;
   bottom: 100%;
   transform: translate(-50%, calc(-22px + var(--head-drop, 0px)));
 }
 
-/*
- * 敵の並ぶ場所。何体居ても真ん中に寄せる。
- *
- * **高さを決め打つ**（GS-79）。下の窓は絶対配置で外に出してあるので、
- * 文が 1 行から 2 行に増えても、命令の一覧が長くなっても、**敵の足元は動かない**。
- * 流れの中に置いていたころは、下の段が伸びるたびに敵が上下していた。
- */
-.battle-field {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 490px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 48px;
-  padding: 32px 32px 0;
-  z-index: 1;
-}
-
-.battle-foe {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  transition: opacity 400ms linear;
-}
-
 /* 倒した敵は**消しきる**（3D の板と同じ）。体力の帯と状態の札も一緒に消える。 */
 .battle-foe.gone {
   opacity: 0;
   filter: grayscale(1);
-}
-
-/* 元の大きさのまま出し、敵の倍率（`enemies.json` の `scale`）だけ掛ける。上限は付けない（2026-10-17）。 */
-.battle-foe img {
-  image-rendering: pixelated;
-}
-
-/* 絵が無い敵の代わり。名前だけ出す。 */
-.battle-foe-name {
-  font-size: 18px;
-  text-shadow: 0 2px 4px #000;
 }
 
 /*
@@ -2665,32 +2619,10 @@ body {
   30%, 70% { filter: brightness(1.5) sepia(1) hue-rotate(60deg) saturate(3); }
 }
 
-/* 当たった相手だけを小さく揺らす。**画面ごと揺らすのは味方のときだけ**。 */
-@keyframes mep-jolt {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-6px); }
-  50% { transform: translateX(5px); }
-  75% { transform: translateX(-3px); }
-}
-
 /* 旧作の点滅（GS-83）。**半透明 ⇄ 不透明を 100ms ずつ 4 回**（`blinking`）。 */
 @keyframes mep-flicker {
   0%, 50% { opacity: 0.5; }
   25%, 75%, 100% { opacity: 1; }
-}
-
-.battle-foe.hit-damage img,
-.battle-foe.hit-damage .battle-foe-name {
-  animation: mep-hurt 320ms steps(1, end), mep-jolt 260ms ease-out, mep-flicker 400ms steps(1, end);
-}
-
-.battle-foe.hit-heal img {
-  animation: mep-healed 400ms steps(1, end);
-}
-
-/* かわしたときは色を変えず、横へ逃げる動きだけ。 */
-.battle-foe.hit-miss img {
-  animation: mep-jolt 300ms ease-out;
 }
 
 .battle-party li.hit-damage img {
@@ -2722,29 +2654,7 @@ body {
 
 /* 技の絵は 3D の板（`game/fieldFx.ts`。2026-10-31）。画面には重ねない。 */
 
-/* 殴られた敵の仰け反り（旧作 `leanBack`）。奥へ下がって戻る（2026-10-21。以前は上へ 20px 跳ねた）。
-   2D では足元を支点に少し小さくして奥へ下がったように見せる。3D は `battle/leanBack.ts`。 */
-@keyframes mep-lean {
-  0%, 100% { transform: scale(1); }
-  30% { transform: scale(0.9); }
-}
-
-.battle-foe.lean img {
-  transform-origin: 50% 100%;
-  animation: mep-lean 200ms ease-in-out;
-}
-
-/* 攻めかかる敵（旧作 `attackTween`: 少し待ってから、ひと回り大きくなって戻る）。 */
-@keyframes mep-lunge {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.06); }
-}
-
-/* 遅れと長さは 3D の `STAGE_LUNGE_DELAY_S` / `STAGE_LUNGE_S` を戦闘画面が変数で渡す（GS-110）。音と揺れは遅れの後に出す（GS-109）。 */
-.battle-foe.lunge img {
-  transform-origin: 50% 100%;
-  animation: mep-lunge var(--lunge-ms, 200ms) ease-in-out var(--lunge-delay, 300ms);
-}
+/* 仰け反り（`battle/leanBack.ts`）と攻めかかり（`STAGE_LUNGE_DELAY_S` / `STAGE_LUNGE_S`）は 3D の板が動く。 */
 
 /* 浮かぶ数字。**絵の上**に出して、下の一行（文）と役割を分ける。 */
 @keyframes mep-pop {
@@ -2771,8 +2681,7 @@ body {
 .pop-heal { color: #b6f0a0; }
 .pop-miss { font-size: 20px; color: #dfe6f5; }
 
-/* 数字を絵の上に置くための土台。 */
-.battle-foe { position: relative; }
+/* 数字を絵の上に置くための土台（敵の箱は絶対配置なのでそのまま土台になる）。 */
 .battle-party li { position: relative; }
 
 /* 味方の数字は小さめ（顔アイコンが 40px なので、同じ大きさだと隠れる）。 */
@@ -2811,7 +2720,6 @@ body {
   25%, 75% { filter: brightness(1.4) sepia(1) hue-rotate(220deg) saturate(4); }
 }
 
-.battle-foe.hit-ailment img,
 .battle-party li.hit-ailment img {
   animation: mep-ailed 400ms steps(1, end);
 }
@@ -3323,9 +3231,7 @@ body {
   to { filter: brightness(0.5); }
 }
 
-.battle-party img.acting,
-.battle-foe.picking img,
-.battle-foe.picking .battle-foe-name {
+.battle-party img.acting {
   animation: mep-blink 400ms linear infinite alternate;
 }
 
