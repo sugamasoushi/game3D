@@ -30,6 +30,8 @@ export interface MapEntry {
   battleStage?: { formations?: string[] };
   /** 時間帯（GS-223）。台帳エディタの「マップ構成」で直す。 */
   time?: MapTimeDef;
+  /** `false` ならこのマップではフィールドアタックを使えない（GS-295。家・町など）。書かなければ使える。 */
+  fieldAttack?: boolean;
 }
 
 /**

@@ -38,10 +38,15 @@ const NOISE_B = '/assets/noise/Super Perlin/Super Perlin 12 - 512x512.png';
 export const SCREEN_EFFECT_KINDS = ['fog', 'dapple', 'shake'] as const;
 export type ScreenEffectKind = (typeof SCREEN_EFFECT_KINDS)[number];
 
+/**
+ * 呼び名。フィールドエフェクトの「霧」「木漏れ日」と**同じ名前にしない**（2026-10-30）。
+ * 中身が別物（こちらの `dapple` は床の斑ではなく斜めに差す光の筋）なのに、
+ * 一覧で同じ名前が 2 つ並んで見分けられなかった。保存する `kind` は変えていない。
+ */
 export const SCREEN_EFFECT_LABELS: Record<ScreenEffectKind, string> = {
-  fog: '霧',
-  dapple: '木漏れ日',
-  shake: '揺れ',
+  fog: '画面の霧',
+  dapple: '差し込む光',
+  shake: '画面の揺れ',
 };
 
 /**

@@ -28196,11 +28196,6 @@
               "name": "Id",
               "type": "string",
               "value": "slime"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy02"
             }
           ],
           "space": "plane",
@@ -28229,11 +28224,6 @@
               "name": "Id",
               "type": "string",
               "value": "slime2"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy02"
             }
           ],
           "space": "plane",

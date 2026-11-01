@@ -234,6 +234,8 @@ interface UiState {
    * 歩きを止める旗（`busy`）はイベント側がすでに立てている。
    */
   shop: { items: string[]; sell: boolean } | null;
+  /** 開いている宿の窓（GS-290）。店と同じく、イベントの最中にしか開かない。 */
+  inn: { price: number } | null;
   setPhase(phase: Phase): void;
   setMenu(open: boolean): void;
   setSettings(open: boolean): void;
@@ -265,6 +267,7 @@ interface UiState {
   setBusy(busy: boolean): void;
   setBattle(enemies: string[] | null): void;
   setShop(shop: { items: string[]; sell: boolean } | null): void;
+  setInn(inn: { price: number } | null): void;
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -281,6 +284,7 @@ export const useUi = create<UiState>((set) => ({
   busy: false,
   battle: null,
   shop: null,
+  inn: null,
   setPhase: (phase) => set({ phase }),
   setMenu: (menu) => set({ menu }),
   setSettings: (settings) => set({ settings }),
@@ -339,4 +343,5 @@ export const useUi = create<UiState>((set) => ({
   setBusy: (busy) => set({ busy }),
   setBattle: (battle) => set({ battle }),
   setShop: (shop) => set({ shop }),
+  setInn: (inn) => set({ inn }),
 }));

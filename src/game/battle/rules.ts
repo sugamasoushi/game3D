@@ -51,6 +51,16 @@ export interface Fighter {
    * どちらも無ければ床の扱い（高さの決まりの外）。
    */
   cell?: { col: number; row: number; ground?: CellGround; height?: number };
+  /**
+   * 飛ぶ（2026-10-30 / GS-288。敵の台帳の `flying`）。前衛・後衛の決まりの外（守らず、守られない）で、単体の攻撃で守られた後衛も狙える。
+   * 空のマスに立てる。飛ばない相手からの直接攻撃は軽くなる（`height.ts` の `heightRate`）。
+   */
+  flying?: boolean;
+  /**
+   * かばっている（2026-10-31 / GS-294。技の `type: cover`）。かばい始めた順の番号（小さいほど先）。このターンだけで、ターンの頭で降ろす。
+   * 近くの仲間（`cover.ts` の `covers`）への攻撃を代わりに受ける。
+   */
+  covering?: number;
 }
 
 /** 技 1 つぶん。台帳（`data/skills.json`）の行と同じ形。 */
@@ -58,7 +68,7 @@ export interface SkillDef {
   name: string;
   /** 「特技」か「魔法」。並べる場所が違うだけで、式は同じ。 */
   kind: string;
-  /** `attack`（殴る）/ `guard`（守る）/ `avoid`（避ける）。 */
+  /** `attack`（殴る）/ `guard`（守る）/ `avoid`（避ける）/ `cover`（近くの仲間をかばう。GS-294）ほか。 */
   type: string;
   text?: string;
   /** 使うと減る MP。 */
@@ -88,9 +98,15 @@ export interface SkillDef {
    * 高台にいる人が受けるダメージ（直接攻撃だけ軽くなる）の見分けに使う。`height.ts` の `rangeOf`。
    */
   range?: SkillRange;
+  /**
+   * フィールドでの使い方（GS-295。`fieldAttack.ts` の `FieldUseDef`）。書いた技だけフィールドアタックに選べる
+   * （近接か飛ばすか・届く・速さ・当たりの幅・絵の倍率・MP など）。ダメージはこの技の式のまま。
+   */
+  field?: FieldUseDef;
 }
 
 import type { CellGround, SkillRange } from './height';
+import type { FieldUseDef } from '../fieldAttack';
 
 /** 技の届き方（GS-280）。広げるときはここと `cover.ts` の `hitsOf` に足す。 */
 export type SkillReach = 'single' | 'pierce' | 'all';
@@ -137,6 +153,8 @@ export function beginTurn(fighters: Fighter[]): void {
   for (const who of fighters) {
     who.guarding = 0;
     who.avoiding = false;
+    // かばう（GS-294）もこのターンだけ。
+    delete who.covering;
   }
 }
 

@@ -8,6 +8,7 @@
 
 import { assetUrl } from '../assets';
 import type { BattleCamera, BattleCameraKey } from './battleCamera';
+import { CELL_MARKS, type CellMark } from './height';
 
 /**
  * コマンドを選んでいる味方を画面の左端へ立たせる値（GS-103 / GS-108。旧 `STAGE_COMMAND_FIGURE`）。
@@ -43,16 +44,26 @@ export interface BattleStageGrid {
   climb?: number;
   /** 高台とみなす高さ（舞台の点の床から何マス以上高いか。フィールドのマス。0.25〜20。書かなければ 1。GS-285）。 */
   highStep?: number;
+  /** 飛ぶ敵を床から浮かせる高さ（戦闘のマス。CharacterScale を掛ける。0〜10。書かなければ 1.5。2026-10-30 / GS-288）。 */
+  flyHeight?: number;
 }
 
 /** 床を探し始める高さの既定（GS-285）。 */
 export const DEFAULT_GRID_CLIMB = 0;
 /** 高台とみなす高さの既定（GS-285）。 */
 export const DEFAULT_HIGH_STEP = 1;
+/** 飛ぶ敵を浮かせる高さの既定（GS-288）。 */
+export const DEFAULT_FLY_HEIGHT = 1.5;
 /** 書いていなければ既定を入れた高さの値。 */
-export function gridHeights(grid: BattleStageGrid): { climb: number; highStep: number } {
-  return { climb: grid.climb ?? DEFAULT_GRID_CLIMB, highStep: grid.highStep ?? DEFAULT_HIGH_STEP };
+export function gridHeights(grid: BattleStageGrid): { climb: number; highStep: number; flyHeight: number } {
+  return { climb: grid.climb ?? DEFAULT_GRID_CLIMB, highStep: grid.highStep ?? DEFAULT_HIGH_STEP, flyHeight: grid.flyHeight ?? DEFAULT_FLY_HEIGHT };
 }
+
+/** マスの印のキー（`"col,row"`。GS-288）。 */
+export function cellKey(cell: { col: number; row: number }): string {
+  return `${cell.col},${cell.row}`;
+}
+const CELL_KEY = /^-?\d+,-?\d+$/;
 
 /** 構図 1 つ。台帳を読む人向けの名前を持てる。 */
 export interface NamedBattleCamera extends BattleCamera {
@@ -72,6 +83,11 @@ export interface BattleStageSettings {
    */
   maxEnemies: number;
   grid: BattleStageGrid;
+  /**
+   * マスごとの手書きの印（2026-10-30 / GS-288。`"col,row"` → 分け方）。地形から拾った分け方を上書きする。
+   * `block` は誰も立てない・`sky` は飛ぶ敵だけ・`high` は高台・`floor` は床。マップの差し替えに書く（共通の値には書かない）。
+   */
+  cells?: Record<string, CellMark>;
 }
 
 /** マップごとの差し替え。書いた項目だけ共通の値を差し替える（構図は構図ごと）。 */
@@ -81,6 +97,7 @@ export interface BattleStageOverride {
   commandFigure?: Partial<BattleCommandFigure>;
   maxEnemies?: number;
   grid?: Partial<BattleStageGrid>;
+  cells?: Record<string, CellMark>;
 }
 
 export interface BattleStageBook {
@@ -129,11 +146,13 @@ function readGrid(raw: unknown, base: BattleStageGrid): BattleStageGrid {
   const next: BattleStageGrid = { across: [...base.across], depth: [...base.depth] };
   if (base.climb !== undefined) next.climb = base.climb;
   if (base.highStep !== undefined) next.highStep = base.highStep;
+  if (base.flyHeight !== undefined) next.flyHeight = base.flyHeight;
   if (!object(raw)) return next;
   if (pair(raw.across)) next.across = [raw.across[0], raw.across[1]];
   if (pair(raw.depth)) next.depth = [raw.depth[0], raw.depth[1]];
   if (finite(raw.climb) && raw.climb >= 0 && raw.climb <= 20) next.climb = raw.climb;
   if (finite(raw.highStep) && raw.highStep >= 0.25 && raw.highStep <= 20) next.highStep = raw.highStep;
+  if (finite(raw.flyHeight) && raw.flyHeight >= 0 && raw.flyHeight <= 10) next.flyHeight = raw.flyHeight;
   return next;
 }
 
@@ -160,7 +179,18 @@ function readSettings(raw: unknown, base: BattleStageSettings): BattleStageSetti
     commandFigure: readFigure(raw.commandFigure, base.commandFigure),
     maxEnemies: Number.isInteger(raw.maxEnemies) && (raw.maxEnemies as number) >= 1 && (raw.maxEnemies as number) <= 6 ? raw.maxEnemies as number : base.maxEnemies,
     grid: readGrid(raw.grid, base.grid),
+    ...(readCells(raw.cells) ?? (base.cells ? { cells: { ...base.cells } } : {})),
   };
+}
+
+/** 手書きの印（GS-288）。形の違うキー・知らない印は捨てる。書いていなければ null（共通の値のまま）。 */
+function readCells(raw: unknown): { cells: Record<string, CellMark> } | null {
+  if (!object(raw)) return null;
+  const cells: Record<string, CellMark> = {};
+  for (const [key, mark] of Object.entries(raw)) {
+    if (CELL_KEY.test(key) && (CELL_MARKS as readonly unknown[]).includes(mark)) cells[key] = mark as CellMark;
+  }
+  return { cells };
 }
 
 /** 台帳の値を受ける。**知らない項目・型の違う値は捨てて既定値を使う。** */
@@ -184,6 +214,41 @@ export function battleStageSettingsOf(book: BattleStageBook, mapKey: string | nu
  */
 export function stageCellOffset(cell: { col: number; row: number }, characterScale: number): { across: number; depth: number } {
   return { across: cell.col * characterScale, depth: cell.row * characterScale };
+}
+
+/** 舞台の板を描く順の始まり。地形より後、左端の板（5000）より前。 */
+export const STAGE_ROW_ORDER = 1000;
+/** 1 列に使う順番の幅（1 列に並ぶ人数の上限）。 */
+export const STAGE_ROW_STEP = 16;
+
+/**
+ * 舞台の板を描く順（2026-10-19 / BPE-30）。**前後関係は戦闘のマスの列（`row`）で決める**——手前の列（`row` が大きい）ほど後に描く。
+ * 同じ列なら並び順（`index`。味方→敵、隊形の順）。板どうしは深度で争わせないので（`STAGE_FIGURE_MATERIAL`）、
+ * 重なった所はこの順番だけで決まる。
+ */
+export function stageFigureOrder(row: number, index: number): number {
+  return STAGE_ROW_ORDER + row * STAGE_ROW_STEP + Math.min(Math.max(0, index), STAGE_ROW_STEP - 1);
+}
+
+/**
+ * 舞台の板の材質（2026-10-30 / GS-289）。**深度を書かない**。
+ * 板はどれもカメラの向きへ回した縦の板なので、同じ列の板は同じ平面に重なり、深度が引き分けてフレームごとに前後が入れ替わる（チラつく）。
+ * 板どうしの前後は描く順（`stageFigureOrder`）で決め、地形に隠れるのは深度を読む（`depthTest`）ことで今までどおり。
+ */
+export const STAGE_FIGURE_MATERIAL = { transparent: true, alphaTest: 0.05, depthWrite: false } as const;
+
+/**
+ * 敵の板の頭の上に要る高さ（px）。体力の帯（間 8 + 帯 22）と状態の札（帯の上へ 12）に、画面の縁との間 4。
+ * CSS の `.battle-foe.on3d .battle-bar` / `.ail-tags` の置き方と合わせる。
+ */
+export const FOE_HEAD_ROOM = 46;
+
+/**
+ * 体力の帯を画面に収めるために下げる量（px。2026-10-31）。
+ * 高台の敵は板が画面の上端に寄り、頭の上の帯が画面の外へ出てしまうので、足りない分だけ下げる。
+ */
+export function foeHeadDrop(top: number): number {
+  return Math.max(0, FOE_HEAD_ROOM - top);
 }
 
 let book: BattleStageBook = structuredClone(DEFAULT_BATTLE_STAGES);

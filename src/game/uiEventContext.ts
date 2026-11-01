@@ -3,6 +3,8 @@
 // **実行機はここに在るものしか動かせない。** だから「まだ無い機能」は
 // 黙って無視せず、印を出して分かるようにしておく（`todo()`）。
 
+import { loadQuestBook, talkQuest } from './quests';
+import { enemyDef } from './battle/book';
 import { timeSettings } from './timeClock';
 import type { EventContext } from '../event/interpreter';
 import type { ActorRef, EventCommand, PixelOffset, PlaceAt, PlaceAxis, Step } from '../event/types';
@@ -86,6 +88,8 @@ export interface EventBridgeOptions {
   battle(enemies: string[], canLose: boolean, formation?: string): Promise<'win' | 'lose' | 'escape'>;
   /** 店を開いて、閉じるまで待つ（GS-66）。画面を出すのは呼ぶ側。 */
   shop(items: string[], sell: boolean): Promise<void>;
+  /** 宿の窓を開いて、閉じるまで待つ（GS-290）。泊まると決めたら true。画面を出すのは呼ぶ側。 */
+  inn(price: number): Promise<boolean>;
   returnToTitle(): Promise<void>;
   /** まだ無い機能を踏んだときの知らせ先。 */
   onTodo?(what: string): void;
@@ -823,7 +827,17 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     },
 
     /** 店（GS-66）。閉じるまで返らない。 */
+    quest: async (id) => {
+      try { await loadQuestBook(); } catch {
+        await ctx.message([{ lines: ['依頼の台帳を読み込めません。もう一度話しかけてください。'] }]);
+        return;
+      }
+      await talkQuest(options.state, id, { message: (...args) => ctx.message(...args), choice: (...args) => ctx.choice(...args), enemyName: (enemy) => enemyDef(enemy)?.name ?? enemy });
+    },
     shop: (items, sell) => options.shop(items, sell),
+
+    /** 宿の窓（GS-290）。閉じるまで返らない。 */
+    inn: (price) => options.inn(price),
 
     /** 所持金（GS-65）。**器はセーブが持つ**ので、ここは読み書きするだけ。 */
     getGold: () => options.state.gold,

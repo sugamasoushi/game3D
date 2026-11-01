@@ -8548,17 +8548,17 @@
   "editor": {
     "camera": {
       "target": [
-        5.958997158177389,
-        2.8480972560050386,
-        21.950871984000777
+        -6.9875478494842165,
+        2.295009382635536,
+        14.487629877477092
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 6.2287625954543975,
+      "distance": 5.0191644855655255,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "タイルマップレイヤー_12",
+    "activeLayer": "オブジェクトレイヤー_3",
     "brush": {
       "shape": "floor",
       "rotation": 0,
@@ -64609,11 +64609,6 @@
               "name": "Id",
               "type": "string",
               "value": "slime"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy02"
             }
           ],
           "space": "plane",
@@ -64726,11 +64721,6 @@
               "name": "Id",
               "type": "string",
               "value": "sukerabi"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy06"
             }
           ],
           "space": "plane",
@@ -64739,6 +64729,34 @@
             [
               -11.5,
               13.5
+            ]
+          ]
+        },
+        {
+          "id": "obj_5",
+          "name": "インコーシャン",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Character",
+              "type": "string",
+              "value": "inkoshang"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "inkoshang"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              -5.5,
+              9.5
             ]
           ]
         }

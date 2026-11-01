@@ -24,21 +24,25 @@ import {
   type EffectDef,
 } from '../../game/battle/book';
 import { AilTags } from '../AilTags';
+import { recordQuestKills } from '../../game/quests';
 import { enemyFighters, enemyIdOf, gainExp, partyFighters, writeBack } from '../../game/battle/party';
 import { skillName } from '../../game/battle/book';
-import { runBattle, type BattleAction, type BattleOutcome, type BattleSpoils } from '../../game/battle/flow';
+import { attackShape, runBattle, type BattleAction, type BattleOutcome, type BattleSpoils } from '../../game/battle/flow';
 import { alive, type Fighter } from '../../game/battle/rules';
 import { characterBattleImage, characterIcon, characterName, characterStand } from '../../game/characters';
 import { assignBattleCells, type CellTerrain } from '../../game/battle/cells';
 import { hitsOf, reachOf, shielded, targetables } from '../../game/battle/cover';
 import { battleFormationDef, enemyDef } from '../../game/battle/book';
+import { foeHeadDrop } from '../../game/battle/stage';
 import { STAGE_LUNGE_DELAY_S, STAGE_LUNGE_S, type BattleFigure, type BattleStageSpec, type FigurePose } from '../../game/GameView';
 import { spendItem, type GameState } from '../../game/state';
 import { itemEquip, itemName, itemText, itemUse } from '../../game/items';
 import { skillUse, wouldHelp } from '../../game/battle/heal';
 import { playSe, stopBgm } from '../../game/audio';
 import { debugToolsShown } from '../../game/devMode';
-import { battleSettings, normalAttackOf } from '../../game/battle/settings';
+import { backRowRate, battleSettings, heightRates, normalAttackOf } from '../../game/battle/settings';
+import { aimInfo, rateText } from '../../game/battle/aimInfo';
+import { skillTagText } from '../../game/battle/skillTags';
 import type { BattlePresentationContext, BattlePresentationHook } from '../../game/battle/presentation';
 
 // 間（1 行を読ませる・数が動く・当たった印・仰け反り・敵が攻めかかる・「何も持ってない！」）と
@@ -55,17 +59,6 @@ const HIT_WAIT: Record<'damage' | 'heal' | 'miss' | 'ailment', number> = {
   miss: 300,
   ailment: 400,
 };
-/** ゲーム画面の大きさ（`.screen` と同じ。GS-123 の枠の判定に使う）。 */
-const SCREEN = { width: 1280, height: 720 };
-
-/**
- * その枠が画面に収まっているか（GS-123）。
- * **3D の板がカメラのすぐ手前や背後にあると、投影した枠が桁違いに大きくなる**（実測: 幅 128959px）。
- * そういうときは板に重ねず、画面の決まった場所へ出す。
- */
-const onScreen = (rect?: FigureRect | null): boolean =>
-  !!rect && rect.width > 0 && rect.height > 0 && rect.width <= SCREEN.width && rect.height <= SCREEN.height
-  && rect.left > -SCREEN.width && rect.left < SCREEN.width * 2 && rect.top > -SCREEN.height && rect.top < SCREEN.height * 2;
 
 /** 画面ゆれの長さ（CSS の `mep-shake` と同じ）。揺れの途中で次へ進まないように待つ（GS-109）。 */
 const SHAKE_MS = 260;
@@ -81,6 +74,13 @@ type FigureRect = { left: number; top: number; width: number; height: number };
  * 3D の舞台（GS-87）。**画面（DOM）は描かず、ゲームの 3D に頼む口**。
  * ゲーム本体が `GameView` から作って渡す。渡されなければ今までどおり絵を画面に並べる。
  */
+/** 戦いの始まり方（GS-295。フィールドアタックの後）。 */
+export interface BattleStartOpening {
+  preemptive?: boolean;
+  /** `enemies` と同じ並びの、残りの HP。書かない所は満タン。 */
+  enemyHp?: Array<number | undefined>;
+}
+
 export interface BattleStage {
   /** マップに書いた舞台（GS-89）。書いていなければ null で、背景の絵で戦う。 */
   spec(): BattleStageSpec | null;
@@ -90,6 +90,11 @@ export interface BattleStage {
   pose(id: string, pose: FigurePose): void;
   /** マスの地形（2026-10-29 / GS-285。床・高台・空と高さ）。地形を知らなければ null。 */
   terrain?(cell: { col: number; row: number }): CellTerrain | null;
+  /**
+   * 技の絵をその人の板に出す（2026-10-31。3D の板で深度を見る。フィールドアタックと同じ `fieldFx`）。
+   * 長さ（`def.ms`）が来たら消える。前は DOM の重ね絵で、いつも画面の手前に出ていた。
+   */
+  fx?(id: string, def: EffectDef): void;
 }
 
 /**
@@ -176,46 +181,6 @@ function preload(src: string): Promise<void> {
 /** 画面に出している HP・MP の控え（GS-85）。 */
 function snapshot(list: Fighter[]): Record<string, { hp: number; mp: number }> {
   return Object.fromEntries(list.map((who) => [who.id, { hp: who.hp, mp: who.mp }]));
-}
-
-/**
- * 技の絵（GS-83）。コマを並べた 1 枚絵を**1 コマずつめくり、大きさを伸ばす**。
- * CSS の `steps()` は 1 行の絵しかめくれない（風の刃は 5×2 コマ）ので、ここで書き換える。
- */
-function EffectSprite({ def }: { def: EffectDef }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const [first, last] = def.frames;
-    const count = Math.max(1, last - first + 1);
-    const start = performance.now();
-    let raf = 0;
-    const tick = (now: number) => {
-      const t = now - start;
-      const frame = first + (Math.floor((t * def.fps) / 1000) % count);
-      el.style.backgroundPosition = `${-(frame % def.columns) * def.frameWidth}px ${
-        -Math.floor(frame / def.columns) * def.frameHeight
-      }px`;
-      if (def.scale && def.scaleMs) {
-        const [from, to] = def.scale;
-        const leg = (t % (def.yoyo ? def.scaleMs * 2 : def.scaleMs)) / def.scaleMs;
-        const k = def.yoyo && leg > 1 ? 2 - leg : leg;
-        el.style.transform = `translate(-50%, -50%) scale(${from + (to - from) * k})`;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [def]);
-  return (
-    <div
-      ref={ref}
-      className="battle-fx"
-      style={{ width: def.frameWidth, height: def.frameHeight, backgroundImage: `url("${effectImage(def)}")` }}
-      aria-hidden
-    />
-  );
 }
 
 /**
@@ -321,9 +286,15 @@ export function BattleView({
   signal,
   onEnd,
   backdrop = false,
+  opening,
 }: {
   /** 出す敵（台帳の id）。同じ id を並べれば 2 体出る。 */
   enemies: string[];
+  /**
+   * 始まり方（GS-295。フィールドアタックの後）。`preemptive` は先制、`enemyHp` は `enemies` と同じ並びの
+   * 残りの HP（フィールドで減らしたぶん。書かない所は満タン）。
+   */
+  opening?: BattleStartOpening;
   /**
    * 背景だけ（GS-219。戦闘演出エディタのプレビュー）。舞台と敵を出すだけで、**戦いを始めない**——
    * 命令・文・隊列の窓は出ず、キーも受けない。技の絵は `battle-effect-preview` で重ねる。
@@ -346,7 +317,15 @@ export function BattleView({
   presentationRef.current = onPresentation;
   // 面子は 1 回だけ作る。**描き直しでは作り直さない**（作り直すと HP が満タンに戻る）。
   const fightersRef = useRef<Fighter[] | null>(null);
-  if (!fightersRef.current) fightersRef.current = [...partyFighters(state), ...enemyFighters(enemies)];
+  if (!fightersRef.current) {
+    const foes = enemyFighters(enemies);
+    // フィールドで減らした HP を持ち込む（GS-295）。1 以上・満タン以下に収める（0 なら倒した後なので戦わない作り）。
+    opening?.enemyHp?.forEach((hp, index) => {
+      const foe = foes[index];
+      if (foe && typeof hp === 'number' && Number.isFinite(hp)) foe.hp = Math.min(foe.stats.hp, Math.max(1, Math.floor(hp)));
+    });
+    fightersRef.current = [...partyFighters(state), ...foes];
+  }
   const fighters = fightersRef.current;
   /**
    * 画面に出している HP・MP（GS-85）。**`update()` のときだけ実際の値へ寄せる**——
@@ -382,8 +361,6 @@ export function BattleView({
   /** 当たった印（GS-68）。1 手ずつ進むので、出ているのは 1 つでよい。 */
   const [hit, setHit] = useState<HitMark | null>(null);
   /** いま出している技の絵（GS-83）。`seq` は同じ絵を続けて出すときの作り直しの合図。 */
-  const [fx, setFx] = useState<{ seq: number; foe: string; def: EffectDef } | null>(null);
-  const fxSeqRef = useRef(0);
   /** 仰け反っている敵（GS-83。旧作 `leanBack`）。 */
   const [lean, setLean] = useState<string | null>(null);
   /** 攻めかかっている敵（GS-83。旧作 `attackTween`）。 */
@@ -445,6 +422,8 @@ export function BattleView({
         height: 0,
         scale: enemyScale(enemyIdOf(foe)),
         cell: cells.get(foe.id),
+        // 飛ぶ敵（GS-288）は浮かせて立たせる。
+        ...(foe.flying ? { flying: true } : {}),
       })),
     ].filter((figure) => figure.image);
     scene3d.show(stageSpec, figures);
@@ -484,24 +463,18 @@ export function BattleView({
   // 戦いの進行（`act`）は通さない——HP も手番も動かさず、絵と音だけ見せる。
   useEffect(() => {
     if (!debugToolsShown()) return;
-    let timer = 0;
     const onPreview = (event: Event) => {
       const def = (event as CustomEvent<{ def?: EffectDef }>).detail?.def;
       const foe = fighters.find((who) => who.side === 'enemy' && alive(who));
       if (!def || !foe) return;
       void preload(effectImage(def)).then(() => {
         if (def.se) playSe(def.se);
-        fxSeqRef.current += 1;
-        const seq = fxSeqRef.current;
-        setFx({ seq, foe: foe.id, def });
-        window.clearTimeout(timer);
-        timer = window.setTimeout(() => setFx((now) => (now?.seq === seq ? null : now)), def.ms);
+        scene3dRef.current?.fx?.(foe.id, def);
       });
     };
     window.addEventListener('battle-effect-preview', onPreview);
     return () => {
       window.removeEventListener('battle-effect-preview', onPreview);
-      window.clearTimeout(timer);
     };
     // 面子は最初の 1 回しか作らない（`fightersRef`）。
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -638,10 +611,8 @@ export function BattleView({
             // 音は台帳の指定を先に見る（素手のとき）。空なら絵の側の音（GS-123）。
             const sound = skill ? def.se : (plain.se || def.se);
             if (sound) playSe(sound);
-            fxSeqRef.current += 1;
-            setFx({ seq: fxSeqRef.current, foe: defender.id, def });
+            scene3dRef.current?.fx?.(defender.id, def);
             await wait(def.ms);
-            setFx(null);
             return;
           }
           // 敵: 攻めかかって、画面が揺れる（旧作 `EnemyAttack`）。
@@ -660,12 +631,10 @@ export function BattleView({
           playSe(skill?.se ?? (enemyPlain.se || battleSettings().se.enemyAttack));
           setQuake(true);
           if (foeDef) {
-            fxSeqRef.current += 1;
-            setFx({ seq: fxSeqRef.current, foe: defender.id, def: foeDef });
+            scene3dRef.current?.fx?.(defender.id, foeDef);
           }
           // 残りの間。**攻めかかる動きと揺れが終わるまで**は待つ（GS-110）——味方の点滅は動きの後。
           await wait(Math.max(SHAKE_MS, STAGE_LUNGE_S * 1000, battleSettings().ms.enemyAct - lungeDelayMs, foeDef ? foeDef.ms : 0));
-          if (foeDef) setFx(null);
           setLunge(null);
           setQuake(false);
         },
@@ -688,13 +657,14 @@ export function BattleView({
           return ok;
         },
         random: () => { if (signal?.aborted) throw aborted(); return Math.random(); },
-      });
+      }, { preemptive: opening?.preemptive === true });
       if (signal?.aborted) return;
       presentationRef.current?.(`battle.${outcome}` as BattlePresentationHook);
       // 減った HP を記録へ戻す。**負けたときも戻す**——倒れたまま次へ行くのではなく、
       // このあとタイトルへ帰るだけなので、記録が食い違わないほうがよい。
       writeBack(state, fighters);
       if (outcome === 'win') {
+        recordQuestKills(state, fighters.filter((one) => one.side === 'enemy' && one.hp <= 0).map(enemyIdOf));
         // 取り分をここで入れる（GS-63）。**記録を持っているのはこの画面**なので、
         // 「経験は戦闘画面、お金は外」と分けると足し忘れる側ができる。
         state.gold += spoils.gold;
@@ -1054,6 +1024,11 @@ export function BattleView({
    * 相手を選んでいないときは空。
    */
   const aimedFoe = stage.kind === 'target' ? foes.find((foe) => foe.id === picks[at]?.foe) ?? null : null;
+  // 狙っている相手への入り方（GS-292）。ダメージの式と同じ倍率の決まり（後衛・高台・飛ぶ敵）から出す。
+  const aim = aimedFoe && asking
+    // 通常攻撃は武器の直接・対空（GS-294）。
+    ? aimInfo(asking, aimedFoe, foes, stage.kind === 'target' && stage.skill ? skillDef(stage.skill) : attackShape(asking, null), heightRates(), backRowRate())
+    : null;
   const aimed = new Set(aimedFoe && stage.kind === 'target'
     ? hitsOf(aimedFoe, foes, reachOf(stage.skill ? skillDef(stage.skill) : null), 1).map((one) => one.who.id)
     : []);
@@ -1132,7 +1107,9 @@ export function BattleView({
                         top: rects[foe.id]!.top,
                         width: rects[foe.id]!.width,
                         height: rects[foe.id]!.height,
-                      }
+                        // 頭の上の帯が画面の上へ出るなら、その分だけ下げる（高台の敵。2026-10-31）。
+                        '--head-drop': `${foeHeadDrop(rects[foe.id]!.top)}px`,
+                      } as CSSProperties
                     : { display: 'none' }
                   : undefined
               }
@@ -1187,29 +1164,10 @@ export function BattleView({
               <AilmentTags who={foe} />
               {/* 2D でも元の大きさ × 敵の倍率（`enemies.json` の `scale`）。 */}
               {on3d ? null : src ? <img src={src} alt={foe.name} style={scaleStyle(enemyScale(enemyIdOf(foe)))} /> : <span className="battle-foe-name">{foe.name}</span>}
-              {/* 技の絵（GS-83）。**敵の絵の真ん中**に重ねる。 */}
-              {fx && fx.foe === foe.id ? <EffectSprite key={fx.seq} def={fx.def} /> : null}
             </div>
           );
         })}
-        {/*
-         * 敵の素手の攻撃の絵（GS-123）。**殴られた味方の板の上**に重ねる。
-         * 味方は敵と違って並べた枠を持たないので、板の画面位置へ直に置く。
-         * 3D の舞台のときだけ——2D の戦闘では味方の絵が画面に無い。
-         */}
-        {fx && !foes.some((foe) => foe.id === fx.foe) ? (
-          <div
-            className={onScreen(rects[fx.foe]) ? 'battle-party-fx' : 'battle-party-fx loose'}
-            style={onScreen(rects[fx.foe]) ? {
-              left: rects[fx.foe]!.left,
-              top: rects[fx.foe]!.top,
-              width: rects[fx.foe]!.width,
-              height: rects[fx.foe]!.height,
-            } : undefined}
-          >
-            <EffectSprite key={fx.seq} def={fx.def} />
-          </div>
-        ) : null}
+        {/* 技の絵（GS-83 / GS-123）は 3D の板（`scene3d.fx`。2026-10-31）。画面には重ねない。 */}
       </div>
 
       {/*
@@ -1324,13 +1282,19 @@ export function BattleView({
       </div>
 
       {/*
-       * 相手を選んでいるあいだの一言（GS-80）。旧作 `EnemySelectWindow` と同じ文で、
-       * 同じ場所（画面の真ん中・下の帯のすぐ上）に出す。**一覧は出さない**——
-       * どれを狙っているかは絵の点滅が示す。
+       * 相手を選んでいるあいだの一言（GS-80）。旧作 `EnemySelectWindow` と同じ場所（画面の真ん中・下の帯のすぐ上）。
+       * **一覧は出さない**——どれを狙っているかは絵の点滅が示す。
+       * 中身は旧作の「獲物はあいつだ！！」をやめ、**狙っている相手に何倍で入るかとその理由**にした（2026-10-31 / GS-292。`aimInfo.ts`）。
        */}
       {asking && stage.kind === 'target' ? (
         <div className="battle-aim">
-          獲物はあいつだ！！
+          {aim ? (
+            <>
+              <b className={aim.rate > 1 ? 'up' : aim.rate < 1 ? 'down' : ''}>ダメージ {rateText(aim.rate)}</b>
+              {aim.factors.length ? <small>{aim.factors.map((one) => `${one.label} ${rateText(one.rate)}`).join('・')}</small> : null}
+              {aim.behind.length ? <small>後ろにも {aim.behind.map(rateText).join('・')}</small> : null}
+            </>
+          ) : '相手を選んでください'}
           {/* 戻る ✖（GS-90）。攻め方・技の窓と同じ置き方。Esc と同じく 1 段戻る。 */}
           <button type="button" className="battle-close" onClick={back} aria-label="もどる">
             ✖
@@ -1357,7 +1321,7 @@ export function BattleView({
                 (() => {
                   const skill = skillDef(skillsOf(state.members.get(asking.id)?.skills ?? [], stage.group)[at] ?? '');
                   return skill ? (
-                    <ListInfo text={skill.text ?? ''} label="消費MP" value={String(skill.mp)} short={asking.mp < skill.mp} />
+                    <ListInfo text={`${skillTagText(skill)}${skill.text ?? ''}`} label="消費MP" value={String(skill.mp)} short={asking.mp < skill.mp} />
                   ) : (
                     <ListInfo text="" label="" value="" />
                   );

@@ -20,13 +20,13 @@ import {
   type SkillDef,
   type SkillReach,
 } from './rules';
-import { hitsOf, reachOf, scaledDamage, targetables, type Hit } from './cover';
+import { coverOf, hitsOf, reachOf, scaledDamage, targetables, type Hit } from './cover';
 import { heightRate } from './height';
 import { ailmentDef, enemyDef, skillDef } from './book';
 import { enemyIdOf } from './party';
 import { applyUse, healLine, skillUse, wouldHelp } from './heal';
-import { itemName, itemUse } from '../items';
-import { backRowRate, battleSettings, heightRates } from './settings';
+import { itemEquip, itemName, itemUse } from '../items';
+import { backRowRate, battleSettings, heightRates, normalAttackOf } from './settings';
 
 /**
  * ゲームオーバーの合図（GS-60）。**エラーではなく「ここで話は終わり」の印。**
@@ -50,6 +50,12 @@ export type BattleAction =
 
 /** 決着。 */
 export type BattleOutcome = 'win' | 'lose' | 'escape';
+
+/** 戦いの始まり方（GS-295）。書かなければふつうの始まり。 */
+export interface BattleOpening {
+  /** 先制。1 ターン目は味方だけが動く（フィールドアタックで怯ませた敵に触れたとき）。 */
+  preemptive?: boolean;
+}
 
 /** 勝ったときの取り分。 */
 export interface BattleSpoils {
@@ -195,10 +201,44 @@ export function cureTarget(party: Fighter[], skill: SkillDef): Fighter | null {
  * 当たる相手を決める（2026-10-29 / GS-280）。選んだ相手が狙えなければ（倒れた・前に守られている）、狙える相手からくじで選ぶ。
  * 全体は選ばずに全員。**選ぶのは呼ぶ側の乱数**。
  */
-function aim(chosen: Fighter | null | undefined, side: Fighter[], reach: SkillReach, random: () => number): Hit[] {
+/**
+ * 直接・対空を見るための技の形（2026-10-31 / GS-294）。技があればそのまま、通常攻撃（技なし）なら武器の `equip.strike.range`
+ * （味方だけ。無ければ直接）。高さの倍率（`heightRate`）と相手を選ぶ窓（`aimInfo`）が使う。
+ */
+export function attackShape(attacker: Fighter, skill: SkillDef | null): Pick<SkillDef, 'kind' | 'range'> | null {
+  if (skill) return skill;
+  const strike = attacker.side === 'party' && attacker.weapon ? itemEquip(attacker.weapon)?.strike ?? null : null;
+  const range = normalAttackOf(attacker.side, strike).range;
+  return range ? { kind: '通常攻撃', range } : null;
+}
+
+/** かばう決まり（GS-294）でかばわれていれば、代わりに受ける人を返して一言いう（同じ組みは 1 回の攻撃で 1 回だけ言う）。 */
+async function coveredTarget(attacker: Fighter, target: Fighter, side: Fighter[], io: BattleIo, said: Set<string>): Promise<Fighter> {
+  const guard = coverOf(target, side, attacker);
+  if (!guard) return target;
+  const key = `${guard.id}>${target.id}`;
+  if (!said.has(key)) {
+    said.add(key);
+    await io.say(`${guard.name} が ${target.name} を かばった！`);
+  }
+  return guard;
+}
+
+/** 当たる相手を順に殴る（かばう人がいれば代わりに。見せ場は 1 人目だけ）。 */
+async function strikeAll(attacker: Fighter, hits: Hit[], side: Fighter[], skill: SkillDef | null, io: BattleIo): Promise<void> {
+  const said = new Set<string>();
+  for (const [at, hit] of hits.entries()) {
+    const target = await coveredTarget(attacker, hit.who, side, io, said);
+    if (!alive(target)) continue;
+    await strike(attacker, target, skill, io, hit.rate, at === 0);
+  }
+}
+
+function aim(chosen: Fighter | null | undefined, side: Fighter[], reach: SkillReach, random: () => number, attacker?: Fighter): Hit[] {
   const backRate = backRowRate();
   if (reach === 'all') return hitsOf(null, side, reach, backRate);
-  const open = targetables(side, reach);
+  // 飛ぶ人は前に守られた人も狙える（GS-288）。
+  const open = targetables(side, reach, attacker);
   const pick = chosen && open.includes(chosen) ? chosen : pickTarget(open, random);
   return hitsOf(pick, side, reach, backRate);
 }
@@ -221,7 +261,8 @@ async function strike(attacker: Fighter, defender: Fighter, skill: SkillDef | nu
   // 当たった瞬間の音は**どれも同じ打撃**（旧作 `SE_attack`）。技ごとの音は見せ場で鳴っている。
   io.se?.(battleSettings().se.hit);
   // 位置の倍率（後衛。GS-280）に高さの倍率（高台。GS-285）を重ねてから丸める（必ず 1 は通す）。
-  const done = hurt(defender, scaledDamage(damageOf(attacker, defender, skill), rate * heightRate(attacker, defender, skill, heightRates())));
+  // 通常攻撃の直接・対空は武器しだい（GS-294。`attackShape`）。
+  const done = hurt(defender, scaledDamage(damageOf(attacker, defender, skill), rate * heightRate(attacker, defender, attackShape(attacker, skill), heightRates())));
   await io.hit?.(defender.id, done, 'damage');
   await io.update();
   await io.say(`${defender.name} に ${done} のダメージ！`);
@@ -300,6 +341,11 @@ async function actParty(
       await io.say(`${who.name} は 身がまえた！`);
       return false;
     }
+    if (skill.type === 'cover') {
+      startCover(who);
+      await io.say(`${who.name} は 仲間の 前に 立った！`);
+      return false;
+    }
     if (skill.type === 'cure') {
       // 治すのは**自分たちの誰か**。相手を選んでいなければ、効く人のうち HP の割合が低い人を先に。
       const named = party.find((one) => one.id === action.target && alive(one));
@@ -330,7 +376,7 @@ async function actParty(
   // 選んだ相手が先に倒れていたら、狙える別の相手へ回す（空振りで 1 手損させない）。
   // 通常攻撃はいつも単体（GS-280。武器ごとの届き方は後で）。
   const hits = aim(named, enemies, reachOf(skill), io.random);
-  for (const [at, hit] of hits.entries()) await strike(who, hit.who, skill, io, hit.rate, at === 0);
+  await strikeAll(who, hits, enemies, skill, io);
   return false;
 }
 
@@ -348,23 +394,35 @@ function enemySkill(who: Fighter, io: BattleIo): SkillDef | null {
   return null;
 }
 
+/** かばい始めた順の番号（GS-294）。ターンをまたいで増え続けてよい（比べるのは同じターンの中だけ）。 */
+let coverSeq = 0;
+function startCover(who: Fighter): void {
+  coverSeq += 1;
+  who.covering = coverSeq;
+}
+
 /** 敵 1 体ぶん。技を持っていれば出し、なければ殴る。 */
 async function actEnemy(who: Fighter, party: Fighter[], io: BattleIo): Promise<void> {
   if (!party.some(alive)) return;
   const skill = enemySkill(who, io);
   // 狙うのも味方と同じ決まり（GS-280）。前に守られた人は単体では狙わない。
-  const hits = aim(null, party, reachOf(skill), io.random);
+  const hits = aim(null, party, reachOf(skill), io.random, who);
   if (!hits.length) return;
   if (!skill) {
     await io.say(`${who.name} の こうげき！`);
-    await strike(who, hits[0]!.who, null, io);
+    await strikeAll(who, hits.slice(0, 1), party, null, io);
     return;
   }
   payMp(who, skill);
   await io.update();
   await io.say(`${who.name} の ${skill.name}！`);
+  if (skill.type === 'cover') {
+    startCover(who);
+    await io.say(`${who.name} は 仲間の 前に 立った！`);
+    return;
+  }
   if (skill.type === 'attack') {
-    for (const [at, hit] of hits.entries()) await strike(who, hit.who, skill, io, hit.rate, at === 0);
+    await strikeAll(who, hits, party, skill, io);
     return;
   }
   for (const hit of hits) await inflict(hit.who, skill, io);
@@ -374,11 +432,17 @@ async function actEnemy(who: Fighter, party: Fighter[], io: BattleIo): Promise<v
  * 1 戦。**終わるまで返らない。**
  * `fighters` は直に書き換える——終わったら呼ぶ側が `writeBack` でセーブへ戻す。
  */
-export async function runBattle(fighters: Fighter[], io: BattleIo): Promise<{ outcome: BattleOutcome; spoils: BattleSpoils }> {
+export async function runBattle(
+  fighters: Fighter[],
+  io: BattleIo,
+  opening: BattleOpening = {},
+): Promise<{ outcome: BattleOutcome; spoils: BattleSpoils }> {
   const party = fighters.filter((who) => who.side === 'party');
   const enemies = fighters.filter((who) => who.side === 'enemy');
   const names = [...new Set(enemies.map((who) => who.name))].join('と');
   await io.say(`${names} が あらわれた！`);
+  // 先制（GS-295）。フィールドアタックで怯ませた敵に触れたとき。**1 ターン目は敵が動かない。**
+  if (opening.preemptive) await io.say('先制攻撃！');
 
   // 空回りしない止め（データが壊れていても画面が固まらない）。
   for (let turn = 0; turn < 200; turn += 1) {
@@ -401,7 +465,8 @@ export async function runBattle(fighters: Fighter[], io: BattleIo): Promise<{ ou
       const action = orders.get(who.id);
       if (!action || action.kind !== 'skill') return false;
       const type = skillDef(action.skill)?.type;
-      return type === 'guard' || type === 'avoid';
+      // かばう（GS-294）も守りと同じく先に。
+      return type === 'guard' || type === 'avoid' || type === 'cover';
     };
     for (const who of [...order.filter(defends), ...order.filter((one) => !defends(one))]) {
       if (!alive(who)) continue; // この順番を待つ間に倒れた者は動かない。
@@ -417,6 +482,7 @@ export async function runBattle(fighters: Fighter[], io: BattleIo): Promise<{ ou
           return { outcome: 'escape', spoils: { exp: 0, gold: 0 } };
         }
       } else {
+        if (turn === 0 && opening.preemptive) continue;
         await actEnemy(who, party, io);
       }
       const decided = battleResult(fighters);

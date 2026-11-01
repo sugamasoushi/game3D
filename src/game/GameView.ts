@@ -75,6 +75,8 @@ import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { coreCells, overlaps, symbolTouching } from './symbolTouch';
+import { createFieldFx } from './fieldFx';
+import type { EffectDef } from './battle/book';
 import { withoutHiddenLayers } from './hiddenLayers';
 import type { EffectLevel } from './ambience';
 import { mapEffectStartWeights, readMapEffects, startMapEffectFade, stepMapEffectFade, type MapEffectFade } from './mapEffectSwitch';
@@ -92,8 +94,8 @@ import { entryForFile, mapKeyForFile, type MapEntry } from './mapIndex';
 import { mapUrl } from './assets';
 import { battleFormationSlots, chooseBattleFormation, stageFigureCells, type BattleFormationSlot } from './battle/book';
 import { LEAN_BACK_S, leanBackOffset } from './battle/leanBack';
-import { battleStageBook, battleStageSettingsOf, gridHeights, loadBattleStages, stageCellOffset, type BattleStageSettings } from './battle/stage';
-import { groundOf, type CellGround } from './battle/height';
+import { battleStageBook, battleStageSettingsOf, cellKey, gridHeights, loadBattleStages, stageCellOffset, stageFigureOrder, STAGE_FIGURE_MATERIAL, STAGE_ROW_ORDER, type BattleStageSettings } from './battle/stage';
+import { canStand, groundOf, type CellGround } from './battle/height';
 import type { CellTerrain } from './battle/cells';
 
 /** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
@@ -226,6 +228,8 @@ export interface BattleFigure {
   scale: number;
   /** この戦闘で立つマス（2026-10-29 / GS-280。`cells.ts` が決める）。無ければ隊形の枠を並び順に使う（戦闘演出エディタの見本）。 */
   cell?: BattleFormationSlot;
+  /** 飛ぶ敵（2026-10-30 / GS-288）。床から `grid.flyHeight` 浮かせて立たせ、空のマスにも立てる。 */
+  flying?: boolean;
 }
 
 /** 舞台の板の見せ方（GS-87）。立ち上がり（偽→真）で動きが始まる。 */
@@ -362,8 +366,33 @@ export interface GameView {
    * 隠していなければ何もしない（false）。
    */
   restoreNpc(id: string): boolean;
-  /** NPC の居る所と向き（マス。小数）。居なければ null。 */
-  npcAt(id: string): { x: number; y: number; z: number; facing: WalkDir } | null;
+  /** NPC の居る所と向き（マス。小数）。`half` は体の半幅（マス）。居なければ null。 */
+  npcAt(id: string): { x: number; y: number; z: number; facing: WalkDir; half: number } | null;
+  /**
+   * NPC を怯ませる（GS-295。フィールドアタックが当たった）。`ms` のあいだうろつき・経路の歩きを止める。
+   * **怯んでいるあいだは延ばさない**。居なければ false。
+   */
+  stunNpc(id: string, ms: number): boolean;
+  /** フィールドアタックを振った（GS-295）。`holdMs` のあいだ歩けなくし、絵を少し前へ踏み込ませる。 */
+  strike(holdMs: number): void;
+  /**
+   * フィールドの技の絵を 3D の板で出す（GS-295）。`at` はマス（絵の真ん中）。深度を見るので手前の物に隠れる。
+   * `hold` なら長さが来ても消さない（飛ぶ物。`endFx` で消す）。返すのは番号。
+   */
+  playFx(def: EffectDef, at: { x: number; y: number; z: number }, how?: { hold?: boolean; scale?: number }): number;
+  /**
+   * 戦闘の舞台の板に技の絵を出す（2026-10-31。前は DOM の重ね絵）。板の真ん中に、**画面の上で絵の画素どおりの大きさ**で。
+   * 深度を見るので、手前の板に隠れる。長さが来たら消える。舞台に居なければ 0。
+   */
+  figureFx(id: string, def: EffectDef): number;
+  /** 出している絵を動かす（飛ぶ物）。 */
+  moveFx(id: number, at: { x: number; y: number; z: number }): void;
+  /** 絵を消す。 */
+  endFx(id: number): void;
+  /** 主人公の板を白く光らせて戻す（GS-295。先頭を入れ替えたとき）。 */
+  flashLeader(ms: number): void;
+  /** その点（マス。飛ぶ物の真ん中）が地形に塞がれているか（GS-295。飛ぶ物が壁で消える）。人は見ない。 */
+  shotBlocked(at: { x: number; y: number; z: number }): boolean;
   /**
    * 隊列の中での役（GS-184）。`leader` は先頭＝主人公、`follower` は後ろを付いて歩く仲間。
    * 隊列に居なければ null。イベントの `party:<id>` をどちらへ回すかに使う。
@@ -568,14 +597,10 @@ const STAGE_BREATH_S = 2.6;
  */
 /** 左端の板を描く順番。地形・隊形の板（`STAGE_ROW_ORDER` の前後）より後に描いて手前に見せる。 */
 const STAGE_COMMAND_RENDER_ORDER = 5000;
-/**
- * 舞台の板を描く順（2026-10-19 / BPE-30）。**前後関係は戦闘のマスの列（`row`）で決める**——手前の列ほど後に描く。
- * 同じ列なら並び順（味方→敵、隊形の順）。順番 = `STAGE_ROW_ORDER` + 列 × `STAGE_ROW_STEP` + 何人目か。
- */
-const STAGE_ROW_ORDER = 1000;
 /** 舞台の板とマスの線を置く描画の層（three.js の `layers`）。チルトシフトのぼかしの後に描く（2026-10-19）。 */
 const STAGE_SHARP_LAYER = 1;
-const STAGE_ROW_STEP = 16;
+/** 画面に入っていない板（カメラの後ろの味方）へ出す技の絵を、カメラから何マス先に置くか（2026-10-31）。 */
+const FX_LOOSE_CELLS = 3;
 /** 隊列を描く順の始まり（GS-190）。同じ場所に重なったときだけ効く（深度が同じなら後に描いた方が上）。 */
 const PARTY_RENDER_ORDER = 50;
 /**
@@ -775,9 +800,74 @@ export function createGameView(
       actor.face(player.facingNow());
     }
   };
+  /** 仲間 1 人ぶんの板を作る（光・影を合わせる）。絵の区切りが無ければ null。 */
+  const makeFollower = (id: string): Player | null => {
+    if (!player || !built || !mapDef) return null;
+    const sheet = actorSheet(followerBook, sheetKeyOf(id));
+    if (!sheet) return null;
+    const unit = collision?.unit ?? 1;
+    const actor = createPlayer(unit, mapDef.grid?.tilePx ?? 32, sheet, { scale: characterScaleOf(mapDef.properties) });
+    actor.group.name = `follower:${id}`;
+    actor.followAt(player.position, 0, rig.yaw);
+    actor.face(player.facingNow());
+    actor.setLighting(shownLighting(mapDef), shownLights(mapDef), unit, built.cameraFx);
+    built.attachShadowMask(actor.bodyMaterial);
+    built.bindLightWalls(actor.bodyMaterial);
+    const field = built.shadowField();
+    actor.setShadowField(field.solid, field.surface, field.top, field.selfSolid);
+    return actor;
+  };
+  /** いま主人公の板に出している人（隊列の先頭。GS-295）。マップを読んだときに決まり、先頭が変われば入れ替える。 */
+  let leaderShown = '';
+  /** キャラも水面に映す（DEC-303）。主人公の板を入れ替えたら渡し直す。 */
+  const castReflections = () => {
+    if (!built) return;
+    const cast = [built.group, ...(player ? [player.group] : []), followerGroup, fieldEffects.group];
+    if (mapModels) cast.push(mapModels.group);
+    for (const npc of npcs.values()) cast.push(npc.actor.group);
+    fieldEffects.setReflectSources(cast);
+  };
+  /**
+   * 先頭の入れ替え（GS-295。L2・R2 とメニューの並べ替え）。**主人公の板を新しい先頭の板に替える**——
+   * 付いて歩いていた新しい先頭の板をそのまま主人公の位置へ移し、前の先頭の板は仲間の列へ回す（絵を読み直さない）。
+   * 体（当たり）は主人公のまま。仲間の列の道（`partyTrail`）も残すので、並びは崩さず人だけ入れ替わる。
+   */
+  const swapLeader = (from: string, to: string) => {
+    if (!player) return;
+    const fresh = followers.get(to) ?? makeFollower(to);
+    if (!fresh) {
+      console.warn(`[actors] 先頭のキャラクターの絵の区切りが台帳（spriteSheets.json）にありません: ${to}（前の先頭の絵のまま）`);
+      return;
+    }
+    followers.delete(to);
+    fresh.group.removeFromParent();
+    const old = player;
+    fresh.placeAt(old.position.x, old.position.y, old.position.z);
+    fresh.face(old.facingNow());
+    fresh.faceCamera((rig.yaw * Math.PI) / 180);
+    fresh.group.name = old.group.name;
+    fresh.group.visible = old.group.visible;
+    old.group.removeFromParent();
+    scene.add(fresh.group);
+    player = fresh;
+    if ((options.party?.() ?? []).includes(from)) {
+      old.group.name = `follower:${from}`;
+      followers.set(from, old);
+      followerGroup.add(old.group);
+    } else {
+      old.dispose();
+    }
+    // 道は残す（並べ直しで全員が主人公の足元へ集まらないように）。
+    followerOrder = JSON.stringify((options.party?.() ?? []).slice(1));
+    applyActorOccluder();
+    castReflections();
+  };
   const updateFollowers = (dt: number) => {
     if (!player || !built || !mapDef || status.loading) return;
-    const ids = (options.party?.() ?? []).slice(1);
+    const all = options.party?.() ?? [];
+    if (all[0] && leaderShown && all[0] !== leaderShown) swapLeader(leaderShown, all[0]);
+    if (all[0]) leaderShown = all[0];
+    const ids = all.slice(1);
     const order = JSON.stringify(ids);
     if (order !== followerOrder) {
       resetFollowers();
@@ -787,16 +877,9 @@ export function createGameView(
     for (const [id, actor] of followers) if (!ids.includes(id)) {
       actor.group.removeFromParent(); actor.dispose(); followers.delete(id);
     }
-    for (const id of ids) if (!followers.has(id) && actorSheet(followerBook, sheetKeyOf(id))) {
-      const actor = createPlayer(unit, mapDef.grid?.tilePx ?? 32, actorSheet(followerBook, sheetKeyOf(id))!, { scale: characterScaleOf(mapDef.properties) });
-      actor.group.name = `follower:${id}`;
-      actor.followAt(player.position, 0, rig.yaw);
-      actor.face(player.facingNow());
-      actor.setLighting(shownLighting(mapDef), shownLights(mapDef), unit, built.cameraFx);
-      built.attachShadowMask(actor.bodyMaterial);
-      built.bindLightWalls(actor.bodyMaterial);
-      const field = built.shadowField();
-      actor.setShadowField(field.solid, field.surface, field.top, field.selfSolid);
+    for (const id of ids) if (!followers.has(id)) {
+      const actor = makeFollower(id);
+      if (!actor) continue;
       followers.set(id, actor);
       followerGroup.add(actor.group);
     }
@@ -852,10 +935,29 @@ export function createGameView(
     home: Vector3;
     /** いまの不透明度（GS-207）。無ければ 1。 */
     opacity?: number;
+    /** 怯みの終わり（経過秒。GS-295 フィールドアタック）。このあいだはうろつき・経路の歩きを止める。 */
+    stunUntil?: number;
   }
   const npcs = new Map<string, NpcActor>();
+  /** フィールドアタックの硬直の終わり（経過秒。GS-295）。このあいだは歩けない。 */
+  let strikeHoldUntil = 0;
+  /** 踏み込み（GS-295）。始めた時刻（経過秒）と向き（ワールド。長さ 1）。 */
+  let strikeLunge: { at: number; x: number; z: number } | null = null;
+  /** 踏み込みの長さ（秒）と距離（マス）。 */
+  const STRIKE_LUNGE_S = 0.2;
+  const STRIKE_LUNGE_CELLS = 0.25;
+  /** 先頭を入れ替えたときに主人公の板を白く光らせる（GS-295）。始めた時刻と長さ（秒）。 */
+  let leaderFlash: { at: number; s: number } | null = null;
+  const stunned = (npc: NpcActor) => npc.stunUntil !== undefined && elapsed < npc.stunUntil;
   /** 頭の上のマーク（GS-267）。キャラと同じ割合の 3D の板。 */
   const headMarks = createHeadMarks({
+    unit: () => mapDef?.grid?.unit ?? 1,
+    tilePx: () => mapDef?.grid?.tilePx ?? 32,
+    scale: () => characterScaleOf(mapDef?.properties),
+  });
+  /** フィールドの技の絵（GS-295）。3D の板で、深度を見る（壁や人の後ろでは隠れる）。 */
+  const fieldFx = createFieldFx({
+    parent: scene,
     unit: () => mapDef?.grid?.unit ?? 1,
     tilePx: () => mapDef?.grid?.tilePx ?? 32,
     scale: () => characterScaleOf(mapDef?.properties),
@@ -1290,11 +1392,12 @@ export function createGameView(
       // 新しいマップのプレイヤーが前の歩きを続けて、着地点から数センチずれる。
       endWalk(hero, false);
       // 先頭の絵は**隊列の先頭のキャラクター**から引く（2026-10-08。それまでは meina に決め打ち）。
-      // 隊列の入れ替えで先頭が変わったときは、次にマップを読んだときから変わる。
+      // 先頭が変わったときは、その場で板を入れ替える（GS-295。`swapLeader`）。
       // キャラクターの大きさ（2026-10-11。マップの `CharacterScale`）は絵にも当たりにも掛ける。
       const characterScale = characterScaleOf(map.properties);
       // 絵が台帳に無ければ**透明な板で立たせる**（既定の絵は持たない）。主人公は居ないと歩けないので消しはしない。
       // 仲間の絵の区切りは Game Checker（`checks/characters.test.ts`）が見るので、ふつうは起きない。
+      leaderShown = options.party?.()[0] ?? '';
       const leader = sheetKeyOf(options.party?.()[0] ?? PLAYER_CHARACTER);
       const leaderSheet = actorSheet(book, leader);
       if (!leaderSheet) console.warn(`[actors] 先頭のキャラクターの絵の区切りが台帳（spriteSheets.json）にありません: ${leader || '（sheet が無い）'}（透明で出す）`);
@@ -1340,6 +1443,7 @@ export function createGameView(
       cutWalks.clear();
       // 頭の上のマークも前のマップのぶんは捨てる（GS-267）。
       headMarks.clear();
+      fieldFx.clear();
       // 追従は既定へ戻す（GS-166）。前のマップで切ったまま持ち越さない。
       cameraFollow = true;
       // 1 人ぶんを作る（GS-153）。**関数にしてあとからも呼べるようにする**——
@@ -1423,12 +1527,7 @@ export function createGameView(
       }
 
       // キャラもエフェクトも水面に映す（DEC-303 / DEC-344）。
-      {
-        const cast = [built.group, player.group, followerGroup, fieldEffects.group];
-        if (mapModels) cast.push(mapModels.group);
-        for (const npc of npcs.values()) cast.push(npc.actor.group);
-        fieldEffects.setReflectSources(cast);
-      }
+      castReflections();
 
       watch.lap('actors');
       // 寄り・仰角・水平角はマップのプロパティが決める（DEC-152 / DEC-253）。
@@ -1641,6 +1740,8 @@ export function createGameView(
      * 偽の味方は**コマンドを選んでいる間だけ**左端に出す（2026-10-29 / GS-280）。
      */
     shownAlways: boolean;
+    /** 影を床に出すか（床の無い空のマスでは出さない。GS-288）。 */
+    floorShadow: boolean;
   }
   let stage: {
     /** BattleStage の床（ワールド）。構図の見る点とカメラの高さの基準。 */
@@ -1739,7 +1840,9 @@ export function createGameView(
     const top = collision?.surfaceUnder(fx, fz, from, x - fx, z - fz) ?? null;
     const floor = standExact(at.x, at.y, at.z, unit).y;
     const height = top === null ? null : (top - floor) / unit;
-    return { x, z, y: top ?? Math.floor(at.y) * unit, height, ground: groundOf(height, highStep) };
+    // 手書きの印（GS-288）があれば、地形の分け方を上書きする（高さは地形のまま）。
+    const ground = settings.cells?.[cellKey(cell)] ?? groundOf(height, highStep);
+    return { x, z, y: top ?? Math.floor(at.y) * unit, height, ground };
   };
 
   /**
@@ -1895,7 +1998,7 @@ export function createGameView(
       const faded = figure.def.side === 'enemy' ? 1 : 0.82;
       figure.material.opacity = flash * (1 - faded * fade);
       // 左端にだけ出す味方の板（GS-280）は影を出さない（宙に浮いた影になる）。
-      figure.shadow.visible = figure.mesh.visible && !pose.gone && figure.shownAlways;
+      figure.shadow.visible = figure.mesh.visible && !pose.gone && figure.shownAlways && figure.floorShadow;
     }
   };
 
@@ -2254,6 +2357,11 @@ export function createGameView(
       npc.wandering = null;
       return;
     }
+    // 怯んでいるあいだは止まる（GS-295）。
+    if (stunned(npc)) {
+      npc.wandering = null;
+      return;
+    }
     // 会話中と、プレイヤーが近いときは**その場で止まる**（歩いている途中でも）。
     if (eventBusy || spanToPlayer(npc, unit) < WANDER_STOP_NEAR) {
       npc.wandering = null;
@@ -2430,10 +2538,10 @@ export function createGameView(
         ? marchAxis(march, player)
         : hero.walk
           ? hero.walk.axis
-          : playable
+          : playable && elapsed >= strikeHoldUntil
             ? input.axis()
             : { x: 0, y: 0 };
-    const running = march ? march.run : hero.walk ? hero.walk.run : playable && input.shift();
+    const running = march ? march.run : hero.walk ? hero.walk.run : playable && elapsed >= strikeHoldUntil && input.shift();
     const unit = collision?.unit ?? 1;
     eventBusy = useUi.getState().busy;
     if (status.mode === 'play' && player && collision && playerBody) {
@@ -2468,7 +2576,7 @@ export function createGameView(
         const routeMove = npc.route && !npc.walk && !npc.march ? routeInput(
           npc.route.path, npc.route.motion, npc.route.state,
           { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit }, dt,
-          pauseNpcRoute(playable, eventBusy)) : null;
+          pauseNpcRoute(playable, eventBusy) || stunned(npc)) : null;
         const npcMarch = npc.march ?? null;
         const npcAxis = npcMarch
           ? marchAxis(npcMarch, npc.actor)
@@ -2580,8 +2688,26 @@ export function createGameView(
     updateFollowers(dt);
     for (const npc of npcs.values()) npc.actor.faceCamera((rig.yaw * Math.PI) / 180);
     advanceHops(dt);
+    // フィールドアタックの踏み込み（GS-295）。**絵だけ**前へ出して戻す（体の位置は動かさない）。
+    if (strikeLunge && player) {
+      const k = (elapsed - strikeLunge.at) / STRIKE_LUNGE_S;
+      if (k >= 1 || k < 0) strikeLunge = null;
+      else {
+        const push = Math.sin(Math.PI * k) * STRIKE_LUNGE_CELLS * (collision?.unit ?? 1);
+        player.group.position.set(player.position.x + strikeLunge.x * push, player.group.position.y, player.position.z + strikeLunge.z * push);
+      }
+    }
+    if (leaderFlash && player) {
+      const k = (elapsed - leaderFlash.at) / leaderFlash.s;
+      if (k >= 1 || k < 0) {
+        leaderFlash = null;
+        player.setLook(1, 0);
+      } else player.setLook(1, 1 - k);
+    }
     // 頭の上のマーク（GS-267）。跳ねた後に置く——頭に付いてくるように。
     headMarks.update(dt, markActor);
+    // フィールドの技の絵（GS-295）。カメラの正面へ向ける。
+    fieldFx.update(dt, rig.active());
 
     // キャラが動くたびに遮光の位置とコマを渡し直す（GC-39）。
     applyActorOccluder();
@@ -3220,7 +3346,59 @@ export function createGameView(
         y: npc.actor.position.y / unit,
         z: npc.actor.position.z / unit,
         facing: FACE_DIR[npc.actor.facingNow()],
+        half: npc.actor.radius,
       };
+    },
+    stunNpc(id, ms) {
+      const npc = npcs.get(id);
+      if (!npc) return false;
+      // 延ばさない（GS-295）。怯んでいるあいだに当てても終わりは最初のまま。
+      if (!stunned(npc)) npc.stunUntil = elapsed + ms / 1000;
+      npc.wandering = null;
+      return true;
+    },
+    strike(holdMs) {
+      if (!player) return;
+      strikeHoldUntil = Math.max(strikeHoldUntil, elapsed + holdMs / 1000);
+      const aim = moveVector(DIR_AXIS[FACE_DIR[player.facingNow()]]);
+      strikeLunge = { at: elapsed, x: aim.x, z: aim.z };
+    },
+    playFx(def, at, how) {
+      return fieldFx.play(def, at, how);
+    },
+    figureFx(id, def) {
+      const figure = stage?.figures.get(id);
+      if (!figure || figure.width <= 0) return 0;
+      const unit = collision?.unit || 1;
+      const grow = figure.mesh.scale.x;
+      // 板の真ん中（`figureRect` と同じ高さの取り方）。画面の上で絵の画素どおりの大きさ。
+      const y = figure.base.y + figure.commandLift + (figure.height * grow) / 2;
+      const camera = rig.active();
+      const at = new Vector3(figure.mesh.position.x, y, figure.mesh.position.z);
+      // 板が画面に入っていなければ（味方の板はカメラの後ろに立っている）、前の重ね絵と同じく**画面の下寄りの真ん中**
+      // （横 50%・縦 72%）に、カメラの少し先へ出す。
+      const seen = at.clone().project(camera);
+      if (seen.z > 1 || Math.abs(seen.x) > 1.1 || Math.abs(seen.y) > 1.1) {
+        const eye = camera.getWorldPosition(new Vector3());
+        const ray = new Vector3(0, 1 - 2 * 0.72, 0.5).unproject(camera).sub(eye).normalize();
+        at.copy(eye).addScaledVector(ray, FX_LOOSE_CELLS * unit);
+      }
+      return fieldFx.play(def, { x: at.x / unit, y: at.y / unit, z: at.z / unit }, { pixel: camera, layer: STAGE_SHARP_LAYER });
+    },
+    moveFx(id, at) {
+      fieldFx.move(id, at);
+    },
+    endFx(id) {
+      fieldFx.end(id);
+    },
+    flashLeader(ms) {
+      leaderFlash = { at: elapsed, s: Math.max(0.05, ms / 1000) };
+    },
+    shotBlocked(at) {
+      if (!collision) return true;
+      const unit = collision.unit || 1;
+      // 飛ぶ物の大きさの小さな柱が地形に重なるか（人は見ない。人は呼ぶ側が当たりで見る）。
+      return !collision.fits(at.x * unit, (at.y - 0.15) * unit, at.z * unit, 0.15, 0.3);
     },
     npcInFront() {
       if (!player || !collision || !npcs.size) return null;
@@ -3422,9 +3600,13 @@ export function createGameView(
         const terrain = stageTerrainAt(at, rig.yaw + spec.yaw, settings, { col: slot?.col ?? 0, row });
         const cx = terrain.x;
         const cz = terrain.z;
-        if (terrain.ground === 'sky') current.floorless.push({ side: def.side, index });
-        const base = new Vector3(cx * unit, terrain.y + (slot?.height ?? 0) * characterScale * unit, cz * unit);
-        const material = new MeshBasicMaterial({ transparent: true, alphaTest: 0.05, side: DoubleSide });
+        // 立てないマス（空は飛ぶ敵だけ。`block` は誰も。GS-288）に立った人は、戦闘演出エディタが ⚠ で知らせる。
+        if (!canStand(terrain.ground, !!def.flying)) current.floorless.push({ side: def.side, index });
+        // 飛ぶ敵（GS-288）は床から `grid.flyHeight`（戦闘のマス）浮かせる。影は床に残す。
+        const lift = (slot?.height ?? 0) + (def.flying ? gridHeights(settings.grid).flyHeight : 0);
+        const base = new Vector3(cx * unit, terrain.y + lift * characterScale * unit, cz * unit);
+        // 板どうしは深度を書かず、描く順で前後を決める（同じ列の板が同じ平面に重なってチラつくため。GS-289）。
+        const material = new MeshBasicMaterial({ ...STAGE_FIGURE_MATERIAL, side: DoubleSide });
         const mesh = new Mesh(new PlaneGeometry(1, 1), material);
         mesh.visible = false;
         const shadow = new Mesh(
@@ -3452,9 +3634,11 @@ export function createGameView(
           commandK: 0,
           commandLift: 0,
           // 前後関係は戦闘のマスの列（手前ほど後に描く）。同じ列なら並び順。
-          order: STAGE_ROW_ORDER + row * STAGE_ROW_STEP + Math.min(order, STAGE_ROW_STEP - 1),
+          order: stageFigureOrder(row, order),
           // 味方の板を出すかは開発中のつまみ（GS-247。既定は出さない）。敵はいつも出す。
           shownAlways: def.side === 'enemy' || stagePartyShown || battlePartyFiguresShown(),
+          // 床が無い所（空）では影を出さない（GS-288。浮いた敵の真下に地面が無い）。
+          floorShadow: terrain.height !== null,
         };
         mesh.renderOrder = figure.order;
         mesh.layers.set(STAGE_SHARP_LAYER);
@@ -3553,6 +3737,7 @@ export function createGameView(
       player?.dispose();
       clearFollowers();
       headMarks.dispose();
+      fieldFx.dispose();
       for (const npc of npcs.values()) npc.actor.dispose();
       npcs.clear();
       wires?.dispose();

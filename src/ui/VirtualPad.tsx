@@ -18,13 +18,24 @@ export const DIRECTION_BUTTONS = [
 export const FACE_BUTTONS = [
   { label: '△', name: 'メニュー', code: 'Escape', place: 'triangle' },
   { label: '✕', name: '取り消し', code: 'Escape', place: 'cross' },
-  { label: '□', name: '走る', code: 'ShiftLeft', place: 'square' },
+  { label: '□', name: '攻撃', code: 'KeyX', place: 'square' },
   { label: '○', name: '決定', code: 'Enter', place: 'circle' },
+] as const;
+
+/**
+ * 右の円の上に並べる小さなボタン（GS-295）。□ をフィールドアタックにしたので、走るはここへ移した。
+ * L2・R2 は先頭の入れ替え（ゲームパッドと同じ割り当て）。
+ */
+export const SHOULDER_BUTTONS = [
+  { label: 'L2', name: '先頭を前の人へ', code: 'KeyQ' },
+  { label: '走る', name: '走る（押しているあいだ）', code: 'ShiftLeft' },
+  { label: 'R2', name: '先頭を次の人へ', code: 'KeyE' },
 ] as const;
 
 const keyValue = (code: string) => {
   if (code.startsWith('Arrow') || code === 'Enter' || code === 'Escape') return code;
   if (code.startsWith('Shift')) return 'Shift';
+  if (code.startsWith('Key')) return code.slice(3).toLowerCase();
   return code;
 };
 
@@ -161,6 +172,25 @@ export function VirtualPad() {
         onClick={blockClick}
         onContextMenu={blockClick}
       >
+        <div className="virtual-shoulder">
+          {SHOULDER_BUTTONS.map((button) => (
+            <button
+              key={button.code}
+              type="button"
+              className="virtual-button virtual-shoulder-button"
+              aria-label={button.name}
+              title={button.name}
+              onPointerDown={down([button.code])}
+              onPointerUp={up}
+              onPointerCancel={up}
+              onLostPointerCapture={up}
+              onClick={activate([button.code])}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              {button.label}
+            </button>
+          ))}
+        </div>
         <div className="virtual-face">
           {FACE_BUTTONS.map((button) => (
             <button

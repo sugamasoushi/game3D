@@ -79,9 +79,9 @@ export interface BattleEffectEditorWindow {
   replayStart(): number;
   /**
    * 組んでいる舞台の、マスの範囲ぜんぶの地形（2026-10-29 / GS-285）。舞台の点の床からの高さ（フィールドのマス。床が無ければ null）と
-   * 分け方（床・高台・空）。舞台を組み直したら聞き直す。舞台が無ければ空。
+   * 分け方（床・高台・空・立てない〈手書きの印。GS-288〉）。舞台を組み直したら聞き直す。舞台が無ければ空。
    */
-  cellTerrain(): Array<{ col: number; row: number; ground: 'floor' | 'high' | 'sky'; height: number | null }>;
+  cellTerrain(): Array<{ col: number; row: number; ground: 'floor' | 'high' | 'sky' | 'block'; height: number | null }>;
   /**
    * コマンド選択の見本（2026-10-29 / GS-281）。背景の戦闘で `member` 人目（0 始まり）が手を聞かれている形にする
    * （板が左端へ寄り、命令の窓が出る。手は決めない）。null で戻す。舞台を組み直したら、もう一度呼ぶ。背景の戦闘でなければ偽。

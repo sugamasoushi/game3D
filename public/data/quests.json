@@ -1,0 +1,12 @@
+{
+  "quests": {
+    "qa_hunt": {
+      "name": "qa_hunt",
+      "enemy": "enemy02",
+      "count": 1,
+      "gold": 50,
+      "text": "スライム倒して！",
+      "client": "test01"
+    }
+  }
+}

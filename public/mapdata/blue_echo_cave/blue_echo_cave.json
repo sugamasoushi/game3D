@@ -6671,13 +6671,13 @@
   "editor": {
     "camera": {
       "target": [
-        -0.46894149289482295,
-        1.7993078958753344,
-        7.102480757391283
+        0.885162253463601,
+        3.1875836953248053,
+        11.208333589878233
       ],
       "yaw": 0,
       "pitch": -19,
-      "distance": 7.09360423383034,
+      "distance": 12.566752610088718,
       "orthographic": false
     },
     "height": 0,
@@ -6712,17 +6712,17 @@
     {
       "name": "ScrollMinX",
       "type": "float",
-      "value": -20
+      "value": -2
     },
     {
       "name": "ScrollMaxX",
       "type": "float",
-      "value": 20
+      "value": 0
     },
     {
       "name": "ScrollMinZ",
       "type": "float",
-      "value": -20
+      "value": -15
     },
     {
       "name": "ScrollMaxZ",
@@ -14261,11 +14261,6 @@
               "name": "Id",
               "type": "string",
               "value": "slime"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy02"
             }
           ],
           "space": "plane",
@@ -14327,11 +14322,6 @@
               "name": "Id",
               "type": "string",
               "value": "sukowaimu"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy07"
             },
             {
               "name": "Face",

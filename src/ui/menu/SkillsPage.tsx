@@ -10,6 +10,7 @@
 // 絵はステータスと同じメニュー用の絵を左に置く（GS-206）。
 
 import { skillDef } from '../../game/battle/book';
+import { skillTagText } from '../../game/battle/skillTags';
 import { characterMenuImage } from '../../game/characters';
 import type { MemberState } from '../../game/state';
 
@@ -36,7 +37,8 @@ export function SkillsPage({ who, member }: { who: string; member: MemberState |
                   <span className="skill-mp-label">消費MP</span>
                   <span className="item-count">{skill?.mp ? skill.mp : '—'}</span>
                   <span className="item-text">
-                    {skill?.kind ? `［${skill.kind}］` : ''}
+                    {/* 属性の札（種類・貫通／全体・対空。GS-293）。 */}
+                    {skillTagText(skill)}
                     {skill?.text ?? ''}
                   </span>
                 </li>

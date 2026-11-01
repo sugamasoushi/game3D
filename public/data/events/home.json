@@ -2,6 +2,27 @@
   "map": "home",
   "events": [
     {
+      "id": "bed",
+      "kind": "click",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "inn",
+          "price": 0,
+          "time": "morning",
+          "window": false,
+          "prompt": { "who": "meina", "lines": ["ベッドで休む？"] },
+          "stay": [
+            {
+              "type": "message",
+              "style": "bubble",
+              "talk": [{ "who": "meina", "lines": ["ふぁ～、よく寝た！"] }]
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "click0002",
       "trigger": "action",
       "commands": [
@@ -143,12 +164,12 @@
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "portrait", "slot": "scene", "image": "20250603.jpg" },
-        { "type": "cameraFollow", "on": false },
-        { "type": "place", "target": "player", "at": { "x": -8, "y": 0, "z": -3 }, "face": "right" },
+        { "type": "cameraFollow", "on": true },
+        { "type": "place", "target": "player", "at": { "x": -1, "y": 0, "z": -3 }, "face": "right" },
         {
           "type": "place",
           "target": "npc:lamyNPC",
-          "at": { "x": -5, "y": 0, "z": -3 },
+          "at": { "x": 1, "y": 0, "z": -3 },
           "face": "left"
         },
         {
@@ -176,7 +197,7 @@
         { "type": "time", "to": "evening ", "clock": "stop", "ms": 0 },
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
-        { "type": "shot", "id": "pan01", "wait": false },
+        { "type": "cameraFollow", "on": true },
         { "type": "emote", "target": "npc:lamyNPC", "id": "meat", "wait": false },
         {
           "type": "message",
@@ -203,7 +224,7 @@
         {
           "type": "place",
           "target": "npc:grandpaNpc",
-          "at": { "x": -7, "y": 0, "z": 0 },
+          "at": { "x": -1, "y": 0, "z": -2 },
           "face": "right"
         },
         { "type": "time", "to": "night", "clock": "stop", "ms": 0 },
@@ -241,7 +262,7 @@
           ]
         },
         { "type": "fade", "to": "out", "ms": 400 },
-        { "type": "place", "target": "npc:grandpaNpc", "at": { "x": -1, "y": 0, "z": -1 } },
+        { "type": "place", "target": "npc:grandpaNpc", "at": { "x": -3, "y": 0, "z": -4 } },
         { "type": "portrait", "slot": "center", "hide": true, "from": "left", "who": "grandpa" },
         { "type": "wait", "ms": 300 },
         { "type": "fade", "to": "in", "ms": 400 },
@@ -298,17 +319,17 @@
       "trigger": "touch",
       "when": [{ "story": "ending", "is": "next" }],
       "commands": [
-        { "type": "cameraFollow", "on": false },
+        { "type": "cameraFollow", "on": true },
         { "type": "fade", "to": "out", "ms": 400 },
-        { "type": "place", "target": "player", "at": { "x": -5, "y": 0, "z": -3 }, "face": "left" },
+        { "type": "place", "target": "player", "at": { "x": 1, "y": 0, "z": -3 }, "face": "left" },
         {
           "type": "place",
           "target": "party:lamy",
-          "at": { "x": -8, "y": 0, "z": -3 },
+          "at": { "x": -1, "y": 0, "z": -3 },
           "face": "right"
         },
         { "type": "fade", "to": "in", "ms": 400 },
-        { "type": "shot", "id": "pan01" },
+        { "type": "cameraFollow", "on": true },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
         {
@@ -393,7 +414,7 @@
           "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
           "else": [
             { "type": "playSe", "key": "chest" },
-            { "type": "getItem", "id": "やくそう", "count": 1 },
+            { "type": "getItem", "id": "ばんそうこう", "count": [1, 2] },
             { "type": "layer", "id": "宝箱_家1_閉", "shown": false },
             { "type": "layer", "id": "宝箱_家1_開", "shown": true },
             { "type": "setSelfSwitch", "key": "開けた", "value": true },

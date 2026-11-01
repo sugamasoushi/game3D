@@ -21,6 +21,8 @@ export class ReturnToTitle extends Error {
  * **ここに無いことはイベントにはできない**——コマンド表を増やすときは、まずここへ足す。
  */
 export interface EventContext {
+  /** 討伐依頼の受注・進捗・報告。会話が終わるまで待つ。 */
+  quest(id: string): Promise<void>;
   returnToTitle(): Promise<void>;
   /**
    * 会話を出して、読み終わるまで待つ。`style` で吹き出しにできる（GS-23）。
@@ -198,6 +200,11 @@ export interface EventContext {
   party(op: 'join' | 'leave', who: string): void;
   /** 店（GS-66）。**閉じるまで返らない。** */
   shop(items: string[], sell: boolean): Promise<void>;
+  /**
+   * 宿の窓（GS-290）。「泊まる（休む）」を選んだら true、やめたら false。**閉じるまで返らない。**
+   * お金が足りないときは窓の中で断るので、true は払える時だけ返す。
+   */
+  inn(price: number): Promise<boolean>;
   /** 所持金（GS-65）。 */
   getGold(): number;
   setGold(value: number): void;
@@ -531,8 +538,39 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   },
 
   // 店（GS-66）。**閉じるまで待つ**ので、続きは店を出てから動く。
+  quest: async (ctx, cmd) => { await ctx.quest(cmd.id); },
+
   shop: async (ctx, cmd) => {
     await ctx.shop(cmd.items, cmd.sell !== false);
+  },
+
+  // 宿屋（GS-290）。窓で選ばせ、泊まるなら 払う → 暗転 → 全回復 → 時間帯 → 明転。
+  inn: async (ctx, cmd) => {
+    const price = innPrice(cmd.price);
+    // 窓が払えるときだけ true を返すが、ここでも見る（窓を通らない呼び方でも 0 G で泊まれないように）。
+    // `window: false` は窓を出さず「はい」「いいえ」だけ（家のベッド）。取り消しは「いいえ」。
+    let answer: boolean;
+    if (cmd.window === false) {
+      if (cmd.prompt) await ctx.message([cmd.prompt]);
+      answer = (await ctx.choice(INN_CHOICES, 1)) === 0;
+    } else {
+      answer = await ctx.inn(price);
+    }
+    const stay = answer && ctx.getGold() >= price;
+    if (!stay) {
+      if (cmd.leave) await runCommands(cmd.leave, ctx);
+      return;
+    }
+    ctx.setGold(ctx.getGold() - price);
+    await ctx.fade('out', INN_FADE_MS);
+    if (cmd.se) ctx.playSe(cmd.se);
+    // 宿は全部戻す。式は持ち物・戦闘と同じ物（GS-64）。
+    ctx.heal('full', 'full', 'all');
+    // 暗いうちに時間帯を移す（混ぜる時間 0）。明けたときにはもう朝。
+    if (cmd.time !== undefined && cmd.time.trim() !== '') ctx.setTime(cmd.time.trim() === 'base' ? '' : cmd.time.trim(), 0);
+    await ctx.wait(INN_SLEEP_MS);
+    await ctx.fade('in', INN_FADE_MS);
+    if (cmd.stay) await runCommands(cmd.stay, ctx);
   },
 
   // 所持金（GS-65）。**0 より下へは行かない**——借金の考えを持たない。
@@ -581,6 +619,18 @@ export async function runCommands(list: EventCommand[], ctx: EventContext): Prom
     if (!run) continue;
     await run(ctx, cmd);
   }
+}
+
+/** 宿の暗転・明転にかける時間（GS-290）。 */
+export const INN_FADE_MS = 600;
+/** 宿で眠っている（真っ暗な）時間。音が鳴り終わるくらい。 */
+export const INN_SLEEP_MS = 1500;
+/** 窓を出さない宿（`window: false`）の選択肢。 */
+export const INN_CHOICES = ['はい', 'いいえ'];
+
+/** 宿の値段（GS-290）。省略・負・数でない物は 0（無料）、端数は丸める。 */
+export function innPrice(price: unknown): number {
+  return typeof price === 'number' && Number.isFinite(price) ? Math.max(0, Math.round(price)) : 0;
 }
 
 /**

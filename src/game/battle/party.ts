@@ -117,6 +117,7 @@ export function enemyFighters(ids: string[]): Fighter[] {
       guarding: 0,
       avoiding: false,
       ailments: [],
+      ...(def.flying ? { flying: true } : {}),
     });
   }
   return out;

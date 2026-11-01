@@ -16,7 +16,7 @@ npm run electron:build
 `electron:build` と `electron:pack` は必ず本番モードでビルドする。
 `NEXT_PUBLIC_PRODUCTION=true` を自動設定し、開発用 UI を無効にする。
 
-配布するファイルは `dist/SampleGame-0.1.0-x64.exe`（バージョンは package.json に従う）。
+配布するファイルは `dist/<題名>-0.1.0-x64.exe`（題名は台帳 `public/data/opening.json` の `title`、ファイル名に使えない文字は `_`。`tools/electronBuild.mjs`。バージョンは package.json に従う）。窓の名前も同じ題名。
 コード署名・独自アイコンは未設定。Windows の警告が出る場合がある。
 
 ## ローカルで確認
@@ -29,7 +29,7 @@ npm run electron:dev
 `electron:dev` はビルド済みの out/ を開く。ホットリロードは行わない。
 変更後は再度 `npm run build:production` を実行する。
 EXE の圧縮を省いて確認する場合は `npm run electron:pack`。
-`dist/win-unpacked/SampleGame.exe` が作られる（配布にはフォルダ全体が必要）。
+`dist/win-unpacked/<題名>.exe` が作られる（配布にはフォルダ全体が必要）。
 
 開発用 UI を表示して確認したい場合だけ、`npm run build` の後に
 `npm run electron:dev` で開く。

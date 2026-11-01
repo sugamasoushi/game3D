@@ -7,6 +7,7 @@
 // ここが持つのは**いつ・どこから・どこへ**だけ。実際に動かすのは `ui/Opening.tsx`。
 
 import { assetUrl } from './assets';
+import { DEFAULT_TITLE, titleOf } from './gameTitle';
 
 /** 滑り込む向き。画面のどちら側から入ってくるか。 */
 export type Side = 'left' | 'right';
@@ -42,7 +43,7 @@ export interface OpeningBook {
  * 台帳が無い・読めないときの中身。**オープニングが無いだけで遊べなくなってはいけない。**
  * 絵が 1 枚も無いので、画面はすぐタイトルへ進む。
  */
-export const DEFAULT_OPENING: OpeningBook = { version: 1, bgm: 'opening', title: 'ちょっとだけ RPG', cuts: [] };
+export const DEFAULT_OPENING: OpeningBook = { version: 1, bgm: 'opening', title: DEFAULT_TITLE, cuts: [] };
 
 /** 旧作の timeline から写した刻み（ミリ秒）。**台帳では変えない**——動きの手触りそのもの。 */
 export const BACK_MS = 200;
@@ -140,7 +141,7 @@ export function loadOpening(): Promise<OpeningBook> {
       book = {
         version: 1,
         bgm: typeof file?.bgm === 'string' ? file.bgm : DEFAULT_OPENING.bgm,
-        title: typeof file?.title === 'string' && file.title ? file.title : DEFAULT_OPENING.title,
+        title: titleOf(file),
         cuts: Array.isArray(file?.cuts) ? file.cuts : [],
       };
       return book;

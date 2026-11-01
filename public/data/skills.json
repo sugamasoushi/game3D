@@ -1,5 +1,5 @@
 {
-  "information": "技の台帳（GS-60 / GS-69）。kind は「特技」か「魔法」、type は attack / guard / avoid / ailment / cure。効き目の数は value（cure は最大 HP の何％を戻すか 0〜100。0 なら状態異常を消すだけ）、当たったときの音は se。ailment は与える状態異常（chance は当たる見込み 0〜1）、cure は消す状態異常。",
+  "information": "技の台帳（GS-60 / GS-69）。kind は「特技」か「魔法」、type は attack / guard / avoid / ailment / cure / cover（かばう。近くの仲間への攻撃を代わりに受ける。GS-294）。効き目の数は value（cure は最大 HP の何％を戻すか 0〜100。0 なら状態異常を消すだけ）、当たったときの音は se。ailment は与える状態異常（chance は当たる見込み 0〜1）、cure は消す状態異常。",
   "skills": {
     "special01": {
       "name": "防御",
@@ -45,7 +45,11 @@
       "text": "ヒューン！",
       "mp": 10,
       "value": 35,
-      "se": "slash"
+      "se": "slash",
+      "field": {
+        "type": "shot",
+        "hitEffect": "wind"
+      }
     },
     "magic03": {
       "name": "氷の塊",
@@ -85,7 +89,9 @@
       "text": "うでを 大きく ふりまわす",
       "mp": 0,
       "value": 10,
-      "se": "slash"
+      "se": "slash",
+      "reach": "all",
+      "range": "melee"
     },
     "magic04": {
       "name": "ヒール",
@@ -98,6 +104,138 @@
         "poison"
       ],
       "se": "levelup"
+    },
+    "special04": {
+      "name": "強打",
+      "kind": "特技",
+      "type": "attack",
+      "text": "力を込めた 重い一撃。",
+      "mp": 4,
+      "value": 25,
+      "se": "hit"
+    },
+    "special05": {
+      "name": "疾風斬り",
+      "kind": "特技",
+      "type": "attack",
+      "text": "鋭く 素早く 斬りつける。",
+      "mp": 6,
+      "value": 32,
+      "se": "slash"
+    },
+    "special06": {
+      "name": "足払い",
+      "kind": "特技",
+      "type": "ailment",
+      "text": "足元を払い 行動を封じる。",
+      "mp": 4,
+      "value": 0,
+      "ailment": "paralysis",
+      "chance": 0.55,
+      "se": "hit"
+    },
+    "special07": {
+      "name": "止血の心得",
+      "kind": "特技",
+      "type": "cure",
+      "text": "応急処置で HPを15％回復し 出血を止める。",
+      "mp": 3,
+      "value": 15,
+      "cure": [
+        "bleed"
+      ],
+      "se": "levelup"
+    },
+    "special08": {
+      "name": "かばう",
+      "kind": "特技",
+      "type": "cover",
+      "text": "このターン 近くの仲間への攻撃を 代わりに受ける。",
+      "mp": 3,
+      "value": 0
+    },
+    "magic05": {
+      "name": "火炎槍",
+      "kind": "魔法",
+      "type": "attack",
+      "text": "炎の槍で攻撃し 35％でやけどを与える。",
+      "mp": 14,
+      "value": 42,
+      "effect": "fire",
+      "se": "fire",
+      "ailment": "burn",
+      "chance": 0.35
+    },
+    "magic06": {
+      "name": "氷縛",
+      "kind": "魔法",
+      "type": "ailment",
+      "text": "氷で包み 動きを封じる。",
+      "mp": 8,
+      "value": 0,
+      "ailment": "freeze",
+      "chance": 0.55,
+      "se": "hit"
+    },
+    "magic07": {
+      "name": "毒霧",
+      "kind": "魔法",
+      "type": "ailment",
+      "text": "毒の霧で 相手をどくにする。",
+      "mp": 5,
+      "value": 0,
+      "ailment": "poison",
+      "chance": 0.75,
+      "se": "fire"
+    },
+    "magic08": {
+      "name": "スリープ",
+      "kind": "魔法",
+      "type": "ailment",
+      "text": "穏やかな眠りへ 誘う。",
+      "mp": 6,
+      "value": 0,
+      "ailment": "sleep",
+      "chance": 0.65,
+      "se": "fire"
+    },
+    "magic09": {
+      "name": "ハイヒール",
+      "kind": "魔法",
+      "type": "cure",
+      "text": "HPを60％回復する。",
+      "mp": 16,
+      "value": 60,
+      "se": "levelup"
+    },
+    "magic10": {
+      "name": "浄化",
+      "kind": "魔法",
+      "type": "cure",
+      "text": "どく・もうどく・まひ・やけど・こおり・眠り・出血を治す。",
+      "mp": 10,
+      "value": 0,
+      "cure": [
+        "poison",
+        "venom",
+        "paralysis",
+        "burn",
+        "freeze",
+        "sleep",
+        "bleed"
+      ],
+      "se": "levelup"
+    },
+    "magic11": {
+      "name": "雷の矢",
+      "kind": "魔法",
+      "type": "attack",
+      "mp": 20,
+      "value": 40,
+      "reach": "pierce",
+      "range": "ranged",
+      "text": "ビリビリ！！",
+      "ailment": "paralysis"
     }
   }
 }

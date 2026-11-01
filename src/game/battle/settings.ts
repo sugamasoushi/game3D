@@ -2,7 +2,8 @@
 // 台帳エディタの「戦闘共通」で編集する。台帳が読めない・値が壊れているときは、ここの既定値（直書きしていた値）を使う。
 
 import type { ItemStrike } from '../items';
-import type { HeightRates } from './height';
+import type { HeightRates, SkillRange } from './height';
+import type { FieldUseDef } from '../fieldAttack';
 
 /**
  * 通常攻撃（素手）の見せ方（GS-123）。**味方と敵で別に持つ。**
@@ -13,6 +14,10 @@ export interface NormalAttackDef {
   effect: string;
   /** 鳴らす音（`sounds.json` のキー）。空なら絵の側の音を使う。 */
   se: string;
+  /** 直接・対空（GS-294。武器の `equip.strike.range`）。書かなければ直接。 */
+  range?: SkillRange;
+  /** フィールドアタックの使い方（GS-295。味方だけ。技を選んでいない仲間の素手）。書かなければ近接の既定。 */
+  field?: FieldUseDef;
 }
 
 export interface BattleSettings {
@@ -59,6 +64,10 @@ export interface BattleSettings {
     high?: number;
     /** 高台にいる人が、高台でない相手から直接攻撃を受けたときの倍率（0 より大きく 1 まで。既定 0.8。GS-285）。 */
     highGuard?: number;
+    /** 飛ぶ人が、飛ばない相手から直接攻撃を受けたときの倍率（0 より大きく 1 まで。既定 0.5。GS-288）。 */
+    flyGuard?: number;
+    /** フィールドアタックで倒したときの経験とお金の倍率（0〜1。既定 0.5。端数は切り捨て。GS-295）。 */
+    fieldKill?: number;
   };
 }
 
@@ -70,7 +79,7 @@ export const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
   normalAttack: { party: { effect: 'normal', se: '' }, enemy: { effect: '', se: 'punch' } },
   se: { hit: 'hit', dodge: 'dodge', win: 'fanfare', enemyAttack: 'punch', item: 'levelup', levelUp: 'levelup', walkPoison: 'hit' },
   ms: { say: 900, beat: 260, hit: 520, lean: 200, enemyAct: 500, noItem: 1200 },
-  rates: { back: 0.5, high: 1.2, highGuard: 0.8 },
+  rates: { back: 0.5, high: 1.2, highGuard: 0.8, flyGuard: 0.5, fieldKill: 0.5 },
 };
 
 let settings: BattleSettings = structuredClone(DEFAULT_BATTLE_SETTINGS);
@@ -83,7 +92,16 @@ export function backRowRate(): number {
 /** 高さの倍率（GS-285）。台帳に無ければ既定の 1.2・0.8。 */
 export function heightRates(): HeightRates {
   const base = DEFAULT_BATTLE_SETTINGS.rates!;
-  return { high: settings.rates?.high ?? base.high!, highGuard: settings.rates?.highGuard ?? base.highGuard! };
+  return {
+    high: settings.rates?.high ?? base.high!,
+    highGuard: settings.rates?.highGuard ?? base.highGuard!,
+    flyGuard: settings.rates?.flyGuard ?? base.flyGuard!,
+  };
+}
+
+/** フィールドで倒したときの取り分の倍率（GS-295）。台帳に無ければ既定の 0.5。 */
+export function fieldKillRate(): number {
+  return settings.rates?.fieldKill ?? DEFAULT_BATTLE_SETTINGS.rates!.fieldKill!;
 }
 
 /** いまの設定。読み終わる前は既定値。 */
@@ -111,6 +129,8 @@ export function applyBattleSettings(raw: unknown): BattleSettings {
         // 空文字も意味がある（絵を出さない／絵の音を使う）ので、文字なら受ける。
         if (typeof value.effect === 'string') next.normalAttack[side].effect = value.effect;
         if (typeof value.se === 'string') next.normalAttack[side].se = value.se;
+        // フィールドアタック（GS-295）。中身の値は `fieldAttackOf` が既定で埋める。
+        if (side === 'party' && object(value.field)) next.normalAttack.party.field = value.field as FieldUseDef;
       }
     }
     if (object(raw.ms)) {
@@ -126,6 +146,8 @@ export function applyBattleSettings(raw: unknown): BattleSettings {
       if (within(raw.rates.back, 0, 1, true)) rates.back = raw.rates.back;
       if (within(raw.rates.high, 1, 5)) rates.high = raw.rates.high;
       if (within(raw.rates.highGuard, 0, 1, true)) rates.highGuard = raw.rates.highGuard;
+      if (within(raw.rates.flyGuard, 0, 1, true)) rates.flyGuard = raw.rates.flyGuard;
+      if (within(raw.rates.fieldKill, 0, 1)) rates.fieldKill = raw.rates.fieldKill;
       next.rates = rates;
     }
   }
@@ -141,7 +163,9 @@ export function normalAttackOf(side: 'party' | 'enemy', strike?: ItemStrike | nu
   const base = settings.normalAttack[side];
   if (side !== 'party' || !strike) return base;
   return {
+    ...(base.field ? { field: base.field } : {}),
     effect: typeof strike.effect === 'string' && strike.effect ? strike.effect : base.effect,
     se: typeof strike.se === 'string' && strike.se ? strike.se : base.se,
+    ...(strike.range === 'melee' || strike.range === 'ranged' ? { range: strike.range } : {}),
   };
 }

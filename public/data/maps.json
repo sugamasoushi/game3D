@@ -10,7 +10,8 @@
           "morning": "day",
           "evening": "night"
         }
-      }
+      },
+      "fieldAttack": false
     },
     "ashcrown": {
       "name": "灰冠山地",
@@ -67,7 +68,8 @@
     },
     "rikka_village": {
       "name": "リッカ村",
-      "file": "rikka/rikka_village.json"
+      "file": "rikka/rikka_village.json",
+      "fieldAttack": false
     },
     "purple_ring_wastes": {
       "name": "紫環災域",

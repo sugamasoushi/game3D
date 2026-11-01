@@ -1,11 +1,12 @@
 {
-  "information": "マップに置いた NPC の設定（2026-10-08）。マップの id（maps.json のキー）→ 1 体の名前（マップの Id）→ 設定。standby は最初は出さない（イベントの「置き直す」で出る）、showWhen は出現条件（この条件を満たす間だけ出す。イベントの条件と同じ書き方。並べれば全部。イベントの起動条件とは結び付けない）、wander はうろつき（range 離れてよいマス・step 一度に歩くマス・ms 休む時間 [最短, 最長]・walkMs 一歩の時間。書かない項目は既定）、stepInPlace は常時その場で足踏み。書いていない NPC はいつでも出て立ち止まる。時間帯（ShowIn）はマップに書く。台帳エディタの「マップ構成」で編集する。",
+  "information": "マップに置いた NPC の設定（2026-10-08）。マップの id（maps.json のキー）→ 1 体の名前（マップの Id）→ 設定。standby は最初は出さない（イベントの「置き直す」で出る）、showWhen は出現条件（この条件を満たす間だけ出す。イベントの条件と同じ書き方。並べれば全部。イベントの起動条件とは結び付けない）、wander はうろつき（range 離れてよいマス・step 一度に歩くマス・ms 休む時間 [最短, 最長]・walkMs 一歩の時間。書かない項目は既定）、stepInPlace は常時その場で足踏み。enemy は敵シンボル（enemies.json のキー。書くと触って戦う相手になる。2026-10-31 にマップの EnemyData から移した。GS-295）、companions はそのお供。書いていない NPC はいつでも出て立ち止まる。時間帯（ShowIn）はマップに書く。台帳エディタの「マップ構成」で編集する。",
   "maps": {
     "ashcrown": {
       "slime": {
         "wander": {
           "range": 2
-        }
+        },
+        "enemy": "enemy02"
       },
       "blackCat": {
         "wander": {
@@ -30,7 +31,8 @@
       "slime": {
         "wander": {
           "range": 2
-        }
+        },
+        "enemy": "enemy02"
       },
       "BOSS_GreatBear": {
         "showWhen": [
@@ -55,14 +57,16 @@
             "enemy": "enemy01",
             "chance": 1
           }
-        ]
+        ],
+        "enemy": "enemy07"
       }
     },
     "forest_cave": {
       "bat": {
         "wander": {
           "range": 2
-        }
+        },
+        "enemy": "enemy02"
       },
       "kowaboa": {
         "wander": {},
@@ -71,7 +75,8 @@
             "enemy": "enemy04",
             "chance": 0.5
           }
-        ]
+        ],
+        "enemy": "enemy04"
       },
       "shikadigo": {
         "wander": {},
@@ -80,7 +85,8 @@
             "enemy": "enemy06",
             "chance": 0.5
           }
-        ]
+        ],
+        "enemy": "enemy05"
       }
     },
     "forest_mansion": {
@@ -99,7 +105,8 @@
             "enemy": "enemy01",
             "chance": 0.2
           }
-        ]
+        ],
+        "enemy": "enemy02"
       },
       "lamyNPC": {
         "standby": true,
@@ -108,7 +115,18 @@
         }
       },
       "sukerabi": {
-        "wander": {}
+        "wander": {},
+        "enemy": "enemy06"
+      },
+      "inkoshang": {
+        "wander": {},
+        "companions": [
+          {
+            "enemy": "enemy04",
+            "chance": 0.8
+          }
+        ],
+        "enemy": "enemy08"
       }
     },
     "home": {
@@ -126,10 +144,12 @@
     },
     "old_haulage_road": {
       "slime": {
-        "wander": {}
+        "wander": {},
+        "enemy": "enemy02"
       },
       "slime2": {
-        "wander": {}
+        "wander": {},
+        "enemy": "enemy02"
       }
     },
     "rikka_village": {

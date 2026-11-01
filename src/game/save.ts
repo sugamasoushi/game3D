@@ -11,12 +11,13 @@
 // **後で持ち物や隊列が増える**ことを見込んでいる（容量と型の自由が要る）。
 // 設定（`options.ts`）はここに入れない——**端末の好み**であって遊んだ記録ではない。
 
+import type { QuestProgress } from './quests';
 import type { WalkDir } from './GameView';
 import { CLEAR_SWITCH } from './omake';
 import { loadMapIndex, mapLabel } from './mapIndex';
 
 /** セーブの形の版（GS-27）。形を変えたらここを上げ、読む側で古い版を判別する。 */
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 /**
  * 読める版（GS-46）。**欄を足しただけなら古い版も読む**——足りない欄は `fromSave` が既定で埋める。
  * 読めなくなる変え方（欄の意味を変えるなど）をしたときだけ、ここから外す。
@@ -24,7 +25,7 @@ export const SAVE_VERSION = 6;
  *   6 …… マップの id を名前にし（`0101` → `home`）、本筋の進み具合を物語の段階（`story`）で持つ版（GS-254）。
  *        スイッチの向きも変えた（書いていなければ false）。**5 までの記録は読まない**（場所もスイッチも意味が変わった）。
  */
-const READABLE = new Set([6]);
+const READABLE = new Set([6, 7]);
 
 /** その記録は読めるか。 */
 export function readableSave(version: number): boolean {
@@ -45,6 +46,8 @@ export function slotLabel(slot: number): string {
 
 /** 1 枠ぶん。 */
 export interface SaveData {
+  /** 版7: 討伐依頼。版6の記録は未受注で読む。 */
+  quests?: Record<string, QuestProgress>;
   version: number;
   /** 書いた時刻（一覧に出す）。 */
   savedAt: number;

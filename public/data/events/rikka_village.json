@@ -113,6 +113,50 @@
       "npc": "Tool Seller"
     },
     {
+      "id": "talk_innkeeper",
+      "kind": "talk",
+      "trigger": "action",
+      "commands": [
+        {
+          "type": "message",
+          "talk": [
+            {
+              "who": "middle_uncle_01",
+              "lines": ["いらっしゃい！ 宿屋だよ。", "一晩 10 G で泊まっていくかい？"],
+              "at": "Innkeeper"
+            }
+          ],
+          "style": "bubble"
+        },
+        {
+          "type": "inn",
+          "price": 10,
+          "time": "morning",
+          "stay": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "middle_uncle_01",
+                  "lines": ["おはよう！ よく眠れたかい？", "いってらっしゃい！"],
+                  "at": "Innkeeper"
+                }
+              ],
+              "style": "bubble"
+            }
+          ],
+          "leave": [
+            {
+              "type": "message",
+              "talk": [{ "who": "middle_uncle_01", "lines": ["また いつでも おいで。"], "at": "Innkeeper" }],
+              "style": "bubble"
+            }
+          ]
+        }
+      ],
+      "npc": "Innkeeper"
+    },
+    {
       "id": "ev_7",
       "kind": "talk",
       "trigger": "action",
@@ -265,7 +309,8 @@
           "type": "message",
           "talk": [{ "who": "soldier_junior", "lines": ["ここはリッカ村だ", "あ～暇だなぁ"], "at": "soldier_junior01" }],
           "style": "bubble"
-        }
+        },
+        { "type": "quest", "id": "qa_hunt" }
       ],
       "npc": "soldier_junior01"
     },

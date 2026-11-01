@@ -40202,6 +40202,34 @@
           ]
         },
         {
+          "id": "obj_19",
+          "name": "宿屋",
+          "kind": "point",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Character",
+              "type": "string",
+              "value": "middle_uncle_01"
+            },
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "Innkeeper"
+            }
+          ],
+          "space": "plane",
+          "y": 0,
+          "points": [
+            [
+              -8.5,
+              12.5
+            ]
+          ]
+        },
+        {
           "id": "obj_8",
           "name": "おばあさん",
           "kind": "point",

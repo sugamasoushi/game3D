@@ -18,6 +18,47 @@
       "wakeOnHit": true,
       "hit": "ねむってしまった！",
       "gone": "目を さました！"
+    },
+    "burn": {
+      "name": "やけど",
+      "short": "火",
+      "turnDamage": 3,
+      "hit": "やけどを 負った！",
+      "gone": "やけどが 治った。"
+    },
+    "paralysis": {
+      "name": "まひ",
+      "short": "痺",
+      "skip": true,
+      "recover": 0.5,
+      "hit": "体が しびれて 動けない！",
+      "gone": "しびれが とれた！"
+    },
+    "freeze": {
+      "name": "こおり",
+      "short": "氷",
+      "skip": true,
+      "recover": 0.3,
+      "wakeOnHit": true,
+      "hit": "凍りついてしまった！",
+      "gone": "氷が とけた！"
+    },
+    "bleed": {
+      "name": "しゅっけつ",
+      "short": "血",
+      "turnDamage": 2,
+      "recover": 0.25,
+      "hit": "傷から 血が 流れ出した！",
+      "gone": "血が とまった。"
+    },
+    "venom": {
+      "name": "もうどく",
+      "short": "猛",
+      "turnDamage": 8,
+      "keep": true,
+      "walk": 6,
+      "hit": "もうどくに おかされた！",
+      "gone": "もうどくが 消えた。"
     }
   }
 }

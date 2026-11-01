@@ -180,5 +180,10 @@
     "name": "スコワイム",
     "kind": "npc",
     "sheet": "NormalEnemy/スコワイム.png"
+  },
+  "inkoshang": {
+    "name": "インコーシャン",
+    "kind": "npc",
+    "sheet": "NormalEnemy/インコーシャン.png"
   }
 }

@@ -6,7 +6,8 @@
 // 2 つになり、片方だけ直す事故が起きる（GS-13 と同じ考え）。
 //
 // 割り当ては**旧作と同じ**（`InputManager.stepCallback`）:
-//   ○(1)=決定 / ✕(0)=キャンセル / △(3)=メニュー / 十字 12〜15 / L・R=走る
+//   ○(1)=決定 / ✕(0)=キャンセル / △(3)=メニュー / 十字 12〜15 / L1・R1=走る
+//   ☐(2)=フィールドアタック（キー X）/ L2(6)・R2(7)=先頭を前の人・次の人へ（キー Q・E）（GS-295。2026-10-31）
 // ✕ と △ はどちらも Esc にしてある——このゲームの「閉じる」と「メニュー」は同じキー。
 //
 // **繋がっていなければ何もしない。** 毎フレームの `getGamepads()` は繋がっていないとき
@@ -25,11 +26,12 @@ const REPEAT_NEXT = 120;
 const BUTTON_KEYS: Record<number, string> = {
   0: 'Escape', // ✕ キャンセル
   1: 'Enter', // ○ 決定
+  2: 'KeyX', // ☐ フィールドアタック（GS-295）
   3: 'Escape', // △ メニュー
   4: 'ShiftLeft', // L1 走る
   5: 'ShiftLeft', // R1 走る
-  6: 'ShiftLeft', // L2
-  7: 'ShiftLeft', // R2
+  6: 'KeyQ', // L2 先頭を前の人へ（GS-295）
+  7: 'KeyE', // R2 先頭を次の人へ（GS-295）
   12: 'ArrowUp',
   13: 'ArrowDown',
   14: 'ArrowLeft',
@@ -49,7 +51,11 @@ interface Held {
 
 function keyEvent(type: 'keydown' | 'keyup', code: string, repeat: boolean): KeyboardEvent {
   // `key` も入れる。会話ウィンドウやメニューは `key`、歩きは `code` を見る。
-  const key = code.startsWith('Arrow') || code === 'Enter' || code === 'Escape' ? code : 'Shift';
+  const key = code.startsWith('Arrow') || code === 'Enter' || code === 'Escape'
+    ? code
+    : code.startsWith('Key')
+      ? code.slice(3).toLowerCase()
+      : 'Shift';
   return new KeyboardEvent(type, { code, key, repeat, bubbles: true });
 }
 

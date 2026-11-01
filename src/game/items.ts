@@ -6,6 +6,7 @@
 // **持っている数は台帳ではなくセーブが持つ**（`state.items`）。
 // 台帳は「名前と説明」だけ——同じ物を 2 か所に置かないため。
 
+import type { SkillRange } from './battle/height';
 import { assetUrl } from './assets';
 
 /**
@@ -51,6 +52,11 @@ export interface ItemStrike {
   effect?: string;
   /** 鳴らす音（`sounds.json` のキー）。 */
   se?: string;
+  /**
+   * 通常攻撃の直接・対空（2026-10-31 / GS-294。`melee` 直接 / `ranged` 対空）。書かなければ直接。
+   * 弓や投げ物を `ranged` にすると、飛ぶ敵・高台の相手にも軽くならずに入る。
+   */
+  range?: SkillRange;
 }
 
 /** 台帳の 1 つぶん。 */

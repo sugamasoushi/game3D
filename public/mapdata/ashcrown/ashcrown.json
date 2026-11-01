@@ -11031,6 +11031,14 @@
         "mat": "mat_walls",
         "ts": "walls",
         "tile": 4497
+      },
+      {
+        "id": "p_interior_696_floor",
+        "name": "interior #696 floor",
+        "shape": "floor",
+        "mat": "mat_interior",
+        "ts": "interior",
+        "tile": 696
       }
     ]
   },
@@ -11240,24 +11248,24 @@
   "editor": {
     "camera": {
       "target": [
-        5.485741931440025,
-        8.722046971672224,
-        -12.413803394544093
+        6.95527492733304,
+        8.704869352825733,
+        -10.35097416357711
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 19.123274053753622,
+      "distance": 20.30510076299483,
       "orthographic": false
     },
-    "activeLayer": "屋根_2_2",
+    "activeLayer": "タイルマップレイヤー_11",
     "height": 9,
     "brush": {
-      "shape": "wall",
+      "shape": "floor",
       "rotation": 0,
       "chipTurn": 0,
       "color": "#c45c5c",
-      "tileset": "walls",
-      "tile": 4497,
+      "tileset": "interior",
+      "tile": 696,
       "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
@@ -33184,6 +33192,33 @@
               380
             ]
           }
+        },
+        {
+          "id": "タイルマップレイヤー_11-floor-3",
+          "shape": "floor",
+          "mat": "mat_interior",
+          "ts": "interior",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_interior_696_floor"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              11,
+              10,
+              -3
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ]
+          }
         }
       ]
     },
@@ -35771,11 +35806,6 @@
               "name": "Id",
               "type": "string",
               "value": "slime"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy02"
             }
           ],
           "space": "plane",
@@ -38242,8 +38272,8 @@
     }
   ],
   "stats": {
-    "tiles": 4104,
-    "batches": 77,
-    "drawCalls": 77
+    "tiles": 4105,
+    "batches": 78,
+    "drawCalls": 78
   }
 }

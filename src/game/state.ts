@@ -5,12 +5,15 @@
 //
 // 設定（`options.ts`）はここに**入れない**。あちらは端末の好みで、枠ごとに変わらない。
 
+import type { QuestProgress } from './quests';
 import type { TimeClock } from './timeClock';
 import type { SaveData } from './save';
 import { SAVE_VERSION } from './save';
 import type { WalkDir } from './GameView';
 
 export interface GameState {
+  /** 討伐依頼の受注・討伐数・報告済み。 */
+  quests: Map<string, QuestProgress>;
   /** 物語の段階（GS-254）。最後に済ませた段階の id。'' は何も済んでいない。本筋の進み具合はここだけ。 */
   story: string;
   /** フラグ。本筋と関係ない、その場かぎりの覚え。**書いていなければ false**（GS-254）。読むときは `switchOn()` を通す。 */
@@ -83,6 +86,7 @@ export interface Progress {
 /** はじめから。 */
 export function newState(): GameState {
   return {
+    quests: new Map(),
     story: '',
     switches: new Map(),
     variables: new Map(),
@@ -119,6 +123,7 @@ export function selfKey(map: string, event: string, name: string): string {
 
 export function toSave(state: GameState, progress: Progress): SaveData {
   return {
+    quests: Object.fromEntries([...state.quests].map(([id, value]) => [id, { ...value }])),
     version: SAVE_VERSION,
     savedAt: Date.now(),
     playSeconds: Math.round(state.playSeconds),
@@ -169,6 +174,7 @@ export function resetState(target: GameState): void {
 export function fromSave(data: SaveData): { state: GameState; progress: Progress } {
   return {
     state: {
+      quests: new Map(Object.entries(data.quests ?? {}).map(([id, value]) => [id, { ...value }])),
       story: typeof data.story === 'string' ? data.story : '',
       switches: new Map(Object.entries(data.switches ?? {})),
       variables: new Map(Object.entries(data.variables ?? {})),

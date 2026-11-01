@@ -991,20 +991,6 @@
         "tile": 1015
       },
       {
-        "id": "p_interior_473_billboard_flat_o0_1_0",
-        "name": "interior #473 billboard_flat",
-        "shape": "billboard_flat",
-        "mat": "mat_interior",
-        "ts": "interior",
-        "tile": 473,
-        "base": "p_interior_473_billboard_flat",
-        "offset": [
-          0,
-          1,
-          0
-        ]
-      },
-      {
         "id": "p_interior_184_billboard_fixed",
         "name": "interior #184 billboard_fixed",
         "shape": "billboard_fixed",
@@ -2184,29 +2170,6 @@
         "offsetUnit": 48
       },
       {
-        "id": "p_storage_buckets_3_wall",
-        "name": "storage_buckets #3 wall",
-        "shape": "wall",
-        "mat": "mat_storage_buckets",
-        "ts": "storage_buckets",
-        "tile": 3
-      },
-      {
-        "id": "p_interior_18_wall_o0_1_0_u48",
-        "name": "interior #18 wall",
-        "shape": "wall",
-        "mat": "mat_interior",
-        "ts": "interior",
-        "tile": 18,
-        "base": "p_interior_18_wall",
-        "offset": [
-          0,
-          1,
-          0
-        ],
-        "offsetUnit": 48
-      },
-      {
         "id": "p_storage_barrels_0_wall_o0_-25_-16_u48",
         "name": "storage_barrels #0 wall",
         "shape": "wall",
@@ -2237,19 +2200,65 @@
         "offsetUnit": 48
       },
       {
-        "id": "p_outside_objects_outside_objects_649_wall_o0_-10_0_u48",
-        "name": "outside_objects_outside_objects #649 wall",
-        "shape": "wall",
-        "mat": "mat_outside_objects_outside_objects",
-        "ts": "outside_objects_outside_objects",
-        "tile": 649,
-        "base": "p_outside_objects_outside_objects_649_wall",
+        "id": "p_interior_473_billboard_flat_o0_2_0_u48",
+        "name": "interior #473 billboard_flat",
+        "shape": "billboard_flat",
+        "mat": "mat_interior",
+        "ts": "interior",
+        "tile": 473,
+        "base": "p_interior_473_billboard_flat",
         "offset": [
           0,
-          -10,
+          2,
           0
         ],
         "offsetUnit": 48
+      },
+      {
+        "id": "p_storage_buckets_3_billboard_fixed_o0_-7_0_u48",
+        "name": "storage_buckets #3 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_storage_buckets",
+        "ts": "storage_buckets",
+        "tile": 3,
+        "base": "p_storage_buckets_3_billboard_fixed",
+        "offset": [
+          0,
+          -7,
+          0
+        ],
+        "offsetUnit": 48
+      },
+      {
+        "id": "p_outside_objects_outside_objects_649_billboard_fixed",
+        "name": "outside_objects_outside_objects #649 billboard_fixed",
+        "shape": "billboard_fixed",
+        "mat": "mat_outside_objects_outside_objects",
+        "ts": "outside_objects_outside_objects",
+        "tile": 649
+      },
+      {
+        "id": "p_interior_18_floor_o0_1_0_u48",
+        "name": "interior #18 floor",
+        "shape": "floor",
+        "mat": "mat_interior",
+        "ts": "interior",
+        "tile": 18,
+        "base": "p_interior_18_floor",
+        "offset": [
+          0,
+          1,
+          0
+        ],
+        "offsetUnit": 48
+      },
+      {
+        "id": "p_terrain-v7_36_floor",
+        "name": "terrain-v7 #36 floor",
+        "shape": "floor",
+        "mat": "mat_terrain-v7",
+        "ts": "terrain-v7",
+        "tile": 36
       }
     ]
   },
@@ -2541,31 +2550,31 @@
   "editor": {
     "camera": {
       "target": [
-        0.2525503571339809,
-        -1.6806182460452606,
-        -1.0152791754656656
+        0.21766425497004538,
+        -0.6280728342646009,
+        -3.2320508973189757
       ],
       "yaw": 0,
       "pitch": -44,
-      "distance": 16.5,
+      "distance": 18.150000000000002,
       "orthographic": false
     },
-    "activeLayer": "レイヤー_5",
+    "activeLayer": "タイルマップレイヤー_12_2",
     "height": 0,
     "brush": {
-      "shape": "floor",
+      "shape": "ceil",
       "rotation": 0,
       "chipTurn": 0,
       "color": "#d5dbe0",
-      "tileset": "walls",
-      "tile": 513,
+      "tileset": "interior",
+      "tile": 149,
       "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
       "offset": [
         0,
-        0,
-        0
+        -25,
+        21
       ],
       "thickness": [
         -32,
@@ -2653,7 +2662,7 @@
           "protos": [
             "p_floors_1248_floor"
           ],
-          "count": 37,
+          "count": 35,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -2745,9 +2754,6 @@
               -3,
               0,
               -4,
-              -1,
-              0,
-              0,
               0,
               0,
               0,
@@ -2757,9 +2763,6 @@
               2,
               0,
               0,
-              -1,
-              0,
-              1,
               0,
               0,
               1,
@@ -2771,8 +2774,6 @@
               1
             ],
             "proto": [
-              0,
-              0,
               0,
               0,
               0,
@@ -2844,8 +2845,6 @@
               0,
               0,
               0,
-              0,
-              0,
               0
             ]
           }
@@ -2860,11 +2859,17 @@
           "protos": [
             "p_terrain-v7_100_floor"
           ],
-          "count": 15,
+          "count": 17,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
             "cell": [
+              -1,
+              0,
+              0,
+              -1,
+              0,
+              1,
               -3,
               0,
               0,
@@ -2926,9 +2931,13 @@
               0,
               0,
               0,
+              0,
+              0,
               0
             ],
             "rf": [
+              0,
+              0,
               0,
               0,
               0,
@@ -2957,7 +2966,7 @@
           "protos": [
             "p_walls_513_floor"
           ],
-          "count": 10,
+          "count": 12,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -2991,9 +3000,17 @@
               5,
               1,
               0,
-              5
+              5,
+              3,
+              0,
+              3,
+              -4,
+              0,
+              3
             ],
             "proto": [
+              0,
+              0,
               0,
               0,
               0,
@@ -3006,6 +3023,8 @@
               0
             ],
             "rf": [
+              0,
+              0,
               0,
               0,
               0,
@@ -3051,11 +3070,12 @@
             "p_terrain-v7_100_floor",
             "p_terrain-v7_68_floor",
             "p_terrain-v7_69_floor",
-            "p_terrain-v7_101_floor",
+            "p_terrain-v7_36_floor",
             "p_terrain-v7_37_floor",
+            "p_terrain-v7_101_floor",
             "p_terrain-v7_133_floor"
           ],
-          "count": 13,
+          "count": 12,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -3084,9 +3104,6 @@
               -1,
               0,
               0,
-              -1,
-              0,
-              1,
               -3,
               0,
               0,
@@ -3109,14 +3126,12 @@
               4,
               5,
               6,
-              6,
               7,
-              6,
               8,
+              9,
               5
             ],
             "rf": [
-              0,
               0,
               0,
               0,
@@ -3137,7 +3152,6 @@
               164,
               0,
               0,
-              158,
               158,
               0,
               0,
@@ -4540,33 +4554,21 @@
           "mode": "instanced",
           "anim": null,
           "protos": [
-            "p_interior_181_wall_o0_-17_14",
-            "p_interior_251_wall",
-            "p_interior_18_wall_o0_1_0_u48"
+            "p_interior_251_wall"
           ],
-          "count": 3,
+          "count": 1,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
             "cell": [
-              2,
-              0,
-              -2,
               1,
               1,
-              -6,
-              0,
-              0,
-              -4
+              -6
             ],
             "proto": [
-              0,
-              1,
-              2
+              0
             ],
             "rf": [
-              2,
-              0,
               0
             ]
           }
@@ -4611,40 +4613,7 @@
           }
         },
         {
-          "id": "レイヤー_4-ceil-2",
-          "shape": "ceil",
-          "mat": "mat_interior",
-          "ts": "interior",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_interior_149_ceil_o0_-17_14",
-            "p_interior_117_ceil_o0_-17_14"
-          ],
-          "count": 2,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              2,
-              0,
-              -3,
-              2,
-              0,
-              -4
-            ],
-            "proto": [
-              0,
-              1
-            ],
-            "rf": [
-              0,
-              0
-            ]
-          }
-        },
-        {
-          "id": "レイヤー_4-wall-3",
+          "id": "レイヤー_4-wall-2",
           "shape": "wall",
           "mat": "mat_2ffdb342da8b7d2c",
           "ts": "2ffdb342da8b7d2c",
@@ -4677,34 +4646,7 @@
           }
         },
         {
-          "id": "レイヤー_4-wall-4",
-          "shape": "wall",
-          "mat": "mat_storage_buckets",
-          "ts": "storage_buckets",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_storage_buckets_3_wall"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -3,
-              0,
-              -1
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ]
-          }
-        },
-        {
-          "id": "レイヤー_4-wall-5",
+          "id": "レイヤー_4-wall-3",
           "shape": "wall",
           "mat": "mat_storage_barrels",
           "ts": "storage_barrels",
@@ -4741,6 +4683,60 @@
           }
         },
         {
+          "id": "レイヤー_4-billboard_fixed-4",
+          "shape": "billboard_fixed",
+          "mat": "mat_storage_buckets",
+          "ts": "storage_buckets",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_storage_buckets_3_billboard_fixed_o0_-7_0_u48"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -2,
+              0,
+              1
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ]
+          }
+        },
+        {
+          "id": "レイヤー_4-billboard_fixed-5",
+          "shape": "billboard_fixed",
+          "mat": "mat_outside_objects_outside_objects",
+          "ts": "outside_objects_outside_objects",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_outside_objects_outside_objects_649_billboard_fixed"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -3,
+              0,
+              -3
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ]
+          }
+        },
+        {
           "id": "レイヤー_4-floor-6",
           "shape": "floor",
           "mat": "mat_interior",
@@ -4756,33 +4752,6 @@
           "attrs": {
             "cell": [
               0,
-              0,
-              -3
-            ],
-            "proto": [
-              0
-            ],
-            "rf": [
-              0
-            ]
-          }
-        },
-        {
-          "id": "レイヤー_4-wall-7",
-          "shape": "wall",
-          "mat": "mat_outside_objects_outside_objects",
-          "ts": "outside_objects_outside_objects",
-          "mode": "instanced",
-          "anim": null,
-          "protos": [
-            "p_outside_objects_outside_objects_649_wall_o0_-10_0_u48"
-          ],
-          "count": 1,
-          "enc": "json",
-          "cellEnc": "abs",
-          "attrs": {
-            "cell": [
-              -3,
               0,
               -3
             ],
@@ -4824,7 +4793,7 @@
           "mode": "instanced",
           "anim": null,
           "protos": [
-            "p_interior_473_billboard_flat_o0_1_0"
+            "p_interior_473_billboard_flat_o0_2_0_u48"
           ],
           "count": 1,
           "enc": "json",
@@ -4840,6 +4809,93 @@
             ],
             "rf": [
               0
+            ]
+          }
+        },
+        {
+          "id": "タイルマップレイヤー_12_2-floor-1",
+          "shape": "floor",
+          "mat": "mat_interior",
+          "ts": "interior",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_interior_18_floor_o0_1_0_u48"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              1,
+              0,
+              -5
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              0
+            ]
+          }
+        },
+        {
+          "id": "タイルマップレイヤー_12_2-ceil-2",
+          "shape": "ceil",
+          "mat": "mat_interior",
+          "ts": "interior",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_interior_149_ceil_o0_-17_14",
+            "p_interior_117_ceil_o0_-17_14"
+          ],
+          "count": 2,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              2,
+              0,
+              -3,
+              2,
+              0,
+              -4
+            ],
+            "proto": [
+              0,
+              1
+            ],
+            "rf": [
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "id": "タイルマップレイヤー_12_2-wall-3",
+          "shape": "wall",
+          "mat": "mat_interior",
+          "ts": "interior",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_interior_181_wall_o0_-17_14"
+          ],
+          "count": 1,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              2,
+              0,
+              -2
+            ],
+            "proto": [
+              0
+            ],
+            "rf": [
+              2
             ]
           }
         }
@@ -5299,19 +5355,55 @@
           "points": [
             [
               -3,
-              -2
+              -3
             ],
             [
               -2,
-              -2
+              -3
             ],
             [
               -2,
-              -1.8
+              -2.5784888677353752
             ],
             [
               -3,
-              -1.8
+              -2.5784888677353752
+            ]
+          ]
+        },
+        {
+          "id": "obj_6",
+          "name": "bed",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "bed"
+            }
+          ],
+          "space": "solid",
+          "y": 0,
+          "height": 1,
+          "points": [
+            [
+              2,
+              -4
+            ],
+            [
+              3,
+              -4
+            ],
+            [
+              3,
+              -1
+            ],
+            [
+              2,
+              -1
             ]
           ]
         },
@@ -5330,7 +5422,7 @@
             }
           ],
           "space": "solid",
-          "y": 0,
+          "y": 0.03125,
           "height": 1,
           "points": [
             [
@@ -5528,7 +5620,7 @@
         {
           "name": "Hit",
           "type": "string",
-          "value": "nowall"
+          "value": "none"
         }
       ],
       "batches": [
@@ -5620,7 +5712,7 @@
         {
           "name": "Hit",
           "type": "string",
-          "value": "nowall"
+          "value": "none"
         }
       ],
       "batches": [
@@ -5759,8 +5851,8 @@
     }
   ],
   "stats": {
-    "tiles": 296,
-    "batches": 27,
-    "drawCalls": 27
+    "tiles": 297,
+    "batches": 29,
+    "drawCalls": 29
   }
 }

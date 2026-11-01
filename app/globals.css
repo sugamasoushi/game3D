@@ -398,6 +398,45 @@ body {
 .virtual-face-button.square { color: #e6a8ca; }
 .virtual-face-button.circle { color: #ffaaa4; }
 
+/* 右の円の上の小さなボタン（GS-295。L2・走る・R2）。円の外の上に横一列。 */
+.virtual-shoulder {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.virtual-shoulder-button {
+  width: 64px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  background: var(--message-background);
+  font-size: 16px;
+}
+
+/* フィールドアタックの数字（GS-295）。頭の上から少し浮いて消える。 */
+.field-hit {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  text-shadow: 0 0 3px #000, 0 2px 2px #000;
+  pointer-events: none;
+  z-index: 41;
+  animation: mep-field-hit 800ms ease-out forwards;
+}
+
+@keyframes mep-field-hit {
+  0% { opacity: 0; transform: translate(-50%, -60%); }
+  15% { opacity: 1; transform: translate(-50%, -110%); }
+  75% { opacity: 1; transform: translate(-50%, -130%); }
+  100% { opacity: 0; transform: translate(-50%, -140%); }
+}
+
 @keyframes blink {
   to {
     opacity: 0.2;
@@ -1870,37 +1909,15 @@ body {
   left: 50%;
   bottom: 100%;
   margin-bottom: 8px;
-  transform: translateX(-50%);
+  /* 画面の上へ出るときは --head-drop だけ下げる（高台の敵。`foeHeadDrop`）。 */
+  transform: translate(-50%, var(--head-drop, 0px));
 }
 
 .battle-foe.on3d .ail-tags {
   position: absolute;
   left: 50%;
   bottom: 100%;
-  transform: translate(-50%, -22px);
-}
-
-/* 技の絵は板の真ん中。 */
-.battle-foe.on3d .battle-fx {
-  top: 50%;
-}
-
-/* 敵の素手の攻撃の絵を、殴られた味方の板へ重ねる枠（GS-123）。 */
-.battle-party-fx {
-  position: absolute;
-  pointer-events: none;
-}
-
-/* 板が画面から外れているとき（2D の戦闘や、カメラの手前すぎる板）は画面の下寄りへ。 */
-.battle-party-fx.loose {
-  left: 50%;
-  top: 72%;
-  width: 0;
-  height: 0;
-}
-
-.battle-party-fx .battle-fx {
-  top: 50%;
+  transform: translate(-50%, calc(-22px + var(--head-drop, 0px)));
 }
 
 /*
@@ -2419,6 +2436,79 @@ body {
 }
 
 /*
+ * ── 宿の窓（GS-290）─────────────────────────────────────────
+ *
+ * 店の枠をそのまま使う（同じ見た目・同じキー）。一覧の代わりに仲間の HP / MP を並べ、
+ * 下の帯に「泊まる」「やめる」を置く。
+ */
+.inn-box {
+  width: 560px;
+}
+
+.inn-title {
+  font-weight: bold;
+}
+
+.inn-price {
+  flex: 1;
+  color: #ffd479;
+  font-variant-numeric: tabular-nums;
+}
+
+.inn-party {
+  margin: 0;
+  padding: 0 10px;
+  list-style: none;
+}
+
+.inn-party li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+}
+
+.inn-party li.down .shop-name {
+  opacity: 0.5;
+}
+
+.inn-ail {
+  flex: none;
+  width: 48px;
+}
+
+.inn-num {
+  flex: none;
+  width: 120px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.inn-num small {
+  margin-right: 4px;
+  opacity: 0.6;
+}
+
+.inn-commands {
+  flex: none;
+}
+
+/* 下の帯の命令は店のタブと同じ形（枠と濃さで選んでいる物を示す）。 */
+.shop-foot .inn-commands button {
+  padding: 4px 0;
+  border-color: transparent;
+}
+
+.shop-foot .inn-commands button.on {
+  border-color: #ffd479;
+}
+
+/* お金が足りないときの「泊まる」。消さずに沈める（押すと「足りない」と言う）。 */
+.inn-commands button.short {
+  text-decoration: line-through;
+}
+
+/*
  * ── そうび・ステータス（GS-67）─────────────────────────────
  *
  * メニューの中身なので、枠（`.gmenu-body`）の中で完結させる。
@@ -2630,17 +2720,7 @@ body {
  * 旧作 `PlayerAttack` / `EnemyAttack` と同じ動き。
  */
 
-/* 技の絵。**敵の絵の真ん中**に重ねる。コマ送りと大きさは画面が 1 コマずつ書き換える。 */
-.battle-fx {
-  position: absolute;
-  left: 50%;
-  top: 58%;
-  transform: translate(-50%, -50%);
-  background-repeat: no-repeat;
-  image-rendering: pixelated;
-  pointer-events: none;
-  z-index: 2;
-}
+/* 技の絵は 3D の板（`game/fieldFx.ts`。2026-10-31）。画面には重ねない。 */
 
 /* 殴られた敵の仰け反り（旧作 `leanBack`）。奥へ下がって戻る（2026-10-21。以前は上へ 20px 跳ねた）。
    2D では足元を支点に少し小さくして奥へ下がったように見せる。3D は `battle/leanBack.ts`。 */
@@ -2782,7 +2862,10 @@ body {
   background: rgba(10, 16, 32, 0.85);
   color: #ffd0c0;
   font-size: 17px;
-  white-space: nowrap;
+  /* フィールドアタックの取り分・レベルアップ（GS-295）は長いので、画面幅を超えたら折り返す。 */
+  width: max-content;
+  max-width: 820px;
+  text-align: center;
   pointer-events: none;
   animation: mep-walk-note 2200ms ease-out forwards;
 }
@@ -2839,6 +2922,28 @@ body {
   background: rgba(25, 25, 112, 0.78);
   font-size: 20px;
   white-space: nowrap;
+  /* 倍率（大きく）と理由（小さく）を横に並べる（GS-292）。 */
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.battle-aim b {
+  font-weight: 700;
+}
+
+/* 1 倍より上は暖かい色、下は冷たい色。 */
+.battle-aim b.up {
+  color: #ffcf6b;
+}
+
+.battle-aim b.down {
+  color: #9cc8ff;
+}
+
+.battle-aim small {
+  font-size: 14px;
+  color: #d8e2f0;
 }
 
 /* 攻め方を選んでいるあいだの命令の窓（GS-80）。**消さずに沈める**（旧作の `move()`）。 */
@@ -3255,7 +3360,7 @@ body {
   content: '▲';
   position: absolute;
   right: calc(50% + 90px);
-  top: -29px;
+  top: calc(-29px + var(--head-drop, 0px));
   height: 21px;
   display: flex;
   align-items: center;
@@ -3666,3 +3771,13 @@ body {
   letter-spacing: 0.08em;
   box-sizing: border-box;
 }
+
+/* 討伐依頼の記録 */
+.quests-page { padding: 1rem; overflow: auto; height: 100%; }
+.quests-page > p { opacity: .8; margin-bottom: 1rem; }
+.quest-card { border: 1px solid #786449; border-radius: 8px; padding: 1rem; margin-bottom: .8rem; background: #171c26; }
+.quest-card:focus-visible { outline: 2px solid #edcc8b; outline-offset: 2px; }
+.quest-card h3 { margin: 0 0 .6rem; }
+.quest-card h3 small { font-size: .8em; color: #edcc8b; margin-left: .8rem; }
+.quest-card p { margin: .5rem 0; white-space: pre-wrap; }
+.quest-card progress { width: min(100%, 26rem); accent-color: #edcc8b; }

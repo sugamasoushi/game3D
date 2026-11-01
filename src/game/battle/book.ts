@@ -70,6 +70,11 @@ export interface EnemyDef extends Stats {
    * 書かなければ 0.5（前と後ろで同じ。前と後ろの枠の数が同じなら、ちょうどこの確率で前に出る）。1 でも前の枠が埋まっていれば後ろへ。
    */
   front?: number;
+  /**
+   * 飛ぶ（2026-10-30 / GS-288）。空のマスにも立て、床から浮いて立つ（`battleStages.json` の `grid.flyHeight`）。
+   * 前衛・後衛の決まりの外。単体の攻撃で守られた後衛も狙える。飛ばない相手からの直接攻撃は `rates.flyGuard`（既定 0.5）倍。
+   */
+  flying?: boolean;
 }
 
 /** はじめの仲間 1 人ぶん。数値は**レベル 1 のとき**の値（GS-63）。 */
@@ -82,6 +87,11 @@ export interface MemberDef extends Stats {
   learn?: Record<string, string[]>;
   /** はじめから身に着けている物（GS-67）。置き場所 → 持ち物の id。 */
   equip?: Record<string, string>;
+  /**
+   * フィールドアタックに使う技（GS-295。`skills.json` のキー）。**覚えている技**で、`field` のある技だけ効く。
+   * 書かない・覚えていない・`field` が無ければ素手の通常攻撃（`battleSettings.json` の `normalAttack.party.field`）。
+   */
+  fieldAttack?: string;
 }
 
 /**

@@ -6,16 +6,17 @@
   "members": {
     "meina": {
       "level": 1,
-      "hp": 48,
+      "hp": 55,
       "mp": 20,
       "attack": 14,
-      "guard": 4,
+      "guard": 10,
       "speed": 10,
       "skills": [
         "special01",
         "special02",
         "magic01",
-        "magic04"
+        "magic04",
+        "special03"
       ],
       "equip": {
         "armor": "マント",
@@ -30,7 +31,7 @@
       },
       "learn": {
         "3": [
-          "magic02"
+          "special08"
         ],
         "7": [
           "magic03"
@@ -83,7 +84,8 @@
         "6": [
           "magic01"
         ]
-      }
+      },
+      "fieldAttack": "magic02"
     }
   },
   "levelUp": {

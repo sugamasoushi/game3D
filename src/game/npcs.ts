@@ -19,8 +19,7 @@
 //            省略されていればキャラクターのキー。NPC の設定（`mapNpcs.json`）もこの名前で引く
 //   Event  … 話しかけたときに動くイベントの id
 //   Face   … 最初に向いている方（up / down / left / right）
-//   EnemyData … 敵の台帳（`data/enemies.json`）のキー（GS-76）。書くと**シンボル**になり、
-//               触ると戦闘が始まる。話しかけるイベントは持たない（触るのが用件）
+//   （敵シンボル（GS-76）の結び付けは 2026-10-31 にマップの `EnemyData` から NPC の設定の台帳 `mapNpcs.json` の `enemy` へ移した。GS-295）
 //   Scale  … 絵の大きさの倍率（GS-130）。**見た目だけ**で、当たりも届く範囲も変わらない
 //   Pose   … スイッチが入っているときの静止コマの名前（GS-133。立ち姿 `actors.json` の `poses`）
 //   PoseIf … その `Pose` にするスイッチ。**見た目はイベントではなくここで決まる**
@@ -52,7 +51,7 @@ export interface NpcDef {
   event: string;
   /**
    * 敵の台帳のキー（GS-76）。**書いてあれば「シンボル」**——触ると戦闘が始まる。
-   * 中身（名前・数値・絵）は台帳から引くので、マップが持つのはこのキーだけ。
+   * NPC の設定の台帳（`mapNpcs.json`）の `enemy` から入れる（GS-295。以前はマップの `EnemyData`）。
    */
   enemy?: string;
   /**
@@ -101,8 +100,6 @@ export const CHARACTER_PROPERTY = 'Character';
 const ID_PROPERTY = 'Id';
 const EVENT_PROPERTY = 'Event';
 const FACE_PROPERTY = 'Face';
-/** 敵シンボル（GS-76）。値は `data/enemies.json` のキー。 */
-const ENEMY_PROPERTY = 'EnemyData';
 /** 絵の大きさの倍率（GS-130）。見た目だけ。 */
 const SCALE_PROPERTY = 'Scale';
 const SHOW_IN_PROPERTY = 'ShowIn';
@@ -253,7 +250,8 @@ export function readNpcs(map: MapDef, settings: Record<string, MapNpcDef> = {}):
         id,
         character,
         event: textOf(object.properties, EVENT_PROPERTY),
-        ...(textOf(object.properties, ENEMY_PROPERTY) ? { enemy: textOf(object.properties, ENEMY_PROPERTY) } : {}),
+        // 敵シンボル（GS-76）。結び付けは台帳（GS-295）。
+        ...(setting?.enemy ? { enemy: setting.enemy } : {}),
         // 倍率は 0 以下を受けない（消えてしまう）。上も程々で止める。
         ...(numberOf(object.properties, SCALE_PROPERTY) !== undefined
           ? { scale: Math.min(16, Math.max(0.1, numberOf(object.properties, SCALE_PROPERTY) ?? 1)) }

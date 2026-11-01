@@ -88,7 +88,13 @@
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "story", "done": "cave_hunt" },
         { "type": "fade", "to": "out", "ms": 400 },
-        { "type": "transfer", "map": "home", "at": { "x": 5, "y": 0, "z": 2 }, "face": "up" },
+        {
+          "type": "transfer",
+          "map": "home",
+          "at": { "x": 0, "y": 0, "z": 4 },
+          "face": "up",
+          "px": { "x": 0, "z": -7 }
+        },
         { "type": "fade", "to": "in", "ms": 400 }
       ],
       "kind": "scenario"

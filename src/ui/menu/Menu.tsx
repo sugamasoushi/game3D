@@ -24,6 +24,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { characterName } from '../../game/characters';
 import type { MemberState } from '../../game/state';
+import type { QuestProgress } from '../../game/quests';
+import { QuestsPage } from './QuestsPage';
 import { ItemsPage } from './ItemsPage';
 import { EquipPage } from './EquipPage';
 import { SkillsPage } from './SkillsPage';
@@ -38,12 +40,13 @@ import { PICK, nearest, nudge } from './menuNav';
  * 中身の無いタブは並べない——押せるのに何も起きない場所を作らないため（GS-54）。
  * 「スキル」は**見せるだけ**：いまある技はどれも戦闘中にしか意味がない（GS-67）。
  */
-const PAGES = ['コンディション', 'アイテム', '装備', 'スキル', 'ステータス', 'セーブ', '設定'] as const;
+const PAGES = ['コンディション', 'アイテム', '装備', 'スキル', 'ステータス', '依頼', 'セーブ', '設定'] as const;
 type Page = (typeof PAGES)[number];
 /** 誰を見るかを選ぶページ（GS-70）。 */
 const MEMBER_PAGES: readonly Page[] = ['装備', 'スキル', 'ステータス'];
 
 export function Menu({
+  quests,
   items,
   party,
   members,
@@ -59,6 +62,7 @@ export function Menu({
   onClose,
 }: {
   /** いま持っている物（GS-46）。数はここ、名前と説明は台帳から。 */
+  quests: Map<string, QuestProgress>;
   items: Map<string, number>;
   /** 隊列（GS-60）。**先頭が左の柱に出る人。** */
   party: string[];
@@ -223,6 +227,7 @@ export function Menu({
                 <button type="button" tabIndex={-1} data-step="1" aria-label="次の仲間" disabled={at >= party.length - 1} onClick={() => setPickAt(at + 1)}>▶</button>
               </div>
             ) : null}
+            {page === '依頼' ? <QuestsPage quests={quests} /> : null}
             {page === 'コンディション' ? <ConditionPage party={party} members={members} gold={gold} playSeconds={playSeconds} place={place} /> : null}
             {page === 'アイテム' ? (
               <ItemsPage

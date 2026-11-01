@@ -82,9 +82,9 @@
         {
           "type": "transfer",
           "map": "home",
-          "at": { "x": 5, "y": 0, "z": 3 },
+          "at": { "x": 0, "y": 0, "z": 4 },
           "face": "up",
-          "px": { "x": 0, "z": -9 }
+          "px": { "x": 0, "z": -7 }
         },
         { "type": "fade", "to": "in", "ms": 400 }
       ],

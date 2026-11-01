@@ -6,7 +6,7 @@
 // 画面にも乱数にも触らない（乱数は呼ぶ側から渡す）。隊列のメニューで前後を選ぶ形は後で足す。
 
 import type { BattleFormationDef, BattleFormationSlot } from './book';
-import type { CellGround } from './height';
+import { canStand, type CellGround } from './height';
 import type { Fighter } from './rules';
 
 /** マスの地形（2026-10-29 / GS-285）。舞台の点の床からの高さ（フィールドのマス）と分け方。地形を知らなければ null。 */
@@ -20,7 +20,7 @@ export type TerrainOf = (cell: { col: number; row: number }) => CellTerrain | nu
 /** 前衛に出る確率の既定（GS-286）。前と後ろで同じ重み＝今までの一様なくじ。 */
 export const DEFAULT_FRONT = 0.5;
 
-/** 敵のくじを引き直す回数の上限（空のマスを避ける。GS-285）。引き切れなければ最後のくじのまま。 */
+/** 敵のくじを引き直す回数の上限（立てないマスを避ける。GS-285 / GS-288）。引き切れなければ最後のくじのまま。 */
 const SKY_RETRIES = 24;
 
 /**
@@ -46,8 +46,9 @@ export function assignBattleCells(
   const party = fighters.filter((who) => who.side === 'party');
   const enemies = fighters.filter((who) => who.side === 'enemy');
   const sides: Array<[Fighter[], BattleFormationSlot[] | null]> = [
-    [party, partyLineCells(formation.party, party.length, center)],
-    [enemies, enemyCells(formation.enemy, enemies.length, random, center, terrainOf, frontOf ? enemies.map((who) => frontOf(who) ?? DEFAULT_FRONT) : undefined)],
+    [party, partyCells(formation.party, party.length, center, terrainOf)],
+    [enemies, enemyCells(formation.enemy, enemies.length, random, center, terrainOf,
+      frontOf ? enemies.map((who) => frontOf(who) ?? DEFAULT_FRONT) : undefined, enemies.map((who) => !!who.flying))],
   ];
   for (const [list, cells] of sides) {
     if (!cells) continue;
@@ -62,7 +63,29 @@ export function assignBattleCells(
 }
 
 /**
- * 敵のくじ（GS-285）。空のマス（床が無い）に当たったら引き直す。飛ぶ敵はまだ無いので、空には誰も立たせない。
+ * 味方の並び（GS-288）。横一列のマスが立てないマス（`block`・空）に掛かったら、そのマスの枠を除いて並べ直し、
+ * それでも掛かれば寄せずに並べる。どうしても避けられなければ最初の並びのまま。
+ */
+export function partyCells(
+  slots: BattleFormationSlot[] | undefined,
+  count: number,
+  center: boolean,
+  terrainOf?: TerrainOf,
+): BattleFormationSlot[] | null {
+  const first = partyLineCells(slots, count, center);
+  if (!terrainOf || !first || !slots) return first;
+  const bad = (cell: { col: number; row: number }) => !canStand(terrainOf(cell)?.ground);
+  if (!first.some(bad)) return first;
+  const open = slots.filter((slot) => !bad(slot));
+  for (const tryCenter of [center, false]) {
+    const cells = partyLineCells(open, count, tryCenter);
+    if (cells && !cells.some(bad)) return cells;
+  }
+  return first;
+}
+
+/**
+ * 敵のくじ（GS-285 / GS-288）。立てないマスに当たったら引き直す——`block` は誰も、空のマスは飛ばない敵が立てない。
  * 引き直しても避けられなければ、最後のくじのまま（その敵は宙に立つ。戦闘演出エディタが ⚠ で知らせる）。
  */
 export function enemyCells(
@@ -73,10 +96,13 @@ export function enemyCells(
   terrainOf?: TerrainOf,
   /** 敵ごとの前衛に出る確率（GS-286）。並び順。 */
   fronts?: number[],
+  /** 敵ごとに飛ぶか（GS-288）。並び順。飛ぶ敵は空のマスに立てる。 */
+  flyers?: boolean[],
 ): BattleFormationSlot[] | null {
   let cells = randomCells(slots, count, random, center, fronts);
   if (!terrainOf) return cells;
-  for (let round = 0; cells && round < SKY_RETRIES && cells.some((cell) => terrainOf(cell)?.ground === 'sky'); round += 1) {
+  const bad = (list: BattleFormationSlot[]) => list.some((cell, at) => !canStand(terrainOf(cell)?.ground, !!flyers?.[at]));
+  for (let round = 0; cells && round < SKY_RETRIES && bad(cells); round += 1) {
     cells = randomCells(slots, count, random, center, fronts);
   }
   return cells;

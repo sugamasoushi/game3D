@@ -108,6 +108,231 @@
       "name": "１２３４５６７８９０１２３４５６７８９",
       "text": "文字数テスト",
       "price": 0
+    },
+    "上やくそう": {
+      "name": "上やくそう",
+      "text": "HP を 60、MP を 0 回復する。",
+      "price": 45,
+      "use": {
+        "where": "both",
+        "hp": 60,
+        "say": "力が もどってきた！"
+      }
+    },
+    "魔力のしずく": {
+      "name": "魔力のしずく",
+      "text": "HP を 0、MP を 40 回復する。",
+      "price": 70,
+      "use": {
+        "where": "both",
+        "mp": 40,
+        "say": "力が もどってきた！"
+      }
+    },
+    "回復の霊薬": {
+      "name": "回復の霊薬",
+      "text": "HP を 100、MP を 30 回復する。",
+      "price": 180,
+      "use": {
+        "where": "both",
+        "hp": 100,
+        "mp": 30,
+        "say": "力が もどってきた！"
+      }
+    },
+    "しびれ取り": {
+      "name": "しびれ取り",
+      "text": "対応する状態異常を 治す。",
+      "price": 25,
+      "use": {
+        "where": "both",
+        "cure": [
+          "paralysis"
+        ],
+        "say": "体が 楽に なった。"
+      }
+    },
+    "目覚まし香": {
+      "name": "目覚まし香",
+      "text": "対応する状態異常を 治す。",
+      "price": 20,
+      "use": {
+        "where": "both",
+        "cure": [
+          "sleep"
+        ],
+        "say": "体が 楽に なった。"
+      }
+    },
+    "やけど薬": {
+      "name": "やけど薬",
+      "text": "対応する状態異常を 治す。",
+      "price": 25,
+      "use": {
+        "where": "both",
+        "cure": [
+          "burn"
+        ],
+        "say": "体が 楽に なった。"
+      }
+    },
+    "ぬくもり草": {
+      "name": "ぬくもり草",
+      "text": "対応する状態異常を 治す。",
+      "price": 25,
+      "use": {
+        "where": "both",
+        "cure": [
+          "freeze"
+        ],
+        "say": "体が 楽に なった。"
+      }
+    },
+    "止血草": {
+      "name": "止血草",
+      "text": "対応する状態異常を 治す。",
+      "price": 20,
+      "use": {
+        "where": "both",
+        "cure": [
+          "bleed"
+        ],
+        "say": "体が 楽に なった。"
+      }
+    },
+    "強力どく消し": {
+      "name": "強力どく消し",
+      "text": "対応する状態異常を 治す。",
+      "price": 40,
+      "use": {
+        "where": "both",
+        "cure": [
+          "poison",
+          "venom"
+        ],
+        "say": "体が 楽に なった。"
+      }
+    },
+    "万能薬": {
+      "name": "万能薬",
+      "text": "登録済みの状態異常を すべて治す。",
+      "price": 120,
+      "use": {
+        "where": "both",
+        "cure": [
+          "poison",
+          "sleep",
+          "burn",
+          "paralysis",
+          "freeze",
+          "bleed",
+          "venom"
+        ],
+        "say": "体が 楽に なった。"
+      }
+    },
+    "旅人の服": {
+      "name": "旅人の服",
+      "text": "動きやすい 旅の服。防御 +4、素早さ +1。",
+      "price": 80,
+      "equip": {
+        "slot": "armor",
+        "guard": 4,
+        "speed": 1
+      }
+    },
+    "鉄の剣": {
+      "name": "鉄の剣",
+      "text": "攻撃 +28、素早さ -1。頼れる鉄の剣。",
+      "price": 180,
+      "equip": {
+        "slot": "weapon",
+        "attack": 28,
+        "speed": -1,
+        "strike": {
+          "effect": "normal"
+        }
+      }
+    },
+    "狩人の短剣": {
+      "name": "狩人の短剣",
+      "text": "攻撃 +24、素早さ +3。素早い狩りに向く。",
+      "price": 160,
+      "equip": {
+        "slot": "weapon",
+        "attack": 24,
+        "speed": 3,
+        "strike": {
+          "effect": "normal_dagger_slash",
+          "se": "剣の素振り3"
+        }
+      }
+    },
+    "樫の杖": {
+      "name": "樫の杖",
+      "text": "攻撃 +16、防御 +2。丈夫な樫の杖。",
+      "price": 100,
+      "equip": {
+        "slot": "weapon",
+        "attack": 16,
+        "guard": 2,
+        "strike": {
+          "effect": "normal"
+        }
+      }
+    },
+    "戦士の大剣": {
+      "name": "戦士の大剣",
+      "text": "攻撃 +40、素早さ -4。重い一撃を放つ。",
+      "price": 350,
+      "equip": {
+        "slot": "weapon",
+        "attack": 40,
+        "speed": -4,
+        "strike": {
+          "effect": "normal"
+        }
+      }
+    },
+    "鎖のよろい": {
+      "name": "鎖のよろい",
+      "text": "防御 +10、素早さ -2。金属の輪を編んだよろい。",
+      "price": 220,
+      "equip": {
+        "slot": "armor",
+        "guard": 10,
+        "speed": -2
+      }
+    },
+    "鉄のよろい": {
+      "name": "鉄のよろい",
+      "text": "防御 +15、素早さ -4。頑丈な鉄のよろい。",
+      "price": 400,
+      "equip": {
+        "slot": "armor",
+        "guard": 15,
+        "speed": -4
+      }
+    },
+    "風織りのローブ": {
+      "name": "風織りのローブ",
+      "text": "防御 +5、素早さ +4。風のように軽いローブ。",
+      "price": 240,
+      "equip": {
+        "slot": "armor",
+        "guard": 5,
+        "speed": 4
+      }
+    },
+    "狩人の革服": {
+      "name": "狩人の革服",
+      "text": "防御 +7、素早さ +1。動きやすい革服。",
+      "price": 160,
+      "equip": {
+        "slot": "armor",
+        "guard": 7,
+        "speed": 1
+      }
     }
   }
 }

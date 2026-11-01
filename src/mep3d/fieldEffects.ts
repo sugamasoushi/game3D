@@ -770,26 +770,50 @@ void main() {
 /** 光の粒。雪よりゆっくり漂い、明るさが呼吸する。加算で重ねる。 */
 const moteShader = `
 precision highp float;
+uniform vec2 moteSize;
 ${COMMON_UNIFORMS}
-${EDGE_FADE}
 ${HASH}
 void main() {
-  float cells = max(2.0, 13.0 * scale);
-  vec2 p = vUv * vec2(cells, cells * 0.55);
-  // 上へゆっくり。蛍のように漂わせる。
-  p.y -= time * speed * (0.5 + level * 0.4);
-  p.x += sin(time * 0.5 + p.y * 2.3 + level * 2.0) * 0.35;
-  vec2 id = floor(p);
-  vec2 f = fract(p) - 0.5;
-  float r = mepHash2(id + level * 23.0);
-  float d = length(f);
-  float core = 1.0 - smoothstep(0.03, 0.16 + 0.12 * r, d);
-  // 明滅。粒ごとに位相をずらす。
-  float pulse = 0.6 + 0.4 * sin(time * (0.8 + r * 1.6) + r * 30.0);
-  float pick = step(0.5, r);
-  float alpha = core * pick * pulse * mepEdgeFade(vUv, 0.14) * amount;
-  if (alpha <= 0.004) discard;
-  gl_FragColor = vec4(tint * alpha, alpha);
+  float density = clamp(scale, 0.1, 8.0);
+  vec2 p = vUv * moteSize * density * 0.7;
+  float clock = time * speed;
+  vec3 light = vec3(0.0);
+  float coverage = 0.0;
+  float aa = max(length(fwidth(p)), 0.002);
+  for (int dx = -1; dx <= 1; dx++) {
+    float col = floor(p.x) + float(dx);
+    float seed = col + level * 173.0;
+    float y = p.y - clock * mix(0.28, 0.60, mepHash(seed + 5.0)) * density;
+    for (int dy = -1; dy <= 1; dy++) {
+      vec2 id = vec2(col, floor(y) + float(dy));
+      float r = mepHash2(id + level * 41.0);
+      float phase = r * 6.283185;
+      vec2 center = vec2(mix(0.25, 0.75, r), mix(0.25, 0.75, mepHash(r * 97.0)));
+      center += vec2(sin(clock * 0.8 + phase) * 0.22,
+                     sin(clock * 1.1 + phase * 2.0) * 0.10);
+      vec2 q = vec2(p.x, y) - id - center;
+      float d = length(q);
+      float radius = min(0.12, mix(0.025, 0.075, r * r) * density * mix(1.0, 0.65, level));
+      float core = (1.0 - smoothstep(radius * 0.25, radius + aa, d)) * min(1.0, radius * radius / (aa * aa));
+      float haloRadius = min(0.30, radius * 3.5);
+      float halo = exp(-d * d / max(0.0001, haloRadius * haloRadius))
+                 * (1.0 - smoothstep(haloRadius, haloRadius * 2.0, d));
+      float pulse = 0.35 + 0.65 * pow(0.5 + 0.5 * sin(clock * mix(1.2, 2.4, r) + phase * 3.0), 2.0);
+      // 一部の粒だけ星形にきらめく。全粒を同時に点滅させない。
+      float twinkle = pow(max(0.0, sin(clock * 1.7 + phase * 5.0)), 12.0) * step(0.78, r);
+      float ray = exp(-min(abs(q.x), abs(q.y)) / max(aa, radius * 0.18))
+                * (1.0 - smoothstep(radius, haloRadius * 1.5, max(abs(q.x), abs(q.y))));
+      float pick = step(0.35, r) * mix(1.0, 0.5, level);
+      light += (mix(tint, vec3(1.0), 0.65) * core * 1.8
+               + tint * (halo * 0.32 + ray * twinkle * 0.75)) * pulse * pick;
+      coverage += (core + halo * 0.3 + ray * twinkle * 0.4) * pulse * pick;
+    }
+  }
+  vec2 edge = min(vUv, 1.0 - vUv) * moteSize;
+  float fade = smoothstep(0.0, 0.5, edge.x) * smoothstep(0.0, 0.4, edge.y);
+  float alpha = min(1.0, coverage * amount * fade);
+  if (alpha <= 0.002) discard;
+  gl_FragColor = vec4(light * amount * fade, alpha);
 }
 `;
 
@@ -1732,6 +1756,9 @@ export function createFieldEffects(): FieldEffects {
             u.mirror.value = look.mirror;
           }
           // UV の縦横比ではなくマスで雨粒を描く。取り置き材質でも必ず更新。
+          if (kind === 'mote') {
+            material.uniforms.moteSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
+          }
           if (kind === 'snow') {
             material.uniforms.snowSize = { value: new Vector2((volume.plane === 'yz' ? deep : wide) / unit, tall / unit) };
           }

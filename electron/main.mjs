@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import serve from 'electron-serve';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 // 旧 game と同じ静的配信。固定 origin にすることで IndexedDB の記録も保つ。
@@ -11,6 +11,20 @@ const loadGame = serve({ directory: 'out', hostname: 'samplegame' });
 // 大きく遊びたいときはフルスクリーン（F11 / Alt+Enter / 設定）。**起動はいつも窓**（前回の状態は覚えない）。
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
+
+/**
+ * ゲームの題名（窓の名前と起動できないときの知らせ。2026-10-31）。正本は台帳 `opening.json` の `title`（書き出した `out/data/`）。
+ * 決まりは `src/game/gameTitle.ts` の写し。画面が開けば窓の名前はページの題名（同じ台帳）に置き換わる。
+ */
+function gameTitle() {
+  try {
+    const title = JSON.parse(readFileSync(path.join(app.getAppPath(), 'out', 'data', 'opening.json'), 'utf8')).title;
+    if (typeof title === 'string' && title.trim()) return title.trim();
+  } catch {
+    // 下の既定へ。
+  }
+  return 'ちょっとだけ RPG';
+}
 
 // 画面（設定のフルスクリーン）から切り替える口。送ってきたウィンドウを相手にする。
 ipcMain.handle('fullscreen:get', (event) => BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false);
@@ -33,7 +47,7 @@ async function createWindow() {
     resizable: false,
     maximizable: false,
     fullscreenable: true,
-    title: 'SampleGame',
+    title: gameTitle(),
     autoHideMenuBar: true,
     backgroundColor: '#000000',
     webPreferences: {
@@ -77,7 +91,7 @@ async function createWindow() {
 
 function startupError(error) {
   console.error(error);
-  dialog.showErrorBox('SampleGame を起動できません', error.message);
+  dialog.showErrorBox(`${gameTitle()} を起動できません`, error.message);
   app.quit();
 }
 

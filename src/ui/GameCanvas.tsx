@@ -10,6 +10,7 @@ import { START_MAP_ID, assetUrl, mapUrl } from '../game/assets';
 import { mapEntryOf, entryForFile, knownMapLabel, knownSaveMapId, loadMapIndex, mapLabel } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
+import { loadQuestBook } from '../game/quests';
 import { loadItemBook } from '../game/items';
 import { character, characterBattleImage, characterIds, characterName, characterStand, loadCharacterBook } from '../game/characters';
 import { loadIllustrations } from '../game/illustrations';
@@ -30,7 +31,10 @@ import { equipItem, memberStats, unequipItem } from '../game/battle/party';
 import { applyUse, healLine, wouldHelp } from '../game/battle/heal';
 import { itemList, itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
 import { ShopScreen } from './shop/ShopScreen';
-import { BattleView, type BattleStage } from './battle/BattleView';
+import { InnScreen } from './shop/InnScreen';
+import { BattleView, type BattleStage, type BattleStartOpening } from './battle/BattleView';
+import { useFieldAttack } from './useFieldAttack';
+import { preemptiveOf } from '../game/fieldAttack';
 import * as audio from '../game/audio';
 import * as gameOptions from '../game/options';
 import { applyMapSound, loadSoundBook, unlockAudio } from '../game/audio';
@@ -206,6 +210,8 @@ export default function GameCanvas() {
   const mapRef = useRef('');
   /** いまのマップでは時計を止めるか（GS-223。`maps.json` の `time.stopClock`）。 */
   const stopClockRef = useRef(false);
+  /** いまのマップでフィールドアタックを使えるか（GS-295。`maps.json` の `fieldAttack: false` で禁止）。 */
+  const fieldAttackRef = useRef(true);
   /** マップの読み直しを外の効果からも呼べるようにしておく。 */
   const adoptRef = useRef<(file: string) => Promise<void>>(async () => {});
   /**
@@ -231,6 +237,8 @@ export default function GameCanvas() {
   const backdropSeqRef = useRef(0);
   /** 今回の戦闘開始時に解決した隊形。イベント指定またはマップ候補から選ぶ。 */
   const battleFormationRef = useRef<string | undefined>(undefined);
+  /** 戦いの始まり方（GS-295。フィールドアタックで減らした HP と先制）。戦いが終われば捨てる。 */
+  const battleOpeningRef = useRef<BattleStartOpening | undefined>(undefined);
   /**
    * 3D の舞台（GS-87）。戦闘画面から `GameView` の舞台を動かす口。
    * プレイヤーは動かさない——舞台はプレイヤーを隠して別の場所を写すだけなので、戻す手間が要らない。
@@ -244,6 +252,7 @@ export default function GameCanvas() {
     rect: (id) => viewRef.current?.figureRect(id) ?? null,
     pose: (id, pose) => viewRef.current?.figurePose(id, pose),
     terrain: (cell) => viewRef.current?.battleCellTerrain(cell) ?? null,
+    fx: (id, def) => { viewRef.current?.figureFx(id, def); },
   });
   const battle = useUi((s) => s.battle);
   /**
@@ -270,8 +279,9 @@ export default function GameCanvas() {
    * **書いていなければ負け＝ゲームオーバー**で、`GameOver` を投げてイベントを止める。
    */
   const startBattle = useCallback(
-    async (enemies: string[], canLose: boolean, formation?: string) => {
-      await loadBattleBook();
+    async (enemies: string[], canLose: boolean, formation?: string, opening?: BattleStartOpening) => {
+      await Promise.all([loadBattleBook(), loadQuestBook()]);
+      battleOpeningRef.current = opening;
       const mapEntry = await entryForFile(mapRef.current);
       battleFormationRef.current = chooseBattleFormation(formation, mapEntry?.battleStage?.formations);
       if (formation && battleFormationRef.current !== formation) {
@@ -317,6 +327,7 @@ export default function GameCanvas() {
       party: [...state.party],
       members: structuredClone(state.members),
       items: new Map(state.items),
+      quests: structuredClone(state.quests),
       gold: state.gold,
     };
     try {
@@ -328,6 +339,8 @@ export default function GameCanvas() {
       state.items.clear();
       for (const [id, count] of saved.items) state.items.set(id, count);
       state.gold = saved.gold;
+      state.quests.clear();
+      for (const [id, progress] of saved.quests) state.quests.set(id, progress);
     }
   }, []);
 
@@ -336,6 +349,7 @@ export default function GameCanvas() {
     // 取り分（経験・お金）を入れるのは戦闘画面（GS-63）。ここは場面の後始末だけ。
     useUi.getState().setBattle(null);
     battleFormationRef.current = undefined;
+    battleOpeningRef.current = undefined;
     battleAbortRef.current = null;
     battleBackdropRef.current = false;
     // マップの曲へ戻す（GS-62）。**負けたときは戻さない**——このあと暗転してタイトルへ行く。
@@ -364,6 +378,18 @@ export default function GameCanvas() {
   );
   const startShopRef = useRef(startShop);
   startShopRef.current = startShop;
+
+  /** 宿の窓を開いて、閉じるまで待つ（GS-290）。泊まると決めたら true。 */
+  const startInn = useCallback(
+    (price: number) =>
+      new Promise<boolean>((resolve) => {
+        innEndRef.current = resolve;
+        useUi.getState().setInn({ price });
+      }),
+    [],
+  );
+  const startInnRef = useRef(startInn);
+  startInnRef.current = startInn;
 
   /** 買う（GS-66）。**お金が足りなければ何も動かさない。** */
   const buyItem = useCallback((id: string): boolean => {
@@ -431,6 +457,8 @@ export default function GameCanvas() {
       battleBackdropRef.current = false;
       ui.setBattle(null);
       ui.setShop(null);
+      ui.setInn(null);
+      innEndRef.current = null;
       ui.setSettings(false);
       ui.setTalk(null);
       ui.setScroll(null);
@@ -545,6 +573,24 @@ export default function GameCanvas() {
   const walkAilmentsRef = useRef(createWalkAilments());
   const [walkNote, setWalkNote] = useState('');
   const walkNoteTimer = useRef(0);
+  /** 上に一瞬だけ出す札（毒・フィールドアタックの取り分・先頭の入れ替え）。 */
+  const showNote = useCallback((text: string) => {
+    setWalkNote(text);
+    window.clearTimeout(walkNoteTimer.current);
+    walkNoteTimer.current = window.setTimeout(() => setWalkNote(''), WALK_NOTE_MS);
+  }, []);
+
+  /** フィールドアタックと先頭の入れ替え（GS-295）。 */
+  const fieldAttack = useFieldAttack({
+    viewRef,
+    stateRef,
+    symbolsRef,
+    npcIds: () => npcDefsRef.current.map((npc) => npc.id),
+    allowed: () => fieldAttackRef.current,
+    note: showNote,
+  });
+  const resetFieldAttackRef = useRef(fieldAttack.reset);
+  resetFieldAttackRef.current = fieldAttack.reset;
 
   /**
    * 店（GS-66）。閉じたことを知らせる約束を握っておく。
@@ -553,6 +599,9 @@ export default function GameCanvas() {
    */
   const shopEndRef = useRef<(() => void) | null>(null);
   const shop = useUi((s) => s.shop);
+  /** 宿の窓（GS-290）。閉じたこと（泊まるか）を知らせる約束。 */
+  const innEndRef = useRef<((stay: boolean) => void) | null>(null);
+  const inn = useUi((s) => s.inn);
 
   /** 並行イベント（GS-43）。手前の流れとは別の橋で動かす。 */
   const parallelBridgeRef = useRef<EventBridge | null>(null);
@@ -753,6 +802,9 @@ export default function GameCanvas() {
       const mapEntry = await entryForFile(file);
       // このマップでは時計を止めるか（GS-223）。
       stopClockRef.current = mapEntry?.time?.stopClock === true;
+      // フィールドアタック（GS-295）。書かなければ使える。減らした HP はマップごと（入り直すとシンボルごと戻る）。
+      fieldAttackRef.current = mapEntry?.fieldAttack !== false;
+      resetFieldAttackRef.current();
       // イベントの有無は**台帳で決める**（DEC-374）。無いマップを取りに行かない。
       // 組む前に読んであればそれを使う（GS-195）。読み直すと、組んだ時と条件の元がずれる。
       const ahead = eventBookRef.current.file === file ? eventBookRef.current.events : undefined;
@@ -935,7 +987,7 @@ export default function GameCanvas() {
       const idle = () => {
         const ui = useUi.getState();
         if (!bridgeRef.current) throw new Error('ゲームの初期化を待ってください');
-        if (ui.busy || ui.battle || ui.menu || ui.shop) throw new Error('実行中の場面を終了してください');
+        if (ui.busy || ui.battle || ui.menu || ui.shop || ui.inn) throw new Error('実行中の場面を終了してください');
       };
       const cameraEditor: CameraEditorWindow = {
         async prepare(file: string) {
@@ -943,7 +995,7 @@ export default function GameCanvas() {
           view.unstageBattle();
           cameraPreviewRef.current = true;
           autoPendingRef.current = false;
-          await Promise.all([loadBattleBook(), loadCharacterBook(), loadIllustrations(), loadStoryBook()]);
+          await Promise.all([loadQuestBook(), loadBattleBook(), loadCharacterBook(), loadIllustrations(), loadStoryBook()]);
           resetParty(stateRef.current);
           useUi.getState().setPhase('play');
           useUi.getState().setFade(0, 0);
@@ -989,7 +1041,7 @@ export default function GameCanvas() {
           clearBackdrop();
           idle();
           if (enemies.length === 0) throw new Error('背景に出す敵を選んでください');
-          await loadBattleBook();
+          await Promise.all([loadBattleBook(), loadQuestBook()]);
           // 舞台の決め方はふつうの戦闘と同じ（隊形はマップの候補から。場所は BattleStage → default → 原点）。
           const entry = await entryForFile(mapRef.current);
           battleFormationRef.current = chooseBattleFormation(undefined, entry?.battleStage?.formations);
@@ -1073,6 +1125,7 @@ export default function GameCanvas() {
         battle: (enemies: string[], canLose: boolean, formation?: string) =>
           startBattleRef.current(enemies, canLose, formation),
         shop: (goods: string[], sell: boolean) => startShopRef.current(goods, sell),
+        inn: (price: number) => startInnRef.current(price),
         returnToTitle: () => returnToTitle(400),
         // スイッチが動いたら、見た目をその場で合わせる（GS-136）。見張り（100ms ごと）でも
         // 同じことをしているが、**宝箱は押したその瞬間に開いていてほしい**——
@@ -1186,7 +1239,13 @@ export default function GameCanvas() {
     // 続きを書いた人も居ない——`GameOver` はここで受け止めて終わりにする。
     // お供（GS-255）。台帳 `mapNpcs.json` のこの 1 体の `companions` を行ごとに抽選し、触った相手の後ろに並べる。
     const companions = rollCompanions(mapNpcSettingsForFile(mapRef.current)[near]?.companions);
-    void startBattleRef.current([enemy, ...companions], false).catch((error) => {
+    // フィールドアタックの後（GS-295）。減らした HP のまま出し、怯んでいるあいだに触れたら先制。
+    const wound = fieldAttack.wounds.current.get(near);
+    fieldAttack.wounds.current.delete(near);
+    const opening: BattleStartOpening | undefined = wound
+      ? { preemptive: preemptiveOf(wound, performance.now()), enemyHp: [wound.hp] }
+      : undefined;
+    void startBattleRef.current([enemy, ...companions], false, undefined, opening).catch((error) => {
       if (!(error instanceof GameOver)) throw error;
     });
   }, []);
@@ -1206,10 +1265,8 @@ export default function GameCanvas() {
     const lines = hurt.map(
       (one) => `${characterName(one.who)} は ${ailmentDef(one.ailment)?.name ?? one.ailment}で ${one.amount} の ダメージ！`,
     );
-    setWalkNote(lines.join('　'));
-    window.clearTimeout(walkNoteTimer.current);
-    walkNoteTimer.current = window.setTimeout(() => setWalkNote(''), WALK_NOTE_MS);
-  }, []);
+    showNote(lines.join('　'));
+  }, [showNote]);
   const checkWalkAilmentsRef = useRef(checkWalkAilments);
   checkWalkAilmentsRef.current = checkWalkAilments;
 
@@ -1446,7 +1503,7 @@ export default function GameCanvas() {
     // （物語の段階が残り、済ませたイベントが動かなかった）。入れ物は差し替えない——イベントの道具立てが握っている。
     resetState(stateRef.current);
     // 仲間を台帳のとおりに（GS-60）。台帳を読み終える前に押されても揃うよう待つ。
-    await loadBattleBook();
+    await Promise.all([loadBattleBook(), loadQuestBook()]);
     resetParty(stateRef.current);
     // 時間帯と時計（GS-222）。台帳の「はじめから」の時間帯で始める。暗転の裏なので混ぜずに当てる。
     const times = await loadTimeSettings();
@@ -1502,7 +1559,7 @@ export default function GameCanvas() {
       if (!data.clock) stateRef.current.clock = { running: times.clock, ms: 0 };
       viewRef.current?.setTime(stateRef.current.time, 0);
       // 仲間（GS-60）。**版 2 までの記録には無い**ので、台帳から入れ直す。
-      await loadBattleBook();
+      await Promise.all([loadBattleBook(), loadQuestBook()]);
       ensureParty(stateRef.current);
       useUi.getState().setPhase('play');
       useUi.getState().setMenu(false);
@@ -1704,7 +1761,9 @@ export default function GameCanvas() {
         {phase === 'play' && !comicReading && padShown ? <VirtualPad /> : null}
         {notice ? <div className="notice">{notice}</div> : null}
         {/* 歩いているあいだの毒（GS-71）。**会話ウィンドウは使わない**——歩きが止まる。 */}
-        {walkNote ? <div className="walk-note">{walkNote}</div> : null}
+        {walkNote ? <div key={walkNote} className="walk-note">{walkNote}</div> : null}
+        {/* フィールドアタックの絵と数字（GS-295）。歩いている画面だけ。 */}
+        {phase === 'play' && !battle ? fieldAttack.overlay : null}
         {phase === 'title' ? (
           <TitleScreen
             onStart={() => void startNew()}
@@ -1715,6 +1774,7 @@ export default function GameCanvas() {
         <PwaInstall visible={phase === 'title'} />
         {phase === 'play' && menu ? (
           <Menu
+            quests={stateRef.current.quests}
             items={stateRef.current.items}
             party={stateRef.current.party}
             members={stateRef.current.members}
@@ -1735,6 +1795,7 @@ export default function GameCanvas() {
           <BattleView
             key={`${battle.join(',')}#${backdropSeqRef.current}`}
             enemies={battle}
+            opening={battleOpeningRef.current}
             backdrop={battleBackdropRef.current}
             scene3d={battleStageRef.current}
             state={stateRef.current}
@@ -1757,6 +1818,22 @@ export default function GameCanvas() {
               const done = shopEndRef.current;
               shopEndRef.current = null;
               done?.();
+              canvasRef.current?.focus();
+            }}
+          />
+        ) : null}
+        {/* 宿の窓（GS-290）。店と同じく会話ウィンドウより上に重ねる。 */}
+        {phase === 'play' && inn ? (
+          <InnScreen
+            price={inn.price}
+            gold={() => stateRef.current.gold}
+            party={stateRef.current.party}
+            members={stateRef.current.members}
+            onClose={(stay) => {
+              useUi.getState().setInn(null);
+              const done = innEndRef.current;
+              innEndRef.current = null;
+              done?.(stay);
               canvasRef.current?.focus();
             }}
           />

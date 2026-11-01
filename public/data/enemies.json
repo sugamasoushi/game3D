@@ -1,5 +1,5 @@
 {
-  "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/Enemy の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は 190px で 1 マス）に掛ける）。hp/mp は満タンの値。倒すと exp と gold が入る。front は前衛に出る確率（0〜1。書かなければ 0.5。GS-286）。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
+  "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/Enemy の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は 190px で 1 マス）に掛ける）。hp/mp は満タンの値。倒すと exp と gold が入る。front は前衛に出る確率（0〜1。書かなければ 0.5。GS-286）。flying は飛ぶ敵（空のマスにも立て、浮いて立つ。前衛・後衛の決まりの外。飛ばない相手の直接攻撃は軽い。GS-288）。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
   "enemies": {
     "enemy00": {
       "name": "ナーガ娘",
@@ -125,6 +125,20 @@
       "exp": 18,
       "gold": 16,
       "front": 0.8
+    },
+    "enemy08": {
+      "name": "インコーシャン",
+      "image": "インコーシャン",
+      "level": 3,
+      "hp": 35,
+      "mp": 0,
+      "attack": 18,
+      "guard": 0,
+      "speed": 10,
+      "exp": 4,
+      "gold": 5,
+      "front": 0.8,
+      "flying": true
     }
   }
 }

@@ -22252,11 +22252,6 @@
               "name": "Id",
               "type": "string",
               "value": "bat"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy02"
             }
           ],
           "space": "plane",
@@ -22285,11 +22280,6 @@
               "name": "Id",
               "type": "string",
               "value": "kowaboa"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy04"
             },
             {
               "name": "Face",
@@ -22323,11 +22313,6 @@
               "name": "Id",
               "type": "string",
               "value": "shikadigo"
-            },
-            {
-              "name": "EnemyData",
-              "type": "string",
-              "value": "enemy05"
             },
             {
               "name": "Face",
