@@ -3679,12 +3679,42 @@ body {
   box-sizing: border-box;
 }
 
-/* 討伐依頼の記録 */
+/*
+ * 討伐依頼の記録。札の中を**左右に分ける**（2026-11-01）——左に名前と説明、右に討伐数・報酬・報告先。
+ * 横いっぱいの 1 列だと説明の 1 行が長く、短い行の右が大きく空いていた。
+ */
 .quests-page { padding: 1rem; overflow: auto; height: 100%; }
 .quests-page > p { opacity: .8; margin-bottom: 1rem; }
-.quest-card { border: 1px solid #786449; border-radius: 8px; padding: 1rem; margin-bottom: .8rem; background: #171c26; }
+.quest-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: 0 1.4rem;
+  border: 1px solid #786449;
+  border-radius: 8px;
+  padding: .9rem 1rem;
+  margin-bottom: .8rem;
+  background: #171c26;
+}
+.quest-card[data-done] { opacity: .7; }
 .quest-card:focus-visible { outline: 2px solid #edcc8b; outline-offset: 2px; }
-.quest-card h3 { margin: 0 0 .6rem; }
-.quest-card h3 small { font-size: .8em; color: #edcc8b; margin-left: .8rem; }
-.quest-card p { margin: .5rem 0; white-space: pre-wrap; }
-.quest-card progress { width: min(100%, 26rem); accent-color: #edcc8b; }
+.quest-main { min-width: 0; }
+.quest-card h3 { margin: 0 0 .5rem; }
+.quest-card h3 small { font-size: .8em; color: #edcc8b; margin-left: .8rem; white-space: nowrap; }
+.quest-card p { margin: .4rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+/* 右の柱。左の説明と線で分け、項目名と中身を 2 列に揃える。 */
+.quest-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: .45rem .8rem;
+  align-content: start;
+  margin: 0;
+  padding-left: 1.2rem;
+  border-left: 1px solid rgba(120, 100, 73, .7);
+}
+.quest-facts dt { color: #edcc8b; font-size: .9em; }
+.quest-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.quest-facts dd:first-of-type { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 .6rem; }
+.quest-count { font-variant-numeric: tabular-nums; }
+.quest-card progress { flex: 1 0 100%; width: 100%; margin-top: .3rem; accent-color: #edcc8b; }
+/* 台帳から消えた依頼は右の柱が無いので、左を広げる。 */
+.quest-card:not(:has(.quest-facts)) { grid-template-columns: minmax(0, 1fr); }
