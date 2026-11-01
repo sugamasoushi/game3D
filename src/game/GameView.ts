@@ -57,6 +57,7 @@ import { BODY_TALL_CELLS, BODY_WIDTH_HALF, createPlayer, type Facing, type Playe
 import { PartyTrail } from './partyTrail';
 import {
   createOcclusionMeter,
+  ignoreAsSilhouetteOccluder,
   prepareSilhouetteOccluders,
   SILHOUETTE_FADE_S,
   SILHOUETTE_HIDE_RATIO,
@@ -1493,6 +1494,8 @@ export function createGameView(
         actor.faceCamera((rig.yaw * Math.PI) / 180);
         // 不透明度（GS-207。マップの `Opacity`）。幽霊のような人。
         if (def.opacity !== undefined) actor.setLook(def.opacity, 0);
+        // NPC・敵のシンボルに隠れても主人公たちを白くしない（2026-11-01）。白は地形・建物に隠れたときだけ。
+        ignoreAsSilhouetteOccluder(actor.bodyMaterial);
         scene.add(actor.group);
         // 見た目をスイッチから導く（GS-133）。**マップを読み直しても開いたまま**になる。
         if (def.pose && def.poseIf && switchOn(def.poseIf, def.id)) actor.pose(def.pose);

@@ -49,6 +49,24 @@ export function prepareSilhouetteOccluder(material: Material): void {
   material.stencilZPass = ReplaceStencilOp;
 }
 
+/**
+ * **この材質に隠れても白くしない**（2026-11-01。NPC・敵のシンボル）。深度を書いたときに
+ * 「遮蔽物の種類」の印（`SEE_THROUGH_MASK`）を立てる——白は印の無い所にだけ描くので、
+ * 人の後ろに回っても白く塗られず、隠れた割合（`createOcclusionMeter`）にも数えない。
+ * 先に印の書き方を決めてしまうので、あとで `prepareSilhouetteOccluder` が来ても上書きしない。
+ */
+export function ignoreAsSilhouetteOccluder(material: Material): void {
+  prepared.add(material);
+  material.stencilWrite = true;
+  material.stencilWriteMask = SEE_THROUGH_MASK;
+  material.stencilFuncMask = SEE_THROUGH_MASK;
+  material.stencilRef = SEE_THROUGH_MASK;
+  material.stencilFunc = AlwaysStencilFunc;
+  material.stencilFail = KeepStencilOp;
+  material.stencilZFail = KeepStencilOp;
+  material.stencilZPass = ReplaceStencilOp;
+}
+
 export function prepareSilhouetteOccluders(scene: Object3D): void {
   scene.traverseVisible((object) => {
     const material = (object as Mesh).material;
