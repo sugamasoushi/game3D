@@ -10,7 +10,8 @@
 // 「オープニング → 題名 → ボタン」の順に並べていた（`TitlePresenter.execute`）。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { listSaves, playTimeLabel, savedAtLabel, slotLabel, type SaveSummary } from '../game/save';
+import { listSaves, slotLabel, type SaveSummary } from '../game/save';
+import { SaveDetail } from './SaveDetail';
 import { assetUrl } from '../game/assets';
 import { loadOpening, openingBackdrop, type OpeningBook } from '../game/opening';
 import { DEV_MODE, showOpening } from '../game/devMode';
@@ -207,11 +208,9 @@ export function TitleScreen({
             <div className="title-menu" ref={menuRef}>
               {usable.map((entry) => (
                 <button key={entry.slot} type="button" className="save-info title-save" onClick={() => onContinue(entry.slot)}>
-                  {/* セーブ画面と同じ並び。マップ名は 10 文字分まで（超えたら「…」）。 */}
+                  {/* セーブ画面と同じ並び（`SaveDetail`）。マップ名は 10 文字分まで（超えたら「…」）。 */}
                   <span className="save-slot">{slotLabel(entry.slot)}</span>
-                  <span className="save-map">{entry.mapName}</span>
-                  <span className="save-time">{playTimeLabel(entry.playSeconds)}</span>
-                  <span className="save-at">{savedAtLabel(entry.savedAt)}</span>
+                  <SaveDetail data={entry} />
                 </button>
               ))}
               <button type="button" onClick={() => setPicking(false)}>
