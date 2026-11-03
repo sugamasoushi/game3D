@@ -61,6 +61,11 @@ export interface Fighter {
    * 近くの仲間（`cover.ts` の `covers`）への攻撃を代わりに受ける。
    */
   covering?: number;
+  /**
+   * 効いている種族特性（2026-11-03。味方だけ。`races.ts`）。レベルで増えるので、戦いの始めの値で組む。
+   * 消費 MP（`mpCostOf`）と技のダメージ（`powerRateOf`）に効く。
+   */
+  traits?: RaceTrait[];
 }
 
 /** 技 1 つぶん。台帳（`data/skills.json`）の行と同じ形。 */
@@ -107,6 +112,7 @@ export interface SkillDef {
 
 import type { CellGround, SkillRange } from './height';
 import type { FieldUseDef } from '../fieldAttack';
+import { mpCostOf, type RaceTrait } from './races';
 
 /** 技の届き方（GS-280）。広げるときはここと `cover.ts` の `hitsOf` に足す。 */
 export type SkillReach = 'single' | 'pierce' | 'all';
@@ -118,9 +124,14 @@ export function alive(who: Fighter): boolean {
   return who.hp > 0;
 }
 
+/** その人がその技に払う MP（種族特性で減る。2026-11-03）。 */
+export function costOf(who: Fighter, skill: SkillDef | null): number {
+  return mpCostOf(skill, who.traits);
+}
+
 /** その技を払えるか。MP が足りないものは選ばせない。 */
 export function canPay(who: Fighter, skill: SkillDef | null): boolean {
-  return !skill || who.mp >= skill.mp;
+  return !skill || who.mp >= costOf(who, skill);
 }
 
 /** いまの守り。台帳の値＋このターンぶん。 */
@@ -175,8 +186,9 @@ export function heal(who: Fighter, amount: number): number {
 /** 技を使ったぶんの MP を払う。足りなければ false（減らさない）。 */
 export function payMp(who: Fighter, skill: SkillDef | null): boolean {
   if (!skill) return true;
-  if (who.mp < skill.mp) return false;
-  who.mp -= skill.mp;
+  const cost = costOf(who, skill);
+  if (who.mp < cost) return false;
+  who.mp -= cost;
   return true;
 }
 

@@ -29,7 +29,8 @@ import { createWalkAilments } from '../game/battle/walkAilment';
 import { createEncounterCounter, encounterAreaAt, encounterChance, encounterSteps, readEncounterAreas, rollEncounter, type EncounterArea, type EncounterDef } from '../game/randomEncounter';
 import { ailmentDef, enemyDef, enemyList, memberIds } from '../game/battle/book';
 import { touchedFromBehind } from '../game/symbolSense';
-import { equipItem, memberStats, unequipItem } from '../game/battle/party';
+import { equipItem, memberStats, partyTraits, unequipItem } from '../game/battle/party';
+import { canCraftWith, craftExtraChance } from '../game/battle/races';
 import { applyUse, healLine, wouldHelp } from '../game/battle/heal';
 import { craftItem, itemList, itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
 import { ShopScreen } from './shop/ShopScreen';
@@ -447,11 +448,15 @@ export default function GameCanvas() {
   /**
    * 道具から道具を作る（2026-11-03）。作り方は台帳の `craft`、決まりは `craft.ts`。
    * **材料が足りなければ何も減らさない。** 音は持ち物を使った音と同じ。
+   * 作れるのは隊列に種族特性 `craft` の人がいるときだけ。`craftExtra` の見込みで もう 1 個できる（2026-11-03。`races.ts`）。
    */
   const makeItem = useCallback((id: string): string => {
-    if (!craftItem(stateRef.current.items, id)) return '材料が たりない';
+    const traits = partyTraits(stateRef.current);
+    if (!canCraftWith(traits)) return 'いまは 道具を 作れる人が いない';
+    const extra = Math.random() < craftExtraChance(traits);
+    if (!craftItem(stateRef.current.items, id, extra ? 2 : 1)) return '材料が たりない';
     audio.playSe(battleSettings().se.item);
-    return `${itemName(id)} を つくった！`;
+    return extra ? `うまく できた！ ${itemName(id)} を 2 個 つくった！` : `${itemName(id)} を つくった！`;
   }, []);
 
   /**

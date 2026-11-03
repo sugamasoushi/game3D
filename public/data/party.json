@@ -1,5 +1,5 @@
 {
-  "information": "はじめの仲間と数値（GS-63）。キーは characterdata.json の人。hp/mp は「レベル 1 の」満タンの値で、いま減っている量はセーブが持つ。level が 1 上がるごとに growth のぶん増える。learn はレベル → そこで覚える技。levelUp は次のレベルに要る経験の出し方。 equip は はじめから身に着けている物（GS-67）。 party に載っていない人は「まだ仲間ではない」（GS-70。イベントの party 命令で入る）。",
+  "information": "はじめの仲間と数値（GS-63）。キーは characterdata.json の人。hp/mp は「レベル 1 の」満タンの値で、いま減っている量はセーブが持つ。level が 1 上がるごとに growth のぶん増える。learn はレベル → そこで覚える技。levelUp は次のレベルに要る経験の出し方。 equip は はじめから身に着けている物（GS-67）。 party に載っていない人は「まだ仲間ではない」（GS-70。イベントの party 命令で入る）。 races は種族（2026-11-03）: id → { name, text?, traits }。仲間は members.<id>.race で指す。特性は craft（道具を作れる）/ craftExtra（chance の見込みでもう 1 個）/ mpRate・powerRate（kind の技の消費MP・威力を rate 倍）。level を書くとそのレベルから効く。",
   "party": [
     "meina"
   ],
@@ -36,7 +36,8 @@
         "7": [
           "ice_chunk"
         ]
-      }
+      },
+      "race": "nol"
     },
     "grandpa": {
       "level": 1,
@@ -85,12 +86,50 @@
           "fireball"
         ]
       },
-      "fieldAttack": "wind_blade"
+      "fieldAttack": "wind_blade",
+      "race": "naga"
     }
   },
   "levelUp": {
     "base": 8,
     "rate": 1.7,
     "max": 50
+  },
+  "races": {
+    "nol": {
+      "name": "ノル族",
+      "text": "道具を工夫して暮らす",
+      "traits": [
+        {
+          "type": "craft"
+        },
+        {
+          "type": "craftExtra",
+          "level": 5,
+          "chance": 0.2
+        },
+        {
+          "type": "craftExtra",
+          "level": 12,
+          "chance": 0.4
+        }
+      ]
+    },
+    "naga": {
+      "name": "ナーガ族",
+      "text": "魔力の流れを読む",
+      "traits": [
+        {
+          "type": "mpRate",
+          "kind": "魔法",
+          "rate": 0.8
+        },
+        {
+          "type": "powerRate",
+          "kind": "魔法",
+          "rate": 1.2
+        }
+      ]
+    }
   }
 }

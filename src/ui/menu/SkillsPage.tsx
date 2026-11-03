@@ -11,6 +11,8 @@
 
 import { skillDef } from '../../game/battle/book';
 import { skillTagText } from '../../game/battle/skillTags';
+import { memberTraits } from '../../game/battle/party';
+import { mpCostOf } from '../../game/battle/races';
 import { characterMenuImage } from '../../game/characters';
 import type { MemberState } from '../../game/state';
 
@@ -18,6 +20,8 @@ export function SkillsPage({ who, member }: { who: string; member: MemberState |
   if (!member) return <p className="menu-empty">まだ 仲間が いない</p>;
 
   const image = characterMenuImage(who);
+  // 消費 MP は種族特性で減る（2026-11-03）。戦闘で払う数と同じ物を出す。
+  const traits = memberTraits(who, member.level);
 
   return (
     <div className="menu-figured skill-page">
@@ -35,7 +39,7 @@ export function SkillsPage({ who, member }: { who: string; member: MemberState |
                   <span className="item-name">{skill?.name ?? id}</span>
                   {/* 「消費MP」と数は別の列。数は幅を決めて右にそろえる（桁が変わっても説明がずれない）。 */}
                   <span className="skill-mp-label">消費MP</span>
-                  <span className="item-count">{skill?.mp ? skill.mp : '—'}</span>
+                  <span className="item-count">{skill?.mp ? mpCostOf(skill, traits) : '—'}</span>
                   <span className="item-text">
                     {/* 属性の札（種類・貫通／全体・対空。GS-293）。 */}
                     {skillTagText(skill)}

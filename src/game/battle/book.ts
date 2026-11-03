@@ -14,6 +14,7 @@ import { loadSpriteSheets, sheetUrl, spriteSheet, type SpriteSheetDef } from '..
 import type { SkillDef, Stats } from './rules';
 import { applyBattleSettings } from './settings';
 import type { SkillFieldFrom, SkillFieldKind } from './skillFieldLimits';
+import type { RaceDef } from './races';
 
 /** 敵の絵の置き場所（2026-10-27）。人の立ち絵（`CharaStand`）とは棚を分けた。 */
 const ENEMY_DIR = 'assets/img/Enemy';
@@ -93,6 +94,8 @@ export interface MemberDef extends Stats {
    * 書かない・覚えていない・`field` が無ければ素手の通常攻撃（`battleSettings.json` の `normalAttack.party.field`）。
    */
   fieldAttack?: string;
+  /** 種族（2026-11-03。同じ台帳の `races` のキー）。書かなければ種族特性なし。 */
+  race?: string;
 }
 
 /**
@@ -237,6 +240,8 @@ let enemies: Record<string, EnemyDef> = {};
 let skills: Record<string, SkillDef> = {};
 let ailments: Record<string, AilmentDef> = {};
 let members: Record<string, MemberDef> = {};
+/** 種族（2026-11-03。`party.json` の `races`）。決まりは `races.ts`。 */
+let races: Record<string, RaceDef> = {};
 let party: string[] = [];
 let formations: Record<string, BattleFormationDef> = {};
 let defaultFormation = '';
@@ -272,7 +277,7 @@ async function readBattleBook(): Promise<void> {
   const [e, s, p, a, x, r, g] = await Promise.all([
     readJson<{ enemies?: Record<string, EnemyDef> }>('data/enemies.json'),
     readJson<{ skills?: Record<string, SkillDef> }>('data/skills.json'),
-    readJson<{ party?: string[]; members?: Record<string, MemberDef>; levelUp?: LevelUpDef }>('data/party.json'),
+    readJson<{ party?: string[]; members?: Record<string, MemberDef>; levelUp?: LevelUpDef; races?: Record<string, RaceDef> }>('data/party.json'),
     readJson<{ ailments?: Record<string, AilmentDef> }>('data/ailments.json'),
     readJson<{ effects?: Record<string, EffectEntry> }>('data/effects.json'),
     readJson<{ default?: string; formations?: Record<string, BattleFormationDef> }>('data/battleFormations.json'),
@@ -286,6 +291,7 @@ async function readBattleBook(): Promise<void> {
   if (s?.skills) skills = s.skills;
   if (p?.members) members = p.members;
   if (p?.party) party = p.party;
+  if (p?.races) races = p.races;
   if (p?.levelUp) levelUp = { ...DEFAULT_LEVEL_UP, ...p.levelUp };
   if (a?.ailments) ailments = a.ailments;
   if (x?.effects && !effectsPreviewed) effects = x.effects;
@@ -323,6 +329,11 @@ export function skillName(id: string): string {
 /** はじめの仲間 1 人。 */
 export function memberDef(who: string): MemberDef | null {
   return members[who] ?? null;
+}
+
+/** 種族 1 つ（2026-11-03）。無ければ null（種族特性なし）。 */
+export function raceDef(id: string | undefined): RaceDef | null {
+  return id ? races[id] ?? null : null;
 }
 
 /** レベル上げの決まり。台帳に無ければ既定。 */

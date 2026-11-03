@@ -7,7 +7,8 @@
 // 装備を替えたときに何がどれだけ変わったのか、これが無いと分からない。
 
 import { characterMenuImage } from '../../game/characters';
-import { equipBonus, memberStats } from '../../game/battle/party';
+import { equipBonus, memberRace, memberStats } from '../../game/battle/party';
+import { traitLevel, traitText } from '../../game/battle/races';
 import { levelUpRule } from '../../game/battle/book';
 import { expToNext } from '../../game/battle/growth';
 import type { MemberState } from '../../game/state';
@@ -25,31 +26,57 @@ export function StatusPage({
   const toNext = expToNext(member.exp, member.level, levelUpRule());
   const image = characterMenuImage(who);
   const gear = equipBonus(member.equip);
+  // 種族と種族特性（2026-11-03）。まだ効いていない特性も「Lv N から」と薄く出す（何が増えるか分かるように）。
+  const race = memberRace(who);
 
   return (
     <div className="menu-figured status">
       {/* 絵の場所は**いつも同じ幅と高さ**で取る。絵が無い・細い人でも、右の項目が左へ寄らない。 */}
       <div className="menu-figure-frame">{image ? <img className="menu-figure" src={image} alt="" /> : <span className="menu-figure-empty">No Data</span>}</div>
-      {/* 名前は上の「見る仲間」に、装備は「装備」のページに、状態異常は「コンディション」に出す。ここは数だけ。 */}
+      {/* 名前は上の「見る仲間」に、装備は「装備」のページに、状態異常は「コンディション」に出す。ここは数と種族。 */}
       <div className="menu-figured-body status-content">
-        <dl className="status-facts">
-          <dt>レベル</dt><dd>{member.level}</dd>
-          <dt>HP</dt>
-          <dd>
-            {member.hp} / {base.hp}
-          </dd>
-          <dt>MP</dt>
-          <dd>
-            {member.mp} / {base.mp}
-          </dd>
-          <dt>攻撃</dt><dd>{base.attack + gear.attack}<Plus value={gear.attack} /></dd>
-          <dt>守り</dt><dd>{base.guard + gear.guard}<Plus value={gear.guard} /></dd>
-          <dt>素早さ</dt><dd>{Math.max(1, base.speed + gear.speed)}<Plus value={gear.speed} /></dd>
-          <dt>経験値</dt>
-          <dd>{member.exp}</dd>
-          <dt>次のレベルまで</dt>
-          <dd>{toNext > 0 ? toNext : '—'}</dd>
-        </dl>
+        <div className="status-columns">
+          <dl className="status-facts">
+            <dt>レベル</dt><dd>{member.level}</dd>
+            <dt>HP</dt>
+            <dd>
+              {member.hp} / {base.hp}
+            </dd>
+            <dt>MP</dt>
+            <dd>
+              {member.mp} / {base.mp}
+            </dd>
+            <dt>攻撃</dt><dd>{base.attack + gear.attack}<Plus value={gear.attack} /></dd>
+            <dt>守り</dt><dd>{base.guard + gear.guard}<Plus value={gear.guard} /></dd>
+            <dt>素早さ</dt><dd>{Math.max(1, base.speed + gear.speed)}<Plus value={gear.speed} /></dd>
+            <dt>経験値</dt>
+            <dd>{member.exp}</dd>
+            <dt>次のレベルまで</dt>
+            <dd>{toNext > 0 ? toNext : '—'}</dd>
+          </dl>
+          {race ? (
+            <div className="status-race">
+              <p className="status-race-name">
+                {race.name}
+                {race.text ? <span className="status-race-text">{race.text}</span> : null}
+              </p>
+              {(race.traits ?? []).length ? (
+                <ul className="status-traits">
+                  {(race.traits ?? []).map((trait, index) => {
+                    const from = traitLevel(trait);
+                    const on = from <= member.level;
+                    return (
+                      <li key={index} className={on ? '' : 'off'}>
+                        {traitText(trait)}
+                        {on ? null : <span className="status-trait-level">Lv {from} から</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

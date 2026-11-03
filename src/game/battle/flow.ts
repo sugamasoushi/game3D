@@ -15,6 +15,7 @@ import {
   damageOf,
   hurt,
   payMp,
+  canPay,
   turnOrder,
   type Fighter,
   type SkillDef,
@@ -22,6 +23,7 @@ import {
 } from './rules';
 import { coverOf, hitsOf, reachOf, scaledDamage, targetables, type Hit } from './cover';
 import { heightRate } from './height';
+import { powerRateOf } from './races';
 import { ailmentDef, enemyDef, skillDef } from './book';
 import { enemyIdOf } from './party';
 import { applyUse, healLine, skillUse, wouldHelp } from './heal';
@@ -267,7 +269,9 @@ async function strike(attacker: Fighter, defender: Fighter, skill: SkillDef | nu
   io.se?.(battleSettings().se.hit);
   // 位置の倍率（後衛。GS-280）に高さの倍率（高台。GS-285）を重ねてから丸める（必ず 1 は通す）。
   // 通常攻撃の直接・対空は武器しだい（GS-294。`attackShape`）。
-  const done = hurt(defender, scaledDamage(damageOf(attacker, defender, skill), rate * heightRate(attacker, defender, attackShape(attacker, skill), heightRates())));
+  // 種族特性の威力（2026-11-03。`races.ts` の `powerRateOf`。ナーガ族の魔法など）も同じく重ねる。
+  const done = hurt(defender, scaledDamage(damageOf(attacker, defender, skill),
+    rate * heightRate(attacker, defender, attackShape(attacker, skill), heightRates()) * powerRateOf(skill, attacker.traits)));
   await io.hit?.(defender.id, done, 'damage');
   await io.update();
   await io.say(`${defender.name} に ${done} のダメージ！`);
@@ -393,7 +397,7 @@ function enemySkill(who: Fighter, io: BattleIo): SkillDef | null {
   const def = enemyDef(enemyIdOf(who));
   for (const entry of def?.skills ?? []) {
     const skill = skillDef(entry.id);
-    if (!skill || who.mp < skill.mp) continue;
+    if (!skill || !canPay(who, skill)) continue;
     if (io.random() < (entry.chance ?? 1)) return skill;
   }
   return null;

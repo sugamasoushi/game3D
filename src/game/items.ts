@@ -196,7 +196,7 @@ export function itemCanCraft(items: Map<string, number>, id: string): boolean {
   return canCraft(items, book.items[id]);
 }
 
-/** `id` を 1 個作る。材料が足りなければ何も動かさず false。 */
-export function craftItem(items: Map<string, number>, id: string): boolean {
-  return craftInto(items, id, book.items[id]);
+/** `id` を `made` 個（既定 1）作る。材料が足りなければ何も動かさず false。 */
+export function craftItem(items: Map<string, number>, id: string, made = 1): boolean {
+  return craftInto(items, id, book.items[id], made);
 }

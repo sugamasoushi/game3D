@@ -9,7 +9,8 @@
 
 import type { GameState, MemberState } from '../state';
 import { characterName } from '../characters';
-import { ailmentDef, enemyDef, levelUpRule, memberDef, startingParty } from './book';
+import { ailmentDef, enemyDef, levelUpRule, memberDef, raceDef, startingParty } from './book';
+import { traitsAt, type RaceDef, type RaceTrait } from './races';
 import { addExp, statsAt, type LevelNews } from './growth';
 import { itemEquip } from '../items';
 import type { Fighter, Stats } from './rules';
@@ -25,6 +26,21 @@ export function memberStats(who: string, level?: number): Stats {
   const def = memberDef(who);
   if (!def) return { ...FALLBACK };
   return statsAt(def, level ?? def.level);
+}
+
+/** その人の種族（2026-11-03。`party.json` の `members.<id>.race`）。無ければ null。 */
+export function memberRace(who: string): RaceDef | null {
+  return raceDef(memberDef(who)?.race);
+}
+
+/** そのレベルで効いている種族特性。種族が無ければ空。 */
+export function memberTraits(who: string, level: number): RaceTrait[] {
+  return traitsAt(memberRace(who), level);
+}
+
+/** 隊列の人ごとの、効いている種族特性（道具を作れるか・もう 1 個できる見込みを見る）。 */
+export function partyTraits(state: GameState): RaceTrait[][] {
+  return state.party.map((who) => memberTraits(who, state.members.get(who)?.level ?? memberDef(who)?.level ?? 1));
 }
 
 /** はじめの状態（満タン）。装備も台帳のとおりに着ける（GS-67）。 */
@@ -90,6 +106,11 @@ export function partyFighters(state: GameState): Fighter[] {
       ailments: (now?.ailments ?? []).slice(),
       // 武器で通常攻撃の見せ方が変わる（GS-273）。
       ...(now?.equip.weapon ? { weapon: now.equip.weapon } : {}),
+      // 種族特性（2026-11-03）。消費 MP と技のダメージに効く。
+      ...(() => {
+        const traits = memberTraits(who, stats.level);
+        return traits.length ? { traits } : {};
+      })(),
     };
   });
 }
