@@ -3446,12 +3446,14 @@ body {
 }
 
 /*
- * セーブの一覧（メニューのセーブ・タイトルの「つづきから」）。マップ名・遊んだ時間・書いた日時を別の欄に分け、
- * 間を空ける。マップ名は 10 文字分まで（折り返さず、超えたら「…」）。
+ * セーブの一覧（メニューのセーブ・タイトルの「つづきから」。中身は `SaveDetail`）。
+ * 1 行目に本筋の章、2 行目にマップ名・遊んだ時間・書いた日付・時刻。
+ * **欄の幅はどれも決めておく**——桁が変わっても（9/6 → 10/16、5 分 → 1 時間 02 分）後ろの欄が動かない。
+ * マップ名は 10 文字分まで（折り返さず、超えたら「…」）。
  */
 .save-info {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 28px;
 }
 
@@ -3465,7 +3467,28 @@ body {
   text-align: left;
 }
 
-.save-info .save-map {
+.save-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.save-chapter {
+  font-size: 17px;
+  color: #ffd479;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.save-line {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+}
+
+.save-line .save-map {
   flex: none;
   width: 10em;
   overflow: hidden;
@@ -3473,16 +3496,40 @@ body {
   text-overflow: ellipsis;
 }
 
-.save-info .save-time {
+.save-line .save-time {
   flex: none;
   width: 7.5em;
   white-space: nowrap;
 }
 
-.save-info .save-at {
+/* 日付と時刻。間を空け、数字は等幅（`tabular-nums`）。 */
+.save-at {
   flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.save-date {
+  display: inline-flex;
+}
+
+/* 月は右寄せ・日は左寄せで、どちらも 2 桁ぶんの幅。「/」が縦に揃う。 */
+.save-month {
+  width: 2ch;
+  text-align: right;
+}
+
+.save-day {
+  width: 2ch;
+  text-align: left;
+}
+
+.save-note {
+  flex: none;
+  white-space: nowrap;
 }
 
 .title-menu button.title-save {

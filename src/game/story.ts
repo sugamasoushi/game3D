@@ -111,3 +111,22 @@ export function advanceStory(steps: readonly string[], progress: string, step: s
   }
   return at + 1 > doneCount(steps, progress) ? step : progress;
 }
+
+/**
+ * いまの章の名前（セーブの一覧に出す）。`progress` は最後に済ませた段階（'' は無し）。
+ * 今の章は**次に起きる段階**（全部済んでいれば最後の段階）が入っている章——クエストの一覧（`questLog.ts` の `mainQuests`）と同じ決め方。
+ * 最初の章より前の段階は最初の章に含める。章を書いていない・台帳を読む前なら ''。
+ */
+export function storyChapterLabel(file: StoryFile, progress: string): string {
+  const steps = file.steps;
+  if (!steps.length) return '';
+  const starts = (file.chapters ?? [])
+    .map((one) => ({ label: one.label, from: steps.findIndex((step) => step.id === one.from) }))
+    .filter((one) => one.from >= 0)
+    .sort((a, b) => a.from - b.from);
+  if (!starts.length) return '';
+  const at = Math.min(doneCount(steps.map((step) => step.id), progress), steps.length - 1);
+  let label = starts[0].label;
+  for (const one of starts) if (one.from <= at) label = one.label;
+  return label;
+}

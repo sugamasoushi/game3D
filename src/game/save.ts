@@ -15,6 +15,7 @@ import type { QuestProgress } from './quests';
 import type { WalkDir } from './GameView';
 import { CLEAR_SWITCH } from './omake';
 import { loadMapIndex, mapLabel } from './mapIndex';
+import { loadStoryBook, storyBook, storyChapterLabel } from './story';
 
 /** セーブの形の版（GS-27）。形を変えたらここを上げ、読む側で古い版を判別する。 */
 export const SAVE_VERSION = 9;
@@ -121,6 +122,8 @@ export interface SaveSummary {
   map: string;
   /** 画面に出すマップの名前（台帳 `maps.json` の `name`。無ければ `map` の id）。 */
   mapName: string;
+  /** 本筋の今の章の名前（台帳 `story.json` の `chapters`）。章が無ければ ''。 */
+  chapter: string;
   /** 読めない版（未来のセーブなど）。 */
   stale: boolean;
   /** クリアのフラグ（`ゲーム_クリア`）が立っている記録か（GS-212。タイトルの「おまけ」）。 */
@@ -177,7 +180,7 @@ export async function eraseSave(slot: number): Promise<void> {
 /** 枠の一覧。空き枠は入らない。 */
 export async function listSaves(): Promise<SaveSummary[]> {
   const out: SaveSummary[] = [];
-  const maps = await loadMapIndex();
+  const [maps] = await Promise.all([loadMapIndex(), loadStoryBook()]);
   for (let slot = AUTO_SLOT; slot <= SAVE_SLOTS; slot += 1) {
     const data = await run<SaveData | undefined>('readonly', (store) => store.get(slot)).catch(() => undefined);
     if (!data) continue;
@@ -187,6 +190,7 @@ export async function listSaves(): Promise<SaveSummary[]> {
       playSeconds: data.playSeconds ?? 0,
       map: data.map ?? '',
       mapName: mapLabel(maps, data.map ?? ''),
+      chapter: storyChapterLabel(storyBook(), data.story ?? ''),
       stale: !readableSave(data.version),
       cleared: data.switches?.[CLEAR_SWITCH] === true,
     });
@@ -199,6 +203,17 @@ export function playTimeLabel(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   return hours > 0 ? `${hours} 時間 ${String(minutes).padStart(2, '0')} 分` : `${minutes} 分`;
+}
+
+/**
+ * 書いた日時を欄ごとに分けたもの（月・日・時刻）。一覧では別々の幅の決まった欄に入れ、
+ * 桁が変わっても（9/6 → 10/16）時刻の位置がずれないようにする。`savedAt` が無ければ null。
+ */
+export function savedAtParts(savedAt: number): { month: string; day: string; clock: string } | null {
+  if (!savedAt) return null;
+  const at = new Date(savedAt);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return { month: String(at.getMonth() + 1), day: String(at.getDate()), clock: `${two(at.getHours())}:${two(at.getMinutes())}` };
 }
 
 /** 「9/6 12:34」。 */

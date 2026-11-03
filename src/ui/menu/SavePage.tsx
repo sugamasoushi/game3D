@@ -3,15 +3,8 @@
 // セーブのページ（GS-27 / GS-54）。**枠 3 つ**に書く・読む。オート枠は読むだけ（GS-33）。
 
 import { useEffect, useState } from 'react';
-import {
-  AUTO_SLOT,
-  SAVE_SLOTS,
-  listSaves,
-  playTimeLabel,
-  savedAtLabel,
-  slotLabel,
-  type SaveSummary,
-} from '../../game/save';
+import { AUTO_SLOT, SAVE_SLOTS, listSaves, slotLabel, type SaveSummary } from '../../game/save';
+import { SaveDetail } from '../SaveDetail';
 
 export function SavePage({
   onSave,
@@ -38,20 +31,9 @@ export function SavePage({
       {rows.map(({ slot, data }) => (
         <li key={slot}>
           <span className="menu-slot">{slotLabel(slot)}</span>
-          {/* マップ名・遊んだ時間・書いた日時は**別の欄**。マップ名は 10 文字分まで（超えたら「…」）。 */}
+          {/* 章・マップ名・遊んだ時間・書いた日時（`SaveDetail`）。マップ名は 10 文字分まで（超えたら「…」）。 */}
           <span className="menu-info save-info">
-            {data ? (
-              <>
-                <span className="save-map">{data.mapName}</span>
-                <span className="save-time">{playTimeLabel(data.playSeconds)}</span>
-                <span className="save-at">
-                  {savedAtLabel(data.savedAt)}
-                  {data.stale ? '（古い形式）' : ''}
-                </span>
-              </>
-            ) : (
-              '空き'
-            )}
+            {data ? <SaveDetail data={data} note={data.stale ? '（古い形式）' : ''} /> : '空き'}
           </span>
           {/* オート枠は読むだけ（GS-33）。押せる形で置いておくと、手で書けると思ってしまう。 */}
           <button
