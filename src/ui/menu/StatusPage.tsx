@@ -7,7 +7,8 @@
 // 装備を替えたときに何がどれだけ変わったのか、これが無いと分からない。
 
 import { characterMenuImage, characterName } from '../../game/characters';
-import { equipBonus, memberStats } from '../../game/battle/party';
+import { equipBonus, memberRace, memberStats } from '../../game/battle/party';
+import { traitLevel, traitText } from '../../game/battle/races';
 import { itemName } from '../../game/items';
 import { levelUpRule } from '../../game/battle/book';
 import { expToNext } from '../../game/battle/growth';
@@ -27,6 +28,8 @@ export function StatusPage({
   const toNext = expToNext(member.exp, member.level, levelUpRule());
   const image = characterMenuImage(who);
   const gear = equipBonus(member.equip);
+  // 種族と種族特性（2026-11-03）。まだ効いていない特性も「Lv N から」と薄く出す（何が増えるか分かるように）。
+  const race = memberRace(who);
 
   return (
     <div className="menu-figured status">
@@ -56,6 +59,7 @@ export function StatusPage({
         <dt>次のレベルまで</dt>
         <dd>{toNext > 0 ? toNext : '—'}</dd>
       </dl>
+      <div className="status-side">
       <dl className="status-facts status-equipment">
         <dt>武器</dt><dd>{member.equip.weapon ? itemName(member.equip.weapon) : 'なし'}</dd>
         <dt>鎧</dt><dd>{member.equip.armor ? itemName(member.equip.armor) : 'なし'}</dd>
@@ -63,6 +67,29 @@ export function StatusPage({
           <span key={slot} className="status-pair"><dt>{slot}</dt><dd>{itemName(id)}</dd></span>
         ))}
       </dl>
+        {race ? (
+          <div className="status-race">
+            <p className="status-race-name">
+              {race.name}
+              {race.text ? <span className="status-race-text">{race.text}</span> : null}
+            </p>
+            {(race.traits ?? []).length ? (
+              <ul className="status-traits">
+                {(race.traits ?? []).map((trait, index) => {
+                  const from = traitLevel(trait);
+                  const on = from <= member.level;
+                  return (
+                    <li key={index} className={on ? '' : 'off'}>
+                      {traitText(trait)}
+                      {on ? null : <span className="status-trait-level">Lv {from} から</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       </div>
       </div>
     </div>

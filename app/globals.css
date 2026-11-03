@@ -1847,6 +1847,15 @@ body {
 .status-content .status-facts { grid-template-columns: auto minmax(0, 1fr); gap: 6px 16px; line-height: 1.25; margin: 0; }
 .status-content .status-facts dt { align-self: center; }
 .status-content .status-facts dd { overflow-wrap: anywhere; }
+/* 種族と種族特性（2026-11-03）。まだ効いていない特性は薄く、右に「Lv N から」。 */
+.status-race { margin-top: 24px; font-size: 18px; line-height: 1.4; }
+.status-traits li { font-weight: normal; }
+.status-race-name { margin: 0 0 6px; font-weight: bold; font-size: 20px; }
+.status-race-text { margin-left: 12px; font-weight: normal; opacity: 0.8; font-size: 0.85em; }
+.status-traits { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.status-traits li::before { content: '・'; }
+.status-traits li.off { opacity: 0.45; }
+.status-trait-level { margin-left: 10px; font-size: 0.85em; white-space: nowrap; }
 .status-content .status-equipment { grid-template-columns: 2em minmax(0, 1fr); }
 
 .equip-current .equip-head { align-items: center; margin: 0 0 20px; }

@@ -30,7 +30,7 @@ import { recordQuestKills } from '../../game/quests';
 import { enemyFighters, enemyIdOf, gainExp, partyFighters, writeBack } from '../../game/battle/party';
 import { skillName } from '../../game/battle/book';
 import { attackShape, runBattle, type BattleAction, type BattleOutcome, type BattleSpoils } from '../../game/battle/flow';
-import { alive, type Fighter } from '../../game/battle/rules';
+import { alive, canPay, costOf, type Fighter } from '../../game/battle/rules';
 import { characterBattleImage, characterIcon, characterName, characterStand } from '../../game/characters';
 import { assignBattleCells, type CellTerrain } from '../../game/battle/cells';
 import { hitsOf, reachOf, shielded, targetables } from '../../game/battle/cover';
@@ -825,7 +825,8 @@ export function BattleView({
             // **払えない技も出す**（消すと「覚えたはずの技が無い」に見える）。押せなくするだけ。
             // 消費 MP は右の説明に出すので、一覧には書かない。
             label: skill?.name ?? id,
-            disabled: !skill || asking.mp < skill.mp,
+            // 消費 MP は種族特性で減る（2026-11-03。`costOf`）。
+            disabled: !skill || !canPay(asking, skill),
             go: () => {
               if (!skill) return;
               // 回復は味方を選ぶ（生きている味方が 1 人なら選ばせない）。
@@ -1333,7 +1334,7 @@ export function BattleView({
                 (() => {
                   const skill = skillDef(skillsOf(state.members.get(asking.id)?.skills ?? [], stage.group)[at] ?? '');
                   return skill ? (
-                    <ListInfo text={`${skillTagText(skill)}${skill.text ?? ''}`} label="消費MP" value={String(skill.mp)} short={asking.mp < skill.mp} />
+                    <ListInfo text={`${skillTagText(skill)}${skill.text ?? ''}`} label="消費MP" value={String(costOf(asking, skill))} short={!canPay(asking, skill)} />
                   ) : (
                     <ListInfo text="" label="" value="" />
                   );

@@ -18,10 +18,13 @@
 // **材料になる物は「つかう／つくる」を選ばせる（2026-11-03）。** 「つくる」で、その物を材料にする物
 // （台帳の `craft`）を並べ、要る材料と持っている数を見せる。そろっていれば決定で 1 個作る。
 // 作っても材料が残る間は小窓を開いたままにし、続けて作れるようにする。
+// **作れるのは隊列に種族特性 `craft` の人（ノル族のメイナ）がいるときだけ（2026-11-03）。** いなければ
+// 「つくる」を出さず、材料もただの持ち物として扱う。
 
 import { useEffect, useRef, useState } from 'react';
 import { itemCanCraft, itemCraftNeeds, itemCraftsUsing, itemName, itemText, itemUse } from '../../game/items';
-import { memberStats } from '../../game/battle/party';
+import { memberStats, memberTraits } from '../../game/battle/party';
+import { canCraftWith } from '../../game/battle/races';
 import { wouldHelp } from '../../game/battle/heal';
 import { characterIcon, characterName } from '../../game/characters';
 import { ailmentDef } from '../../game/battle/book';
@@ -95,6 +98,10 @@ export function ItemsPage({
   if (rows.length === 0) return <p className="menu-empty">なにも持っていない</p>;
 
   const alive = party.filter((who) => members.has(who));
+  /** 隊列に道具を作れる人がいるか（種族特性 `craft`。2026-11-03）。 */
+  const canMake = canCraftWith(alive.map((who) => memberTraits(who, members.get(who)?.level ?? 1)));
+  /** 「つかう／つくる」を選ばせる物（作れる人がいて、材料になる物）。 */
+  const makes = (id: string) => canMake && itemCraftsUsing(id).length > 0;
 
   /** その人に効くか。台帳に無い人（記録が古い）には使わせない。 */
   const helps = (id: string, who: string): boolean => {
@@ -132,7 +139,7 @@ export function ItemsPage({
   };
 
   const choose = (id: string) => {
-    if (itemCraftsUsing(id).length > 0) {
+    if (makes(id)) {
       setNote('');
       setActing(id);
       return;
@@ -171,7 +178,7 @@ export function ItemsPage({
     <div className="item-page">
       <ul className="menu-items item-list" ref={listRef} data-tick={tick}>
         {rows.map(([id, count]) => {
-          const ready = Boolean(itemUse(id, 'field')) || itemCraftsUsing(id).length > 0;
+          const ready = Boolean(itemUse(id, 'field')) || makes(id);
           return (
             <li key={id}>
               <button

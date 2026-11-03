@@ -13,8 +13,10 @@ import { canWalk, useUi } from './store';
 import { effectDef, effectImage, enemyDef, memberDef, skillDef, type EffectDef } from '../game/battle/book';
 import { recordQuestKills } from '../game/quests';
 import { battleSettings, fieldKillRate, normalAttackOf } from '../game/battle/settings';
-import { enemyFighters, gainExp, partyFighters } from '../game/battle/party';
+import { enemyFighters, gainExp, memberTraits, partyFighters } from '../game/battle/party';
 import { damageOf } from '../game/battle/rules';
+import { scaledDamage } from '../game/battle/cover';
+import { powerRateOf, scaledMp } from '../game/battle/races';
 import { itemEquip } from '../game/items';
 import { characterName } from '../game/characters';
 import { playSe, playUi } from '../game/audio';
@@ -139,7 +141,8 @@ export function useFieldAttack(deps: FieldAttackDeps): {
       const defender = enemyFighters([enemy])[0];
       if (!attacker || !defender) return;
       const skill = attack.skill ? skillDef(attack.skill) : null;
-      const damage = damageOf(attacker, defender, skill);
+      // 種族特性の威力（2026-11-03）も戦闘と同じく掛ける（必ず 1 は通す）。
+      const damage = scaledDamage(damageOf(attacker, defender, skill), powerRateOf(skill, attacker.traits));
       const now = performance.now();
       const { wound, defeated } = woundSymbol(wounds.current.get(id), def.hp, damage, now);
       playSe(battleSettings().se.hit);
@@ -254,13 +257,14 @@ export function useFieldAttack(deps: FieldAttackDeps): {
     const plain = normalAttackOf('party', member.equip.weapon ? itemEquip(member.equip.weapon)?.strike : null);
     const chosen = memberDef(leader)?.fieldAttack;
     const attack = resolveFieldAttack({ chosen, known: member.skills, skill: chosen ? skillDef(chosen) : null, normal: plain });
-    // MP が足りなければ撃てない（GS-295）。硬直もかけない。
-    if (attack.mp > member.mp) {
+    // MP が足りなければ撃てない（GS-295）。硬直もかけない。消費 MP は種族特性で減る（2026-11-03）。
+    const cost = scaledMp(attack.mp, attack.skill ? skillDef(attack.skill) : null, memberTraits(leader, member.level));
+    if (cost > member.mp) {
       playUi('cancel');
       depsRef.current.note('MPが たりない！');
       return;
     }
-    member.mp -= attack.mp;
+    member.mp -= cost;
     readyAt.current = now + FIELD_ATTACK_RECOVER_MS;
     view.strike(FIELD_ATTACK_RECOVER_MS);
     // 絵と音。絵は技の `field.effect`、無ければその技（素手）の戦闘の絵。音は `field.se`、無ければ絵の音。

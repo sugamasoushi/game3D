@@ -54,16 +54,18 @@ export function canCraft(items: Map<string, number>, def: ItemDef | undefined): 
 }
 
 /**
- * 作る。材料を減らして `result` を 1 個増やす。**足りなければ何も動かさない**（false）。
+ * 作る。材料を減らして `result` を `made` 個（既定 1）増やす。**足りなければ何も動かさない**（false）。
  * 数が 0 になった材料は持ち物から消す（`spendItem` と同じ）。
+ * `made` が 2 なのは、種族特性 `craftExtra` で「もう 1 個できた」とき（材料は 1 回ぶん。2026-11-03）。
  */
-export function craftInto(items: Map<string, number>, result: string, def: ItemDef | undefined): boolean {
+export function craftInto(items: Map<string, number>, result: string, def: ItemDef | undefined, made = 1): boolean {
   if (!canCraft(items, def)) return false;
   for (const [id, count] of craftNeeds(def)) {
     const next = (items.get(id) ?? 0) - count;
     if (next > 0) items.set(id, next);
     else items.delete(id);
   }
-  items.set(result, (items.get(result) ?? 0) + 1);
+  const count = Math.max(1, Math.trunc(made) || 1);
+  items.set(result, (items.get(result) ?? 0) + count);
   return true;
 }
