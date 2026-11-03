@@ -36,7 +36,31 @@
     "forest_mansion": {
       "name": "忘れ森の館",
       "file": "forest_mansion/forest_mansion.json",
-      "bgm": "field"
+      "bgm": "field",
+      "encounter": {
+        "enemies": [
+          {
+            "enemy": "slime",
+            "weight": 3
+          },
+          {
+            "enemy": "sukerabi"
+          },
+          {
+            "enemy": "inkoshang",
+            "companions": [
+              {
+                "enemy": "kowaboa",
+                "chance": 0.8
+              }
+            ]
+          },
+          {
+            "enemy": "naga_girl"
+          }
+        ],
+        "steps": 8
+      }
     },
     "forest_cave": {
       "name": "青鳴洞・入口",

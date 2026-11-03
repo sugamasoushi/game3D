@@ -26,6 +26,7 @@ import { debugToolsShown, loadDevOptions } from '../game/devMode';
 import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
 import { GameOver, type BattleOutcome } from '../game/battle/flow';
 import { createWalkAilments } from '../game/battle/walkAilment';
+import { createEncounterCounter, encounterAreaAt, encounterSteps, readEncounterAreas, rollEncounter, type EncounterArea, type EncounterDef } from '../game/randomEncounter';
 import { ailmentDef, enemyDef, enemyList, memberIds } from '../game/battle/book';
 import { touchedFromBehind } from '../game/symbolSense';
 import { equipItem, memberStats, unequipItem } from '../game/battle/party';
@@ -586,6 +587,13 @@ export default function GameCanvas() {
    * 出す文は一瞬だけの札（`walkNote`）——会話ウィンドウを出すと歩きが止まる。
    */
   const walkAilmentsRef = useRef(createWalkAilments());
+  /** ランダムエンカウント（GS-299）。RANDOM_ENCOUNT レイヤーの枠と、歩いた距離の数え。 */
+  const encounterAreasRef = useRef<EncounterArea[]>([]);
+  /** そのマップの出る敵と間隔（`maps.json` の `encounter`）。 */
+  const encounterDefRef = useRef<EncounterDef | undefined>(undefined);
+  const encounterRef = useRef(createEncounterCounter());
+  /** フィールドで始めた戦闘（敵シンボル・ランダムエンカウント）の決着待ち。同じ瞬間に 2 つ始めない。 */
+  const fieldBattleRef = useRef(false);
   const [walkNote, setWalkNote] = useState('');
   const walkNoteTimer = useRef(0);
   /** 一瞬だけ出す札（毒・フィールドアタックの取り分・先頭の入れ替え）。画面の上から 3/4 に出す（`.walk-note`）。 */
@@ -819,6 +827,8 @@ export default function GameCanvas() {
       stopClockRef.current = mapEntry?.time?.stopClock === true;
       // フィールドアタック（GS-295）。書かなければ使える。減らした HP はマップごと（入り直すとシンボルごと戻る）。
       fieldAttackRef.current = mapEntry?.fieldAttack !== false;
+      // ランダムエンカウントの出る敵と間隔（GS-299）。
+      encounterDefRef.current = mapEntry?.encounter;
       resetFieldAttackRef.current();
       // イベントの有無は**台帳で決める**（DEC-374）。無いマップを取りに行かない。
       // 組む前に読んであればそれを使う（GS-195）。読み直すと、組んだ時と条件の元がずれる。
@@ -832,6 +842,8 @@ export default function GameCanvas() {
       const visit = visitRef.current.name === file ? visitRef.current.visit : NO_VISIT;
       const map = applyEventVisit(rawMap, visit);
       spotsRef.current = readEventSpots(map).filter((spot) => !visit.absent.has(spot.event));
+      // ランダムエンカウントの枠（GS-299）。
+      encounterAreasRef.current = readEncounterAreas(map);
       // **着いた先が入口の上でも、そこからは動かさない**（DEC-247）。
       // 着いた立ち位置（イベント JSON の `mapMoves`。GS-211）が入口の枠に重なっていると、着いた瞬間にまた飛んで
       // 2 枚のマップを往復し続ける（実測: 家 ⇔ 森が止まらなくなった）。
@@ -883,6 +895,10 @@ export default function GameCanvas() {
       // 前のマップで貯めたぶんで、入った途端に始まらないように。
       // 毒の数えも入れ替える（GS-71）。入口をくぐった瞬間に効かないように。
       walkAilmentsRef.current.reset();
+      // ランダムエンカウントも数え直す（GS-299）。
+      encounterRef.current.reset();
+      // タイトルへ戻って決着が付かなかった戦闘の札も外す（入り直したら戦える）。
+      fieldBattleRef.current = false;
 
       // マップに入ったら動くもの（`auto`）。条件を満たすものだけ。
       // **手が空くまで待つ**（2026-11-02）。入口の暗転・イベントの `transfer` の最中は `play` が黙って断るので、
@@ -1252,7 +1268,7 @@ export default function GameCanvas() {
     const view = viewRef.current;
     const at = view?.playerAt();
     if (!view || !at) return;
-    if (!canWalk(useUi.getState())) return;
+    if (!canWalk(useUi.getState()) || fieldBattleRef.current) return;
     // 時間帯の切り替え中は戦闘を始めない（触ったままなら終わったところで始まる）。
     if (view.timeShifting()) return;
 
@@ -1295,8 +1311,11 @@ export default function GameCanvas() {
         ...(wound ? { enemyHp: [wound.hp] } : {}),
       }
       : undefined;
+    fieldBattleRef.current = true;
     void startBattleRef.current([enemy, ...companions], false, undefined, opening).catch((error) => {
       if (!(error instanceof GameOver)) throw error;
+    }).finally(() => {
+      fieldBattleRef.current = false;
     });
   }, []);
   const checkSymbolsRef = useRef(checkSymbols);
@@ -1318,6 +1337,32 @@ export default function GameCanvas() {
     showNote(lines.join('　'));
   }, [showNote]);
   const checkWalkAilmentsRef = useRef(checkWalkAilments);
+
+  /**
+   * ランダムエンカウント（GS-299）。RANDOM_ENCOUNT レイヤーの枠の中を歩いたぶんだけ数え、
+   * 頃合いならそのマップの台帳の `encounter`（`maps.json`）から 1 組選んで戦う。
+   * 敵シンボルと同じく**歩けるときだけ**・時間帯の切り替え中は数えない。負けたらゲームオーバー。
+   */
+  const checkEncounter = useCallback(() => {
+    const view = viewRef.current;
+    const at = view?.playerAt();
+    if (!view || !at) return;
+    const def = encounterDefRef.current;
+    const inArea = !!def?.enemies?.length && !!encounterAreaAt(encounterAreasRef.current, at);
+    const counting = canWalk(useUi.getState()) && !view.timeShifting() && !fieldBattleRef.current;
+    if (!encounterRef.current.at(at, inArea, encounterSteps(def), counting)) return;
+    const enemies = rollEncounter(def?.enemies);
+    if (enemies.length === 0) return;
+    encounterRef.current.reset();
+    fieldBattleRef.current = true;
+    void startBattleRef.current(enemies, false).catch((error) => {
+      if (!(error instanceof GameOver)) throw error;
+    }).finally(() => {
+      fieldBattleRef.current = false;
+    });
+  }, []);
+  const checkEncounterRef = useRef(checkEncounter);
+  checkEncounterRef.current = checkEncounter;
   checkWalkAilmentsRef.current = checkWalkAilments;
 
   /**
@@ -1435,6 +1480,8 @@ export default function GameCanvas() {
       checkSymbolsRef.current();
       // 歩いているあいだの毒（GS-71）。同じ間隔で見る。
       checkWalkAilmentsRef.current();
+      // ランダムエンカウント（GS-299）。同じ間隔で見る。
+      checkEncounterRef.current();
       // 並行イベント（GS-43）。**`busy` でも見る**——止めないのが持ち場なので、
       // 会話の裏でスイッチが入るのは正しい動き。
       checkParallelRef.current();
