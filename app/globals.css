@@ -1745,6 +1745,13 @@ body {
 .gmenu-body:has(.settings-actions) { display: flex; flex-direction: column; }
 .save-page { display: flex; flex: 1; flex-direction: column; }
 .save-page .menu-slots { margin: 0 0 12px; }
+/* 1 枠ずつ枠で囲う。タイトルの「つづきから」のボタン（`.title-menu button`）と同じ線・角・地。 */
+.save-page .menu-slots li {
+  padding: 8px 14px 8px 4px;
+  border: 2px solid #8ea6c8;
+  border-radius: 8px;
+  background: rgba(25, 25, 112, 0.7);
+}
 .gmenu-foot { justify-content: center; }
 .gmenu-foot button { margin-inline: auto; }
 .gmenu-body:has(.settings-actions) .settings-actions { justify-content: center; margin-top: auto; padding: 14px 0 8px; }
