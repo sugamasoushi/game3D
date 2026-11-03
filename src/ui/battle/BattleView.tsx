@@ -24,6 +24,8 @@ import {
   type EffectDef,
 } from '../../game/battle/book';
 import { AilTags } from '../AilTags';
+import { useUi } from '../store';
+import { partyInPinch } from '../../game/screenOverlays';
 import { recordQuestKills } from '../../game/quests';
 import { enemyFighters, enemyIdOf, gainExp, partyFighters, writeBack } from '../../game/battle/party';
 import { skillName } from '../../game/battle/book';
@@ -338,6 +340,19 @@ export function BattleView({
   const [shown, setShown] = useState(() => snapshot(fighters));
   const hpOf = (who: Fighter) => shown[who.id]?.hp ?? who.hp;
   const mpOf = (who: Fighter) => shown[who.id]?.mp ?? who.mp;
+
+  /**
+   * 味方全体の HP が 1 割未満なら画面の縁を赤くする（GS-301。`screenOverlays.ts` の `pinch`）。
+   * **画面に出している HP（`shown`）で見る**——帯が減り切ったところで赤くなり、回復の帯が伸びたところで消える。
+   * 背景だけのプレビュー（`backdrop`）では出さない。戦闘が終わったら（この画面が消えたら）旗を下ろす。
+   */
+  const pinch = !backdrop && partyInPinch(
+    fighters.filter((who) => who.side === 'party').map((who) => ({ hp: hpOf(who), maxHp: who.stats.hp })),
+  );
+  useEffect(() => {
+    useUi.getState().setScreenOverlay('pinch', pinch);
+  }, [pinch]);
+  useEffect(() => () => useUi.getState().setScreenOverlay('pinch', false), []);
 
   const [tick, setTick] = useState(0);
   const [line, setLine] = useState('');
