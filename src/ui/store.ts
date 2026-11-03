@@ -3,6 +3,7 @@
 // ここに入るのは「会話文」「選択肢」「暗さ」「立ち絵」で、どれも 1 秒に数回しか変わらない。
 
 import { create } from 'zustand';
+import type { ScreenOverlayKind } from '../game/screenOverlays';
 
 /** 表示中の 1 メッセージ。 */
 export interface Talk {
@@ -236,6 +237,8 @@ interface UiState {
   shop: { items: string[]; sell: boolean } | null;
   /** 開いている宿の窓（GS-290）。店と同じく、イベントの最中にしか開かない。 */
   inn: { price: number } | null;
+  /** 出している画面の重ね表示（GS-300。`game/screenOverlays.ts`）。 */
+  screenOverlays: Partial<Record<ScreenOverlayKind, boolean>>;
   setPhase(phase: Phase): void;
   setMenu(open: boolean): void;
   setSettings(open: boolean): void;
@@ -268,6 +271,8 @@ interface UiState {
   setBattle(enemies: string[] | null): void;
   setShop(shop: { items: string[]; sell: boolean } | null): void;
   setInn(inn: { price: number } | null): void;
+  /** 画面の重ね表示を出す／消す（GS-300）。変わらなければ何もしない（毎回描き直さない）。 */
+  setScreenOverlay(kind: ScreenOverlayKind, on: boolean): void;
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -285,6 +290,7 @@ export const useUi = create<UiState>((set) => ({
   battle: null,
   shop: null,
   inn: null,
+  screenOverlays: {},
   setPhase: (phase) => set({ phase }),
   setMenu: (menu) => set({ menu }),
   setSettings: (settings) => set({ settings }),
@@ -344,4 +350,6 @@ export const useUi = create<UiState>((set) => ({
   setBattle: (battle) => set({ battle }),
   setShop: (shop) => set({ shop }),
   setInn: (inn) => set({ inn }),
+  setScreenOverlay: (kind, on) =>
+    set((state) => (!!state.screenOverlays[kind] === on ? state : { screenOverlays: { ...state.screenOverlays, [kind]: on } })),
 }));
