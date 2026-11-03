@@ -11,7 +11,7 @@ import type { ActorRef, EventCommand, PixelOffset, PlaceAt, PlaceAxis, Step } fr
 import type { GameView, WalkDir } from './GameView';
 import { selfKey, switchOn, type GameState } from './state';
 import { layerKey } from './layerSwitch';
-import { mapEffectKey } from './mapEffectSwitch';
+import { mapEffectHereKey, mapEffectKey } from './mapEffectSwitch';
 import { NPC_CAME, NPC_GONE } from './npcs';
 import { commonEvent } from './commons';
 import { scriptFn } from './scriptBook';
@@ -760,7 +760,13 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       return options.knownLayer?.(id) ?? true;
     },
     // マップのエフェクトの出し入れ（GS-270）。覚えはレイヤーと同じ置き場（`<マップ>/~<id>/出す`）。
-    setMapEffect: (id, shown, ms) => {
+    // 「この物だけ」（2026-11-03）は、起こした物の覚え（`<マップ>/@<Id>/~<id>`）に置く。
+    setMapEffect: (id, shown, ms, here) => {
+      if (here) {
+        if (!sceneOwner) return false;
+        options.state.self.set(mapEffectHereKey(sceneMap, sceneOwner, id), shown);
+        return options.getView()?.setMapEffect(id, shown, ms, sceneOwner) ?? false;
+      }
       options.state.self.set(mapEffectKey(sceneMap, id), shown);
       return options.getView()?.setMapEffect(id, shown, ms) ?? false;
     },

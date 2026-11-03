@@ -41,10 +41,24 @@
         "enemies": [
           {
             "enemy": "slime",
-            "weight": 3
+            "weight": 3,
+            "companions": [
+              {
+                "enemy": "shikadigo",
+                "chance": 0.5
+              }
+            ],
+            "count": {
+              "min": 1,
+              "max": 2
+            }
           },
           {
-            "enemy": "sukerabi"
+            "enemy": "sukerabi",
+            "count": {
+              "min": 1,
+              "max": 2
+            }
           },
           {
             "enemy": "inkoshang",
@@ -59,7 +73,8 @@
             "enemy": "naga_girl"
           }
         ],
-        "steps": 8
+        "steps": 8,
+        "chance": 0.5
       }
     },
     "forest_cave": {

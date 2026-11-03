@@ -232,6 +232,9 @@ export function readFieldVolumes(map: FieldEffectSource, time = ''): FieldEffect
         }
       }
       if (!looks.length) continue;
+      // 物の `Id`（2026-11-03）。「この物だけ」の出し入れの宛先。
+      const ownerRaw = props.find((entry) => entry.name === 'Id')?.value;
+      const owner = typeof ownerRaw === 'string' && ownerRaw.trim() ? ownerRaw.trim() : undefined;
       const points = object.points ?? [];
       if (points.length < 2) continue;
       // 点は (u, v)。面によって軸の意味が変わる（`editor/mapObject.setMapObjectPosition` と同じ）。
@@ -252,15 +255,15 @@ export function readFieldVolumes(map: FieldEffectSource, time = ''): FieldEffect
         const lift = look.lift;
         if (plane === 'xy') {
           const z = object.z ?? 0;
-          out.push({ look, plane, baseY: minV, minX: minU, maxX: maxU, minY: minV + lift, maxY: maxV + lift, minZ: z, maxZ: z });
+          out.push({ look, plane, baseY: minV, minX: minU, maxX: maxU, minY: minV + lift, maxY: maxV + lift, minZ: z, maxZ: z, ...(owner ? { owner } : {}) });
         } else if (plane === 'yz') {
           const x = object.x ?? 0;
-          out.push({ look, plane, baseY: minV, minX: x, maxX: x, minY: minV + lift, maxY: maxV + lift, minZ: minU, maxZ: maxU });
+          out.push({ look, plane, baseY: minV, minX: x, maxX: x, minY: minV + lift, maxY: maxV + lift, minZ: minU, maxZ: maxU, ...(owner ? { owner } : {}) });
         } else {
           // 床は厚みを設定から取る。オブジェクトの高さは使わない（DEC-200）。
           const base = object.y ?? 0;
           const y = base + lift;
-          out.push({ look, plane, baseY: base, minX: minU, maxX: maxU, minY: y, maxY: y + Math.max(0.2, look.thick), minZ: minV, maxZ: maxV });
+          out.push({ look, plane, baseY: base, minX: minU, maxX: maxU, minY: y, maxY: y + Math.max(0.2, look.thick), minZ: minV, maxZ: maxV, ...(owner ? { owner } : {}) });
         }
       }
     }
@@ -316,6 +319,19 @@ export interface FieldEffectVolume {
    * （濃くなって出る）。どちらにも在る物は付けない（そのまま出す）。濃さは `setFade` で動かす。
    */
   fade?: 'in' | 'out';
+  /**
+   * 置いた物の `Id`（2026-11-03）。命令「マップのエフェクト」の「この物だけ」で、
+   * 同じプリセットを置いた物のうち 1 つだけを出し入れするときの宛先。`Id` が無い物は付けない。
+   */
+  owner?: string;
+}
+
+/**
+ * 物ごとの出し入れの濃さのキー（2026-11-03）。`setPresetWeights` の表に、プリセット id と並べて入れる。
+ * 当たる置き場所は、そのプリセットで `owner` がこの `Id` の物だけ。プリセットの濃さに掛ける。
+ */
+export function ownerWeightKey(id: string, owner: string): string {
+  return `${id}@${owner}`;
 }
 
 /**
@@ -324,7 +340,7 @@ export interface FieldEffectVolume {
  */
 export function mergeFieldVolumes(from: readonly FieldEffectVolume[], to: readonly FieldEffectVolume[]): FieldEffectVolume[] {
   const keyOf = (volume: FieldEffectVolume) =>
-    [volume.look.id, volume.plane, volume.minX, volume.maxX, volume.minY, volume.maxY, volume.minZ, volume.maxZ].join('|');
+    [volume.look.id, volume.owner ?? '', volume.plane, volume.minX, volume.maxX, volume.minY, volume.maxY, volume.minZ, volume.maxZ].join('|');
   const next = new Set(to.map(keyOf));
   const before = new Set(from.map(keyOf));
   return [
@@ -1582,6 +1598,8 @@ export function createFieldEffects(): FieldEffects {
     /** 元の見た目と、時間帯の切り替えで薄めるか（GS-226）。 */
     look: FieldEffectSettings;
     fade?: 'in' | 'out';
+    /** 置いた物の `Id`（2026-11-03。「この物だけ」の出し入れ）。 */
+    owner?: string;
     lightning?: { slot: number; seed: number; volume: FieldEffectVolume; unit: number };
   }> = [];
   /** 風の置き場所（GS-274）。板は作らず、範囲と見た目だけ覚える。 */
@@ -1592,7 +1610,17 @@ export function createFieldEffects(): FieldEffects {
     fade === 'in' ? fadeAt : fade === 'out' ? 1 - fadeAt : 1;
   /** イベントの出し入れ（GS-270）。プリセット id → 濃さの倍率。無い id は `on` のまま。 */
   let presetWeights: ReadonlyMap<string, number> = new Map();
-  const sliceWeight = (slice: { id: string; fade?: 'in' | 'out' }): number => weightOf(slice.fade) * (presetWeights.get(slice.id) ?? 1);
+  /**
+   * その置き場所の出し入れの倍率。プリセットの濃さ × 物ごとの濃さ（`ownerWeightKey`。2026-11-03）。
+   * どちらも表に無ければ undefined（`on` のまま）。
+   */
+  const pickOf = (id: string, owner?: string): number | undefined => {
+    const preset = presetWeights.get(id);
+    const own = owner ? presetWeights.get(ownerWeightKey(id, owner)) : undefined;
+    if (own === undefined) return preset;
+    return (preset ?? 1) * own;
+  };
+  const sliceWeight = (slice: { id: string; fade?: 'in' | 'out'; owner?: string }): number => weightOf(slice.fade) * (pickOf(slice.id, slice.owner) ?? 1);
   let clock = 0;
   /** 画面の切り替え（DEC-201）。置いてあっても切っていれば出さない。 */
   let shown = true;
@@ -1629,9 +1657,9 @@ export function createFieldEffects(): FieldEffects {
     mesh.position.set((x + (v.plane === 'yz' ? 0 : offset)) * unit, (v.minY + v.maxY) / 2 * unit,
       (z + (v.plane === 'yz' ? offset : wall ? 0 : (state.z - 0.5) * (v.maxZ - v.minZ))) * unit);
   };
-  const applyLook = (look: FieldEffectSettings, material: ShaderMaterial, weight = 1, id = '') => {
-    // イベントの出し入れ（GS-270）。表に在れば `on` より優先し、濃さに掛ける。
-    const pick = id ? presetWeights.get(id) : undefined;
+  const applyLook = (look: FieldEffectSettings, material: ShaderMaterial, weight = 1, id = '', owner?: string) => {
+    // イベントの出し入れ（GS-270）。表に在れば `on` より優先し、濃さに掛ける。物ごとの出し入れも掛ける（2026-11-03）。
+    const pick = id ? pickOf(id, owner) : undefined;
     const on = pick === undefined ? look.on : pick > 0;
     // 時間帯の切り替え（GS-226）。濃さと映り込みを薄めて出し入れする。
     material.uniforms.amount.value = Math.max(0, look.amount) * weight;
@@ -1774,7 +1802,7 @@ export function createFieldEffects(): FieldEffects {
           }
           const lightning = kind === 'lightning' ? { slot: i, seed: lightningSeed(look.id, volume.minX, volume.minY, volume.minZ), volume, unit } : undefined;
           if (lightning) material.userData.lightning = { slot: i, seed: lightning.seed, count: lightningCount(look.lightningCount), wall, gap: lightningGap(look.lightningGap), gapSeed: lightningGapSeed(look.id) };
-          applyLook(look, material, weightOf(volume.fade) * (presetWeights.get(look.id) ?? 1), look.id);
+          applyLook(look, material, weightOf(volume.fade) * (pickOf(look.id, volume.owner) ?? 1), look.id, volume.owner);
           const mesh = new Mesh(kind === 'pillar' ? pillarGeometry : kind === 'explosion' ? explosionGeometry : geometry, material);
           if (kind === 'heat') {
             mesh.onBeforeRender = renderer => {
@@ -1891,7 +1919,7 @@ export function createFieldEffects(): FieldEffects {
            * 「鏡面を描く前の画」を写してしまい、下の鏡が見えなくなる。
            */
           mesh.renderOrder = (kind === 'heat' ? 10000 : kind === 'mirror' ? 4 : 8) + i;
-          const slice = { id: look.id, mesh, poolKey: key, reflects: REFLECTS[kind] === true, cast: look.cast, look, fade: volume.fade, lightning };
+          const slice = { id: look.id, mesh, poolKey: key, reflects: REFLECTS[kind] === true, cast: look.cast, look, fade: volume.fade, owner: volume.owner, lightning };
           updateLightning(slice);
           // 同じ描画順にそろえ、奥行きはthreeの透明物ソートに任せる。
           if (lightning) mesh.renderOrder = 8;
@@ -1942,7 +1970,7 @@ export function createFieldEffects(): FieldEffects {
         const look = looks[slice.id];
         if (!look) continue;
         slice.look = look;
-        applyLook(look, slice.mesh.material, sliceWeight(slice), slice.id);
+        applyLook(look, slice.mesh.material, sliceWeight(slice), slice.id, slice.owner);
         updateLightning(slice);
         // 映すかは uniform ではないので、板の側に憶える（DEC-345）。
         slice.cast = look.cast;
@@ -1951,12 +1979,12 @@ export function createFieldEffects(): FieldEffects {
 
     setFade(k) {
       fadeAt = Math.min(1, Math.max(0, k));
-      for (const slice of slices) if (slice.fade) applyLook(slice.look, slice.mesh.material, sliceWeight(slice), slice.id);
+      for (const slice of slices) if (slice.fade) applyLook(slice.look, slice.mesh.material, sliceWeight(slice), slice.id, slice.owner);
     },
 
     setPresetWeights(weights) {
       presetWeights = weights;
-      for (const slice of slices) applyLook(slice.look, slice.mesh.material, sliceWeight(slice), slice.id);
+      for (const slice of slices) applyLook(slice.look, slice.mesh.material, sliceWeight(slice), slice.id, slice.owner);
     },
 
     windZones() {
@@ -1964,7 +1992,7 @@ export function createFieldEffects(): FieldEffects {
       if (!shown) return out;
       for (const wind of winds) {
         // 出し入れは板と同じ決まり（GS-270）。表に在れば `on` より優先し、濃さに掛ける。
-        const pick = presetWeights.get(wind.id);
+        const pick = pickOf(wind.id, wind.volume.owner);
         const on = pick === undefined ? wind.look.on : pick > 0;
         const strength = on ? Math.max(0, wind.look.amount) * weightOf(wind.fade) * (pick ?? 1) : 0;
         if (strength <= 0) continue;
@@ -2002,7 +2030,7 @@ export function createFieldEffects(): FieldEffects {
         add(slice.id, sliceWeight(slice), cycle, cycle === undefined ? undefined : lightningLit(cycle, lightningGap(slice.look.lightningGap), lightningGapSeed(slice.id)));
       }
       for (const wind of winds) {
-        const pick = presetWeights.get(wind.id);
+        const pick = pickOf(wind.id, wind.volume.owner);
         add(wind.id, weightOf(wind.fade) * (pick ?? (wind.look.on ? 1 : 0)), undefined, undefined);
       }
       return out;
@@ -2017,7 +2045,7 @@ export function createFieldEffects(): FieldEffects {
       if (dissolve) {
         const regions: DissolveRegion[] = [];
         for (const { volume: v, unit } of dissolveVolumes) {
-          const pick = presetWeights.get(v.look.id);
+          const pick = pickOf(v.look.id, v.owner);
           if (!(pick === undefined ? v.look.on : pick > 0)) continue;
           const amount = v.look.amount * weightOf(v.fade) * (pick ?? 1);
           if (amount <= 0) continue;

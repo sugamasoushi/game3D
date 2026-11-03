@@ -34,7 +34,7 @@ export interface MapEntry {
   /** `false` ならこのマップではフィールドアタックを使えない（GS-295。家・町など）。書かなければ使える。 */
   fieldAttack?: boolean;
   /**
-   * ランダムエンカウント（GS-299）。出る敵・出やすさ・間隔。枠はマップの RANDOM_ENCOUNT レイヤー。
+   * ランダムエンカウント（GS-299）。出る敵・出現比率・間隔。枠はマップの RANDOM_ENCOUNT レイヤー。
    * 台帳エディタの「マップ構成」で直す。無ければ枠があっても出会わない。
    */
   encounter?: EncounterDef;

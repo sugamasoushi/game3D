@@ -26,12 +26,12 @@ import { debugToolsShown, loadDevOptions } from '../game/devMode';
 import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
 import { GameOver, type BattleOutcome } from '../game/battle/flow';
 import { createWalkAilments } from '../game/battle/walkAilment';
-import { createEncounterCounter, encounterAreaAt, encounterSteps, readEncounterAreas, rollEncounter, type EncounterArea, type EncounterDef } from '../game/randomEncounter';
+import { createEncounterCounter, encounterAreaAt, encounterChance, encounterSteps, readEncounterAreas, rollEncounter, type EncounterArea, type EncounterDef } from '../game/randomEncounter';
 import { ailmentDef, enemyDef, enemyList, memberIds } from '../game/battle/book';
 import { touchedFromBehind } from '../game/symbolSense';
 import { equipItem, memberStats, unequipItem } from '../game/battle/party';
 import { applyUse, healLine, wouldHelp } from '../game/battle/heal';
-import { itemList, itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
+import { craftItem, itemList, itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
 import { ShopScreen } from './shop/ShopScreen';
 import { InnScreen } from './shop/InnScreen';
 import { BattleView, type BattleStage, type BattleStartOpening } from './battle/BattleView';
@@ -46,11 +46,11 @@ import { pickMapMove } from '../game/mapMoves';
 import { readNpcs, npcShown, type NpcDef, TIME_PREFIX } from '../game/npcs';
 import { facesOnTalk } from '../game/talkTurn';
 import { layerKey, readSwitchLayers, switchLayerShown, type SwitchLayer } from '../game/layerSwitch';
-import { mapEffectKey } from '../game/mapEffectSwitch';
+import { mapEffectHereKey, mapEffectKey } from '../game/mapEffectSwitch';
 import { applyEventVisit, forgetRespawn, NO_VISIT, rollEventVisit, type EventVisit } from '../game/eventVisit';
 import { canRun, meets, runCommands, ReturnToTitle, timeMatches } from '../event/interpreter';
 import type { EventCommand, EventDef, EventFile, IfCondition } from '../event/types';
-import { mapNpcSettingsForFile, rollCompanions } from '../game/mapNpcs';
+import { mapNpcSettingsForFile, rollFoes } from '../game/mapNpcs';
 import type { MapDef } from '../mep3d/types';
 import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
@@ -442,6 +442,16 @@ export default function GameCanvas() {
     );
     const line = healLine(characterName(who), healed);
     return [`${itemName(id)} を つかった。`, use.say ?? '', ...cured, line].filter(Boolean).join(' ');
+  }, []);
+
+  /**
+   * 道具から道具を作る（2026-11-03）。作り方は台帳の `craft`、決まりは `craft.ts`。
+   * **材料が足りなければ何も減らさない。** 音は持ち物を使った音と同じ。
+   */
+  const makeItem = useCallback((id: string): string => {
+    if (!craftItem(stateRef.current.items, id)) return '材料が たりない';
+    audio.playSe(battleSettings().se.item);
+    return `${itemName(id)} を つくった！`;
   }, []);
 
   /**
@@ -969,7 +979,9 @@ export default function GameCanvas() {
       // レイヤーの出し入れの覚え（GS-233）。組んでいるマップの分。
       layerState: (name, id) => stateRef.current.self.get(layerKey(mapKey(name), id)),
       // マップのエフェクトの出し入れの覚え（GS-270）。組んでいるマップの分。
-      effectState: (name, id) => stateRef.current.self.get(mapEffectKey(mapKey(name), id)),
+      // 「この物だけ」（2026-11-03）は物の覚え。
+      effectState: (name, id, owner) =>
+        stateRef.current.self.get(owner ? mapEffectHereKey(mapKey(name), owner, id) : mapEffectKey(mapKey(name), id)),
       // 環境音をエフェクトに合わせる（GS-278）。行は `applyMapSound` が台帳から入れる。
       onEffectLevels: (levels) => audio.updateAmbience(levels),
     });
@@ -1300,7 +1312,9 @@ export default function GameCanvas() {
     // **負けたらゲームオーバー**（`canLose` は false）。話の途中ではないので、
     // 続きを書いた人も居ない——`GameOver` はここで受け止めて終わりにする。
     // お供（GS-255）。台帳 `mapNpcs.json` のこの 1 体の `companions` を行ごとに抽選し、触った相手の後ろに並べる。
-    const companions = rollCompanions(mapNpcSettingsForFile(mapRef.current)[near]?.companions);
+    // 出現数（GS-300）。この 1 体の `count` ぶん同じ敵を並べ、その後ろにお供。
+    const setting = mapNpcSettingsForFile(mapRef.current)[near];
+    const foes = rollFoes(enemy, setting?.count, setting?.companions);
     // フィールドアタックの後（GS-295）。減らした HP のまま出し、怯んでいるあいだに触れたら先制。
     const wound = fieldAttack.wounds.current.get(near);
     fieldAttack.wounds.current.delete(near);
@@ -1313,7 +1327,7 @@ export default function GameCanvas() {
       }
       : undefined;
     fieldBattleRef.current = true;
-    void startBattleRef.current([enemy, ...companions], false, undefined, opening).catch((error) => {
+    void startBattleRef.current(foes, false, undefined, opening).catch((error) => {
       if (!(error instanceof GameOver)) throw error;
     }).finally(() => {
       fieldBattleRef.current = false;
@@ -1353,7 +1367,7 @@ export default function GameCanvas() {
     // 枠の中に居るあいだは画面の縁を赤くする（GS-300）。出会わない枠（敵の行が無い）では出さない。
     useUi.getState().setScreenOverlay('danger', inArea);
     const counting = canWalk(useUi.getState()) && !view.timeShifting() && !fieldBattleRef.current;
-    if (!encounterRef.current.at(at, inArea, encounterSteps(def), counting)) return;
+    if (!encounterRef.current.at(at, inArea, encounterSteps(def), encounterChance(def), counting)) return;
     const enemies = rollEncounter(def?.enemies);
     if (enemies.length === 0) return;
     encounterRef.current.reset();
@@ -1890,6 +1904,7 @@ export default function GameCanvas() {
             playSeconds={stateRef.current.playSeconds}
             place={knownMapLabel(mapRef.current)}
             onUseItem={useItem}
+            onCraftItem={makeItem}
             onEquip={(who, id) => equipItem(stateRef.current, who, id)}
             onUnequip={(who, slot) => unequipItem(stateRef.current, who, slot)}
             onSave={saveTo}

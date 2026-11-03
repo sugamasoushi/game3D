@@ -23,6 +23,15 @@ export function mapEffectKey(map: string, id: string): string {
   return selfKey(map, `~${id}`, MAP_EFFECT_SHOWN);
 }
 
+/**
+ * 「この物だけ」の出し入れの覚えのキー（2026-11-03。命令の `here`）。`owner` はイベントを起こした物の `Id`。
+ * 物のセルフフラグと同じ宛先（`<マップ>/@<Id>/~<プリセット id>`）に置くので、
+ * `respawn` のイベントなら入るたびにセルフフラグと一緒に消える（最初の形 = 出す に戻る）。
+ */
+export function mapEffectHereKey(map: string, owner: string, id: string): string {
+  return selfKey(map, `@${owner}`, `~${id}`);
+}
+
 /** 命令で指せるエフェクト 1 つ。 */
 export interface MapEffectEntry {
   id: string;

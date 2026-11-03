@@ -8,6 +8,7 @@
 
 import type { SkillRange } from './battle/height';
 import { assetUrl } from './assets';
+import { canCraft, craftInto, craftNeeds, craftsUsing, type ItemCraft } from './craft';
 
 /**
  * 使ったときの効き目（GS-64）。**書いてある物だけが「使える物」**——
@@ -74,6 +75,11 @@ export interface ItemDef {
   price?: number;
   /** 身に着けられるなら、その置き場所と増える数（GS-67）。 */
   equip?: ItemEquip;
+  /**
+   * 作り方（2026-11-03）。**作られる側に書く**——`from` の材料をそろえて持っていれば、
+   * メニューの「アイテム」で材料を選んで「つくる」から 1 個作れる（`craft.ts`）。
+   */
+  craft?: ItemCraft;
 }
 
 export interface ItemBook {
@@ -173,4 +179,24 @@ export function knownItem(id: string): boolean {
 /** 一覧（id と名前）。イベントエディタに渡す。 */
 export function itemList(): Array<{ id: string; name: string }> {
   return Object.entries(book.items).map(([id, entry]) => ({ id, name: entry.name ?? id }));
+}
+
+/** `id` を材料にする物（作られる側の id。2026-11-03）。無ければ空。 */
+export function itemCraftsUsing(id: string): string[] {
+  return craftsUsing(book.items, id);
+}
+
+/** 作るのに要る材料（id → 数）。作り方の無い物は空。 */
+export function itemCraftNeeds(id: string): Map<string, number> {
+  return craftNeeds(book.items[id]);
+}
+
+/** いまの持ち物で `id` を作れるか。 */
+export function itemCanCraft(items: Map<string, number>, id: string): boolean {
+  return canCraft(items, book.items[id]);
+}
+
+/** `id` を 1 個作る。材料が足りなければ何も動かさず false。 */
+export function craftItem(items: Map<string, number>, id: string): boolean {
+  return craftInto(items, id, book.items[id]);
 }

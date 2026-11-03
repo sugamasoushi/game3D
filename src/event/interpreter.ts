@@ -196,7 +196,8 @@ export interface EventContext {
    */
   setLayer(id: string, shown: boolean): boolean;
   /** マップのエフェクトの出し入れ（GS-270）。そのマップに無い id なら false。 */
-  setMapEffect(id: string, shown: boolean, ms?: number): boolean;
+  /** `here` なら、このイベントを起こした物に置いた物だけ（2026-11-03）。 */
+  setMapEffect(id: string, shown: boolean, ms?: number, here?: boolean): boolean;
   countItem(id: string): number;
   /**
    * 戦闘（GS-60）。**決着が付くまで返らない。**
@@ -533,7 +534,10 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
 
   // マップのエフェクトの出し入れ（GS-270）。待たない。
   mapEffect: async (ctx, cmd) => {
-    if (!ctx.setMapEffect(cmd.id, cmd.shown, cmd.ms)) console.warn(`[event] このマップに id「${cmd.id}」のエフェクトが無い`);
+    if (ctx.setMapEffect(cmd.id, cmd.shown, cmd.ms, cmd.here === true)) return;
+    console.warn(cmd.here
+      ? `[event] このイベントを起こした物に、id「${cmd.id}」のエフェクトが置いていない（物から起こしていない場合も）`
+      : `[event] このマップに id「${cmd.id}」のエフェクトが無い`);
   },
 
   // 戦闘（GS-60）。**終わるまで待つ**ので、続きは勝ってから動く。

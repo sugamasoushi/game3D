@@ -4,25 +4,29 @@
 // - **どこで**: マップエディタで RANDOM_ENCOUNT という名前のオブジェクトレイヤーを作り、床向き（XZ）の
 //   四角・多角形・円・ブロックを置く。点は枠にしない。レイヤー名は大文字・小文字を問わない（EVENT などと同じ）。
 // - **どの敵と・どれくらいで**: マップの台帳（`maps.json`）のそのマップの `encounter`。台帳エディタの「マップ構成」で書く。
-//   行（出る敵 1 体＋お供）を出やすさ（`weight`）の重みでくじ引きし、お供は敵シンボルと同じく 1 行ずつ抽選する。
-//   間隔は `steps`（マス）。`encounter` が無い・行が無いマップでは、枠があっても出会わない。
-// - 数え方は毒（GS-71）と同じ**歩いた距離**。毎回 `steps` の 0.5〜1.5 倍でばらつかせる。
-//   枠の外では数えない（貯めたぶんは残る）。
+//   行（出る敵 1 体＋お供）を出現比率（`weight`）の重みでくじ引きし、お供は敵シンボルと同じく 1 行ずつ抽選する。
+//   `encounter` が無い・行が無いマップでは、枠があっても出会わない。
+// - **間隔 `steps`（マス）を歩くたびに、確率 `chance` でくじを引く**（外れたらまた `steps` 歩いて引く）。
+//   数え方は毒（GS-71）と同じ**歩いた距離**。枠の外では数えない（貯めたぶんは残る）。
 
 import type { MapDef, MapObjectDef } from '../mep3d/types';
-import { rollCompanions, type CompanionDef } from './mapNpcs';
+import { rollFoes, type CompanionDef, type EnemyCount } from './mapNpcs';
 
 /** 枠を置くレイヤーの名前（小文字で比べる）。 */
 export const ENCOUNTER_LAYER = 'random_encount';
 /** `steps` を書かなかったときの間隔（マス）。 */
 export const ENCOUNTER_STEPS_DEFAULT = 20;
+/** `chance` を書かなかったときの確率（必ず出会う）。 */
+export const ENCOUNTER_CHANCE_DEFAULT = 1;
 /** 台帳に書ける値の範囲（台帳エディタの `validate.mjs` と Game Checker の `values.ts` が同じ値を使う）。 */
-export const ENCOUNTER_LIMITS = { steps: { min: 3, max: 999 }, weight: { min: 1, max: 100 } } as const;
+export const ENCOUNTER_LIMITS = { steps: { min: 1, max: 999 }, weight: { min: 1, max: 100 } } as const;
 
 /** マップの台帳の `encounter`（GS-299）。 */
 export interface EncounterDef {
-  /** 出会うまでに歩く距離（マス）の目安。毎回 0.5〜1.5 倍でばらつく。書かなければ `ENCOUNTER_STEPS_DEFAULT`。 */
+  /** くじを引くまでに歩く距離（マス）。書かなければ `ENCOUNTER_STEPS_DEFAULT`。 */
   steps?: number;
+  /** 1 回のくじで出会う確率（0 より大きく 1 以下。画面では %）。書かなければ 1（必ず）。 */
+  chance?: number;
   /** 出る敵の行。1 回の遭遇で 1 行を選ぶ。 */
   enemies: EncounterRow[];
 }
@@ -31,8 +35,10 @@ export interface EncounterDef {
 export interface EncounterRow {
   /** 敵の台帳（`enemies.json`）のキー。先頭に立つ敵。 */
   enemy: string;
-  /** 出やすさ（ほかの行との比。1 以上の整数）。書かなければ 1。 */
+  /** 出現比率（ほかの行との比。1 以上の整数）。書かなければ 1。 */
   weight?: number;
+  /** 出現数（GS-300。敵シンボルの `count` と同じ）。書かなければ 1 体。 */
+  count?: EnemyCount;
   /** お供（敵シンボルの `companions` と同じ）。1 行ずつ抽選して後ろに並ぶ。 */
   companions?: CompanionDef[];
 }
@@ -117,10 +123,10 @@ export function encounterAreaAt(areas: EncounterArea[], at: { x: number; z: numb
   return areas.find((area) => inside(area, at.x, at.z)) ?? null;
 }
 
-/** 行の出やすさ。書いていない・おかしな値は 1。 */
+/** 行の出現比率。書いていない・おかしな値は 1。 */
 const weightOf = (row: EncounterRow) => (Number.isFinite(row.weight) && (row.weight as number) > 0 ? (row.weight as number) : 1);
 
-/** 出会う敵を選ぶ。出やすさの重みで 1 行選び、先頭がその敵、続けてお供。行が無ければ空。 */
+/** 出会う敵を選ぶ。出現比率で 1 行選び、その敵を出現数ぶん、続けてお供。行が無ければ空。 */
 export function rollEncounter(rows: EncounterRow[] | undefined, random: () => number = Math.random): string[] {
   const list = (rows ?? []).filter((row) => row.enemy);
   if (list.length === 0) return [];
@@ -134,7 +140,7 @@ export function rollEncounter(rows: EncounterRow[] | undefined, random: () => nu
       break;
     }
   }
-  return [row.enemy, ...rollCompanions(row.companions, random)];
+  return rollFoes(row.enemy, row.count, row.companions, random);
 }
 
 /** 間隔（マス）。書いていない・おかしな値は既定。 */
@@ -143,38 +149,40 @@ export function encounterSteps(def: EncounterDef | undefined): number {
   return typeof steps === 'number' && Number.isFinite(steps) && steps > 0 ? steps : ENCOUNTER_STEPS_DEFAULT;
 }
 
+/** 確率。書いていない・おかしな値は 1（必ず）。 */
+export function encounterChance(def: EncounterDef | undefined): number {
+  const chance = def?.chance;
+  return typeof chance === 'number' && chance > 0 && chance <= 1 ? chance : ENCOUNTER_CHANCE_DEFAULT;
+}
+
 /**
  * 歩いた距離を数えて、頃合いなら「出会った」と返す道具。
- * 枠の中を歩いたぶんだけ減らし、0 になったら true を返して数え直す。
+ * 枠の中を歩いたぶんを貯め、`steps` に届くたびに `chance` でくじを引く（届いたら貯めは 0 から）。
  */
 export function createEncounterCounter(random: () => number = Math.random) {
-  let left: number | null = null;
+  let walked = 0;
   let last: { x: number; z: number } | null = null;
-  const span = (steps: number) => steps * (0.5 + random());
 
   return {
     /** 数え直す（マップを移った・戦った後）。 */
     reset() {
-      left = null;
+      walked = 0;
       last = null;
     },
     /**
-     * いまの場所と、枠の中に居るか・間隔（マス）を渡す。出会ったら true。
+     * いまの場所と、枠の中に居るか・間隔（マス）・確率を渡す。出会ったら true。
      * `counting` が false のときは**場所だけ覚えて数えない**（会話中・戦闘中・メニュー）。
      */
-    at(now: { x: number; z: number }, inArea: boolean, steps: number, counting: boolean): boolean {
+    at(now: { x: number; z: number }, inArea: boolean, steps: number, chance: number, counting: boolean): boolean {
       const before = last;
       last = { x: now.x, z: now.z };
       if (!counting || !before || !inArea) return false;
       const moved = Math.hypot(now.x - before.x, now.z - before.z);
       if (moved >= JUMP || moved <= 0) return false;
-      const rest = (left ?? span(steps)) - moved;
-      if (rest > 0) {
-        left = rest;
-        return false;
-      }
-      left = null;
-      return true;
+      walked += moved;
+      if (walked < steps) return false;
+      walked = 0;
+      return random() < chance;
     },
   };
 }

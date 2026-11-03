@@ -461,7 +461,17 @@ export type EventCommand =
    * 時間帯の出し分け（`Effect.<時間帯>` / `showIn`）と両方が「出す」のときだけ出る。
    * 同じプリセットを何か所に置いても、まとめて動く（分けたいならプリセットを分ける）。
    */
-  | { type: 'mapEffect'; id: string; shown: boolean; ms?: number }
+  | {
+      type: 'mapEffect';
+      id: string;
+      shown: boolean;
+      ms?: number;
+      /**
+       * この物だけ（2026-11-03）。true なら、このイベントを起こした物（その `Id`）に置いた `id` のエフェクトだけを
+       * 出し入れする。同じプリセットを置いたほかの物は変わらない。物から起こしていないイベントでは動かない。
+       */
+      here?: boolean;
+    }
   /**
    * 仲間の出入り（GS-70）。`who` は `data/party.json` の人。
    * **最後の 1 人は外せない**（誰も居ない隊列は次の戦いで即座に負ける）。

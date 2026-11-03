@@ -14,9 +14,13 @@
 // 続けて使えるようにする。
 //
 // **効かない物も消さない**——一覧から消すと持っているのか無くしたのか分からない。
+//
+// **材料になる物は「つかう／つくる」を選ばせる（2026-11-03）。** 「つくる」で、その物を材料にする物
+// （台帳の `craft`）を並べ、要る材料と持っている数を見せる。そろっていれば決定で 1 個作る。
+// 作っても材料が残る間は小窓を開いたままにし、続けて作れるようにする。
 
 import { useEffect, useRef, useState } from 'react';
-import { itemName, itemText, itemUse } from '../../game/items';
+import { itemCanCraft, itemCraftNeeds, itemCraftsUsing, itemName, itemText, itemUse } from '../../game/items';
 import { memberStats } from '../../game/battle/party';
 import { wouldHelp } from '../../game/battle/heal';
 import { characterIcon, characterName } from '../../game/characters';
@@ -29,6 +33,7 @@ export function ItemsPage({
   party,
   members,
   onUse,
+  onCraft,
 }: {
   items: Map<string, number>;
   /** 隊列（GS-60）。使い先の小窓に並ぶ順。 */
@@ -36,12 +41,22 @@ export function ItemsPage({
   members: Map<string, MemberState>;
   /** 使う。返り値は画面に出す一言（使えなければ空）。 */
   onUse(id: string, who: string): string;
+  /** 作る（2026-11-03）。返り値は画面に出す一言（作れなければ空）。 */
+  onCraft(id: string): string;
 }) {
   // 使うと数が減る。**記録は入れ物のまま書き換わる**ので、描き直しはここで促す。
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState('');
   /** 使い先を選んでいる物。null なら選んでいない。 */
   const [asking, setAsking] = useState<string | null>(null);
+  /** 「つかう／つくる」を選んでいる物（材料になる物だけ）。 */
+  const [acting, setActing] = useState<string | null>(null);
+  /** 作る物を選んでいる材料。 */
+  const [crafting, setCrafting] = useState<string | null>(null);
+  const actRef = useRef<HTMLElement>(null);
+  const craftRef = useRef<HTMLElement>(null);
+  /** 作る小窓で最後に作った物。続けて作るときにカーソルを留める。 */
+  const lastMade = useRef('');
   /** 小窓を閉じた・使い切ったあとにカーソルを戻す行（id と、その時の何行目か）。 */
   const backTo = useRef<{ id: string; row: number } | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -52,6 +67,16 @@ export function ItemsPage({
   const rows = [...items.entries()].filter(([, count]) => count > 0);
 
   useEffect(() => {
+    if (acting) {
+      actRef.current?.querySelector<HTMLElement>('[data-pick]:not(:disabled)')?.focus();
+      return;
+    }
+    if (crafting) {
+      const box = craftRef.current;
+      const same = box?.querySelector<HTMLElement>(`[data-make="${lastMade.current}"]:not(:disabled)`);
+      (same ?? box?.querySelector<HTMLElement>('[data-pick]:not(:disabled)'))?.focus();
+      return;
+    }
     if (asking) {
       const ask = askRef.current;
       // 続けて使うときは同じ人に留まる。効かなくなったら次に効く人、誰もいなければ「やめる」。
@@ -65,7 +90,7 @@ export function ItemsPage({
     const all = [...(listRef.current?.querySelectorAll<HTMLElement>('[data-item]') ?? [])];
     // 使い切って行が消えたら、同じ高さ（無ければ最後）の行へ。
     (all.find((el) => el.dataset.item === back.id) ?? all[Math.min(back.row, all.length - 1)])?.focus();
-  }, [asking, tick]);
+  }, [asking, acting, crafting, tick]);
 
   if (rows.length === 0) return <p className="menu-empty">なにも持っていない</p>;
 
@@ -94,33 +119,66 @@ export function ItemsPage({
     setTick(tick + 1);
   };
 
-  const choose = (id: string) => {
+  /** 使い先の小窓を開く。使えない物は理由だけ出す。 */
+  const startUse = (id: string) => {
     if (!itemUse(id, 'field')) {
       setNote(`${itemName(id)}は ここでは つかえない`);
       return;
     }
     setNote('');
     lastWho.current = '';
+    setActing(null);
     setAsking(id);
   };
 
+  const choose = (id: string) => {
+    if (itemCraftsUsing(id).length > 0) {
+      setNote('');
+      setActing(id);
+      return;
+    }
+    startUse(id);
+  };
+
+  const startCraft = (id: string) => {
+    setNote('');
+    lastMade.current = '';
+    setActing(null);
+    setCrafting(id);
+  };
+
+  const make = (result: string) => {
+    if (!crafting) return;
+    lastMade.current = result;
+    setNote(onCraft(result));
+    // 材料を使い切ったら一覧へ戻る。残っていれば小窓のまま続けて作れる。
+    if ((items.get(crafting) ?? 0) <= 0) {
+      remember(crafting);
+      setCrafting(null);
+    }
+    setTick(tick + 1);
+  };
+
   const cancel = () => {
-    if (asking) remember(asking);
+    const open = asking ?? acting ?? crafting;
+    if (open) remember(open);
     setAsking(null);
+    setActing(null);
+    setCrafting(null);
   };
 
   return (
     <div className="item-page">
       <ul className="menu-items item-list" ref={listRef} data-tick={tick}>
         {rows.map(([id, count]) => {
-          const ready = Boolean(itemUse(id, 'field'));
+          const ready = Boolean(itemUse(id, 'field')) || itemCraftsUsing(id).length > 0;
           return (
             <li key={id}>
               <button
                 type="button"
                 data-pick
                 data-item={id}
-                className={`item-row${asking === id ? ' on' : ''}`}
+                className={`item-row${[asking, acting, crafting].includes(id) ? ' on' : ''}`}
                 aria-disabled={!ready}
                 onClick={() => choose(id)}
               >
@@ -200,7 +258,91 @@ export function ItemsPage({
         </div>
       ) : null}
 
-      {note && !asking ? <p className="menu-note">{note}</p> : null}
+      {/* 材料になる物の「つかう／つくる」（2026-11-03）。 */}
+      {acting ? (
+        <div className="equip-modal-backdrop" onClick={cancel}>
+          <section
+            ref={actRef}
+            className="equip-chooser item-act"
+            role="dialog"
+            aria-modal="true"
+            data-layer
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2>
+              {itemName(acting)}
+              <span className="item-target-count">のこり {items.get(acting) ?? 0}</span>
+            </h2>
+            <button type="button" data-pick aria-disabled={!itemUse(acting, 'field')} onClick={() => startUse(acting)}>
+              つかう
+            </button>
+            <button type="button" data-pick onClick={() => startCraft(acting)}>
+              つくる
+            </button>
+            {note ? <p className="menu-note">{note}</p> : null}
+            <button type="button" data-pick data-cancel onClick={cancel}>
+              やめる
+            </button>
+          </section>
+        </div>
+      ) : null}
+
+      {/* 作る物を選ぶ小窓（2026-11-03）。要る材料と持っている数を見せ、そろっていれば作れる。 */}
+      {crafting ? (
+        <div className="equip-modal-backdrop" onClick={cancel}>
+          <section
+            ref={craftRef}
+            className="equip-chooser item-craft"
+            role="dialog"
+            aria-modal="true"
+            data-layer
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2>
+              {itemName(crafting)}
+              <span className="item-target-count">のこり {items.get(crafting) ?? 0}</span>
+              <span className="item-target-ask">
+                {itemCraftsUsing(crafting).some((id) => itemCanCraft(items, id)) ? 'なにを つくる？' : '材料が たりない'}
+              </span>
+            </h2>
+            <ul className="item-craft-list">
+              {itemCraftsUsing(crafting).map((result) => (
+                <li key={result}>
+                  <button
+                    type="button"
+                    data-pick
+                    data-make={result}
+                    className="item-craft-row"
+                    disabled={!itemCanCraft(items, result)}
+                    onClick={() => make(result)}
+                  >
+                    <span className="item-craft-name">
+                      {itemName(result)}
+                      <span className="item-craft-have">（持っている {items.get(result) ?? 0}）</span>
+                    </span>
+                    <span className="item-craft-needs">
+                      {[...itemCraftNeeds(result)].map(([part, count]) => {
+                        const have = items.get(part) ?? 0;
+                        return (
+                          <span key={part} className={have < count ? 'short' : ''}>
+                            {itemName(part)} {count}（{have}）
+                          </span>
+                        );
+                      })}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {note ? <p className="menu-note">{note}</p> : null}
+            <button type="button" data-pick data-cancel onClick={cancel}>
+              やめる
+            </button>
+          </section>
+        </div>
+      ) : null}
+
+      {note && !asking && !acting && !crafting ? <p className="menu-note">{note}</p> : null}
     </div>
   );
 }

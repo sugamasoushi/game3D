@@ -219,6 +219,66 @@
         { "type": "setSelfSwitch", "key": "ターケマーツフラグ", "value": true }
       ],
       "when": [{ "self": "ターケマーツフラグ", "is": false }]
+    },
+    {
+      "id": "gather01",
+      "kind": "click",
+      "trigger": "action",
+      "respawn": true,
+      "chance": 0.5,
+      "commands": [
+        { "type": "getItem", "id": "herb", "count": [1, 2] },
+        { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] },
+        { "type": "mapEffect", "id": "mote1", "shown": false, "here": true, "ms": 500 },
+        { "type": "setSelfSwitch", "key": "取った", "value": true }
+      ],
+      "when": [{ "self": "取った", "is": false }]
+    },
+    {
+      "id": "gather02",
+      "kind": "click",
+      "trigger": "action",
+      "respawn": true,
+      "chance": 0.5,
+      "commands": [
+        { "type": "getItem", "count": [1, 2], "random": ["herb", "antidote"] },
+        { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] },
+        { "type": "mapEffect", "id": "mote1", "shown": false, "here": true, "ms": 500 },
+        { "type": "setSelfSwitch", "key": "取った", "value": true }
+      ],
+      "when": [{ "self": "取った", "is": false }]
+    },
+    {
+      "id": "gather03",
+      "kind": "click",
+      "trigger": "action",
+      "respawn": true,
+      "chance": 0.5,
+      "commands": [
+        { "type": "getItem", "id": "herb", "count": [1, 2] },
+        { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] },
+        { "type": "mapEffect", "id": "mote1", "shown": false, "here": true, "ms": 500 },
+        { "type": "setSelfSwitch", "key": "取った", "value": true }
+      ],
+      "when": [{ "self": "取った", "is": false }]
+    },
+    {
+      "id": "gather04",
+      "kind": "click",
+      "trigger": "action",
+      "respawn": true,
+      "chance": 0.5,
+      "commands": [
+        {
+          "type": "getItem",
+          "count": [1, 2],
+          "random": ["herb", "antidote", "paralysis_cure", "burn_salve", "warm_herb"]
+        },
+        { "type": "message", "talk": [{ "lines": ["{アイテム} を 手に入れた！"] }] },
+        { "type": "mapEffect", "id": "mote1", "shown": false, "here": true, "ms": 500 },
+        { "type": "setSelfSwitch", "key": "取った", "value": true }
+      ],
+      "when": [{ "self": "取った", "is": false }]
     }
   ],
   "mapMoves": [

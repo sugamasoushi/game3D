@@ -57,6 +57,7 @@ export function Menu({
   playSeconds,
   place,
   onUseItem,
+  onCraftItem,
   onEquip,
   onUnequip,
   onSave,
@@ -84,6 +85,8 @@ export function Menu({
   place: string;
   /** 持ち物を使う（GS-64）。返り値は画面に出す一言。 */
   onUseItem(id: string, who: string): string;
+  /** 道具から道具を作る（2026-11-03）。返り値は画面に出す一言。 */
+  onCraftItem(id: string): string;
   /** 身に着ける・外す（GS-67）。 */
   onEquip(who: string, id: string): boolean;
   onUnequip(who: string, slot: string): boolean;
@@ -244,6 +247,11 @@ export function Menu({
                 members={members}
                 onUse={(id, who) => {
                   const line = onUseItem(id, who);
+                  redraw((tick) => tick + 1);
+                  return line;
+                }}
+                onCraft={(id) => {
+                  const line = onCraftItem(id);
                   redraw((tick) => tick + 1);
                   return line;
                 }}

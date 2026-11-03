@@ -1523,6 +1523,26 @@ body {
 .item-target-gauges { display: grid; grid-template-columns: auto 1fr auto 1fr; align-items: center; gap: 6px 10px; font-size: 18px; }
 .item-target .menu-note { margin: 0 0 12px; }
 
+/*
+ * 材料になる物の「つかう／つくる」と、作る物を選ぶ小窓（2026-11-03）。枠は使い先の小窓と同じ。
+ * 作る物は 1 行 1 ボタンで、名前（持っている数）と要る材料「名前 要る数（持っている数）」を並べる。足りない材料は赤。
+ */
+.item-act h2,
+.item-craft h2 { display: flex; align-items: baseline; gap: 16px; margin-bottom: 12px; }
+.equip-chooser.item-act,
+.equip-chooser.item-craft { padding: 18px 24px; }
+.equip-chooser.item-act { width: min(420px, 92%); display: grid; gap: 8px; }
+.item-act .menu-note,
+.item-craft .menu-note { margin: 0 0 12px; }
+.item-craft .item-target-ask { margin-left: auto; }
+.item-craft-list { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.gmenu-body .item-craft-row { display: grid; gap: 4px; width: 100%; padding: 6px 14px; text-align: left; }
+.gmenu-body .item-craft-row:disabled { opacity: 0.55; }
+.item-craft-name { font-size: 22px; }
+.item-craft-have { margin-left: 10px; font-size: 17px; opacity: 0.75; }
+.item-craft-needs { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 17px; }
+.item-craft-needs .short { color: #ff9a9a; }
+
 /* 誰を見るか（GS-70 / GS-206）。カーソルを置いて ←→ で替える。◀▶ はマウス用。 */
 .menu-who {
   display: flex;

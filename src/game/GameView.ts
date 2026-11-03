@@ -30,7 +30,7 @@ import { createActorMaterial, type ActorMaterial } from '../mep3d/actorMaterial'
 import { collectMapModels, createMapModels, type MapModels } from '../mep3d/mapModels';
 import { createSkyBinder } from '../mep3d/camera';
 import { createTiltShiftPass } from '../mep3d/tiltshift';
-import { createFieldEffects, mergeFieldVolumes, readFieldVolumes } from '../mep3d/fieldEffects';
+import { createFieldEffects, mergeFieldVolumes, ownerWeightKey, readFieldVolumes } from '../mep3d/fieldEffects';
 import { CAMERA_SHOT_DEFAULTS, applyCameraShot, createCameraShots, type CameraShot } from '../mep3d/cameraShots';
 import { blendScreenEffects, createScreenEffects, screenEffectsAtTime } from '../mep3d/screenEffects';
 import { createEditorGrid } from '../view/editorGrid';
@@ -462,8 +462,10 @@ export interface GameView {
   /**
    * マップのエフェクトを出す／消す（GS-270。命令 `mapEffect`）。`id` はフィールドエフェクトか画面エフェクトの
    * プリセットの id。`ms` かけて濃さを混ぜる（省略・0 ならすぐ）。そのマップに無い id なら false。
+   * `owner`（物の `Id`）を渡すと、その物に置いたフィールドエフェクトだけ（2026-11-03。「この物だけ」）。
+   * その物にそのプリセットが置いていなければ false。
    */
-  setMapEffect(id: string, shown: boolean, ms?: number): boolean;
+  setMapEffect(id: string, shown: boolean, ms?: number, owner?: string): boolean;
   /** 静止コマを指名する（GS-47）。台帳の `poses` に無い名前なら false。 */
   posePlayer(name: string | null): boolean;
   /** 名前でもコマ番号でもよい（GS-135）。 */
@@ -663,8 +665,9 @@ export interface GameViewOptions {
   /**
    * マップのエフェクトの出し入れの覚え（GS-270。命令 `mapEffect`）。決めてあれば true / false、
    * 決めていなければ undefined（最初の形 = プリセットの `on`）。記録は React 側が持つ。
+   * `owner` を渡したら、その物に置いた物だけの覚え（2026-11-03。「この物だけ」。決めていなければ出す）。
    */
-  effectState?: (map: string, id: string) => boolean | undefined;
+  effectState?: (map: string, id: string, owner?: string) => boolean | undefined;
   /**
    * 毎フレーム、マップのエフェクトの今の濃さを渡す（GS-278。環境音をエフェクトに合わせるため）。
    * キーはプリセット id。値は濃さ（出し入れ × 時間帯。0..1）と、雷なら今が何回目の光か。
@@ -1111,6 +1114,8 @@ export function createGameView(
    */
   const effectWeights = new Map<string, number>();
   const effectFades = new Map<string, MapEffectFade>();
+  /** 物に置いたフィールドエフェクト（2026-11-03）。`ownerWeightKey(プリセット id, 物の Id)` の組。「この物だけ」で指せる物。 */
+  const ownedEffects = new Set<string>();
   const pushEffectWeights = () => {
     const snapshot = new Map(effectWeights);
     fieldEffects.setPresetWeights(snapshot);
@@ -1404,6 +1409,16 @@ export function createGameView(
       effectWeights.clear();
       for (const [id, weight] of mapEffectStartWeights(readMapEffects(map), (id) => options.effectState?.(name, id))) {
         effectWeights.set(id, weight);
+      }
+      // 物ごとの出し入れ（2026-11-03）。時間帯をかけずに全部の置き場所から拾う。覚えがある物だけ表に入れる（無ければ出す）。
+      ownedEffects.clear();
+      for (const volume of readFieldVolumes(map)) {
+        if (!volume.owner) continue;
+        const key = ownerWeightKey(volume.look.id, volume.owner);
+        if (ownedEffects.has(key)) continue;
+        ownedEffects.add(key);
+        const shown = options.effectState?.(name, volume.look.id, volume.owner);
+        if (shown !== undefined) effectWeights.set(key, shown ? 1 : 0);
       }
       pushEffectWeights();
 
@@ -3415,13 +3430,16 @@ export function createGameView(
       const ok = built.setLayerShown(id, shown && layerShownAtTime(mapDef.layers, id, shownTimeId));
       return ok;
     },
-    setMapEffect: (id, shown, ms) => {
-      if (!mapDef || !effectWeights.has(id)) return false;
-      effectFades.set(id, startMapEffectFade(effectWeights.get(id) ?? 0, shown, ms));
+    setMapEffect: (id, shown, ms, owner) => {
+      if (!mapDef) return false;
+      // 「この物だけ」（2026-11-03）は物ごとのキーを動かす。覚えが無かった物は出ている（1）から。
+      const key = owner ? ownerWeightKey(id, owner) : id;
+      if (owner ? !ownedEffects.has(key) : !effectWeights.has(key)) return false;
+      effectFades.set(key, startMapEffectFade(effectWeights.get(key) ?? (owner ? 1 : 0), shown, ms));
       // すぐ（0ms）の物はこの場で当てる。次のフレームを待つと 1 枚だけ前の形が出る。
       if (!ms || ms <= 0) {
-        effectWeights.set(id, shown ? 1 : 0);
-        effectFades.delete(id);
+        effectWeights.set(key, shown ? 1 : 0);
+        effectFades.delete(key);
         pushEffectWeights();
       }
       return true;

@@ -8532,7 +8532,37 @@
       "face": 0.22,
       "dye": 0,
       "cast": true,
-      "angle": 45
+      "angle": 45,
+      "rainTilt": 6,
+      "lightningCount": 3,
+      "lightningWidth": 3,
+      "lightningGap": 0,
+      "ringBlur": 0,
+      "richness": 1
+    },
+    {
+      "id": "mote1",
+      "name": "光の粒",
+      "kind": "mote",
+      "on": true,
+      "amount": 1,
+      "speed": 0.8,
+      "scale": 3,
+      "color": "#ffe9a8",
+      "lift": 0,
+      "thick": 4,
+      "warp": 0,
+      "mirror": 0,
+      "face": 0.22,
+      "dye": 0,
+      "cast": true,
+      "angle": 90,
+      "rainTilt": 6,
+      "lightningCount": 3,
+      "lightningWidth": 3,
+      "lightningGap": 0,
+      "ringBlur": 0,
+      "richness": 1
     }
   ],
   "screenEffects": [
@@ -8548,17 +8578,17 @@
   "editor": {
     "camera": {
       "target": [
-        -17.1269212338525,
-        5.383481970866909,
-        15.579307773906582
+        0.44834901280884565,
+        2.411663040571609,
+        26.765557235768973
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 9.83846756124046,
+      "distance": 6.047825152050004,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "オブジェクトレイヤー_8",
+    "activeLayer": "オブジェクトレイヤー_4",
     "brush": {
       "shape": "floor",
       "rotation": 0,
@@ -64987,6 +65017,170 @@
               6
             ]
           ]
+        },
+        {
+          "id": "obj_3",
+          "name": "gather01",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "gather01"
+            },
+            {
+              "name": "Effect",
+              "type": "string",
+              "value": "mote1"
+            }
+          ],
+          "space": "solid",
+          "y": 1,
+          "height": 1,
+          "points": [
+            [
+              2.153189166497784,
+              25
+            ],
+            [
+              3,
+              25
+            ],
+            [
+              3,
+              26
+            ],
+            [
+              2.153189166497784,
+              26
+            ]
+          ]
+        },
+        {
+          "id": "obj_4",
+          "name": "gather02",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "gather02"
+            },
+            {
+              "name": "Effect",
+              "type": "string",
+              "value": "mote1"
+            }
+          ],
+          "space": "solid",
+          "y": 1,
+          "height": 1,
+          "points": [
+            [
+              -2.861635209691799,
+              25.03668635525394
+            ],
+            [
+              -2,
+              25.03668635525394
+            ],
+            [
+              -2,
+              26
+            ],
+            [
+              -2.861635209691799,
+              26
+            ]
+          ]
+        },
+        {
+          "id": "obj_5",
+          "name": "gather03",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "gather03"
+            },
+            {
+              "name": "Effect",
+              "type": "string",
+              "value": "mote1"
+            }
+          ],
+          "space": "solid",
+          "y": 1,
+          "height": 1,
+          "points": [
+            [
+              0.05362925421725939,
+              24
+            ],
+            [
+              1,
+              24
+            ],
+            [
+              1,
+              25
+            ],
+            [
+              0.05362925421725939,
+              25
+            ]
+          ]
+        },
+        {
+          "id": "obj_6",
+          "name": "gather04",
+          "kind": "rect",
+          "visible": true,
+          "guides": true,
+          "collision": false,
+          "properties": [
+            {
+              "name": "Id",
+              "type": "string",
+              "value": "gather04"
+            },
+            {
+              "name": "Effect",
+              "type": "string",
+              "value": "mote1"
+            }
+          ],
+          "space": "solid",
+          "y": 1,
+          "height": 1,
+          "points": [
+            [
+              -1,
+              26
+            ],
+            [
+              0,
+              26
+            ],
+            [
+              0,
+              27
+            ],
+            [
+              -1,
+              27
+            ]
+          ]
         }
       ]
     },
@@ -66091,16 +66285,16 @@
               -7.738104306806971
             ],
             [
-              -16.785073549335383,
+              -17,
               -7.738104306806971
             ],
             [
-              -16.785073549335383,
-              12.382097266211588
+              -17,
+              18
             ],
             [
               -27,
-              12.382097266211588
+              18
             ]
           ]
         }

@@ -80,6 +80,11 @@ export interface MapNpcDef {
    */
   companions?: CompanionDef[];
   /**
+   * **敵シンボルの出現数**（GS-300）。`enemy` を持つ 1 体にだけ書く。触って戦うとき、その敵が `min`〜`max` 体のどれか
+   * （同じ見込みで抽選）並び、その後ろにお供。書かなければ 1 体。フィールドに出るのはシンボル 1 体だけ。
+   */
+  count?: EnemyCount;
+  /**
    * **敵シンボルが自分から動く**（GS-296）。`enemy` を持つ 1 体にだけ効く。主人公に気づくと追う／逃げる、
    * 見失うと置いた場所へ帰る。書かなければ今までどおり（うろつくだけ）。数と向きは `symbolSense.ts`。
    */
@@ -99,10 +104,37 @@ export interface CompanionDef {
   enemy: string;
   /** 出る見込み（0 より大きく 1 以下）。行ごとに別々に抽選する。 */
   chance: number;
+  /** 当たったときに並ぶ数（GS-300。先頭の敵の `count` と同じ形）。書かなければ 1 体。 */
+  count?: EnemyCount;
 }
 
 /** 敵は全部で何体まで（触った相手を入れて）。隊形の台帳の人数の枠（1〜6）に合わせる。 */
 export const MAX_FOES = 6;
+
+/** 出現数（GS-300）。`min`〜`max` 体（1 以上、`min` ≦ `max`）。 */
+export interface EnemyCount {
+  min: number;
+  max: number;
+}
+
+/** 出現数を抽選する。書いていない・おかしな値は 1。 */
+export function rollCount(count: EnemyCount | undefined, random: () => number = Math.random): number {
+  const min = Number.isInteger(count?.min) && (count?.min as number) >= 1 ? (count?.min as number) : 1;
+  const max = Number.isInteger(count?.max) && (count?.max as number) >= min ? (count?.max as number) : min;
+  // 幅が無ければくじを引かない（お供の抽選の乱数をずらさない）。
+  if (max === min) return Math.min(MAX_FOES, min);
+  return Math.min(MAX_FOES, min + Math.min(max - min, Math.floor(random() * (max - min + 1))));
+}
+
+/**
+ * 戦う敵を並べる（GS-300）。先頭の敵を出現数ぶん、続けてお供（GS-255）。全部で `MAX_FOES` 体まで。
+ * 敵シンボル（触った相手）とランダムエンカウント（GS-299）の 1 行で同じ決め方をする。
+ */
+export function rollFoes(enemy: string, count: EnemyCount | undefined, companions: CompanionDef[] | undefined,
+  random: () => number = Math.random): string[] {
+  const lead = Array.from({ length: rollCount(count, random) }, () => enemy);
+  return [...lead, ...rollCompanions(companions, random)].slice(0, MAX_FOES);
+}
 
 /**
  * お供を抽選する（GS-255）。上の行から順に `random() < chance` で当たりを決め、当たった敵のキーを並べて返す。
@@ -112,9 +144,10 @@ export function rollCompanions(list: CompanionDef[] | undefined, random: () => n
   const out: string[] = [];
   for (const one of list ?? []) {
     if (out.length >= MAX_FOES - 1) break;
-    if (random() < one.chance) out.push(one.enemy);
+    // 当たったら出現数ぶん並べる（GS-300）。数のくじは当たったときだけ引く。
+    if (random() < one.chance) out.push(...Array.from({ length: rollCount(one.count, random) }, () => one.enemy));
   }
-  return out;
+  return out.slice(0, MAX_FOES - 1);
 }
 
 /** `mapNpcs.json` の中身。マップの番号（`maps.json` のキー）→ 1 体の名前（`Id`）→ 設定。 */
