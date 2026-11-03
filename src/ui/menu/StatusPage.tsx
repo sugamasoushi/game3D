@@ -26,7 +26,7 @@ export function StatusPage({
   const toNext = expToNext(member.exp, member.level, levelUpRule());
   const image = characterMenuImage(who);
   const gear = equipBonus(member.equip);
-  // 種族と種族特性（2026-11-03）。まだ効いていない特性も「Lv N から」と薄く出す（何が増えるか分かるように）。
+  // 種族と種族特性（2026-11-03）。まだ効いていない特性も薄く出す（何が増えるか分かるように）。
   const race = memberRace(who);
 
   return (
@@ -66,9 +66,12 @@ export function StatusPage({
                     const from = traitLevel(trait);
                     const on = from <= member.level;
                     return (
+                      // 「Lv 5 ：説明」。Lv 1 から効く物は「Lv - 」。数字は右寄せの列にして、桁が違っても「：」をそろえる。
                       <li key={index} className={on ? '' : 'off'}>
-                        {traitText(trait)}
-                        {on ? null : <span className="status-trait-level">Lv {from} から</span>}
+                        <span className="status-trait-lv">Lv</span>
+                        <span className="status-trait-level">{from > 1 ? from : '-'}</span>
+                        <span className="status-trait-colon">：</span>
+                        <span className="status-trait-text">{traitText(trait)}</span>
                       </li>
                     );
                   })}

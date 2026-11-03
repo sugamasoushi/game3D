@@ -1846,7 +1846,7 @@ body {
 .menu-figured-body { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; }
 /* 数の並びは縦いっぱいに割り付ける（行の間を広げて、下に余白を残さない）。 */
 .status-content { display: flex; flex-direction: column; }
-.status-content .status-facts { flex: 1; max-height: 440px; grid-template-columns: max-content minmax(0, 1fr); align-content: space-evenly; gap: 6px 32px; line-height: 1.25; margin: 0; }
+.status-content .status-facts { flex: 1; max-height: 440px; grid-template-columns: max-content minmax(0, 1fr); align-content: space-evenly; gap: 6px 24px; line-height: 1.25; margin: 0; }
 .status-content .status-facts dt { align-self: center; }
 .status-content .status-facts dd { overflow-wrap: anywhere; }
 .gmenu-body:has(.status) .status-facts .equip-plus { margin-left: 12px; font-size: 18px; white-space: nowrap; }
@@ -1863,16 +1863,19 @@ body {
 .equip-total dd { margin: 0; font-size: 24px; font-variant-numeric: tabular-nums; }
 .equip-total .equip-plus { margin-left: 12px; font-size: 18px; }
 /* 左に数、右に種族。数の列は縦いっぱいに割り付ける。 */
-.status-columns { flex: 1; min-height: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 32px; align-items: stretch; }
-/* 種族と種族特性（2026-11-03）。まだ効いていない特性は薄く、右に「Lv N から」。 */
+.status-columns { flex: 1; min-height: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 24px; align-items: stretch; }
+/* 種族と種族特性（2026-11-03）。まだ効いていない特性は薄く出す。 */
 .status-race { align-self: start; margin-top: 8px; font-size: 18px; line-height: 1.4; }
 .status-traits li { font-weight: normal; }
 .status-race-name { margin: 0 0 6px; font-weight: bold; font-size: 20px; }
 .status-race-text { margin-left: 12px; font-weight: normal; opacity: 0.8; font-size: 0.85em; }
-.status-traits { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-.status-traits li::before { content: '・'; }
-.status-traits li.off { opacity: 0.45; }
-.status-trait-level { margin-left: 10px; font-size: 0.85em; white-space: nowrap; }
+/* 「Lv」「数字」「：」「説明」を列に分ける。数字は右寄せなので、Lv 5 も Lv12 も「：」の位置がそろう。 */
+.status-traits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content max-content max-content minmax(0, 1fr); gap: 4px 0; }
+.status-traits li { display: contents; }
+.status-traits li.off > span { opacity: 0.45; }
+.status-trait-level { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.status-trait-colon { padding: 0; }
+.status-trait-text { overflow-wrap: anywhere; }
 
 .equip-current .equip-head { align-items: center; margin: 0 0 20px; }
 /* 着けている物の説明。名前の右の余白に置く（名前の欄は幅を決めて、行ごとに説明の頭をそろえる）。 */
