@@ -40,13 +40,16 @@ import { PICK, nearest, nudge } from './menuNav';
  * 中身の無いタブは並べない——押せるのに何も起きない場所を作らないため（GS-54）。
  * 「スキル」は**見せるだけ**：いまある技はどれも戦闘中にしか意味がない（GS-67）。
  */
-const PAGES = ['コンディション', 'アイテム', '装備', 'スキル', 'ステータス', '依頼', 'セーブ', '設定'] as const;
+const PAGES = ['コンディション', 'アイテム', '装備', 'スキル', 'ステータス', 'クエスト', 'セーブ', '設定'] as const;
 type Page = (typeof PAGES)[number];
 /** 誰を見るかを選ぶページ（GS-70）。 */
 const MEMBER_PAGES: readonly Page[] = ['装備', 'スキル', 'ステータス'];
 
 export function Menu({
+  story,
+  substories,
   quests,
+  questExp,
   items,
   party,
   members,
@@ -61,8 +64,13 @@ export function Menu({
   onTitle,
   onClose,
 }: {
-  /** いま持っている物（GS-46）。数はここ、名前と説明は台帳から。 */
+  /** クエスト（2026-11-02）。本筋の最後に済ませた段階・サブストーリーの段階・討伐依頼の進捗。 */
+  story: string;
+  substories: Map<string, string>;
   quests: Map<string, QuestProgress>;
+  /** 依頼経験値（2026-11-02）。クエストの「依頼」に依頼レベルを出す。 */
+  questExp: number;
+  /** いま持っている物（GS-46）。数はここ、名前と説明は台帳から。 */
   items: Map<string, number>;
   /** 隊列（GS-60）。**先頭が左の柱に出る人。** */
   party: string[];
@@ -227,7 +235,7 @@ export function Menu({
                 <button type="button" tabIndex={-1} data-step="1" aria-label="次の仲間" disabled={at >= party.length - 1} onClick={() => setPickAt(at + 1)}>▶</button>
               </div>
             ) : null}
-            {page === '依頼' ? <QuestsPage quests={quests} /> : null}
+            {page === 'クエスト' ? <QuestsPage story={story} substories={substories} quests={quests} questExp={questExp} items={items} /> : null}
             {page === 'コンディション' ? <ConditionPage party={party} members={members} gold={gold} playSeconds={playSeconds} place={place} /> : null}
             {page === 'アイテム' ? (
               <ItemsPage

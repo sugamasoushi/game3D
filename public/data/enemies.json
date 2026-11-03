@@ -1,7 +1,7 @@
 {
   "information": "敵の台帳（GS-60 / GS-69）。id をキーに、名前と数値。image は assets/img/Enemy の名前（拡張子なし）。scale は戦闘で出す絵の大きさの倍率（0.1〜5。書かなければ 1。元の絵の大きさ（3D は絵の 1 画素をマップの 1 画素にそろえる。1 マス 48px のマップなら 48px で 1 マス）に掛ける。ドットを崩さないなら整数か 1/2・1/4）。hp/mp は満タンの値。倒すと exp と gold が入る。front は前衛に出る確率（0〜1。書かなければ 0.5。GS-286）。flying は飛ぶ敵（空のマスにも立て、浮いて立つ。前衛・後衛の決まりの外。飛ばない相手の直接攻撃は軽い。GS-288）。skills は使う技（chance は出す見込み 0〜1、書かなければ殴るだけ）。",
   "enemies": {
-    "enemy00": {
+    "naga_girl": {
       "name": "ナーガ娘",
       "image": "enemy00",
       "scale": 0.3,
@@ -15,12 +15,12 @@
       "gold": 5,
       "skills": [
         {
-          "id": "magic02",
+          "id": "wind_blade",
           "chance": 0.2
         }
       ]
     },
-    "enemy01": {
+    "naga": {
       "name": "ナーガ",
       "image": "enemy01",
       "scale": 0.3,
@@ -35,20 +35,20 @@
       "front": 0.2,
       "skills": [
         {
-          "id": "enemy02",
+          "id": "poison_fang",
           "chance": 0.2
         },
         {
-          "id": "magic01",
+          "id": "fireball",
           "chance": 0.1
         },
         {
-          "id": "magic02",
+          "id": "wind_blade",
           "chance": 0.1
         }
       ]
     },
-    "enemy02": {
+    "slime": {
       "name": "スライム",
       "image": "enemy02",
       "scale": 0.5,
@@ -62,7 +62,7 @@
       "gold": 3,
       "front": 0.8
     },
-    "enemy03": {
+    "great_bear": {
       "name": "グレートベア",
       "image": "enemy03",
       "scale": 0.35,
@@ -76,12 +76,12 @@
       "gold": 30,
       "skills": [
         {
-          "id": "enemy03",
+          "id": "sweep",
           "chance": 0.35
         }
       ]
     },
-    "enemy04": {
+    "kowaboa": {
       "name": "コワボア",
       "image": "コワボア",
       "scale": 0.6,
@@ -94,7 +94,7 @@
       "exp": 6,
       "gold": 5
     },
-    "enemy05": {
+    "shikadigo": {
       "name": "シカディゴ",
       "image": "シカディゴ",
       "scale": 0.55,
@@ -107,7 +107,7 @@
       "exp": 5,
       "gold": 4
     },
-    "enemy06": {
+    "sukerabi": {
       "name": "スケラビ",
       "image": "スケラビ",
       "scale": 0.5,
@@ -120,7 +120,7 @@
       "exp": 4,
       "gold": 3
     },
-    "enemy07": {
+    "sukowaimu": {
       "name": "スコワイム",
       "image": "スコワイム",
       "scale": 0.4,
@@ -134,7 +134,7 @@
       "gold": 16,
       "front": 0.8
     },
-    "enemy08": {
+    "inkoshang": {
       "name": "インコーシャン",
       "image": "インコーシャン",
       "scale": 0.5,

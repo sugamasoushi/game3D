@@ -78,8 +78,10 @@ import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { coreCells, overlaps, symbolTouching } from './symbolTouch';
+import { chaseSteps, fleeSteps, fleesNow, homeSteps, inSight, lostSight, noticeWithDefaults, withinLeash, type NoticeDef, type Step } from './symbolSense';
 import { createFieldFx } from './fieldFx';
-import type { EffectDef } from './battle/book';
+import { isFieldEffect, type EffectDef } from './battle/book';
+import { skillFieldCell, skillFieldOrder } from './skillFieldFx';
 import { withoutHiddenLayers } from './hiddenLayers';
 import type { EffectLevel } from './ambience';
 import { mapEffectStartWeights, readMapEffects, startMapEffectFade, stepMapEffectFade, type MapEffectFade } from './mapEffectSwitch';
@@ -382,7 +384,7 @@ export interface GameView {
    * フィールドの技の絵を 3D の板で出す（GS-295）。`at` はマス（絵の真ん中）。深度を見るので手前の物に隠れる。
    * `hold` なら長さが来ても消さない（飛ぶ物。`endFx` で消す）。返すのは番号。
    */
-  playFx(def: EffectDef, at: { x: number; y: number; z: number }, how?: { hold?: boolean; scale?: number }): number;
+  playFx(def: EffectDef, at: { x: number; y: number; z: number }, how?: { hold?: boolean; scale?: number; foot?: number }): number;
   /**
    * 戦闘の舞台の板に技の絵を出す（2026-10-31。前は DOM の重ね絵）。板の真ん中に、**画面の上で絵の画素どおりの大きさ**で。
    * 深度を見るので、手前の板に隠れる。長さが来たら消える。舞台に居なければ 0。
@@ -637,6 +639,16 @@ export interface GameViewOptions {
    * `owner` はその 1 体の名前（覚えはその 1 体の物）。**記録は React 側が持つ**ので聞きに行く。
    */
   npcMeets?: (when: IfCondition[], owner: string) => boolean;
+  /**
+   * 仲間の最高レベル − 敵のレベル（GS-296。敵シンボルの「格下なら逃げる」）。分からなければ null。
+   * 記録は React 側が持つので聞きに行く。渡さなければ「格下なら逃げる」敵は追ってくる。
+   */
+  levelGap?: (enemy: string) => number | null;
+  /**
+   * 敵シンボルが見失って消え始めた（GS-296。`notice.after` が `vanish`）。触れても戦わないように、
+   * 呼ぶ側の敵シンボルの一覧から外す。消し終えるのはこちら（入り直せば戻る）。
+   */
+  symbolLeft?: (id: string) => void;
   /**
    * **組む前に**マップを整える口（GS-180 / GS-233）。マップに入るたびに 1 回呼ぶ。
    * 入るたびに出るかどうかが変わる物（イベントの `respawn` / `chance`）を、ここで抜いておく——
@@ -943,6 +955,30 @@ export function createGameView(
     opacity?: number;
     /** 怯みの終わり（経過秒。GS-295 フィールドアタック）。このあいだはうろつき・経路の歩きを止める。 */
     stunUntil?: number;
+    /** 敵シンボルが自分から動く（GS-296。`mapNpcs.json` の `notice`）。書いていなければ無し。 */
+    sense?: SymbolSense;
+  }
+  /**
+   * 敵シンボルの気づき（GS-296）。うろつく（`idle`）→ 気づく（`alert`。「！」で止まる）→ 追う（`chase`）／逃げる（`flee`）
+   * → 見失う（`lost`。「？」で止まる）→ 帰る（`return`）→ うろつく。`idle` の間だけうろつき・経路が動く。
+   */
+  interface SymbolSense {
+    def: Required<NoticeDef>;
+    /** `gone` は消えている途中（見失って `vanish`）。もう動かない。 */
+    mode: 'idle' | 'alert' | 'chase' | 'flee' | 'lost' | 'return' | 'gone';
+    /** 気づいたときに決めた「逃げる」か。 */
+    flee: boolean;
+    /** `alert` / `lost` の終わり（経過秒）。 */
+    until: number;
+    /** いま歩いている 1 マス（ワールド）。 */
+    step: { from: { x: number; z: number }; to: { x: number; z: number }; dir: Step; best: number; stall: number } | null;
+    /** 塞がっていた向き（次の 1 回だけ避ける）と、続けて塞がった回数。 */
+    blocked: Step | null;
+    fails: number;
+    /** 叩かれた（GS-295 の怯み）。怯みが解けたら見えていなくても気づく。 */
+    provoked?: boolean;
+    /** 追い詰められて汗を出した（逃げる敵。1 回だけ出す）。 */
+    cornered?: boolean;
   }
   const npcs = new Map<string, NpcActor>();
   /** フィールドアタックの硬直の終わり（経過秒。GS-295）。このあいだは歩けない。 */
@@ -1505,6 +1541,8 @@ export function createGameView(
         // いつも出しているマーク（GS-267。寝ている人の Zzz）。
         if (motion?.idleEmote) headMarks.setIdle(`npc:${def.id}`, motion.idleEmote);
         const wander = wanderWithDefaults(motion);
+        // 自分から動くのは敵シンボルだけ（GS-296）。
+        const notice = def.enemy ? noticeWithDefaults(motion?.notice) : null;
         const path = motion?.route ? motionRoutes.find((r) => r.id === motion.route!.id) : undefined;
         npcs.set(def.id, {
           def,
@@ -1520,6 +1558,7 @@ export function createGameView(
           wanderIn: wander ? Math.random() * (wander.ms[1] / 1000) : 0,
           home: actor.position.clone(),
           ...(def.opacity !== undefined ? { opacity: def.opacity } : {}),
+          ...(notice ? { sense: { def: notice, mode: 'idle' as const, flee: false, until: 0, step: null, blocked: null, fails: 0 } } : {}),
         });
         return true;
       };
@@ -1537,6 +1576,8 @@ export function createGameView(
       // キャラもエフェクトも水面に映す（DEC-303 / DEC-344）。
       castReflections();
 
+      // 入った直後は敵シンボルが気づかない（GS-296）。
+      senseQuietUntil = elapsed + SENSE_QUIET_S;
       watch.lap('actors');
       // 寄り・仰角・水平角はマップのプロパティが決める（DEC-152 / DEC-253）。
       // エディタ左パネルの「カメラ角度」がそのまま届く。無ければゲームの既定。
@@ -1738,6 +1779,8 @@ export function createGameView(
     goneAt: number;
     /** 同じ陣営の画面左からの番号（1始まり）。演出台帳の意味的な対象指定に使う。 */
     slot: number;
+    /** 立っている戦闘のマス（GS-298。フィールドエフェクトの技の絵を出すマスの基準）。 */
+    cell: { col: number; row: number };
     /** 呼吸の位相（GS-88）。全員が同じ拍子で息をすると機械じみて見える。 */
     breathPhase: number;
     /** 左端へ寄せた割合（0＝隊形の位置、1＝左端。GS-103）。`moveS` かけて行き来する。 */
@@ -2446,6 +2489,221 @@ export function createGameView(
       stall: 0,
     };
   };
+  // --- 敵シンボルが自分から動く（GS-296） ------------------------------------------------
+  // 数と向きは `symbolSense.ts`。ここは時間・マーク・歩かせる所。
+
+  /** 入った直後・歩けない状態（会話・メニュー・戦闘）が終わった直後に気づかない長さ（秒）。 */
+  const SENSE_QUIET_S = 2;
+  /** 気づいて止まる長さ・見失って止まる長さ（秒）。 */
+  const SENSE_ALERT_S = 0.5;
+  const SENSE_LOST_S = 0.8;
+  /** マークを出す長さ（ミリ秒）。 */
+  const SENSE_MARK_MS = 700;
+  /** 帰りは追うときのこの割合の速さ。 */
+  const SENSE_RETURN_RATE = 0.6;
+  /** 続けてこれだけ塞がったら諦める（追う）／待ってやり直す（帰る）。 */
+  const SENSE_GIVE_UP = 3;
+  /** 見失って消えるときに薄れる長さ（ミリ秒）。 */
+  const SENSE_VANISH_MS = 500;
+  /** この経過秒までは気づかない。 */
+  let senseQuietUntil = 0;
+
+  type SenseMove = { move: { x: number; z: number }; speed: number };
+  const SENSE_STOP: SenseMove = { move: { x: 0, z: 0 }, speed: 0 };
+  const cellsOf = (at: Vector3, unit: number) => ({ x: at.x / unit, z: at.z / unit });
+
+  /** 二人の間に壁が無いか（目の高さで 0.25 マスごとに地形を見る。人は見ない）。 */
+  const clearLine = (a: Vector3, b: Vector3, unit: number): boolean => {
+    if (!collision) return false;
+    const dx = (b.x - a.x) / unit;
+    const dz = (b.z - a.z) / unit;
+    const length = Math.hypot(dx, dz);
+    const eye = Math.max(a.y, b.y) + 0.6 * unit;
+    for (let d = 0.5; d < length - 0.5; d += 0.25) {
+      const t = d / length;
+      if (!collision.fits(a.x + dx * t * unit, eye, a.z + dz * t * unit, 0.1, 0.2)) return false;
+    }
+    return true;
+  };
+
+  /** 主人公が見えるか（距離・向き・高さ・壁）。 */
+  const senseSees = (npc: NpcActor, def: Required<NoticeDef>, unit: number): boolean => {
+    if (!player) return false;
+    if (Math.abs(npc.actor.position.y - player.position.y) / unit > TALK_RISE) return false;
+    const aim = moveVector(DIR_AXIS[FACE_DIR[npc.actor.facingNow()]]);
+    if (!inSight(cellsOf(npc.actor.position, unit), aim, cellsOf(player.position, unit), def.see, def.view)) return false;
+    return clearLine(npc.actor.position, player.position, unit);
+  };
+
+  const senseMark = (npc: NpcActor, id: string) => {
+    void headMarks.show(`npc:${npc.def.id}`, id, SENSE_MARK_MS);
+  };
+
+  /** 気づく。逃げるかはここで決める（途中で変えない）。 */
+  const senseNotice = (npc: NpcActor, sense: SymbolSense) => {
+    sense.flee = fleesNow(sense.def, npc.def.enemy ? (options.levelGap?.(npc.def.enemy) ?? null) : null);
+    sense.mode = 'alert';
+    sense.until = elapsed + SENSE_ALERT_S;
+    sense.step = null;
+    sense.blocked = null;
+    sense.fails = 0;
+    sense.provoked = false;
+    sense.cornered = false;
+    // うろつきの途中で気づいたら、歩き出したマスを基準にマスへ揃える（半端な所から追わない。GS-117）。
+    if (npc.wandering && collision) npc.actor.settle(collision, npc.wandering.from);
+    npc.wandering = null;
+    if (player) {
+      const dir = screenDirOf(player.position.x - npc.actor.position.x, player.position.z - npc.actor.position.z);
+      npc.actor.face(DIR_FACE[dir]);
+    }
+    senseMark(npc, 'surprise');
+  };
+
+  const senseLose = (npc: NpcActor, sense: SymbolSense) => {
+    // 見失ったら消える（GS-296）。「？」は出さずに薄れる。触れても戦わないよう先に一覧から外す。
+    if (sense.def.after === 'vanish') {
+      sense.mode = 'gone';
+      sense.step = null;
+      const id = npc.def.id;
+      options.symbolLeft?.(id);
+      void api.vanishNpc(id, SENSE_VANISH_MS).then(() => api.removeNpc(id));
+      return;
+    }
+    sense.mode = 'lost';
+    sense.until = elapsed + SENSE_LOST_S;
+    sense.step = null;
+    sense.blocked = null;
+    sense.fails = 0;
+    senseMark(npc, 'question');
+  };
+
+  const sameStep = (a: Step | null, b: Step) => !!a && a.x === b.x && a.z === b.z;
+
+  /**
+   * 敵シンボルを 1 体ぶん進める（GS-296）。動かす向き（ワールド。長さ 1）と速さ（マス／秒）を返す。
+   * null なら任せない（うろつき・経路が動く）。`playable` は主人公が歩けるか。
+   */
+  const advanceSense = (npc: NpcActor, dt: number, unit: number, playable: boolean): SenseMove | null => {
+    const sense = npc.sense;
+    if (!sense || !player || !collision) return null;
+    if (sense.mode === 'gone') return SENSE_STOP;
+    // 止まるとき: イベントが歩かせている・会話中・歩けない・怯んでいる・気づかない時間。
+    if (npc.walk || npc.march || eventBusy || !playable || stunned(npc) || elapsed < senseQuietUntil) {
+      if (sense.step) npc.actor.settle(collision, sense.step.from);
+      sense.step = null;
+      return sense.mode === 'idle' ? null : SENSE_STOP;
+    }
+    const def = sense.def;
+    const me = () => cellsOf(npc.actor.position, unit);
+    const you = cellsOf(player.position, unit);
+    const home = cellsOf(npc.home, unit);
+
+    if (sense.mode === 'idle' || sense.mode === 'return') {
+      if (sense.provoked || senseSees(npc, def, unit)) {
+        if (sense.step) npc.actor.settle(collision, sense.step.from);
+        senseNotice(npc, sense);
+        return SENSE_STOP;
+      }
+      if (sense.mode === 'idle') return null;
+    }
+    if (sense.mode === 'alert' || sense.mode === 'lost') {
+      if (elapsed < sense.until) return SENSE_STOP;
+      // 見失ってその場に残る（GS-296）。いまの所を新しい置き場にして、うろつきへ戻す。
+      if (sense.mode === 'lost' && def.after === 'stay') {
+        npc.home.copy(npc.actor.position);
+        sense.mode = 'idle';
+        if (npc.wander) npc.wanderIn = nextWanderAt(npc.wander);
+        return null;
+      }
+      sense.mode = sense.mode === 'lost' ? 'return' : sense.flee ? 'flee' : 'chase';
+    }
+    const speed = sense.mode === 'return' ? def.speed * SENSE_RETURN_RATE : def.speed;
+
+    // 歩いている 1 マス。着いたら同じフレームで次を決める（1 マスごとに止まって見えないように）。
+    const going = sense.step;
+    if (going) {
+      const pos = npc.actor.position;
+      const moved = Math.hypot(pos.x - going.from.x, pos.z - going.from.z);
+      if (moved >= unit - 0.02 * unit) {
+        npc.actor.settle(collision, going.from);
+        sense.step = null;
+        sense.blocked = null;
+        sense.fails = 0;
+      } else {
+        if (moved > going.best + 0.0005 * unit) {
+          going.best = moved;
+          going.stall = 0;
+        } else {
+          going.stall += dt;
+        }
+        if (going.stall > 0.3) {
+          // 塞がれた。元のマスへ戻し、次の 1 回はこの向きを避ける。
+          npc.actor.settle(collision, going.from);
+          sense.step = null;
+          sense.blocked = going.dir;
+          sense.fails += 1;
+        } else {
+          const dx = going.to.x - pos.x;
+          const dz = going.to.z - pos.z;
+          const left = Math.hypot(dx, dz) || 1;
+          return { move: { x: dx / left, z: dz / left }, speed };
+        }
+      }
+    }
+
+    if ((sense.mode === 'chase' || sense.mode === 'flee') && lostSight(me(), you, def.see)) {
+      senseLose(npc, sense);
+      return SENSE_STOP;
+    }
+    const at = me();
+    let choices: Step[];
+    if (sense.mode === 'chase') {
+      const raw = chaseSteps(at, you);
+      // 重なるほど近い。触れた判定は外（`npcTouching`）が見る。
+      if (raw.length === 0) return SENSE_STOP;
+      choices = raw.filter((dir) => withinLeash({ x: at.x + dir.x, z: at.z + dir.z }, home, def.leash));
+      // 綱の外へしか行けない・塞がれ続けた → 諦めて帰る。
+      if (choices.length === 0 || sense.fails >= SENSE_GIVE_UP) {
+        senseLose(npc, sense);
+        return SENSE_STOP;
+      }
+    } else if (sense.mode === 'flee') {
+      choices = sense.fails >= SENSE_GIVE_UP ? [] : fleeSteps(at, you, home, def.leash);
+    } else {
+      choices = homeSteps(at, home);
+      if (choices.length === 0) {
+        // 着いた。置いた場所へ揃えてうろつきへ戻す。
+        npc.actor.settle(collision, { x: npc.home.x, z: npc.home.z });
+        sense.mode = 'idle';
+        sense.blocked = null;
+        sense.fails = 0;
+        if (npc.wander) npc.wanderIn = nextWanderAt(npc.wander);
+        return null;
+      }
+      if (sense.fails >= SENSE_GIVE_UP) {
+        // 帰り道を塞がれ続けた。数え直して次のフレームからやり直す。
+        sense.fails = 0;
+        sense.blocked = null;
+        return SENSE_STOP;
+      }
+    }
+    const pick = choices.find((dir) => !sameStep(sense.blocked, dir));
+    if (!pick) {
+      // 逃げる敵が追い詰められた。その場で止まる（捕まえられる）。汗は 1 回だけ。
+      if (sense.mode === 'flee' && !sense.cornered) {
+        sense.cornered = true;
+        senseMark(npc, 'sweat');
+      }
+      sense.blocked = null;
+      sense.fails = 0;
+      return SENSE_STOP;
+    }
+    if (sense.mode === 'flee') sense.cornered = false;
+    const here = npc.actor.position;
+    sense.step = { from: { x: here.x, z: here.z }, to: { x: here.x + pick.x * unit, z: here.z + pick.z * unit }, dir: pick, best: 0, stall: 0 };
+    return { move: { x: pick.x, z: pick.z }, speed };
+  };
+
   /** 歩きの進み具合を見る。1 マス進んだら終わり、進まなくなったら諦める。 */
   const advanceWalk = (who: Walker, actor: Player, dt: number, unit: number) => {
     const walk = who.walk;
@@ -2553,6 +2811,8 @@ export function createGameView(
     // メニュー中・イベント中も同じ（GS-59）。**止める理由は `canWalk` に集める**——
     // 「メニューがキーを飲み込むから止まる」に頼ると、入力の出どころが増えたときに崩れる。
     const playable = canWalk(useUi.getState());
+    // 歩けないあいだ（会話・メニュー・戦闘）と、その直後しばらくは敵シンボルが気づかない（GS-296）。
+    if (!playable) senseQuietUntil = Math.max(senseQuietUntil, elapsed + SENSE_QUIET_S);
     // その場で足踏み（GS-168）。**歩きより先に見る**——踏んでいるあいだはキーも歩きも入らない。
     const march = hero.march ?? null;
     const axis =
@@ -2593,9 +2853,11 @@ export function createGameView(
         // 歩きやイベントの足踏みに割り込まれても、終わった次のフレームで戻る。
         // 向きは渡さない（null）——`turn` で振り向かせたらそちらを向いて踏み続ける。
         if (npc.stepping && !npc.march && !npc.walk) void beginMarch(npc, npc.actor, null, 0, false, npc.stepMs);
+        // 敵シンボルが自分から動く（GS-296）。動かしているあいだはうろつき・経路を止める。
+        const senseMove = npc.sense ? advanceSense(npc, dt, unit, playable) : null;
         // うろつきの判断は**動かす前**に。止める指示がその場で効く（GS-50）。
-        if (!npc.route) advanceWander(npc, dt, unit);
-        const routeMove = npc.route && !npc.walk && !npc.march ? routeInput(
+        if (!npc.route && !senseMove) advanceWander(npc, dt, unit);
+        const routeMove = !senseMove && npc.route && !npc.walk && !npc.march ? routeInput(
           npc.route.path, npc.route.motion, npc.route.state,
           { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit }, dt,
           pauseNpcRoute(playable, eventBusy) || stunned(npc)) : null;
@@ -2604,8 +2866,9 @@ export function createGameView(
           ? marchAxis(npcMarch, npc.actor)
           : npc.walk
             ? npc.walk.axis
-            : routeMove ? (routeMove.speed > 0 ? DIR_AXIS[screenDirOf(routeMove.move.x, routeMove.move.z)] : STILL)
-              : (npc.wandering?.axis ?? STILL);
+            : senseMove ? (senseMove.speed > 0 ? DIR_AXIS[screenDirOf(senseMove.move.x, senseMove.move.z)] : STILL)
+              : routeMove ? (routeMove.speed > 0 ? DIR_AXIS[screenDirOf(routeMove.move.x, routeMove.move.z)] : STILL)
+                : (npc.wandering?.axis ?? STILL);
         // NPC の体（GS-239）。最初に動かすときに作る。大きさはキャラクターの大きさに合わせる（`radius` は半幅 0.5×倍率）。
         let npcBody = npcBodies.get(npc.def.id);
         if (!npcBody) {
@@ -2618,7 +2881,7 @@ export function createGameView(
         npc.actor.update(
           dt,
           {
-            move: npcMarch ? { x: 0, z: 0 } : routeMove ? routeMove.move : moveVector(npcAxis),
+            move: npcMarch ? { x: 0, z: 0 } : senseMove ? senseMove.move : routeMove ? routeMove.move : moveVector(npcAxis),
             axis: npcAxis,
             running: npcMarch?.run ?? npc.walk?.run ?? (npc.route ? npc.route.motion.walkMs < 500 : false),
             ...(npcMarch?.stepMs !== undefined ? { stepMs: npcMarch.stepMs } : {}),
@@ -2627,6 +2890,7 @@ export function createGameView(
             // うろつきは歩きよりずっと遅い（GS-50）。イベントの歩きは今までの速さのまま。
             ...(npc.walk ? {} : npc.wandering ? { speed: npc.wandering.speed } : {}),
             ...(routeMove ? { speed: routeMove.speed / (npc.actor.radius / 0.5) } : {}),
+            ...(senseMove ? { speed: senseMove.speed / (npc.actor.radius / 0.5) } : {}),
             // NPC はマス単位で動くので角での寄せ（`lane.ts`）は使わない（2026-10-20）。
             noLane: true,
           },
@@ -2971,7 +3235,7 @@ export function createGameView(
   };
   const stopOptionWatch = onOptionsChanged(applyDrawMode);
 
-  return {
+  const api: GameView = {
     load,
     waitForRenderedFrame,
     setMode,
@@ -3386,6 +3650,8 @@ export function createGameView(
       // 延ばさない（GS-295）。怯んでいるあいだに当てても終わりは最初のまま。
       if (!stunned(npc)) npc.stunUntil = elapsed + ms / 1000;
       npc.wandering = null;
+      // 叩かれた敵シンボルは、怯みが解けたら気づく（GS-296）。
+      if (npc.sense) npc.sense.provoked = true;
       return true;
     },
     strike(holdMs) {
@@ -3395,6 +3661,12 @@ export function createGameView(
       strikeLunge = { at: elapsed, x: aim.x, z: aim.z };
     },
     playFx(def, at, how) {
+      // フィールドアタックのフィールドエフェクト（GS-298）。戦闘のマスが無いので、いつも相手の所から横（右）・奥行き（カメラの方）へずらす。
+      if (isFieldEffect(def) && def.cell) {
+        const k = characterScaleOf(mapDef?.properties) || 1;
+        const shift = { x: (def.cell.col ?? 0) * k, z: (def.cell.row ?? 0) * k };
+        return fieldFx.play(def, { x: at.x + shift.x, y: at.y, z: at.z + shift.z }, how);
+      }
       return fieldFx.play(def, at, how);
     },
     figureFx(id, def) {
@@ -3402,6 +3674,36 @@ export function createGameView(
       if (!figure || figure.width <= 0) return 0;
       const unit = collision?.unit || 1;
       const grow = figure.mesh.scale.x;
+      // フィールドエフェクト（GS-298）は戦闘のマスに出す。相手のマス・相手の陣の真ん中・舞台の点からずらし、
+      // その列の板より後・手前の列の板より前に描く（板は深度を書かないので、順番が前後を決める）。
+      if (stage && isFieldEffect(def)) {
+        const current = stage;
+        const side = [...current.figures.values()]
+          .filter((one) => one.def.side === figure.def.side && one.goneAt < 0)
+          .map((one) => one.cell);
+        const cell = skillFieldCell(def.cell, figure.cell, side);
+        const terrain = stageTerrainAt(current.spec.at, current.saved.yaw + current.spec.yaw, current.settings, cell);
+        // 絵の真ん中の高さは、相手の板の真ん中と同じだけ足元から上げる（爆発を体の高さに出す）。
+        const middle = terrain.y + (figure.height * grow) / 2;
+        const spot = new Vector3(terrain.x * unit, middle, terrain.z * unit);
+        const view = rig.active();
+        const shown = spot.clone().project(view);
+        // 画面に入らない所（味方の板はカメラの後ろに立っている）なら、コマ絵と同じく画面の下寄りの真ん中へ、全部の板より後に出す。
+        if (shown.z > 1 || Math.abs(shown.x) > 1.1 || Math.abs(shown.y) > 1.1) {
+          const eye = view.getWorldPosition(new Vector3());
+          const ray = new Vector3(0, 1 - 2 * 0.72, 0.5).unproject(view).sub(eye).normalize();
+          spot.copy(eye).addScaledVector(ray, FX_LOOSE_CELLS * unit);
+          return fieldFx.play(def, { x: spot.x / unit, y: spot.y / unit, z: spot.z / unit }, {
+            layer: STAGE_SHARP_LAYER,
+            foot: (spot.y - (figure.height * grow) / 2) / unit,
+          });
+        }
+        return fieldFx.play(def, { x: terrain.x, y: middle / unit, z: terrain.z }, {
+          layer: STAGE_SHARP_LAYER,
+          foot: terrain.y / unit,
+          order: skillFieldOrder(cell.row),
+        });
+      }
       // 板の真ん中（`figureRect` と同じ高さの取り方）。画面の上で絵の画素どおりの大きさ。
       const y = figure.base.y + figure.commandLift + (figure.height * grow) / 2;
       const camera = rig.active();
@@ -3662,6 +3964,7 @@ export function createGameView(
           lungeAt: -1,
           goneAt: -1,
           slot: index + 1,
+          cell: { col: slot?.col ?? 0, row },
           breathPhase: Math.random() * Math.PI * 2,
           commandK: 0,
           commandLift: 0,
@@ -3788,6 +4091,7 @@ export function createGameView(
       renderer.dispose();
     },
   };
+  return api;
 }
 
 /** 読み込んだマップ JSON をコンソールに出す。中身の確認用（GF-4.8）。 */

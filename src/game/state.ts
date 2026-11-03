@@ -14,8 +14,12 @@ import type { WalkDir } from './GameView';
 export interface GameState {
   /** 討伐依頼の受注・討伐数・報告済み。 */
   quests: Map<string, QuestProgress>;
+  /** 依頼経験値（2026-11-02）。報告でたまる。依頼レベルはここから出す（`quests.ts` の `questLevelOf`）。 */
+  questExp: number;
   /** 物語の段階（GS-254）。最後に済ませた段階の id。'' は何も済んでいない。本筋の進み具合はここだけ。 */
   story: string;
+  /** サブストーリー（2026-11-02）。話の id → 最後に済ませた段階の id。始まっていない話は持たない。 */
+  substories: Map<string, string>;
   /** フラグ。本筋と関係ない、その場かぎりの覚え。**書いていなければ false**（GS-254）。読むときは `switchOn()` を通す。 */
   switches: Map<string, boolean>;
   variables: Map<string, number>;
@@ -87,7 +91,9 @@ export interface Progress {
 export function newState(): GameState {
   return {
     quests: new Map(),
+    questExp: 0,
     story: '',
+    substories: new Map(),
     switches: new Map(),
     variables: new Map(),
     self: new Map(),
@@ -124,6 +130,7 @@ export function selfKey(map: string, event: string, name: string): string {
 export function toSave(state: GameState, progress: Progress): SaveData {
   return {
     quests: Object.fromEntries([...state.quests].map(([id, value]) => [id, { ...value }])),
+    questExp: state.questExp,
     version: SAVE_VERSION,
     savedAt: Date.now(),
     playSeconds: Math.round(state.playSeconds),
@@ -131,6 +138,7 @@ export function toSave(state: GameState, progress: Progress): SaveData {
     at: progress.at,
     facing: progress.facing,
     story: state.story,
+    substories: Object.fromEntries(state.substories),
     switches: Object.fromEntries(state.switches),
     variables: Object.fromEntries(state.variables),
     self: Object.fromEntries(state.self),
@@ -175,7 +183,11 @@ export function fromSave(data: SaveData): { state: GameState; progress: Progress
   return {
     state: {
       quests: new Map(Object.entries(data.quests ?? {}).map(([id, value]) => [id, { ...value }])),
+      // 版 8 までの記録には依頼経験値が無い。0 で読む（報告済みの依頼の分は足さない）。
+      questExp: Number.isInteger(data.questExp) && data.questExp! > 0 ? data.questExp! : 0,
       story: typeof data.story === 'string' ? data.story : '',
+      // 版 7 までの記録にはサブストーリーが無い。どれも始まっていない扱いで読む。
+      substories: new Map(Object.entries(data.substories ?? {}).filter(([, step]) => typeof step === 'string')),
       switches: new Map(Object.entries(data.switches ?? {})),
       variables: new Map(Object.entries(data.variables ?? {})),
       self: new Map(Object.entries(data.self ?? {})),

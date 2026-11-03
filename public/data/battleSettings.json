@@ -4,7 +4,10 @@
   "normalAttack": {
     "party": {
       "effect": "normal",
-      "se": ""
+      "se": "",
+      "field": {
+        "fxScale": 0.4
+      }
     },
     "enemy": {
       "effect": "normal",

@@ -17,15 +17,18 @@ import { CLEAR_SWITCH } from './omake';
 import { loadMapIndex, mapLabel } from './mapIndex';
 
 /** セーブの形の版（GS-27）。形を変えたらここを上げ、読む側で古い版を判別する。 */
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 9;
 /**
  * 読める版（GS-46）。**欄を足しただけなら古い版も読む**——足りない欄は `fromSave` が既定で埋める。
  * 読めなくなる変え方（欄の意味を変えるなど）をしたときだけ、ここから外す。
  *
  *   6 …… マップの id を名前にし（`0101` → `home`）、本筋の進み具合を物語の段階（`story`）で持つ版（GS-254）。
  *        スイッチの向きも変えた（書いていなければ false）。**5 までの記録は読まない**（場所もスイッチも意味が変わった）。
+ *   7 …… 討伐依頼（`quests`）を足した版。
+ *   8 …… サブストーリー（`substories`）を足した版（2026-11-02）。7 までは始まっていない扱いで読む。
+ *   9 …… 依頼経験値（`questExp`）を足した版（2026-11-02）。8 までは 0 で読む。
  */
-const READABLE = new Set([6, 7]);
+const READABLE = new Set([6, 7, 8, 9]);
 
 /** その記録は読めるか。 */
 export function readableSave(version: number): boolean {
@@ -48,6 +51,8 @@ export function slotLabel(slot: number): string {
 export interface SaveData {
   /** 版7: 討伐依頼。版6の記録は未受注で読む。 */
   quests?: Record<string, QuestProgress>;
+  /** 版9: 依頼経験値。8 までは 0 で読む。 */
+  questExp?: number;
   version: number;
   /** 書いた時刻（一覧に出す）。 */
   savedAt: number;
@@ -59,6 +64,8 @@ export interface SaveData {
   facing: WalkDir;
   /** 物語の段階（GS-254）。最後に済ませた段階の id。'' は何も済んでいない。 */
   story: string;
+  /** 版8: サブストーリー。話の id → 最後に済ませた段階の id。 */
+  substories?: Record<string, string>;
   /** スイッチ・変数・セルフスイッチ。キーは文字列。スイッチは書いていなければ false（GS-254）。 */
   switches: Record<string, boolean>;
   variables: Record<string, number>;

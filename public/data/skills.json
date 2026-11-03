@@ -1,7 +1,7 @@
 {
   "information": "技の台帳（GS-60 / GS-69）。kind は「特技」か「魔法」、type は attack / guard / avoid / ailment / cure / cover（かばう。近くの仲間への攻撃を代わりに受ける。GS-294）。効き目の数は value（cure は最大 HP の何％を戻すか 0〜100。0 なら状態異常を消すだけ）、当たったときの音は se。ailment は与える状態異常（chance は当たる見込み 0〜1）、cure は消す状態異常。",
   "skills": {
-    "special01": {
+    "guard": {
       "name": "防御",
       "kind": "特技",
       "type": "guard",
@@ -9,7 +9,7 @@
       "mp": 0,
       "value": 20
     },
-    "special02": {
+    "dodge": {
       "name": "回避",
       "kind": "特技",
       "type": "avoid",
@@ -17,7 +17,7 @@
       "mp": 5,
       "value": 0
     },
-    "special03": {
+    "throw_stone": {
       "name": "投石",
       "kind": "特技",
       "type": "attack",
@@ -27,7 +27,7 @@
       "value": 10,
       "se": "hit"
     },
-    "magic01": {
+    "fireball": {
       "effect": "fire",
       "name": "火の玉",
       "kind": "魔法",
@@ -37,7 +37,7 @@
       "value": 30,
       "se": "fire"
     },
-    "magic02": {
+    "wind_blade": {
       "effect": "wind",
       "name": "風の刃",
       "kind": "魔法",
@@ -48,10 +48,11 @@
       "se": "slash",
       "field": {
         "type": "shot",
-        "hitEffect": "wind"
+        "hitEffect": "wind",
+        "fxScale": 0.4
       }
     },
-    "magic03": {
+    "ice_chunk": {
       "name": "氷の塊",
       "kind": "魔法",
       "type": "attack",
@@ -60,7 +61,7 @@
       "value": 20,
       "se": "hit"
     },
-    "enemy01": {
+    "sleep_breath": {
       "name": "ねむりのいき",
       "kind": "魔法",
       "type": "ailment",
@@ -71,7 +72,7 @@
       "chance": 0.6,
       "se": "fire"
     },
-    "enemy02": {
+    "poison_fang": {
       "name": "どくのキバ",
       "kind": "特技",
       "type": "attack",
@@ -82,7 +83,7 @@
       "chance": 0.5,
       "se": "hit"
     },
-    "enemy03": {
+    "sweep": {
       "name": "なぎはらい",
       "kind": "特技",
       "type": "attack",
@@ -93,7 +94,7 @@
       "reach": "all",
       "range": "melee"
     },
-    "magic04": {
+    "heal": {
       "name": "ヒール",
       "kind": "魔法",
       "type": "cure",
@@ -105,7 +106,7 @@
       ],
       "se": "levelup"
     },
-    "special04": {
+    "power_strike": {
       "name": "強打",
       "kind": "特技",
       "type": "attack",
@@ -114,7 +115,7 @@
       "value": 25,
       "se": "hit"
     },
-    "special05": {
+    "gale_slash": {
       "name": "疾風斬り",
       "kind": "特技",
       "type": "attack",
@@ -123,7 +124,7 @@
       "value": 32,
       "se": "slash"
     },
-    "special06": {
+    "leg_sweep": {
       "name": "足払い",
       "kind": "特技",
       "type": "ailment",
@@ -134,7 +135,7 @@
       "chance": 0.55,
       "se": "hit"
     },
-    "special07": {
+    "first_aid": {
       "name": "止血の心得",
       "kind": "特技",
       "type": "cure",
@@ -146,7 +147,7 @@
       ],
       "se": "levelup"
     },
-    "special08": {
+    "cover": {
       "name": "かばう",
       "kind": "特技",
       "type": "cover",
@@ -154,7 +155,7 @@
       "mp": 3,
       "value": 0
     },
-    "magic05": {
+    "flame_lance": {
       "name": "火炎槍",
       "kind": "魔法",
       "type": "attack",
@@ -166,7 +167,7 @@
       "ailment": "burn",
       "chance": 0.35
     },
-    "magic06": {
+    "ice_bind": {
       "name": "氷縛",
       "kind": "魔法",
       "type": "ailment",
@@ -177,7 +178,7 @@
       "chance": 0.55,
       "se": "hit"
     },
-    "magic07": {
+    "poison_mist": {
       "name": "毒霧",
       "kind": "魔法",
       "type": "ailment",
@@ -188,7 +189,7 @@
       "chance": 0.75,
       "se": "fire"
     },
-    "magic08": {
+    "sleep": {
       "name": "スリープ",
       "kind": "魔法",
       "type": "ailment",
@@ -199,7 +200,7 @@
       "chance": 0.65,
       "se": "fire"
     },
-    "magic09": {
+    "high_heal": {
       "name": "ハイヒール",
       "kind": "魔法",
       "type": "cure",
@@ -208,7 +209,7 @@
       "value": 60,
       "se": "levelup"
     },
-    "magic10": {
+    "purify": {
       "name": "浄化",
       "kind": "魔法",
       "type": "cure",
@@ -226,7 +227,7 @@
       ],
       "se": "levelup"
     },
-    "magic11": {
+    "thunder_arrow": {
       "name": "雷の矢",
       "kind": "魔法",
       "type": "attack",

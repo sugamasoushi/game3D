@@ -40,7 +40,7 @@
         { "type": "hide", "target": "npc:BOSS_GreatBear" },
         {
           "type": "battle",
-          "enemies": ["enemy03"],
+          "enemies": ["great_bear"],
           "win": [{ "type": "hide", "target": "npc:BOSS_GreatBear" }],
           "lose": [],
           "escape": []

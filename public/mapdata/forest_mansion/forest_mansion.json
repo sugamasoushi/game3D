@@ -64631,7 +64631,7 @@
             {
               "name": "Character",
               "type": "string",
-              "value": "adult_male_swordsman_male_01"
+              "value": "adult_male_swordsman_01"
             },
             {
               "name": "Id",
@@ -64687,7 +64687,7 @@
             {
               "name": "Character",
               "type": "string",
-              "value": "lamyNPC"
+              "value": "lamy_npc"
             },
             {
               "name": "Id",

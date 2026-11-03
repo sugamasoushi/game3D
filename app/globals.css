@@ -3685,6 +3685,14 @@ body {
  */
 .quests-page { padding: 1rem; overflow: auto; height: 100%; }
 .quests-page > p { opacity: .8; margin-bottom: 1rem; }
+/* 依頼レベル（2026-11-02）。「依頼」の上に今のレベルと次までの棒。 */
+.quest-level {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem 1rem;
+  border: 1px solid #786449; border-radius: 8px; padding: .6rem 1rem; margin-bottom: .8rem; background: #171c26;
+}
+.quest-level strong { color: #edcc8b; font-size: 1.3em; margin-left: .3rem; }
+.quest-level progress { flex: 1 0 100%; width: 100%; accent-color: #edcc8b; }
+.quest-level:focus-visible { outline: 2px solid #edcc8b; outline-offset: 2px; }
 .quest-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 19rem;
@@ -3713,8 +3721,30 @@ body {
 }
 .quest-facts dt { color: #edcc8b; font-size: .9em; }
 .quest-facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.quest-facts dd:first-of-type { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 .6rem; }
+.quest-facts dd.quest-hunt { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 .6rem; }
 .quest-count { font-variant-numeric: tabular-nums; }
 .quest-card progress { flex: 1 0 100%; width: 100%; margin-top: .3rem; accent-color: #edcc8b; }
+/*
+ * クエスト（2026-11-02）。上に種類のタブ（メイン／サブ／依頼）、札に章・目的・これまでの話。
+ * 種類のタブの数は、終わっていないものの数。
+ */
+.quest-kinds { display: flex; gap: .5rem; margin-bottom: 1rem; }
+.gmenu-body .quest-kinds button {
+  min-width: 7rem;
+  padding: .35rem 1rem;
+  border: 1px solid #786449;
+  border-radius: 6px;
+  background: #171c26;
+  color: inherit;
+  font: inherit;
+}
+.gmenu-body .quest-kinds button.on { background: #3a3123; border-color: #edcc8b; color: #edcc8b; }
+.gmenu-body .quest-kinds button:focus-visible { outline: 2px solid #edcc8b; outline-offset: 2px; }
+.quest-kinds small { margin-left: .5rem; font-size: .8em; opacity: .8; font-variant-numeric: tabular-nums; }
+.quest-card .quest-chapter { margin: 0 0 .2rem; font-size: .85em; color: #edcc8b; opacity: .85; }
+.quest-card .quest-goal { margin: .2rem 0 0; padding-left: .7rem; border-left: 3px solid #edcc8b; }
+.quest-log { margin-top: .7rem; opacity: .85; }
+.quest-log h4 { margin: 0 0 .3rem; font-size: .85em; color: #edcc8b; font-weight: normal; }
+.quest-log ol { margin: 0; padding-left: 1.4rem; line-height: 1.5; }
 /* 台帳から消えた依頼は右の柱が無いので、左を広げる。 */
 .quest-card:not(:has(.quest-facts)) { grid-template-columns: minmax(0, 1fr); }

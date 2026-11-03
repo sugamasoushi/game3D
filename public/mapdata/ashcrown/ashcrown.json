@@ -35828,7 +35828,7 @@
             {
               "name": "Character",
               "type": "string",
-              "value": "blackCat"
+              "value": "black_cat"
             },
             {
               "name": "Id",
@@ -35856,7 +35856,7 @@
             {
               "name": "Character",
               "type": "string",
-              "value": "whiteCat"
+              "value": "white_cat"
             },
             {
               "name": "Id",
@@ -35889,7 +35889,7 @@
             {
               "name": "Character",
               "type": "string",
-              "value": "grandpaNpc"
+              "value": "grandpa_npc"
             },
             {
               "name": "Id",

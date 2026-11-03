@@ -109,7 +109,8 @@ export function useFieldAttack(deps: FieldAttackDeps): {
   /** 絵を 1 つ、その長さだけ出す（3D の板。長さが来たら GameView が消す）。 */
   const flash = useCallback((def: EffectDef | null, at: Spot, scale = 1) => {
     if (!def) return;
-    depsRef.current.viewRef.current?.playFx(def, at, { scale });
+    // 足元はいつも絵の真ん中から `FX_RISE` 下（フィールドエフェクトの柱や炎を床から立てる。GS-297）。
+    depsRef.current.viewRef.current?.playFx(def, at, { scale, foot: at.y - FX_RISE });
   }, []);
 
   /** 当たりを見る相手。敵シンボルも、敵でない人も（飛ぶ物は人に当たると消える）。 */
@@ -264,13 +265,14 @@ export function useFieldAttack(deps: FieldAttackDeps): {
     view.strike(FIELD_ATTACK_RECOVER_MS);
     // 絵と音。絵は技の `field.effect`、無ければその技（素手）の戦闘の絵。音は `field.se`、無ければ絵の音。
     const def = attack.effect ? effectDef(attack.effect) : null;
-    if (def) void preloadImage(effectImage(def));
+    const url = def ? effectImage(def) : null;
+    if (url) void preloadImage(url);
     const sound = attack.se || def?.se || '';
     if (sound) playSe(sound);
     const half = view.playerRadius();
     if (attack.type === 'shot') {
       const start = { x: from.x + aim.x * half, y: from.y + FX_RISE, z: from.z + aim.z * half };
-      const fx = def ? view.playFx(def, start, { hold: true, scale: attack.fxScale }) : 0;
+      const fx = def ? view.playFx(def, start, { hold: true, scale: attack.fxScale, foot: from.y }) : 0;
       shots.current = [...shots.current, { fx, attack, leader, at: start, dir: aim, travelled: 0 }];
       return;
     }

@@ -141,16 +141,16 @@
         },
         { "type": "move", "target": "player", "dir": "up", "cells": 2, "slide": true, "speed": 10 },
         { "type": "turn", "target": "player", "to": "down" },
-        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy_npc", "face": "talk" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "emote", "target": "npc:lamyNPC", "id": "surprise", "wait": false },
-        { "type": "message", "talk": [{ "who": "lamyNPC", "lines": ["見つけたぁ！！！"] }] },
+        { "type": "message", "talk": [{ "who": "lamy_npc", "lines": ["見つけたぁ！！！"] }] },
         { "type": "emote", "target": "player", "id": "anger", "wait": false },
         {
           "type": "message",
           "talk": [
             { "who": "meina", "lines": ["痛\"っ！", "あ～～～もう！！なんなの！！！"] },
-            { "who": "lamyNPC", "lines": ["お前っ！！", "あたしにご飯を作れっ！！"] }
+            { "who": "lamy_npc", "lines": ["お前っ！！", "あたしにご飯を作れっ！！"] }
           ]
         },
         { "type": "emote", "target": "player", "id": "anger", "wait": false },
@@ -158,7 +158,7 @@
           "type": "message",
           "talk": [
             { "who": "meina", "lines": ["・・・・・・・・・・・・・・・・・・・💢💢💢"] },
-            { "who": "lamyNPC", "lines": ["・・・・・・・・・・・・・・・・・・・泣泣泣"] }
+            { "who": "lamy_npc", "lines": ["・・・・・・・・・・・・・・・・・・・泣泣泣"] }
           ]
         },
         { "type": "portrait", "slot": "left", "hide": true },
@@ -183,7 +183,7 @@
         {
           "type": "message",
           "talk": [
-            { "who": "lamyNPC", "lines": ["お願い、あたしが悪かったからご飯恵んでよぉ・・・。"] },
+            { "who": "lamy_npc", "lines": ["お願い、あたしが悪かったからご飯恵んでよぉ・・・。"] },
             {
               "who": "meina",
               "lines": ["（・・・そういえば、よく考えたら先に攻撃したの私か）", "", "分かったよ、何食べる？", "あ、鶏はダメだからね。"]
@@ -192,7 +192,7 @@
         },
         { "type": "fade", "to": "out", "ms": 400 },
         { "type": "portrait", "slot": "scene", "hide": true },
-        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk", "instant": true },
+        { "type": "portrait", "slot": "left", "who": "lamy_npc", "face": "talk", "instant": true },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk", "instant": true },
         { "type": "time", "to": "evening ", "clock": "stop", "ms": 0 },
         { "type": "wait", "ms": 300 },
@@ -202,9 +202,9 @@
         {
           "type": "message",
           "talk": [
-            { "who": "lamyNPC", "lines": ["もぐもぐ、もぐもぐ・・・", "ん～美味しい！"] },
+            { "who": "lamy_npc", "lines": ["もぐもぐ、もぐもぐ・・・", "ん～美味しい！"] },
             { "who": "meina", "lines": ["お～い、少しは遠慮したらどうなのよ？"] },
-            { "who": "lamyNPC", "lines": ["こんな美味しいご飯食べたのは生まれて初めて！", "もう美味しくて美味しくて！！"] }
+            { "who": "lamy_npc", "lines": ["こんな美味しいご飯食べたのは生まれて初めて！", "もう美味しくて美味しくて！！"] }
           ]
         },
         { "type": "emote", "target": "player", "id": "question", "wait": false },
@@ -215,7 +215,7 @@
               "who": "meina",
               "lines": ["くっ・・・悪い気がしない・・・。", "まあ、あんたの口に合ったなら良かったよ。", "", "そういえば名前は？", "あたしはメイナ"]
             },
-            { "who": "lamyNPC", "lines": ["名前は無いから好きに呼んで！"] },
+            { "who": "lamy_npc", "lines": ["名前は無いから好きに呼んで！"] },
             { "who": "meina", "lines": ["ふ～ん、じゃあラミィって呼ぶね。"] }
           ]
         },
@@ -414,7 +414,7 @@
           "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
           "else": [
             { "type": "playSe", "key": "chest" },
-            { "type": "getItem", "id": "ばんそうこう", "count": [1, 2] },
+            { "type": "getItem", "id": "bandage", "count": [1, 2] },
             { "type": "layer", "id": "宝箱_家1_閉", "shown": false },
             { "type": "layer", "id": "宝箱_家1_開", "shown": true },
             { "type": "setSelfSwitch", "key": "開けた", "value": true },
@@ -433,7 +433,7 @@
           "when": { "self": "A" },
           "then": [],
           "else": [
-            { "type": "getItem", "id": "おにぎり", "count": 1 },
+            { "type": "getItem", "id": "rice_ball", "count": 1 },
             { "type": "message", "talk": [{ "lines": ["おにぎりを手に入れた"] }], "style": "window" },
             {
               "type": "message",

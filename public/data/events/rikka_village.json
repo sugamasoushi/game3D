@@ -46,9 +46,58 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [{ "who": "child_male_01", "lines": ["へへ～俺の方が速いもんね～！"] }],
-          "style": "bubble"
+          "type": "if",
+          "when": { "substory": "missing_hen", "step": "found", "is": "next" },
+          "then": [
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "meina", "lines": ["ねえ、鶏を見なかった？", "畑のじいさんの鶏が 1 羽いなくなったんだって"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "child_male_01", "lines": ["し、知らないよ！", "秘密基地になんか、いないもんね！"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "meina", "lines": ["……秘密基地にいるのね"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "child_male_01", "lines": ["あっ！", "……だって、毎朝タマゴを産むんだもん", "ひとりじめしたかったんだよぉ"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "meina", "lines": ["鶏は大事にしなきゃだめ", "私、鶏に育てられたからよく分かるの"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "lamy", "lines": ["鶏の気持ち、分かるの？"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "meina", "lines": ["育ての親だからね"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "child_male_01", "lines": ["……？？", "わ、わかったよ。じいちゃんに返しとく"] }]
+            },
+            { "type": "substory", "id": "missing_hen", "done": "found" }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [{ "who": "child_male_01", "lines": ["へへ～俺の方が速いもんね～！"] }],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "npc": "EldestBrother",
@@ -84,7 +133,7 @@
           ],
           "style": "bubble"
         },
-        { "type": "shop", "items": ["やくそう", "どく消し", "ターケマーツ"], "sell": true },
+        { "type": "shop", "items": ["herb", "antidote", "takematsu"], "sell": true },
         {
           "type": "message",
           "talk": [{ "who": "middle_aunt_01", "lines": ["また見においで！"], "at": "VegetableSeller" }],
@@ -99,15 +148,62 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [{ "who": "elderly_male_01", "lines": ["道具屋じゃ"], "at": "Tool Seller" }],
-          "style": "bubble"
-        },
-        { "type": "shop", "items": ["ばんそうこう", "木のぼう", "マント"], "sell": true },
-        {
-          "type": "message",
-          "talk": [{ "who": "elderly_male_01", "lines": ["まいど！"], "at": "Tool Seller" }],
-          "style": "bubble"
+          "type": "if",
+          "when": { "quest": "found_ring", "is": "active" },
+          "then": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "elderly_male_01",
+                  "at": "Tool Seller",
+                  "lines": ["ほう、珍しい細工の指輪じゃな。", "わしが 150 G で引き取ろう。", "代金は宿屋の旦那に預けておくわい。"]
+                }
+              ],
+              "style": "bubble"
+            },
+            {
+              "type": "choice",
+              "choices": ["売る", "やめる"],
+              "cancel": 1,
+              "branches": [
+                [
+                  { "type": "quest", "id": "found_ring", "mode": "result", "result": "merchant" },
+                  {
+                    "type": "message",
+                    "talk": [{ "who": "elderly_male_01", "at": "Tool Seller", "lines": ["まいど！"] }],
+                    "style": "bubble"
+                  }
+                ],
+                [
+                  {
+                    "type": "message",
+                    "talk": [
+                      {
+                        "who": "elderly_male_01",
+                        "at": "Tool Seller",
+                        "lines": ["気が変わったら、また来なされ。"]
+                      }
+                    ],
+                    "style": "bubble"
+                  }
+                ]
+              ]
+            }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [{ "who": "elderly_male_01", "lines": ["道具屋じゃ"], "at": "Tool Seller" }],
+              "style": "bubble"
+            },
+            { "type": "shop", "items": ["bandage", "wooden_stick", "cloak"], "sell": true },
+            {
+              "type": "message",
+              "talk": [{ "who": "elderly_male_01", "lines": ["まいど！"], "at": "Tool Seller" }],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "npc": "Tool Seller"
@@ -122,35 +218,73 @@
           "talk": [
             {
               "who": "middle_uncle_01",
-              "lines": ["いらっしゃい！ 宿屋だよ。", "一晩 10 G で泊まっていくかい？"],
+              "lines": ["いらっしゃい！ 宿屋だよ。", "泊まっていくかい？ 依頼の張り紙もあるよ。"],
               "at": "Innkeeper"
             }
           ],
           "style": "bubble"
         },
         {
-          "type": "inn",
-          "price": 10,
-          "time": "morning",
-          "stay": [
-            {
-              "type": "message",
-              "talk": [
-                {
-                  "who": "middle_uncle_01",
-                  "lines": ["おはよう！ よく眠れたかい？", "いってらっしゃい！"],
-                  "at": "Innkeeper"
-                }
-              ],
-              "style": "bubble"
-            }
-          ],
-          "leave": [
-            {
-              "type": "message",
-              "talk": [{ "who": "middle_uncle_01", "lines": ["また いつでも おいで。"], "at": "Innkeeper" }],
-              "style": "bubble"
-            }
+          "type": "choice",
+          "choices": ["泊まる（10 G）", "依頼を見る", "やめる"],
+          "cancel": 2,
+          "branches": [
+            [
+              {
+                "type": "message",
+                "talk": [{ "who": "middle_uncle_01", "lines": ["一晩 10 G で泊まっていくかい？"], "at": "Innkeeper" }],
+                "style": "bubble"
+              },
+              {
+                "type": "inn",
+                "price": 10,
+                "time": "morning",
+                "stay": [
+                  {
+                    "type": "message",
+                    "talk": [
+                      {
+                        "who": "middle_uncle_01",
+                        "lines": ["おはよう！ よく眠れたかい？", "いってらっしゃい！"],
+                        "at": "Innkeeper"
+                      }
+                    ],
+                    "style": "bubble"
+                  }
+                ],
+                "leave": [
+                  {
+                    "type": "message",
+                    "talk": [{ "who": "middle_uncle_01", "lines": ["また いつでも おいで。"], "at": "Innkeeper" }],
+                    "style": "bubble"
+                  }
+                ]
+              }
+            ],
+            [
+              {
+                "type": "questBoard",
+                "quests": [
+                  { "id": "herb_gathering" },
+                  { "id": "medicine_delivery" },
+                  { "id": "slime_hunt" },
+                  {
+                    "id": "lost_traveler",
+                    "when": { "story": "commotion_entering_village", "is": "done" }
+                  },
+                  { "id": "found_ring" }
+                ],
+                "prompt": { "who": "middle_uncle_01", "lines": ["どの依頼にする？"], "at": "Innkeeper" },
+                "empty": { "who": "middle_uncle_01", "lines": ["いまは頼めることがないねえ。"], "at": "Innkeeper" }
+              }
+            ],
+            [
+              {
+                "type": "message",
+                "talk": [{ "who": "middle_uncle_01", "lines": ["また いつでも おいで。"], "at": "Innkeeper" }],
+                "style": "bubble"
+              }
+            ]
           ]
         }
       ],
@@ -162,15 +296,38 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [
+          "type": "if",
+          "when": { "quest": "medicine_delivery", "is": "active" },
+          "then": [
             {
-              "who": "elderly_female_01",
-              "lines": ["最近は人の出入りが減ってしまったねぇ・・・"],
-              "at": "elderly_female_01"
+              "type": "quest",
+              "id": "medicine_delivery",
+              "mode": "deliver",
+              "handover": {
+                "who": "elderly_female_01",
+                "lines": ["まあ、宿屋さんから薬を？", "ありがとうねぇ。これで腰も楽になるよ。"],
+                "at": "elderly_female_01"
+              },
+              "missing": {
+                "who": "elderly_female_01",
+                "lines": ["おや、薬を持ってきてくれたんじゃないのかい？"],
+                "at": "elderly_female_01"
+              }
             }
           ],
-          "style": "bubble"
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "elderly_female_01",
+                  "lines": ["最近は人の出入りが減ってしまったねぇ・・・"],
+                  "at": "elderly_female_01"
+                }
+              ],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "npc": "elderly_female_01"
@@ -181,15 +338,80 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [
+          "type": "if",
+          "when": { "quest": "found_ring", "is": "active" },
+          "then": [
             {
-              "who": "teen_female_01",
-              "lines": ["はぁ、最近つまらないなぁ", "王都に行きたいなぁ", ""],
-              "at": "teen_female_01"
+              "type": "message",
+              "talk": [
+                {
+                  "who": "teen_female_01",
+                  "at": "teen_female_01",
+                  "lines": ["あっ、その指輪……！", "お母さんの形見なの。どこかで落としちゃって……", "返してもらえないかな？"]
+                }
+              ],
+              "style": "bubble"
+            },
+            {
+              "type": "choice",
+              "choices": ["返す", "渡さない"],
+              "cancel": 1,
+              "branches": [
+                [
+                  { "type": "quest", "id": "found_ring", "mode": "result", "result": "owner" },
+                  {
+                    "type": "message",
+                    "talk": [
+                      {
+                        "who": "teen_female_01",
+                        "at": "teen_female_01",
+                        "lines": ["ありがとう……！ 本当にありがとう！"]
+                      }
+                    ],
+                    "style": "bubble"
+                  }
+                ],
+                [
+                  {
+                    "type": "message",
+                    "talk": [{ "who": "teen_female_01", "at": "teen_female_01", "lines": ["そっか……。"] }],
+                    "style": "bubble"
+                  }
+                ]
+              ]
             }
           ],
-          "style": "bubble"
+          "elif": [
+            {
+              "when": { "quest": "found_ring", "result": "owner" },
+              "then": [
+                {
+                  "type": "message",
+                  "talk": [
+                    {
+                      "who": "teen_female_01",
+                      "at": "teen_female_01",
+                      "lines": ["指輪、ずっと大事にするね。", "あなたのおかげだよ！"]
+                    }
+                  ],
+                  "style": "bubble"
+                }
+              ]
+            }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "teen_female_01",
+                  "lines": ["はぁ、最近つまらないなぁ", "王都に行きたいなぁ", ""],
+                  "at": "teen_female_01"
+                }
+              ],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "npc": "teen_female_01",
@@ -215,15 +437,35 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [
+          "type": "if",
+          "when": { "quest": "lost_traveler", "step": "ask_swordsman", "is": "next" },
+          "then": [
             {
-              "who": "adult_male_swordsman_male_01",
-              "lines": ["中々良い品揃えだな", "", "備蓄が少ないから", "多めに買っていくか"],
-              "at": "adult_male_swordsman_male_01"
-            }
+              "type": "message",
+              "talk": [
+                {
+                  "who": "adult_male_swordsman_01",
+                  "at": "adult_male_swordsman_male_01",
+                  "lines": ["旅人？ ああ、道を聞かれたな。", "肉屋で干し肉を買い込んでいたぞ。", "長旅のつもりだったんだろう。"]
+                }
+              ],
+              "style": "bubble"
+            },
+            { "type": "quest", "id": "lost_traveler", "mode": "step", "step": "ask_swordsman" }
           ],
-          "style": "bubble"
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "adult_male_swordsman_01",
+                  "lines": ["中々良い品揃えだな", "", "備蓄が少ないから", "多めに買っていくか"],
+                  "at": "adult_male_swordsman_male_01"
+                }
+              ],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "noTurn": true,
@@ -261,9 +503,35 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [{ "who": "middle_uncle_01", "lines": ["いらっしゃいいらっしゃい！", "良いもの売ってるよ！"], "at": "Butcher" }],
-          "style": "bubble"
+          "type": "if",
+          "when": { "quest": "lost_traveler", "step": "ask_butcher", "is": "next" },
+          "then": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "middle_uncle_01",
+                  "at": "Butcher",
+                  "lines": ["ああ、あの旅人さんか！", "旧運搬道の小屋で足をくじいて休んでるって、", "荷車の兄ちゃんが知らせてくれたよ。", "宿屋の旦那に伝えてやってくれ！"]
+                }
+              ],
+              "style": "bubble"
+            },
+            { "type": "quest", "id": "lost_traveler", "mode": "step", "step": "ask_butcher" }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "middle_uncle_01",
+                  "lines": ["いらっしゃいいらっしゃい！", "良いもの売ってるよ！"],
+                  "at": "Butcher"
+                }
+              ],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "npc": "Butcher"
@@ -286,15 +554,101 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [
+          "type": "if",
+          "when": [
+            { "story": "commotion_entering_village", "is": "done" },
+            { "substory": "missing_hen", "step": "start", "is": "next" }
+          ],
+          "then": [
             {
-              "who": "elderly_male_01",
-              "lines": ["ふむ、順調に育っておるな", "", "ワシも水だけで生きていけんかのぉ"],
-              "at": "elderly_hatake"
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "elderly_male_01", "lines": ["おお、メイナか。ちょうどよかった", "うちの鶏が 1 羽、朝から見当たらんのじゃ"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "lamy", "lines": ["あ、あたしじゃないよ！？", "食べてないからね！？"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "meina", "lines": ["……ラミィ、口に羽ついてる"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "lamy", "lines": ["これはお昼の揚げ鳥の！！"] }]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [
+                {
+                  "who": "elderly_male_01",
+                  "lines": ["ふむ……", "鶏は遠くへは行かん。村の子供らが何か知っとるかもしれん", "聞いてみてくれんか"]
+                }
+              ]
+            },
+            {
+              "type": "message",
+              "style": "window",
+              "talk": [{ "who": "meina", "lines": ["わかった。探してみるね"] }]
+            },
+            { "type": "substory", "id": "missing_hen", "done": "start" }
+          ],
+          "elif": [
+            {
+              "when": { "substory": "missing_hen", "step": "found", "is": "next" },
+              "then": [
+                {
+                  "type": "message",
+                  "style": "window",
+                  "talk": [{ "who": "elderly_male_01", "lines": ["子供らは村の中を走り回っとる", "つかまえて聞いてみてくれ"] }]
+                }
+              ]
+            },
+            {
+              "when": { "substory": "missing_hen", "step": "end", "is": "next" },
+              "then": [
+                {
+                  "type": "message",
+                  "style": "window",
+                  "talk": [{ "who": "meina", "lines": ["鶏、見つかったよ", "子供たちが卵目当てにかくまってたみたい"] }]
+                },
+                {
+                  "type": "message",
+                  "style": "window",
+                  "talk": [{ "who": "elderly_male_01", "lines": ["なんと、あの悪ガキどもめ……", "助かったわい。これは礼じゃ"] }]
+                },
+                { "type": "gold", "value": 30 },
+                {
+                  "type": "message",
+                  "style": "window",
+                  "talk": [{ "who": "lamy", "lines": ["ほらね！ あたしじゃなかったでしょ！"] }]
+                },
+                {
+                  "type": "message",
+                  "style": "window",
+                  "talk": [{ "who": "meina", "lines": ["はいはい。羽は拭いておいてね"] }]
+                },
+                { "type": "substory", "id": "missing_hen", "done": "end" }
+              ]
             }
           ],
-          "style": "bubble"
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "elderly_male_01",
+                  "lines": ["ふむ、順調に育っておるな", "", "ワシも水だけで生きていけんかのぉ"],
+                  "at": "elderly_hatake"
+                }
+              ],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "npc": "elderly_hatake",
@@ -306,11 +660,105 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [{ "who": "soldier_junior", "lines": ["ここはリッカ村だ", "あ～暇だなぁ"], "at": "soldier_junior01" }],
-          "style": "bubble"
-        },
-        { "type": "quest", "id": "qa_hunt" }
+          "type": "if",
+          "when": [
+            { "story": "commotion_entering_village", "is": "done" },
+            { "quest": "lamy_proof", "is": "notTaken" }
+          ],
+          "then": [
+            {
+              "type": "quest",
+              "id": "lamy_proof",
+              "offer": {
+                "who": "soldier_junior",
+                "at": "soldier_junior01",
+                "lines": [
+                  "……さっきの騒ぎで、村の連中はまだ身構えてる。",
+                  "そこでだ。旧運搬道のスライムを {count} 体、退治してきてくれないか。",
+                  "ラミィが村を守る側だと分かれば、皆も安心する。",
+                  "報酬は {gold} G だ。"
+                ]
+              },
+              "accepted": { "who": "lamy", "lines": ["任せて！ スライムくらい、尻尾でひと払いだよ。"] },
+              "progress": {
+                "who": "soldier_junior",
+                "at": "soldier_junior01",
+                "lines": ["スライムは {now} / {count} 体か。", "ラミィ、くれぐれも屋台の方へは尻尾を振るなよ。"]
+              },
+              "report": {
+                "who": "soldier_junior",
+                "at": "soldier_junior01",
+                "lines": ["もう {count} 体も片付けたのか！", "報告を受けよう。"]
+              },
+              "reward": {
+                "who": "soldier_junior",
+                "at": "soldier_junior01",
+                "lines": ["約束の {gold} G だ。", "村の皆にも伝えておく。……頼もしい仲間だな、メイナ。"]
+              },
+              "done": {
+                "who": "soldier_junior",
+                "at": "soldier_junior01",
+                "lines": ["ラミィの話、村じゅうに広まってるぞ。", "子どもたちが尻尾に乗せてほしいとさ。"]
+              }
+            }
+          ],
+          "elif": [
+            {
+              "when": { "quest": "lamy_proof", "is": "taken" },
+              "then": [
+                {
+                  "type": "quest",
+                  "id": "lamy_proof",
+                  "offer": {
+                    "who": "soldier_junior",
+                    "at": "soldier_junior01",
+                    "lines": [
+                      "……さっきの騒ぎで、村の連中はまだ身構えてる。",
+                      "そこでだ。旧運搬道のスライムを {count} 体、退治してきてくれないか。",
+                      "ラミィが村を守る側だと分かれば、皆も安心する。",
+                      "報酬は {gold} G だ。"
+                    ]
+                  },
+                  "accepted": { "who": "lamy", "lines": ["任せて！ スライムくらい、尻尾でひと払いだよ。"] },
+                  "progress": {
+                    "who": "soldier_junior",
+                    "at": "soldier_junior01",
+                    "lines": ["スライムは {now} / {count} 体か。", "ラミィ、くれぐれも屋台の方へは尻尾を振るなよ。"]
+                  },
+                  "report": {
+                    "who": "soldier_junior",
+                    "at": "soldier_junior01",
+                    "lines": ["もう {count} 体も片付けたのか！", "報告を受けよう。"]
+                  },
+                  "reward": {
+                    "who": "soldier_junior",
+                    "at": "soldier_junior01",
+                    "lines": ["約束の {gold} G だ。", "村の皆にも伝えておく。……頼もしい仲間だな、メイナ。"]
+                  },
+                  "done": {
+                    "who": "soldier_junior",
+                    "at": "soldier_junior01",
+                    "lines": ["ラミィの話、村じゅうに広まってるぞ。", "子どもたちが尻尾に乗せてほしいとさ。"]
+                  }
+                }
+              ]
+            }
+          ],
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "soldier_junior",
+                  "lines": ["ここはリッカ村だ", "あ～暇だなぁ"],
+                  "at": "soldier_junior01"
+                }
+              ],
+              "style": "bubble"
+            },
+            { "type": "quest", "id": "slime_hunt" }
+          ]
+        }
       ],
       "npc": "soldier_junior01"
     },
@@ -320,15 +768,35 @@
       "trigger": "action",
       "commands": [
         {
-          "type": "message",
-          "talk": [
+          "type": "if",
+          "when": { "quest": "lost_traveler", "step": "ask_guard", "is": "next" },
+          "then": [
             {
-              "who": "soldier_junior",
-              "lines": ["zzz・・・はっ！", "", "寝てないぞ！"],
-              "at": "soldier_junior02"
-            }
+              "type": "message",
+              "talk": [
+                {
+                  "who": "soldier_junior",
+                  "at": "soldier_junior02",
+                  "lines": ["ね、寝てないぞ！", "……旅人？ ああ、見たぞ。", "広場で、剣を背負った冒険者と話してたな。"]
+                }
+              ],
+              "style": "bubble"
+            },
+            { "type": "quest", "id": "lost_traveler", "mode": "step", "step": "ask_guard" }
           ],
-          "style": "bubble"
+          "else": [
+            {
+              "type": "message",
+              "talk": [
+                {
+                  "who": "soldier_junior",
+                  "lines": ["zzz・・・はっ！", "", "寝てないぞ！"],
+                  "at": "soldier_junior02"
+                }
+              ],
+              "style": "bubble"
+            }
+          ]
         }
       ],
       "npc": "soldier_junior02"
@@ -336,7 +804,7 @@
     {
       "commands": [
         {
-          "talk": [{ "at": "chiken1", "lines": ["コケコッコー！", "EventOps MCP の会話テストです。"], "who": "chiken" }],
+          "talk": [{ "at": "chiken1", "lines": ["コケコッコー！", "EventOps MCP の会話テストです。"], "who": "chicken" }],
           "type": "message",
           "style": "bubble"
         }

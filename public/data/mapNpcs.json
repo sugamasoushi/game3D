@@ -6,7 +6,7 @@
         "wander": {
           "range": 2
         },
-        "enemy": "enemy02"
+        "enemy": "slime"
       },
       "blackCat": {
         "wander": {
@@ -32,7 +32,7 @@
         "wander": {
           "range": 2
         },
-        "enemy": "enemy02"
+        "enemy": "slime"
       },
       "BOSS_GreatBear": {
         "showWhen": [
@@ -54,11 +54,11 @@
         "wander": {},
         "companions": [
           {
-            "enemy": "enemy01",
+            "enemy": "naga",
             "chance": 1
           }
         ],
-        "enemy": "enemy07"
+        "enemy": "sukowaimu"
       }
     },
     "forest_cave": {
@@ -66,27 +66,27 @@
         "wander": {
           "range": 2
         },
-        "enemy": "enemy02"
+        "enemy": "slime"
       },
       "kowaboa": {
         "wander": {},
         "companions": [
           {
-            "enemy": "enemy04",
+            "enemy": "kowaboa",
             "chance": 0.5
           }
         ],
-        "enemy": "enemy04"
+        "enemy": "kowaboa"
       },
       "shikadigo": {
         "wander": {},
         "companions": [
           {
-            "enemy": "enemy06",
+            "enemy": "sukerabi",
             "chance": 0.5
           }
         ],
-        "enemy": "enemy05"
+        "enemy": "shikadigo"
       }
     },
     "forest_mansion": {
@@ -100,13 +100,16 @@
         "wander": {
           "range": 2
         },
+        "enemy": "slime",
         "companions": [
           {
-            "enemy": "enemy01",
+            "enemy": "naga",
             "chance": 0.2
           }
         ],
-        "enemy": "enemy02"
+        "notice": {
+          "act": "fleeWeak"
+        }
       },
       "lamyNPC": {
         "standby": true,
@@ -116,17 +119,25 @@
       },
       "sukerabi": {
         "wander": {},
-        "enemy": "enemy06"
+        "enemy": "sukerabi",
+        "notice": {
+          "act": "fleeWeak",
+          "gap": 1
+        }
       },
       "inkoshang": {
         "wander": {},
+        "enemy": "inkoshang",
         "companions": [
           {
-            "enemy": "enemy04",
+            "enemy": "kowaboa",
             "chance": 0.8
           }
         ],
-        "enemy": "enemy08"
+        "notice": {
+          "act": "chase",
+          "after": "stay"
+        }
       }
     },
     "home": {
@@ -145,11 +156,18 @@
     "old_haulage_road": {
       "slime": {
         "wander": {},
-        "enemy": "enemy02"
+        "enemy": "slime",
+        "notice": {
+          "act": "chase"
+        }
       },
       "slime2": {
         "wander": {},
-        "enemy": "enemy02"
+        "enemy": "slime",
+        "notice": {
+          "act": "flee",
+          "after": "vanish"
+        }
       }
     },
     "rikka_village": {

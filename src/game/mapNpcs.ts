@@ -13,6 +13,7 @@ import { assetUrl } from './assets';
 import type { NpcRouteMotion } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { knownMapKeyForFile } from './mapIndex';
+import type { NoticeDef } from './symbolSense';
 
 /**
  * うろつき方（GS-48 / GS-50）。**マス単位では動かない。**
@@ -78,6 +79,11 @@ export interface MapNpcDef {
    * フィールドに出るのはシンボル 1 体だけ。イベント戦闘（`battle` 命令）には効かない。
    */
   companions?: CompanionDef[];
+  /**
+   * **敵シンボルが自分から動く**（GS-296）。`enemy` を持つ 1 体にだけ効く。主人公に気づくと追う／逃げる、
+   * 見失うと置いた場所へ帰る。書かなければ今までどおり（うろつくだけ）。数と向きは `symbolSense.ts`。
+   */
+  notice?: NoticeDef;
   /**
    * **いつも頭の上に出しているマーク**（GS-267）。感情マークの台帳（`emotes.json`）のキー。寝ている人の `sleep` など。
    * イベントのマーク・話せる合図が出ているあいだはそちらが勝つ。

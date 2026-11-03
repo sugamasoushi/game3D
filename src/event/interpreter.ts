@@ -9,7 +9,11 @@
 // 読み込んだデータが勝手なことをできない（`eval` を使わない）。
 // 逃げ道の `script` も、動かすのは**先に TS 側で登録した関数**だけ。
 
-import type { ActorRef, BlockFace, EventCommand, EventDef, IfCondition, IfWhen, PixelOffset, PlaceAt, Step, StoryIs, TalkStyle } from './types';
+import type { ActorRef, BlockFace, EventCommand, EventDef, IfCondition, IfWhen, PixelOffset, PlaceAt, QuestIs, QuestScene, Step, StoryIs, TalkLine, TalkStyle } from './types';
+
+/** 討伐依頼の場面ごとに書いた会話（書いた場面だけ）。 */
+export type QuestTalk = { [K in QuestScene]?: TalkLine };
+export const QUEST_SCENES: readonly QuestScene[] = ['offer', 'accepted', 'progress', 'report', 'reward', 'done', 'handover', 'missing'];
 
 /** 分岐・共通イベントの呼び出し元も含めて実行を終了する合図。 */
 export class ReturnToTitle extends Error {
@@ -22,7 +26,15 @@ export class ReturnToTitle extends Error {
  */
 export interface EventContext {
   /** 討伐依頼の受注・進捗・報告。会話が終わるまで待つ。 */
-  quest(id: string): Promise<void>;
+  quest(id: string, talk?: QuestTalk, mode?: 'deliver' | 'step' | 'result', value?: string): Promise<void>;
+  /** 掲示板に出す依頼の名前と今の状態（2026-11-02）。台帳に無い依頼は null。 */
+  /** `locked` は依頼レベルが足りないとき、受けられるレベル（2026-11-02）。 */
+  questInfo(id: string): { name: string; status: 'notTaken' | 'active' | 'ready' | 'done'; locked?: number } | null;
+  /** 条件「依頼」（2026-11-02。`quests.ts` の `questMeets`）。 */
+  questMeets(id: string, is: QuestIs): boolean;
+  /** 条件「依頼の段階」「依頼の結果」（2026-11-02。`questStepMeets`・`questResultIs`）。 */
+  questStepMeets(id: string, step: string, is: StoryIs): boolean;
+  questResultIs(id: string, result: string): boolean;
   returnToTitle(): Promise<void>;
   /**
    * 会話を出して、読み終わるまで待つ。`style` で吹き出しにできる（GS-23）。
@@ -157,6 +169,9 @@ export interface EventContext {
   storyMeets(step: string, is: StoryIs): boolean;
   /** 物語の段階を済ませる（GS-254）。先へ進めるだけ。 */
   storyDone(step: string): void;
+  /** サブストーリーの条件・済ませる（2026-11-02。`substories.ts`）。 */
+  substoryMeets(id: string, step: string, is: StoryIs): boolean;
+  substoryDone(id: string, step: string): void;
   /** セルフスイッチ（GS-27）。動かしているイベント自身の覚え。 */
   getSelfSwitch(key: string): boolean;
   setSelfSwitch(key: string, value: boolean): void;
@@ -441,6 +456,10 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
     ctx.storyDone(cmd.done);
   },
 
+  substory: async (ctx, cmd) => {
+    ctx.substoryDone(cmd.id, cmd.done);
+  },
+
   setSelfSwitch: async (ctx, cmd) => {
     ctx.setSelfSwitch(cmd.key, cmd.value);
   },
@@ -538,7 +557,29 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   },
 
   // 店（GS-66）。**閉じるまで待つ**ので、続きは店を出てから動く。
-  quest: async (ctx, cmd) => { await ctx.quest(cmd.id); },
+  quest: async (ctx, cmd) => {
+    const talk: QuestTalk = {};
+    for (const scene of QUEST_SCENES) if (cmd[scene]) talk[scene] = cmd[scene];
+    if (cmd.mode === 'step') await ctx.quest(cmd.id, talk, 'step', cmd.step ?? '');
+    else if (cmd.mode === 'result') await ctx.quest(cmd.id, talk, 'result', cmd.result ?? '');
+    else await ctx.quest(cmd.id, talk, cmd.mode === 'deliver' ? 'deliver' : undefined);
+  },
+
+  // 依頼の掲示板（2026-11-02）。選ぶ → 依頼の会話 → また一覧、を「やめる」まで。
+  questBoard: async (ctx, cmd) => {
+    for (;;) {
+      const rows = questBoardRows(ctx, cmd.quests);
+      if (!rows.length) {
+        const own = cmd.empty && cmd.empty.lines.some((line) => line.trim() !== '');
+        await ctx.message([own ? cmd.empty! : { lines: [QUEST_BOARD_EMPTY] }]);
+        return;
+      }
+      if (cmd.prompt) await ctx.message([cmd.prompt]);
+      const picked = await ctx.choice([...rows.map((row) => row.label), 'やめる'], rows.length);
+      if (picked < 0 || picked >= rows.length) return;
+      await ctx.quest(rows[picked].id);
+    }
+  },
 
   shop: async (ctx, cmd) => {
     await ctx.shop(cmd.items, cmd.sell !== false);
@@ -660,6 +701,27 @@ export function drawGetItem(
  * **セルフスイッチを見るときは、そのイベントを動かす前提**——
  * 呼ぶ側が「どのイベントの話か」を `ctx` に伝えてから聞く。
  */
+/** 掲示板に依頼が無いときの既定の文。 */
+export const QUEST_BOARD_EMPTY = 'いま受けられる依頼はありません。';
+/** 掲示板の行の後ろに付ける状態。受けていない依頼は名前だけ。 */
+export const QUEST_BOARD_TAG = { notTaken: '', active: '（受注中）', ready: '（報告できる）' } as const;
+/** 依頼レベルが足りない依頼の行の後ろ（選ぶと説明と「〇から受けられます」を出す）。 */
+export const QUEST_BOARD_LOCKED = '（依頼レベル {level} から）';
+
+/**
+ * 掲示板に出す行（2026-11-02）。並べた順のまま、報告済み・台帳に無い依頼は出さない。
+ * 受けていない依頼は `when` を満たすときだけ。受注中・報告待ちは条件が外れても出す（報告できなくならないように）。
+ */
+export function questBoardRows(ctx: EventContext, quests: ReadonlyArray<{ id: string; when?: IfWhen }>): Array<{ id: string; label: string }> {
+  return quests.flatMap((one) => {
+    const info = ctx.questInfo(one.id);
+    if (!info || info.status === 'done') return [];
+    if (info.status === 'notTaken' && one.when && !meets(ctx, one.when)) return [];
+    const tag = info.status === 'notTaken' && info.locked ? QUEST_BOARD_LOCKED.replace('{level}', String(info.locked)) : QUEST_BOARD_TAG[info.status];
+    return [{ id: one.id, label: `${info.name}${tag}` }];
+  });
+}
+
 /** 条件命令の 1 つの枝の条件を見る（GS-196）。並びなら**全部満たしたら当たり**（`&&`。GS-197）。 */
 export function meets(ctx: EventContext, when: IfWhen): boolean {
   if (Array.isArray(when)) return when.every((one) => meetsOne(ctx, one));
@@ -669,6 +731,12 @@ export function meets(ctx: EventContext, when: IfWhen): boolean {
 /** 条件 1 つ。 */
 function meetsOne(ctx: EventContext, when: IfCondition): boolean {
   if ('story' in when) return ctx.storyMeets(when.story, when.is);
+  if ('substory' in when) return ctx.substoryMeets(when.substory, when.step, when.is);
+  if ('quest' in when) {
+    if ('step' in when) return ctx.questStepMeets(when.quest, when.step, when.is);
+    if ('result' in when) return ctx.questResultIs(when.quest, when.result);
+    return ctx.questMeets(when.quest, when.is);
+  }
   // フラグは `is` と突き合わせる（GS-147）。省けば「立っているとき」。
   if ('switch' in when) return ctx.getSwitch(when.switch) === (when.is ?? true);
   if ('self' in when) return ctx.getSelfSwitch(when.self) === (when.is ?? true);

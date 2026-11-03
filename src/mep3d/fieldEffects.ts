@@ -522,6 +522,8 @@ export interface FieldEffects {
   presetLevels(): Map<string, FieldEffectLevel>;
   /** 毎フレーム。時間を進める。 */
   update(deltaSeconds: number): void;
+  /** 時間を合わせる（秒）。技の絵（SampleGame GS-297）は借りるたびに 0 から流す。 */
+  setClock(seconds: number): void;
   dispose(): void;
 }
 
@@ -2026,6 +2028,15 @@ export function createFieldEffects(): FieldEffects {
         }
         dissolve.update(regions, reflectSources, group, clock);
       }
+      for (const slice of slices) {
+        slice.mesh.material.uniforms.time.value = clock;
+        updateFlash(slice.mesh.material);
+        updateLightning(slice);
+      }
+    },
+
+    setClock(seconds) {
+      clock = Math.max(0, seconds);
       for (const slice of slices) {
         slice.mesh.material.uniforms.time.value = clock;
         updateFlash(slice.mesh.material);

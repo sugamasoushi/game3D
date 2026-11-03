@@ -38,6 +38,14 @@
       "ms": 301,
       "se": "剣の素振り3",
       "name": "斬撃（小）"
+    },
+    "field_effect": {
+      "name": "爆発",
+      "field": {
+        "kind": "explosion"
+      },
+      "size": 3,
+      "ms": 1500
     }
   }
 }

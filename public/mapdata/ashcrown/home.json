@@ -5053,7 +5053,7 @@
             {
               "name": "Character",
               "type": "string",
-              "value": "grandpaNpc"
+              "value": "grandpa_npc"
             },
             {
               "name": "Id",
@@ -5081,7 +5081,7 @@
             {
               "name": "Character",
               "type": "string",
-              "value": "lamyNPC"
+              "value": "lamy_npc"
             },
             {
               "name": "Id",

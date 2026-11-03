@@ -3,7 +3,7 @@
 // **実行機はここに在るものしか動かせない。** だから「まだ無い機能」は
 // 黙って無視せず、印を出して分かるようにしておく（`todo()`）。
 
-import { loadQuestBook, talkQuest } from './quests';
+import { loadQuestBook, questBook, questLocked, questMeets, questNeed, questResultIs, questStatus, questStepMeets, talkQuest } from './quests';
 import { enemyDef } from './battle/book';
 import { timeSettings } from './timeClock';
 import type { EventContext } from '../event/interpreter';
@@ -28,6 +28,7 @@ import { PLAYER_CHARACTER, type CharacterBook } from './characters';
 import { talkAnchor } from './talkAnchor';
 import { CLEAR_SWITCH, markCleared } from './omake';
 import { advanceStory, storyMeets, storyOrder } from './story';
+import { advanceSubstory, substoryMeets } from './substories';
 
 /** 立ち絵の置き場所（GS-20）。絵は `assets/img/CharaStand/<名前>.png`。 */
 const STAND_DIR = 'assets/img/CharaStand';
@@ -735,6 +736,12 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       options.state.story = advanceStory(storyOrder(), options.state.story, step);
       options.onSwitch?.();
     },
+    // サブストーリー（2026-11-02）。台帳は本筋と一緒に遊ぶ前に読んである（`loadSubstoryBook`）。
+    substoryMeets: (id, step, is) => substoryMeets(options.state.substories, id, step, is),
+    substoryDone: (id, step) => {
+      advanceSubstory(options.state.substories, id, step);
+      options.onSwitch?.();
+    },
     // セルフスイッチは**そのイベントの覚え**（GS-27）。宛先が無いときは false のまま。
     getSelfSwitch: (key) =>
       selfScope() ? (options.state.self.get(selfKey(sceneMap, selfScope(), key)) ?? false) : false,
@@ -827,13 +834,30 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     },
 
     /** 店（GS-66）。閉じるまで返らない。 */
-    quest: async (id) => {
+    quest: async (id, talk, mode, value) => {
       try { await loadQuestBook(); } catch {
         await ctx.message([{ lines: ['依頼の台帳を読み込めません。もう一度話しかけてください。'] }]);
         return;
       }
-      await talkQuest(options.state, id, { message: (...args) => ctx.message(...args), choice: (...args) => ctx.choice(...args), enemyName: (enemy) => enemyDef(enemy)?.name ?? enemy });
+      await talkQuest(options.state, id, {
+        message: (...args) => ctx.message(...args),
+        choice: (...args) => ctx.choice(...args),
+        enemyName: (enemy) => enemyDef(enemy)?.name ?? enemy,
+        itemName,
+      }, undefined, talk, mode, value);
+      // 受注・配達・報告で条件「依頼」が変わる（NPC の出現条件を見直す）。
+      options.onSwitch?.();
     },
+    // 掲示板の行（2026-11-02）。台帳は遊ぶ前に読んである（`loadQuestBook`）。
+    questInfo: (id) => {
+      const def = Object.hasOwn(questBook().quests, id) ? questBook().quests[id] : undefined;
+      if (!def) return null;
+      return { name: def.name, status: questStatus(options.state, id), ...(questLocked(options.state, id) ? { locked: questNeed(def) } : {}) };
+    },
+    // 依頼の条件（2026-11-02）。台帳は遊ぶ前に読んである（`loadQuestBook`）。
+    questMeets: (id, is) => questMeets(options.state, id, is),
+    questStepMeets: (id, step, is) => questStepMeets(options.state, id, step, is),
+    questResultIs: (id, result) => questResultIs(options.state, id, result),
     shop: (items, sell) => options.shop(items, sell),
 
     /** 宿の窓（GS-290）。閉じるまで返らない。 */

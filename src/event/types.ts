@@ -41,6 +41,15 @@ export interface TalkLine {
   lines: string[];
 }
 
+/** 依頼の会話の場面（`quest` 命令で書ける文）。`handover`・`missing` は配達の届け先（`mode: 'deliver'`）だけ。 */
+export type QuestScene = 'offer' | 'accepted' | 'progress' | 'report' | 'reward' | 'done' | 'handover' | 'missing';
+
+/**
+ * 依頼の条件の見方（2026-11-02）。受けていない／受注中・未達成／達成・報告待ち／報告済み、
+ * `taken` は受注中（未達成と報告待ちのどちらも）。
+ */
+export type QuestIs = 'notTaken' | 'taken' | 'active' | 'ready' | 'done';
+
 /**
  * 会話の見せ方（GS-23）。
  * `window` は下の会話ウィンドウ（イベント向け。立ち絵と一緒に使う）。
@@ -51,10 +60,18 @@ export type TalkStyle = 'window' | 'bubble';
 /** 物語の段階の条件の見方（GS-254）。`next` は次に起きるのがこの段階、`done` は済んだ、`notDone` はまだ。 */
 export type StoryIs = 'next' | 'done' | 'notDone';
 
-/** 条件命令（`if`）の条件 1 つ。物語の段階／フラグ／セルフフラグ／変数／持ち物／所持金／時間帯のどれか。 */
+/** 条件命令（`if`）の条件 1 つ。物語の段階／サブストーリー／依頼／フラグ／セルフフラグ／変数／持ち物／所持金／時間帯のどれか。 */
 export type IfCondition =
   /** 物語の段階（GS-254。台帳 `data/story.json`）。 */
   | { story: string; is: StoryIs }
+  /** サブストーリーの段階（2026-11-02。台帳 `data/substories.json`）。見方は本筋と同じ。 */
+  | { substory: string; step: string; is: StoryIs }
+  /** 依頼（2026-11-02。台帳 `data/quests.json`）。収集の「報告待ち」は今の持ち物で見る。 */
+  | { quest: string; is: QuestIs }
+  /** 探索の依頼の段階。見方は本筋と同じ。受けていない依頼は「まだ」だけ当たる。 */
+  | { quest: string; step: string; is: StoryIs }
+  /** 選択の依頼の結果。決めた結果がこれか。 */
+  | { quest: string; result: string }
   // フラグ（GS-254 から**書いていなければ false**）。`is` を省くと「立っているとき」。
   | { switch: string; is?: boolean }
   | { self: string; is?: boolean }
@@ -318,6 +335,8 @@ export type EventCommand =
   | { type: 'setSwitch'; key: string; value: boolean }
   /** 物語の段階を済ませる（GS-254）。**先へ進めるだけ**——済んだ段階より前なら何もしない。 */
   | { type: 'story'; done: string }
+  /** サブストーリーの段階を済ませる（2026-11-02）。本筋の `story` と同じく先へ進めるだけ。最初の段階を済ませたら一覧に出る。 */
+  | { type: 'substory'; id: string; done: string }
   /** 変数（数値）。`op` 省略は代入。 */
   | { type: 'setVariable'; key: string; value: number; op?: 'set' | 'add' | 'sub' }
   /**
@@ -471,7 +490,44 @@ export type EventCommand =
    * 店（GS-66）。`items` は並べる物（`items.json` のキー）。**値段は台帳**が持つ。
    * `sell` を false にすると買い取らない店になる。閉じるまで次の命令へ進まない。
    */
-  | { type: 'quest'; id: string }
+  /**
+   * 討伐依頼。場面ごとの会話（`offer` 受注の説明／`accepted` 受注した後／`progress` 受注中／
+   * `report` 報告の確認／`reward` 報酬を受け取った後／`done` 報告済み）は書いた所だけ差し替え、
+   * 書かない（か行が全部空の）場面は既定の文。文の中の {name} {text} {client} {enemy} {count} {now} {gold} は依頼の値に置き換える。
+   */
+  /**
+   * 依頼。未受注なら受注の確認、受注中なら進捗、達成後なら報告と報酬。
+   * `mode: 'deliver'` は配達の届け先で、受注中・未配達なら品を渡す（`handover`）、足りなければ `missing`、ほかは何もしない。
+   * `mode: 'step'` は探索の段階 `step` を済ませる、`mode: 'result'` は選択の結果 `result` を決める（黙って記録だけ。会話はイベントに書く）。
+   */
+  | {
+      type: 'quest';
+      id: string;
+      mode?: 'deliver' | 'step' | 'result';
+      step?: string;
+      result?: string;
+      offer?: TalkLine;
+      accepted?: TalkLine;
+      progress?: TalkLine;
+      report?: TalkLine;
+      reward?: TalkLine;
+      done?: TalkLine;
+      handover?: TalkLine;
+      missing?: TalkLine;
+    }
+  /**
+   * 依頼の掲示板（2026-11-02。宿屋などで受ける依頼）。並べた依頼から、報告済みでない物を選択肢で出し、
+   * 選んだ依頼は `quest` 命令と同じ会話（受注・進捗・報告。文は既定）。「やめる」まで繰り返す。
+   * 受けていない依頼は `when` を満たすときだけ出す（受注中・報告待ちは条件に関わらず出す）。
+   */
+  | {
+      type: 'questBoard';
+      quests: Array<{ id: string; when?: IfWhen }>;
+      /** 一覧の前に出す会話。書かなければ出さない。 */
+      prompt?: TalkLine;
+      /** 出す依頼が 1 つも無いときの会話。書かなければ「いま受けられる依頼はありません。」。 */
+      empty?: TalkLine;
+    }
   | { type: 'shop'; items: string[]; sell?: boolean }
   /**
    * 宿屋（GS-290）。宿の窓（値段・所持金・仲間の様子）を出し、「泊まる」「やめる」を選ばせる。

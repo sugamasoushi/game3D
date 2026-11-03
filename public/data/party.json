@@ -12,15 +12,15 @@
       "guard": 10,
       "speed": 10,
       "skills": [
-        "special01",
-        "special02",
-        "magic01",
-        "magic04",
-        "special03"
+        "guard",
+        "dodge",
+        "fireball",
+        "heal",
+        "throw_stone"
       ],
       "equip": {
-        "armor": "マント",
-        "weapon": "短剣"
+        "armor": "cloak",
+        "weapon": "dagger"
       },
       "growth": {
         "hp": 8,
@@ -31,10 +31,10 @@
       },
       "learn": {
         "3": [
-          "special08"
+          "cover"
         ],
         "7": [
-          "magic03"
+          "ice_chunk"
         ]
       }
     },
@@ -46,7 +46,7 @@
       "guard": 8,
       "speed": 6,
       "skills": [
-        "special01"
+        "guard"
       ],
       "growth": {
         "hp": 9,
@@ -64,11 +64,11 @@
       "guard": 3,
       "speed": 12,
       "skills": [
-        "magic02",
-        "special03"
+        "wind_blade",
+        "throw_stone"
       ],
       "equip": {
-        "weapon": "木のぼう"
+        "weapon": "wooden_stick"
       },
       "growth": {
         "hp": 6,
@@ -79,13 +79,13 @@
       },
       "learn": {
         "4": [
-          "magic03"
+          "ice_chunk"
         ],
         "6": [
-          "magic01"
+          "fireball"
         ]
       },
-      "fieldAttack": "magic02"
+      "fieldAttack": "wind_blade"
     }
   },
   "levelUp": {

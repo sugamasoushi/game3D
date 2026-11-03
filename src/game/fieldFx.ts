@@ -11,6 +11,10 @@
 // 置き場所から**カメラの方へ少し寄せる**（`TOWARD_CAMERA`）。狙った相手の板に半分埋もれないように。手前に別の物があれば隠れる。
 // コマのめくり方・大きさの変化は `effects.json` の行（`fieldFxFrame`）。
 // 戦闘の攻撃の絵もこれを使う（2026-10-31。それまで戦闘は DOM の重ね絵でいつも手前に出ていた）。
+//
+// フィールドエフェクトの技の絵（GS-297。爆発・光の柱など）も同じ口で出す。マップと同じ描き方（`createFieldEffects`）を
+// 1 つ借りて相手の所へ置き、時間 0 から流す（置き場所の箱は `skillFieldFx.ts`）。大きさはいつもマス × `CharacterScale`
+// （戦闘の `pixel` は使わない。戦闘のマスはフィールドのマス × `CharacterScale` なので、舞台の上でも同じ割合になる）。
 
 import {
   BufferAttribute,
@@ -27,7 +31,9 @@ import {
   type Texture,
 } from 'three';
 import { sheetUrl } from './spriteSheets';
-import type { EffectDef } from './battle/book';
+import { isFieldEffect, type EffectDef, type FieldEffectEntry, type SpriteEffectDef } from './battle/book';
+import { createFieldEffects, type FieldEffects } from '../mep3d/fieldEffects';
+import { skillFieldVolume, skillFieldWeight } from './skillFieldFx';
 
 /** キャラより後に描く（深度は見るので、手前の物には隠れる）。 */
 const FX_RENDER_ORDER = 8000;
@@ -55,6 +61,13 @@ export interface FieldFxOptions {
   scale?: number;
   /** 画面の上で絵の画素どおりの大きさにする（戦闘）。そのときのカメラを渡す。 */
   pixel?: Camera;
+  /** 足元の高さ（マス）。フィールドエフェクトの柱・炎などを床から立てるのに使う（GS-297）。無ければ `at` の高さ。 */
+  foot?: number;
+  /**
+   * フィールドエフェクトを描く順（GS-298）。戦闘では出すマスの列から決める（`skillFieldOrder`）——舞台の板は深度を書かないので、
+   * 順番が板より前だと板に塗りつぶされて後ろに出たように見える。無ければコマ絵と同じ（キャラより後）。
+   */
+  order?: number;
   /**
    * 描く層（three.js の `layers`）。戦闘では舞台の板と同じ「ぼかさない層」にする——板はチルトシフトのぼかしの後に
    * 描くので、ほかの層に置くと板に塗りつぶされる（板どうしの前後は深度で決まる）。
@@ -63,7 +76,7 @@ export interface FieldFxOptions {
 }
 
 /** コマの番号と大きさの倍率（`t` は出してからのミリ秒）。前の戦闘の DOM の絵（`EffectSprite`）と同じ決め方。 */
-export function fieldFxFrame(def: Pick<EffectDef, 'frames' | 'fps' | 'scale' | 'scaleMs' | 'yoyo'>, t: number): { frame: number; scale: number } {
+export function fieldFxFrame(def: Pick<SpriteEffectDef, 'frames' | 'fps' | 'scale' | 'scaleMs' | 'yoyo'>, t: number): { frame: number; scale: number } {
   const [first, last] = def.frames;
   const count = Math.max(1, last - first + 1);
   const frame = first + (Math.floor((Math.max(0, t) * def.fps) / 1000) % count);
@@ -79,7 +92,7 @@ export function fieldFxFrame(def: Pick<EffectDef, 'frames' | 'fps' | 'scale' | '
 
 interface Fx {
   mesh: Mesh;
-  def: EffectDef;
+  def: SpriteEffectDef;
   /** 出してからのミリ秒。 */
   t: number;
   /** 長さで消さない（飛ぶ物。呼ぶ側が `end` で消す）。 */
@@ -91,7 +104,7 @@ interface Fx {
 }
 
 export interface FieldFx {
-  /** 絵を 1 つ出す。`at` はマス（小数。絵の真ん中）。返すのは番号。 */
+  /** 絵を 1 つ出す。`at` はマス（小数。絵の真ん中）。返すのは番号（コマ絵とフィールドエフェクトで通し番号）。 */
   play(def: EffectDef, at: { x: number; y: number; z: number }, options?: FieldFxOptions): number;
   /** 出している絵を動かす（飛ぶ物）。 */
   move(id: number, at: { x: number; y: number; z: number }): void;
@@ -116,6 +129,52 @@ export function createFieldFx(options: {
   const materials = new Map<string, MeshBasicMaterial>();
   const list = new Map<number, Fx>();
   let next = 1;
+
+  /** フィールドエフェクトの技の絵（GS-297）。出している物と、返された物（使い回す。シェーダと材質を作り直さない）。 */
+  interface Burst {
+    effects: FieldEffects;
+    def: FieldEffectEntry;
+    t: number;
+    hold: boolean;
+    /** 出した所（ワールド）。動かすときは入れ物ごとずらす（板を組み直さない）。 */
+    base: Vector3;
+  }
+  const bursts = new Map<number, Burst>();
+  const idle: FieldEffects[] = [];
+  const weightKey = 'skill-fx';
+  const playBurst = (def: FieldEffectEntry, at: { x: number; y: number; z: number }, how: FieldFxOptions): number => {
+    const grow = (options.scale() || 1) * (how.scale && how.scale > 0 ? how.scale : 1);
+    const volume = skillFieldVolume(def, { at, foot: how.foot ?? at.y }, grow);
+    if (!volume) return 0;
+    const unit = options.unit();
+    const effects = idle.pop() ?? createFieldEffects();
+    effects.setVolumes([volume], unit);
+    effects.setClock(0);
+    effects.setPresetWeights(new Map([[weightKey, 1]]));
+    effects.setVisible(true);
+    effects.group.position.set(0, 0, 0);
+    const order = how.order ?? FX_RENDER_ORDER;
+    // 入れ物（Group）の順は 0 のまま。three は Group の順を先に比べるので、ここへ入れると板の順と比べられなくなる。
+    effects.group.renderOrder = 0;
+    effects.group.traverse((child) => {
+      if (how.layer !== undefined) child.layers.set(how.layer);
+      else child.layers.set(0);
+      // 板ごとの並び（元の 8 + i）は小さな差として残す。
+      if (child !== effects.group) child.renderOrder = order + child.renderOrder * 0.001;
+    });
+    options.parent.add(effects.group);
+    const id = next++;
+    bursts.set(id, { effects, def, t: 0, hold: how.hold === true, base: new Vector3(at.x * unit, at.y * unit, at.z * unit) });
+    return id;
+  };
+  const endBurst = (id: number) => {
+    const burst = bursts.get(id);
+    if (!burst) return;
+    burst.effects.group.removeFromParent();
+    burst.effects.setVolumes([], options.unit());
+    idle.push(burst.effects);
+    bursts.delete(id);
+  };
 
   const materialOf = (image: string): MeshBasicMaterial => {
     let material = materials.get(image);
@@ -169,6 +228,10 @@ export function createFieldFx(options: {
   };
 
   const end = (id: number) => {
+    if (bursts.has(id)) {
+      endBurst(id);
+      return;
+    }
     const fx = list.get(id);
     if (!fx) return;
     fx.mesh.removeFromParent();
@@ -178,6 +241,7 @@ export function createFieldFx(options: {
 
   return {
     play(def, at, how = {}) {
+      if (isFieldEffect(def)) return playBurst(def, at, how);
       const mesh = new Mesh(new PlaneGeometry(1, 1), materialOf(def.image));
       mesh.renderOrder = FX_RENDER_ORDER;
       mesh.frustumCulled = false;
@@ -196,12 +260,19 @@ export function createFieldFx(options: {
       return id;
     },
     move(id, at) {
+      const burst = bursts.get(id);
+      if (burst) {
+        const unit = options.unit();
+        burst.effects.group.position.set(at.x * unit - burst.base.x, at.y * unit - burst.base.y, at.z * unit - burst.base.z);
+        return;
+      }
       const fx = list.get(id);
       if (fx) place(fx, at);
     },
     end,
     clear() {
       for (const id of [...list.keys()]) end(id);
+      for (const id of [...bursts.keys()]) endBurst(id);
     },
     update(dt, camera) {
       const eye = camera.getWorldPosition(new Vector3());
@@ -218,9 +289,20 @@ export function createFieldFx(options: {
         fx.mesh.position.copy(fx.base).addScaledVector(toCamera.normalize(), Math.min(toward, far * 0.5));
         draw(fx);
       }
+      for (const [id, burst] of [...bursts]) {
+        burst.t += dt * 1000;
+        if (!burst.hold && burst.t >= burst.def.ms) {
+          endBurst(id);
+          continue;
+        }
+        burst.effects.setPresetWeights(new Map([[weightKey, burst.hold ? 1 : skillFieldWeight(burst.t, burst.def.ms)]]));
+        burst.effects.update(dt);
+      }
     },
     dispose() {
       this.clear();
+      for (const effects of idle) effects.dispose();
+      idle.length = 0;
       for (const material of materials.values()) material.dispose();
       for (const texture of textures.values()) texture.dispose();
       materials.clear();

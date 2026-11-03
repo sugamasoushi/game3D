@@ -13,6 +13,7 @@ import { assetUrl } from '../assets';
 import { loadSpriteSheets, sheetUrl, spriteSheet, type SpriteSheetDef } from '../spriteSheets';
 import type { SkillDef, Stats } from './rules';
 import { applyBattleSettings } from './settings';
+import type { SkillFieldFrom, SkillFieldKind } from './skillFieldLimits';
 
 /** 敵の絵の置き場所（2026-10-27）。人の立ち絵（`CharaStand`）とは棚を分けた。 */
 const ENEMY_DIR = 'assets/img/Enemy';
@@ -127,10 +128,76 @@ export interface BattleFormationDef {
 export type EffectImageDef = SpriteSheetDef;
 
 /**
- * 攻撃の絵 1 つぶん（`data/effects.json` の 1 行。GS-83）。**コマを並べた 1 枚絵**をめくる。
- * コマ割り（幅・高さ・1 行のコマ数・fps）は画像の台帳が持つ（GS-114）。戦闘演出エディタが編集する。
+ * 攻撃の絵 1 つぶん（`data/effects.json` の 1 行。GS-83）。形は 2 つ（GS-297）:
+ * - コマ絵（`SpriteEffectEntry`）: **コマを並べた 1 枚絵**をめくる。
+ * - フィールドエフェクト（`FieldEffectEntry`）: マップのフィールドエフェクト（爆発・光の柱など）を相手の所へ 1 回出す。
+ * どちらも戦闘演出エディタが編集する。見分けは `field` があるか（`isFieldEffect`）。
  */
-export interface EffectEntry {
+export type EffectEntry = SpriteEffectEntry | FieldEffectEntry;
+
+/**
+ * 技に使えるフィールドエフェクトの種類と値の範囲は `skillFieldLimits.ts`（GS-297）。
+ * 描き方はマップと同じ（`mep3d/fieldEffects.ts`）。
+ */
+export { SKILL_FIELD_KINDS, type SkillFieldKind } from './skillFieldLimits';
+
+/**
+ * フィールドエフェクトの見た目（GS-297）。値の名前と意味はマップのプリセット（`FieldEffectPresetDef`）と同じ。
+ * 書かない値は種類の既定。`thick` は高さ（マス。爆発は使わない）、`lift` は置く高さのずらし（マス）。
+ */
+export interface SkillFieldLook {
+  kind: SkillFieldKind;
+  color?: string;
+  amount?: number;
+  speed?: number;
+  scale?: number;
+  thick?: number;
+  lift?: number;
+  ringBlur?: number;
+  richness?: number;
+  lightningCount?: number;
+  lightningWidth?: number;
+  lightningGap?: number;
+}
+
+/** フィールドエフェクトの技の絵（GS-297）。相手の所へ、出した時から流す（くり返す種類も時間 0 から）。 */
+export interface FieldEffectEntry {
+  /** 台帳を読む人向けの名前。画面には出さない。 */
+  name?: string;
+  field: SkillFieldLook;
+  /** 幅（マス × マップの `CharacterScale`）。爆発は球の直径、柱・炎は太さ、衝撃波は輪の広がり、雷とフラッシュは範囲の幅。 */
+  size: number;
+  /** 出すマス（GS-298）。書かなければ相手の立つマス。 */
+  cell?: SkillFieldCell;
+  /** 出しておく時間（ミリ秒）。終わりぎわに薄くして消す。 */
+  ms: number;
+  /** 出したときに鳴らす音（`sounds.json` のキー）。 */
+  se?: string;
+}
+
+/**
+ * 出すマス（GS-298）。`from` の所から、戦闘のマスで横 `col`（右が正）・奥行き `row`（手前が正）ずらす。
+ * - `target`（既定）: 相手の立つマス
+ * - `side`: 相手の陣の真ん中（倒れていない人のマスの平均）
+ * - `stage`: 舞台の点（マス 0,0）。`col` / `row` がそのまま戦闘のマスの番号になる
+ * フィールドアタックには戦闘のマスが無いので、いつも相手の所から（横は右、奥行きはカメラの方が正。CharacterScale を掛ける）。
+ */
+export interface SkillFieldCell {
+  from?: SkillFieldFrom;
+  col?: number;
+  row?: number;
+}
+
+/** フィールドエフェクトの行か（GS-297）。 */
+export function isFieldEffect(def: EffectEntry | EffectDef): def is FieldEffectEntry {
+  return typeof (def as FieldEffectEntry).field === 'object' && (def as FieldEffectEntry).field !== null;
+}
+
+/**
+ * コマ絵の技の絵（GS-83）。**コマを並べた 1 枚絵**をめくる。
+ * コマ割り（幅・高さ・1 行のコマ数・fps）は画像の台帳が持つ（GS-114）。
+ */
+export interface SpriteEffectEntry {
   /** 台帳を読む人向けの名前。画面には出さない。 */
   name?: string;
   /** `assets/spritesheet/` の中のファイル名。コマの区切りは `spriteSheets.json` のこの名前の行（GS-121）。 */
@@ -152,7 +219,9 @@ export interface EffectEntry {
 }
 
 /** 描くときの形。演出の行に、その画像のコマ割りを重ねた物（GS-114）。値は旧作の `NormalAttack` / `MagicFrame` / `WindCutter` と同じ。 */
-export type EffectDef = EffectEntry & EffectImageDef;
+export type EffectDef = SpriteEffectDef | FieldEffectEntry;
+/** コマ絵を描く形（区切りを重ねた物）。 */
+export type SpriteEffectDef = SpriteEffectEntry & EffectImageDef;
 
 /** レベル上げの決まり（GS-63）。次のレベルに要る経験 = `base × レベル ^ rate`。 */
 export interface LevelUpDef {
@@ -266,6 +335,11 @@ export function startingParty(): string[] {
   return party.slice();
 }
 
+/** 仲間の台帳の人（`members` の並び）。デバッグの戦闘が足りない仲間をこの順に足す。 */
+export function memberIds(): string[] {
+  return Object.keys(members);
+}
+
 /** 一覧（id と名前）。道具やイベントエディタに渡す用。 */
 export function enemyList(): Array<{ id: string; name: string }> {
   return Object.entries(enemies).map(([id, entry]) => ({ id, name: entry.name ?? id }));
@@ -334,6 +408,8 @@ export function previewFormations(next: unknown): void {
 export function effectDef(key: string): EffectDef | null {
   const entry = effects[key];
   if (!entry) return null;
+  // フィールドエフェクトは画像を使わない（GS-297）。
+  if (isFieldEffect(entry)) return entry;
   // 区切りは画像の台帳から（GS-121）。**区切りが無い画像は描かない**——幅も高さも分からない。
   const cut = spriteSheet(entry.image);
   if (!cut) {
@@ -348,9 +424,9 @@ export function effectList(): EffectEntry[] {
   return Object.values(effects);
 }
 
-/** 攻撃の絵の URL。置き場はスプライトシートの棚 1 か所（GS-121）。 */
-export function effectImage(def: Pick<EffectEntry, 'image'>): string {
-  return sheetUrl(def.image);
+/** 攻撃の絵の URL。置き場はスプライトシートの棚 1 か所（GS-121）。フィールドエフェクトは画像が無いので null（GS-297）。 */
+export function effectImage(def: EffectEntry | EffectDef): string | null {
+  return isFieldEffect(def) ? null : sheetUrl(def.image);
 }
 
 /** 戦闘演出エディタの未保存の下書き（GS-105）。開発用プレビューからだけ渡す。読み直すと台帳へ戻る。 */

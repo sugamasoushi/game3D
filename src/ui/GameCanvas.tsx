@@ -10,7 +10,7 @@ import { START_MAP_ID, assetUrl, mapUrl } from '../game/assets';
 import { mapEntryOf, entryForFile, knownMapLabel, knownSaveMapId, loadMapIndex, mapLabel } from '../game/mapIndex';
 import { loadFileIndex } from '../game/fileIndex';
 import { loadCommonBook } from '../game/commons';
-import { loadQuestBook } from '../game/quests';
+import { loadQuestBook, questMeets, questResultIs, questStepMeets } from '../game/quests';
 import { loadItemBook } from '../game/items';
 import { character, characterBattleImage, characterIds, characterName, characterStand, loadCharacterBook } from '../game/characters';
 import { loadIllustrations } from '../game/illustrations';
@@ -26,7 +26,8 @@ import { debugToolsShown, loadDevOptions } from '../game/devMode';
 import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
 import { GameOver, type BattleOutcome } from '../game/battle/flow';
 import { createWalkAilments } from '../game/battle/walkAilment';
-import { ailmentDef } from '../game/battle/book';
+import { ailmentDef, enemyDef, enemyList, memberIds } from '../game/battle/book';
+import { touchedFromBehind } from '../game/symbolSense';
 import { equipItem, memberStats, unequipItem } from '../game/battle/party';
 import { applyUse, healLine, wouldHelp } from '../game/battle/heal';
 import { itemList, itemName, itemPrice, itemSellPrice, itemUse } from '../game/items';
@@ -59,6 +60,8 @@ import { TitleScreen } from './TitleScreen';
 import { PwaInstall } from './PwaInstall';
 import { fromSave, newState, resetState, restoreState, selfKey, spendItem, switchOn, toSave, type GameState } from '../game/state';
 import { loadStoryBook, storyMeets, storyOrder } from '../game/story';
+import { loadSubstoryBook, substoryMeets } from '../game/substories';
+import { createAutoEventGate } from '../game/autoEvents';
 import { advanceClock, loadTimeSettings, timeSettings } from '../game/timeClock';
 import { installFullscreenShortcut, isFullscreen, onFullscreenChange } from '../game/fullscreen';
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
@@ -95,15 +98,15 @@ const painted = () =>
 const WALK_NOTE_MS = 2200;
 /** 戦いの曲（GS-62）。`data/sounds.json` のキー。 */
 // 戦闘の曲は戦闘共通の台帳（`battleSettings.json`。GS-106）が持つ。
-/** デバッグの戦闘（GS-91）。味方が選択人数に足りなければこの順に足す。敵は 3 体。 */
-const DEBUG_PARTY = ['meina', 'lamy', 'grandpa'];
+// デバッグの戦闘（GS-91）。味方が選択人数に足りなければ仲間の台帳の並び順に足す。敵は台帳の先頭から 3 体。
+// キーをコードに書かない（2026-11-02。台帳エディタでキーを変えても壊れないように）。
+const DEBUG_ENEMY_COUNT = 3;
 /** デバッグの「アイテム」（GS-210）で 1 回に足す数。台帳の持ち物それぞれに。 */
 const DEBUG_ITEM_COUNT = 2;
 /** デバッグの「アイテム」で所持金をこの額にする（足すのではなく置き換える）。 */
 const DEBUG_GOLD = 999999;
 /** 開発用の時間帯ボタンの名前（GS-224）。ここに無い id（足したプリセット）はそのまま出す。 */
 const DEBUG_TIME_LABELS: Record<string, string> = { '': '基準', morning: '朝', day: '昼', evening: '夕', night: '夜' };
-const DEBUG_ENEMIES = ['enemy02', 'enemy00', 'enemy01'];
 /** ゲームオーバーで黒くなるまで（ミリ秒）。**ゆっくり**——負けたことを飲み込む間を置く。 */
 const GAME_OVER_FADE_MS = 1600;
 /** 遊んだ秒を数える間隔（ミリ秒）。 */
@@ -221,6 +224,12 @@ export default function GameCanvas() {
    */
   const autoPendingRef = useRef(false);
   const autoSaveRef = useRef<() => void>(() => {});
+  /**
+   * マップに入ったら動くイベント（`auto`）の札（2026-11-02。`autoEvents.ts`）。入口の暗転やイベントの `transfer` の
+   * 最中は手がふさがっているので、入ったところでは札だけ立て、手が空いてから見張り（`WATCH_MS`）が動かす。
+   */
+  const autoEventGateRef = useRef(createAutoEventGate());
+  const runAutoEventsRef = useRef<() => void>(() => {});
 
   /**
    * 戦闘（GS-60）。**始めた人へ結果を返す**ための約束を握っておく。
@@ -321,7 +330,7 @@ export default function GameCanvas() {
    * 終わったら**記録を戦う前へ戻す**——試しの戦いで仲間・経験・持ち物・お金が変わると、
    * 遊びの確認がずれる。**入れ物は差し替えず中身を戻す**（イベントの道具立てが同じ入れ物を握っている）。
    */
-  const debugBattle = useCallback(async (enemies = DEBUG_ENEMIES) => {
+  const debugBattle = useCallback(async (enemies = enemyList().slice(0, DEBUG_ENEMY_COUNT).map((one) => one.id)) => {
     const state = stateRef.current;
     const saved = {
       party: [...state.party],
@@ -519,7 +528,7 @@ export default function GameCanvas() {
   /** マップを組む前に呼ぶ（GS-195）。 */
   const readEventsAhead = async (file: string) => {
     // 物語の段階の台帳（GS-254）も一緒に。条件は同期で見るので、マップのイベントより先に読んでおく（2 回目からは読まない）。
-    const [events] = await Promise.all([fetchEvents(file), loadStoryBook()]);
+    const [events] = await Promise.all([fetchEvents(file), loadStoryBook(), loadSubstoryBook()]);
     eventBookRef.current = { file, events };
   };
   /**
@@ -550,6 +559,12 @@ export default function GameCanvas() {
     const state = stateRef.current;
     return when.every((one) => {
       if ('story' in one) return storyMeets(storyOrder(), state.story, one.story, one.is);
+      if ('substory' in one) return substoryMeets(state.substories, one.substory, one.step, one.is);
+      if ('quest' in one) {
+        if ('step' in one) return questStepMeets(state, one.quest, one.step, one.is);
+        if ('result' in one) return questResultIs(state, one.quest, one.result);
+        return questMeets(state, one.quest, one.is);
+      }
       if ('switch' in one) return switchOn(state, one.switch) === (one.is ?? true);
       if ('self' in one) return (state.self.get(selfKey(mapKey(mapRef.current), `@${owner}`, one.self)) ?? false) === (one.is ?? true);
       if ('item' in one) return (state.items.get(one.item) ?? 0) >= (one.count ?? 1);
@@ -870,17 +885,31 @@ export default function GameCanvas() {
       walkAilmentsRef.current.reset();
 
       // マップに入ったら動くもの（`auto`）。条件を満たすものだけ。
+      // **手が空くまで待つ**（2026-11-02）。入口の暗転・イベントの `transfer` の最中は `play` が黙って断るので、
+      // ここでは札を立てて、空いていればすぐ、ふさがっていれば見張りが空いたところで動かす。
       const bridge = bridgeRef.current;
       if (!bridge) return;
-      for (const event of eventsRef.current.values()) {
-        if (event.trigger !== 'auto' || !runnableRef.current(event)) continue;
-        await play(event);
-      }
+      autoEventGateRef.current.arm();
+      runAutoEventsRef.current();
       checkParallelRef.current();
     },
     [play],
   );
   adoptRef.current = adopt;
+  /** 札が立っていて手が空いていれば、いまのマップの auto を上から順に動かす（条件を満たすものだけ）。 */
+  runAutoEventsRef.current = () => {
+    const ui = useUi.getState();
+    if (!autoEventGateRef.current.take(!ui.busy && ui.phase === 'play')) return;
+    void (async () => {
+      const file = mapRef.current;
+      for (const event of eventsRef.current.values()) {
+        // 動かしているあいだにマップを移ったら、残りは移った先の札に任せる。
+        if (mapRef.current !== file) return;
+        if (event.trigger !== 'auto' || !runnableRef.current(event)) continue;
+        await play(event);
+      }
+    })();
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -898,6 +927,18 @@ export default function GameCanvas() {
       party: () => stateRef.current.party,
       switchOn: (key, owner) => switchOnRef.current(key, owner),
       npcMeets: (when, owner) => npcMeetsRef.current(when, owner),
+      // 敵シンボルの「格下なら逃げる」（GS-296）。仲間の最高レベル − 敵のレベル。
+      levelGap: (enemy) => {
+        const foe = enemyDef(enemy);
+        const state = stateRef.current;
+        const top = Math.max(0, ...state.party.map((who) => state.members.get(who)?.level ?? 0));
+        return foe && top > 0 ? top - (foe.level ?? 1) : null;
+      },
+      // 見失って消える敵シンボル（GS-296）。触れても戦わないように外す（入り直せば戻る）。
+      symbolLeft: (id) => {
+        symbolsRef.current.delete(id);
+        fieldAttack.wounds.current.delete(id);
+      },
       // マップに入るたびに戻るイベント（GS-233）。**組む前に**覚えを消し、出るかを決める。
       // イベントは組む前に読んである（GS-195。`readEventsAhead`）。
       prepareMap: (name, map) => {
@@ -995,7 +1036,7 @@ export default function GameCanvas() {
           view.unstageBattle();
           cameraPreviewRef.current = true;
           autoPendingRef.current = false;
-          await Promise.all([loadQuestBook(), loadBattleBook(), loadCharacterBook(), loadIllustrations(), loadStoryBook()]);
+          await Promise.all([loadQuestBook(), loadBattleBook(), loadCharacterBook(), loadIllustrations(), loadStoryBook(), loadSubstoryBook()]);
           resetParty(stateRef.current);
           useUi.getState().setPhase('play');
           useUi.getState().setFade(0, 0);
@@ -1229,6 +1270,10 @@ export default function GameCanvas() {
     }
     const enemy = symbolsRef.current.get(near);
     if (!enemy) return;
+    // 後ろから触れられたか（GS-296。不意打ち）。消す前に位置を見る。
+    const foeAt = view.npcAt(near);
+    const aim = view.facingVector();
+    const behind = !!foeAt && !!aim && touchedFromBehind(at, aim, foeAt);
     // **触った時点でフィールドから消す**（GS-78）。戦闘の画は下地が透けるので、
     // 消さないと戦っている相手が背景にも立っていることになる。
     // マップは書き換えないので、入り直せば戻ってくる（逃げた相手も同じ）。
@@ -1242,8 +1287,13 @@ export default function GameCanvas() {
     // フィールドアタックの後（GS-295）。減らした HP のまま出し、怯んでいるあいだに触れたら先制。
     const wound = fieldAttack.wounds.current.get(near);
     fieldAttack.wounds.current.delete(near);
-    const opening: BattleStartOpening | undefined = wound
-      ? { preemptive: preemptiveOf(wound, performance.now()), enemyHp: [wound.hp] }
+    const preemptive = wound ? preemptiveOf(wound, performance.now()) : false;
+    const opening: BattleStartOpening | undefined = wound || behind
+      ? {
+        ...(preemptive ? { preemptive } : {}),
+        ...(behind && !preemptive ? { ambush: true } : {}),
+        ...(wound ? { enemyHp: [wound.hp] } : {}),
+      }
       : undefined;
     void startBattleRef.current([enemy, ...companions], false, undefined, opening).catch((error) => {
       if (!(error instanceof GameOver)) throw error;
@@ -1388,6 +1438,9 @@ export default function GameCanvas() {
       // 並行イベント（GS-43）。**`busy` でも見る**——止めないのが持ち場なので、
       // 会話の裏でスイッチが入るのは正しい動き。
       checkParallelRef.current();
+      // マップに入ったら動くイベント（2026-11-02）。入口の暗転が明けて手が空いたところで動かす。
+      // オートセーブより先に見る——動き出せば手がふさがり、セーブはイベントが終わってからになる。
+      runAutoEventsRef.current();
       // 札が立っていて手が空いていれば、そこで書く（GS-33）。
       // イベントの途中で書くと、読み戻したとき話が半分から始まってしまう。
       if (!autoPendingRef.current) return;
@@ -1667,7 +1720,7 @@ export default function GameCanvas() {
                     if (event.button !== 0) return;
                     const state = stateRef.current;
                     state.party.splice(size);
-                    for (const who of DEBUG_PARTY) {
+                    for (const who of memberIds()) {
                       if (state.party.length >= size) break;
                       joinParty(state, who);
                     }
@@ -1774,7 +1827,10 @@ export default function GameCanvas() {
         <PwaInstall visible={phase === 'title'} />
         {phase === 'play' && menu ? (
           <Menu
+            story={stateRef.current.story}
+            substories={stateRef.current.substories}
             quests={stateRef.current.quests}
+            questExp={stateRef.current.questExp}
             items={stateRef.current.items}
             party={stateRef.current.party}
             members={stateRef.current.members}

@@ -55,6 +55,11 @@ export type BattleOutcome = 'win' | 'lose' | 'escape';
 export interface BattleOpening {
   /** 先制。1 ターン目は味方だけが動く（フィールドアタックで怯ませた敵に触れたとき）。 */
   preemptive?: boolean;
+  /**
+   * 不意打ち（GS-296）。1 ターン目は敵だけが動く（敵シンボルに後ろから触れられたとき）。
+   * 先制と両方なら先制が勝つ（怯んでいる敵は襲えない）。
+   */
+  ambush?: boolean;
 }
 
 /** 勝ったときの取り分。 */
@@ -443,6 +448,9 @@ export async function runBattle(
   await io.say(`${names} が あらわれた！`);
   // 先制（GS-295）。フィールドアタックで怯ませた敵に触れたとき。**1 ターン目は敵が動かない。**
   if (opening.preemptive) await io.say('先制攻撃！');
+  // 不意打ち（GS-296）。**1 ターン目は味方に手を聞かない。**
+  const ambush = opening.ambush === true && opening.preemptive !== true;
+  if (ambush) await io.say('不意を つかれた！');
 
   // 空回りしない止め（データが壊れていても画面が固まらない）。
   for (let turn = 0; turn < 200; turn += 1) {
@@ -455,7 +463,7 @@ export async function runBattle(
     // 「殴ろうとした相手がもう居ない」が毎回起きる。
     // **眠っている人には聞かない**（GS-69）。聞いてから「動けなかった」と出すのは、
     // 選ばせておいて無かったことにするのと同じで、操作した意味が消える。
-    const askable = party.filter((who) => alive(who) && !asleep(who));
+    const askable = turn === 0 && ambush ? [] : party.filter((who) => alive(who) && !asleep(who));
     const orders = askable.length > 0 ? await io.commands(askable) : new Map<string, BattleAction>();
 
     // **守りは速さより先。** 順番どおりだと、足の遅い者の「防御」は

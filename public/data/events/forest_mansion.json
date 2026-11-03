@@ -27,38 +27,38 @@
         },
         { "type": "shot", "id": "event010201_camera01" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy_npc", "face": "talk" },
         { "type": "emote", "target": "player", "id": "surprise", "wait": false },
         {
           "type": "message",
           "talk": [
             { "who": "meina", "lines": ["痛っ！！", "・・・何？"] },
-            { "who": "lamyNPC", "lines": ["誰だお前！？", "この家は私が住んでるんだ！！", "返さないからな！"] },
+            { "who": "lamy_npc", "lines": ["誰だお前！？", "この家は私が住んでるんだ！！", "返さないからな！"] },
             { "who": "meina", "lines": ["ごめんごめん！帰るから！"] }
           ]
         },
         { "type": "move", "target": "player", "dir": "down", "cells": 1 },
         {
           "type": "message",
-          "talk": [{ "who": "lamyNPC", "lines": ["ふんっ・・・取り返すこともしないなんて弱っちいの。", "ま、あたしに勝てるわけないしね！"] }]
+          "talk": [{ "who": "lamy_npc", "lines": ["ふんっ・・・取り返すこともしないなんて弱っちいの。", "ま、あたしに勝てるわけないしね！"] }]
         },
         { "type": "move", "target": "player", "dir": "up", "cells": 1, "speed": 15 },
         { "type": "emote", "target": "player", "id": "anger", "wait": false },
         { "type": "message", "talk": [{ "who": "meina", "lines": ["あ\"？"] }] },
         { "type": "emote", "target": "npc:lamyNPC", "id": "surprise", "wait": false },
-        { "type": "message", "talk": [{ "who": "lamyNPC", "lines": ["へぁ？"] }] },
+        { "type": "message", "talk": [{ "who": "lamy_npc", "lines": ["へぁ？"] }] },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
-        { "type": "battle", "enemies": ["enemy00"] },
+        { "type": "battle", "enemies": ["naga_girl"] },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
-        { "type": "portrait", "slot": "left", "who": "lamyNPC", "face": "talk" },
+        { "type": "portrait", "slot": "left", "who": "lamy_npc", "face": "talk" },
         { "type": "emote", "target": "npc:lamyNPC", "id": "sweat", "wait": false },
         {
           "type": "message",
           "talk": [
-            { "who": "lamyNPC", "lines": ["ごめんなさい！！", "ゆるしてぇ！！泣"] },
+            { "who": "lamy_npc", "lines": ["ごめんなさい！！", "ゆるしてぇ！！泣"] },
             { "who": "meina", "lines": ["あ、ごめん。", "・・・なんか思ったより弱いけど、ナーガ族だよね？"] },
-            { "who": "lamyNPC", "lines": ["う、うるさいな・・・。", "あんたが強いだけだ！"] }
+            { "who": "lamy_npc", "lines": ["う、うるさいな・・・。", "あんたが強いだけだ！"] }
           ]
         },
         { "type": "portrait", "slot": "left", "hide": true },
@@ -189,7 +189,7 @@
           "then": [{ "type": "message", "talk": [{ "lines": ["からっぽだ。"] }] }],
           "else": [
             { "type": "playSe", "key": "chest" },
-            { "type": "getItem", "random": ["やくそう", "おにぎり", "ばんそうこう"], "count": [1, 2] },
+            { "type": "getItem", "random": ["herb", "rice_ball", "bandage"], "count": [1, 2] },
             { "type": "layer", "id": "Chest_Map0103_閉", "shown": false },
             { "type": "layer", "id": "Chest_Map0103_開", "shown": true },
             { "type": "setSelfSwitch", "key": "開けた", "value": true },
@@ -214,7 +214,7 @@
           ],
           "style": "bubble"
         },
-        { "type": "getItem", "id": "ターケマーツ", "count": 1 },
+        { "type": "getItem", "id": "takematsu", "count": 1 },
         { "type": "message", "talk": [{ "lines": ["ターケマーツ を 見つけた！"] }], "style": "window" },
         { "type": "setSelfSwitch", "key": "ターケマーツフラグ", "value": true }
       ],

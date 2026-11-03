@@ -78,6 +78,8 @@ type FigureRect = { left: number; top: number; width: number; height: number };
 /** 戦いの始まり方（GS-295。フィールドアタックの後）。 */
 export interface BattleStartOpening {
   preemptive?: boolean;
+  /** 不意打ち（GS-296。後ろから触れられた）。1 ターン目は敵だけが動く。 */
+  ambush?: boolean;
   /** `enemies` と同じ並びの、残りの HP。書かない所は満タン。 */
   enemyHp?: Array<number | undefined>;
 }
@@ -467,7 +469,8 @@ export function BattleView({
       const def = (event as CustomEvent<{ def?: EffectDef }>).detail?.def;
       const foe = fighters.find((who) => who.side === 'enemy' && alive(who));
       if (!def || !foe) return;
-      void preload(effectImage(def)).then(() => {
+      const url = effectImage(def);
+      void (url ? preload(url) : Promise.resolve()).then(() => {
         if (def.se) playSe(def.se);
         scene3dRef.current?.fx?.(foe.id, def);
       });
@@ -514,7 +517,10 @@ export function BattleView({
 
   // 攻撃の絵を先に読んでおく（GS-85）。1 手目から動きが途切れないように。
   useEffect(() => {
-    for (const def of effectList()) void preload(effectImage(def));
+    for (const def of effectList()) {
+      const url = effectImage(def);
+      if (url) void preload(url);
+    }
   }, []);
 
   // 戦いは 1 回だけ始める。**描き直しでは走らせない**（面子を ref に置くのと同じ理由）。
@@ -606,7 +612,8 @@ export function BattleView({
               return;
             }
             // **絵を読み終えてから**出す（GS-85）。初めて使う絵でも、動きを最後まで見せる。
-            await preload(effectImage(def));
+            const url = effectImage(def);
+            if (url) await preload(url);
             if (signal?.aborted) throw aborted();
             // 音は台帳の指定を先に見る（素手のとき）。空なら絵の側の音（GS-123）。
             const sound = skill ? def.se : (plain.se || def.se);
@@ -624,7 +631,8 @@ export function BattleView({
           const enemyPlain = normalAttackOf('enemy');
           const foeKey = skill ? skill.effect ?? '' : enemyPlain.effect;
           const foeDef = foeKey ? effectDef(foeKey) : null;
-          if (foeDef) await preload(effectImage(foeDef));
+          const foeUrl = foeDef ? effectImage(foeDef) : null;
+          if (foeUrl) await preload(foeUrl);
           if (signal?.aborted) throw aborted();
           setLunge(attacker.id);
           await wait(lungeDelayMs);
@@ -657,7 +665,7 @@ export function BattleView({
           return ok;
         },
         random: () => { if (signal?.aborted) throw aborted(); return Math.random(); },
-      }, { preemptive: opening?.preemptive === true });
+      }, { preemptive: opening?.preemptive === true, ambush: opening?.ambush === true });
       if (signal?.aborted) return;
       presentationRef.current?.(`battle.${outcome}` as BattlePresentationHook);
       // 減った HP を記録へ戻す。**負けたときも戻す**——倒れたまま次へ行くのではなく、

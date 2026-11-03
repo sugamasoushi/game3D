@@ -18,11 +18,18 @@ export interface StoryStep {
   id: string;
   /** エディタに出す名前。ゲームは読まない。 */
   label: string;
+  /**
+   * クエストの一覧に出す目的（2026-11-02）。この段階が**次に起きる**ときに出す。
+   * 書かない段階（内側の区切り・ネタバレになる段階）では、一つ前の目的を出し続ける。
+   */
+  goal?: string;
+  /** 済んだ後に「これまでの話」へ並べるあらすじ（2026-11-02）。書かなければ出さない。 */
+  log?: string;
 }
 
 /**
- * 章（2026-10-19）。段階の並びを、続いた段階ごとに見出しで区切る。**エディタだけが読む**（台帳エディタの一覧・
- * イベントエディタの選択肢）。ゲームは読まない。並びは変えないので、章を足しても消しても本筋の順番は同じ。
+ * 章（2026-10-19）。段階の並びを、続いた段階ごとに見出しで区切る（台帳エディタの一覧・イベントエディタの選択肢）。
+ * 2026-11-02 からゲームもクエストの一覧の見出しに読む。並びは変えないので、章を足しても消しても本筋の順番は同じ。
  */
 export interface StoryChapter {
   /** 章が始まる段階の id。次の章の `from` の前までがこの章。 */
@@ -40,6 +47,8 @@ export interface StoryFile {
 
 /** 段階の id を並び順で。読む前は空。 */
 let order: string[] = [];
+/** 読んだ台帳そのもの（クエストの一覧が目的・あらすじ・章を読む）。 */
+let book: StoryFile = { steps: [] };
 let pending: Promise<string[]> | null = null;
 
 /** 台帳を読む。**1 回だけ読んで使い回す**（条件は同期で見るので、遊ぶ前に読んでおく）。 */
@@ -47,7 +56,10 @@ export function loadStoryBook(): Promise<string[]> {
   if (pending) return pending;
   pending = fetch(assetUrl('data/story.json'))
     .then((response) => (response.ok ? (response.json() as Promise<StoryFile>) : null))
-    .then((file) => (file?.steps ?? []).map((step) => step.id))
+    .then((file) => {
+      book = { chapters: file?.chapters ?? [], steps: file?.steps ?? [] };
+      return book.steps.map((step) => step.id);
+    })
     .catch((error) => {
       console.warn('[story] 台帳を読めなかった', error);
       return [];
@@ -62,6 +74,11 @@ export function loadStoryBook(): Promise<string[]> {
 /** 読み終えた段階の並び。 */
 export function storyOrder(): readonly string[] {
   return order;
+}
+
+/** 読み終えた台帳（目的・あらすじ・章）。読む前は空。 */
+export function storyBook(): StoryFile {
+  return book;
 }
 
 /** 済んだ段階の数。`progress` は最後に済ませた段階（'' は無し）。台帳に無い段階なら 0 として扱う。 */

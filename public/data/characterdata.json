@@ -33,7 +33,7 @@
     "talk": "EventTalkImage002",
     "battle": "Battle_lamy"
   },
-  "lamyNPC": {
+  "lamy_npc": {
     "name": "ナーガ娘",
     "kind": "npc",
     "sheet": "PlayerParty/lamy_01.png",
@@ -43,7 +43,7 @@
     "unger": "",
     "talk": "EventTalkImage002"
   },
-  "blackCat": {
+  "black_cat": {
     "name": "黒猫",
     "kind": "npc",
     "sheet": "Animals/blackCat.png",
@@ -52,7 +52,7 @@
     "smile": "",
     "unger": ""
   },
-  "whiteCat": {
+  "white_cat": {
     "name": "白猫",
     "kind": "npc",
     "sheet": "Animals/whiteCat.png",
@@ -61,7 +61,7 @@
     "smile": "",
     "unger": ""
   },
-  "grandpaNpc": {
+  "grandpa_npc": {
     "name": "じいちゃん",
     "kind": "npc",
     "sheet": "Animals/chicken_walk.png"
@@ -81,7 +81,7 @@
     "kind": "npc",
     "sheet": "Battler/adult_female_adventurer_01.png"
   },
-  "adult_male_swordsman_male_01": {
+  "adult_male_swordsman_01": {
     "name": "男冒険者",
     "kind": "npc",
     "sheet": "Battler/adult_male_swordsman_male_01.png"
@@ -141,7 +141,7 @@
     "kind": "npc",
     "sheet": "VillagePeople/child_male_01.png"
   },
-  "chiken": {
+  "chicken": {
     "name": "鶏",
     "kind": "npc",
     "sheet": "Animals/chicken_walk.png"
@@ -151,12 +151,12 @@
     "kind": "npc",
     "sheet": "Battler/soldier_junior.png"
   },
-  "GreatBear": {
+  "great_bear": {
     "name": "グレートベア",
     "kind": "npc",
     "sheet": "NormalEnemy/GreatBear.png"
   },
-  "elderly_Vvllage_chief": {
+  "elderly_village_chief": {
     "name": "村長",
     "kind": "npc",
     "sheet": "elderly_village_chief_01.png"
