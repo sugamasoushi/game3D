@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { itemEquip, itemName, itemText } from '../../game/items';
 import { characterMenuImage } from '../../game/characters';
+import { equipBonus, memberStats } from '../../game/battle/party';
 import type { MemberState } from '../../game/state';
 
 /**
@@ -23,6 +24,33 @@ import type { MemberState } from '../../game/state';
 const SLOT_LABEL: Record<string, string> = { weapon: '武器', armor: '鎧' };
 /** 並べる順。ここに無い置き場所は後ろにまとめる。 */
 const SLOT_ORDER = ['weapon', 'armor'];
+
+/** 装備で上がる（下がる）数の呼び名。ステータスのページと同じ言葉にする。 */
+const BONUS_LABEL = [
+  ['attack', '攻撃'],
+  ['guard', '守り'],
+  ['speed', '素早さ'],
+] as const;
+
+/** 武具 1 つで増える数（「攻撃 +20　素早さ +1」）。何も増えなければ空。 */
+function bonusText(id: string): string {
+  const gear = itemEquip(id);
+  if (!gear) return '';
+  return BONUS_LABEL.filter(([key]) => gear[key])
+    .map(([key, label]) => `${label} ${gear[key]! > 0 ? '+' : ''}${gear[key]}`)
+    .join('　');
+}
+
+/** 武具の上がる数と説明。数は上の行、説明は下の行。 */
+function GearInfo({ id, className }: { id: string; className: string }) {
+  const bonus = bonusText(id);
+  return (
+    <span className={className}>
+      {bonus ? <span className="equip-bonus">{bonus}</span> : null}
+      <span>{itemText(id)}</span>
+    </span>
+  );
+}
 
 export function EquipPage({
   who,
@@ -63,6 +91,9 @@ export function EquipPage({
   const slots = [...new Set([...SLOT_ORDER, ...Object.keys(member.equip)])];
   const owned = (slot: string) => [...items.entries()].filter(([id, count]) => count > 0 && itemEquip(id)?.slot === slot);
   const image = characterMenuImage(who);
+  const base = memberStats(who, member.level);
+  const gear = equipBonus(member.equip);
+  const totals = { attack: base.attack + gear.attack, guard: base.guard + gear.guard, speed: Math.max(1, base.speed + gear.speed) };
 
   const close = () => {
     backTo.current = choosingSlot;
@@ -83,8 +114,8 @@ export function EquipPage({
               <p className="equip-head">
                 <span className="equip-kind">{SLOT_LABEL[slot] ?? slot}</span>
                 <span className="equip-now">{now ? itemName(now) : '—'}</span>
-                {/* 着けている物の説明（持ち物の台帳 `items.json` の `text`）。名前の右の余白に置く。 */}
-                <span className="equip-desc">{now ? itemText(now) : ''}</span>
+                {/* 着けている物の上がる数と説明（持ち物の台帳 `items.json` の `equip` / `text`）。名前の右の余白に置く。 */}
+                {now ? <GearInfo id={now} className="equip-desc" /> : <span className="equip-desc" />}
                 <button type="button" data-pick data-change={slot} onClick={() => setChoosingSlot(slot)}>変更</button>
                 {now ? (
                   <button
@@ -109,6 +140,18 @@ export function EquipPage({
             </div>
           );
         })}
+        {/* 着けている物を合わせた数（ステータスと同じ値）。替えたときに何がどれだけ動いたか、ここで見える。 */}
+        <dl className="equip-total">
+          {BONUS_LABEL.map(([key, label]) => (
+            <div key={key} className="equip-total-row">
+              <dt>{label}</dt>
+              <dd>
+                {totals[key]}
+                {gear[key] ? <span className="equip-plus">（装備 {gear[key] > 0 ? `+${gear[key]}` : gear[key]}）</span> : null}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       {choosingSlot ? (
@@ -138,7 +181,7 @@ export function EquipPage({
                   >
                     <span className="equip-name">{itemName(id)}</span>
                     <span className="equip-count">{count > 1 ? `×${count}` : ''}</span>
-                    <span className="equip-text">{itemText(id)}</span>
+                    <GearInfo id={id} className="equip-text" />
                   </button>
                 </li>
               ))}
