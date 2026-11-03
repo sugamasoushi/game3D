@@ -22,8 +22,6 @@ export interface QuestEntry {
   status: QuestStatus;
   /** 今の目的。完了したものと、目的を書いていないものは無し。 */
   goal?: string;
-  /** 本筋の今の章の名前。 */
-  chapter?: string;
   /** サブストーリーの案内・依頼の報告先。 */
   client?: string;
   /** 依頼の説明。 */
@@ -51,22 +49,38 @@ function stepsView(steps: readonly StoryStep[], done: number): { goal?: string; 
   return { log };
 }
 
-/** 本筋。目的もあらすじも書いていない間（台帳を直す前）は出さない。 */
-export function mainQuest(book: StoryFile, progress: string, title = 'メインストーリー'): QuestEntry | null {
+/**
+ * 本筋。章（`chapters`）ごとに 1 件ずつ、始まった章だけを出す（2026-11-03。序章と１章を分けて見せる）。
+ * 名前は章の名前。目的は今の章だけに付け、済んだ章は「完了」。あらすじはその章の中で済んだ段階だけ。
+ * 最初の章より前の段階は最初の章に含める。章を書いていなければ全体で 1 件（名前は `title`）。
+ * 目的もあらすじも無い章は出さない。新しい章が上（`sortQuests` で完了は下へ回る）。
+ */
+export function mainQuests(book: StoryFile, progress: string, title = 'メインストーリー'): QuestEntry[] {
   const steps = book.steps;
-  if (!steps.length) return null;
+  if (!steps.length) return [];
   const done = doneCount(steps.map((step) => step.id), progress);
   const view = stepsView(steps, done);
-  const status: QuestStatus = done >= steps.length ? 'done' : 'active';
-  if (!view.goal && !view.log.length) return null;
-  // 章は、次に起きる段階（済んでいれば最後の段階）が入っている章。
+  // 章の始まりの位置。台帳に無い段階を指す章は飛ばす。
+  const starts = (book.chapters ?? [])
+    .map((one) => ({ label: one.label, from: steps.findIndex((step) => step.id === one.from) }))
+    .filter((one) => one.from >= 0)
+    .sort((a, b) => a.from - b.from);
+  const parts = starts.length
+    ? starts.map((one, i) => ({ label: one.label, from: i === 0 ? 0 : one.from, to: starts[i + 1]?.from ?? steps.length }))
+    : [{ label: title, from: 0, to: steps.length }];
+  // 今の章は、次に起きる段階（済んでいれば最後の段階）が入っている章。
   const at = Math.min(done, steps.length - 1);
-  let chapter: string | undefined;
-  for (const one of book.chapters ?? []) {
-    const from = steps.findIndex((step) => step.id === one.from);
-    if (from >= 0 && from <= at) chapter = one.label;
-  }
-  return { kind: 'main', id: 'main', title, status, chapter, log: view.log, ...(view.goal ? { goal: view.goal } : {}) };
+  const list: QuestEntry[] = [];
+  parts.forEach((part, i) => {
+    if (part.from > at) return;
+    const current = at < part.to;
+    const status: QuestStatus = done >= part.to ? 'done' : 'active';
+    const log = steps.slice(part.from, Math.min(done, part.to)).flatMap((step) => (step.log?.trim() ? [step.log] : []));
+    const goal = current && status === 'active' ? view.goal : undefined;
+    if (!goal && !log.length) return;
+    list.push({ kind: 'main', id: `main:${i}`, title: part.label, status, log, ...(goal ? { goal } : {}) });
+  });
+  return list.reverse();
 }
 
 /** サブストーリー。始まった話だけ（記録に段階があり、台帳にある話）。台帳の並び順。 */

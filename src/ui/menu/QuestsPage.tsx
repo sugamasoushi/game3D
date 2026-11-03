@@ -10,7 +10,7 @@ import { loadSubstoryBook, substoryBook } from '../../game/substories';
 import { enemyDef } from '../../game/battle/book';
 import { itemName } from '../../game/items';
 import {
-  mainQuest,
+  mainQuests,
   QUEST_KIND_LABEL,
   QUEST_STATUS_LABEL,
   requestQuests,
@@ -57,7 +57,7 @@ export function QuestsPage({
   if (!ready) return <p>クエストを読み込んでいます…</p>;
 
   const lists: Record<QuestKind, QuestEntry[]> = {
-    main: [mainQuest(storyBook(), story)].filter((one): one is QuestEntry => one !== null),
+    main: sortQuests(mainQuests(storyBook(), story)),
     sub: sortQuests(subQuests(substoryBook(), substories)),
     request: sortQuests(requestQuests(questBook(), quests, (id) => enemyDef(id)?.name ?? id, items, itemName)),
   };
@@ -96,7 +96,6 @@ function QuestCard({ entry }: { entry: QuestEntry }) {
   const facts = request || entry.client;
   return <article className="quest-card" tabIndex={0} data-pick data-done={entry.status === 'done' || undefined}>
     <div className="quest-main">
-      {entry.chapter ? <p className="quest-chapter">{entry.chapter}</p> : null}
       <h3>{entry.title} <small>{QUEST_STATUS_LABEL[entry.status]}</small></h3>
       {entry.goal ? <p className="quest-goal">{entry.goal}</p> : null}
       {entry.text ? <p>{entry.text}</p> : null}
