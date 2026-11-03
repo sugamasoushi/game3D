@@ -1867,8 +1867,8 @@ export default function GameCanvas() {
         ) : null}
         <canvas ref={canvasRef} className="viewport" tabIndex={0} />
         <CameraIllustrationLayer probe={cameraIllustrations} />
-        {/* 画面の重ね表示（GS-300）。歩いている画面だけ。会話ウィンドウより下に敷く。 */}
-        <ScreenOverlayLayer shown={phase === 'play' && !battle} />
+        {/* 画面の重ね表示（GS-300）。種類ごとに歩いている画面・戦闘の画面で出し分ける。会話ウィンドウ・戦闘の窓より下に敷く。 */}
+        <ScreenOverlayLayer scene={phase === 'play' ? (battle ? 'battle' : 'field') : null} />
         <MessageWindow
           onAdvance={() => bridgeRef.current?.advance()}
           onPick={(index) => bridgeRef.current?.pick(index)}

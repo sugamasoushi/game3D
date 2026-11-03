@@ -2822,17 +2822,19 @@ body {
 }
 
 /*
- * 危険域（ランダムエンカウントの枠の中。GS-299）。**画面の縁に沿って半透明の赤**。
- * 真ん中は素通し——歩く先を隠さない。ゆっくり脈打たせて「いま危ない所にいる」と分かるようにする。
- * 脈は出ているあいだだけ回す（消えている板で回し続けない）。
+ * 危険域（ランダムエンカウントの枠の中。GS-299）と、戦闘で味方全体の HP が 1 割未満（GS-301）。
+ * **画面の縁に沿って半透明の赤**。真ん中は素通し——歩く先・敵を隠さない。
+ * ゆっくり脈打たせて「いま危ない」と分かるようにする。脈は出ているあいだだけ回す（消えている板で回し続けない）。
  */
-.screen-overlay--danger {
+.screen-overlay--danger,
+.screen-overlay--pinch {
   box-shadow:
     inset 0 0 60px 6px rgba(220, 20, 30, 0.55),
     inset 0 0 180px 40px rgba(180, 0, 10, 0.25);
 }
 
-.screen-overlay--danger[data-on] {
+.screen-overlay--danger[data-on],
+.screen-overlay--pinch[data-on] {
   animation: mep-danger-pulse 1800ms ease-in-out infinite;
 }
 
