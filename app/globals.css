@@ -3741,7 +3741,6 @@ body {
 .gmenu-body .quest-kinds button.on { background: #3a3123; border-color: #edcc8b; color: #edcc8b; }
 .gmenu-body .quest-kinds button:focus-visible { outline: 2px solid #edcc8b; outline-offset: 2px; }
 .quest-kinds small { margin-left: .5rem; font-size: .8em; opacity: .8; font-variant-numeric: tabular-nums; }
-.quest-card .quest-chapter { margin: 0 0 .2rem; font-size: .85em; color: #edcc8b; opacity: .85; }
 .quest-card .quest-goal { margin: .2rem 0 0; padding-left: .7rem; border-left: 3px solid #edcc8b; }
 .quest-log { margin-top: .7rem; opacity: .85; }
 .quest-log h4 { margin: 0 0 .3rem; font-size: .85em; color: #edcc8b; font-weight: normal; }
