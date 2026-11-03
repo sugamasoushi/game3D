@@ -56,6 +56,7 @@ import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
 import { Menu } from './menu/Menu';
 import { CameraIllustrationLayer } from './CameraIllustrationLayer';
+import ScreenOverlayLayer from './ScreenOverlayLayer';
 import { SettingsMenu } from './SettingsMenu';
 import { TitleScreen } from './TitleScreen';
 import { PwaInstall } from './PwaInstall';
@@ -1349,6 +1350,8 @@ export default function GameCanvas() {
     if (!view || !at) return;
     const def = encounterDefRef.current;
     const inArea = !!def?.enemies?.length && !!encounterAreaAt(encounterAreasRef.current, at);
+    // 枠の中に居るあいだは画面の縁を赤くする（GS-300）。出会わない枠（敵の行が無い）では出さない。
+    useUi.getState().setScreenOverlay('danger', inArea);
     const counting = canWalk(useUi.getState()) && !view.timeShifting() && !fieldBattleRef.current;
     if (!encounterRef.current.at(at, inArea, encounterSteps(def), counting)) return;
     const enemies = rollEncounter(def?.enemies);
@@ -1850,6 +1853,8 @@ export default function GameCanvas() {
         ) : null}
         <canvas ref={canvasRef} className="viewport" tabIndex={0} />
         <CameraIllustrationLayer probe={cameraIllustrations} />
+        {/* 画面の重ね表示（GS-300）。歩いている画面だけ。会話ウィンドウより下に敷く。 */}
+        <ScreenOverlayLayer shown={phase === 'play' && !battle} />
         <MessageWindow
           onAdvance={() => bridgeRef.current?.advance()}
           onPick={(index) => bridgeRef.current?.pick(index)}

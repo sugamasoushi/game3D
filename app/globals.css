@@ -2785,6 +2785,42 @@ body {
   100% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)); }
 }
 
+/*
+ * 画面の重ね表示（GS-300。`game/screenOverlays.ts`）。canvas の上に敷く 1280×720 の板。
+ * 出すのは `data-on` が付いたときだけ。出入りは opacity の遷移でなめらかにする。
+ */
+.screen-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+}
+
+.screen-overlay[data-on] {
+  opacity: 1;
+}
+
+/*
+ * 危険域（ランダムエンカウントの枠の中。GS-299）。**画面の縁に沿って半透明の赤**。
+ * 真ん中は素通し——歩く先を隠さない。ゆっくり脈打たせて「いま危ない所にいる」と分かるようにする。
+ * 脈は出ているあいだだけ回す（消えている板で回し続けない）。
+ */
+.screen-overlay--danger {
+  box-shadow:
+    inset 0 0 60px 6px rgba(220, 20, 30, 0.55),
+    inset 0 0 180px 40px rgba(180, 0, 10, 0.25);
+}
+
+.screen-overlay--danger[data-on] {
+  animation: mep-danger-pulse 1800ms ease-in-out infinite;
+}
+
+@keyframes mep-danger-pulse {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 1; }
+}
+
 /* 並べ替えのボタンを人の一覧から少し離す（GS-72）。押し間違いを減らす。 */
 .menu-pick-gap {
   flex: none;
