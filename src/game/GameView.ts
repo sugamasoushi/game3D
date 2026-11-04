@@ -71,7 +71,7 @@ import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from 
 import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
-import { drawMode, heavyOn } from './quality';
+import { drawMode, heavyOn, lightingForDrawMode } from './quality';
 import { battlePartyFiguresShown, DEV_MODE } from './devMode';
 import { watchShaderErrors } from '../mep3d/shaderErrors';
 import { onOptionsChanged } from './options';
@@ -1111,7 +1111,8 @@ export function createGameView(
   let shift: { from: TimeLook; to: TimeLook; at: number; ms: number; swapped: boolean } | null = null;
   /** 出し分けに使っている時間帯（半分で切り替わる）。 */
   let shownTimeId = '';
-  const shownLighting = (map: MapDef) => look?.lighting ?? map.lighting ?? {};
+  /** 渡す光の設定。低負荷では雲の影を切る（GS-173 の `cloudShadow`）。 */
+  const shownLighting = (map: MapDef) => lightingForDrawMode(look?.lighting ?? map.lighting ?? {});
   const shownLights = (map: MapDef | null) => (map && heavyOn('pointLights') ? (look?.lights ?? map.pointLights ?? []) : []);
   /** イベントの「レイヤーの出し入れ」（GS-233。元は宝箱の開け閉め GS-179）で頼まれた出し入れ。時間帯の出し分けと**両方**満たすときだけ出す。 */
   const layerWants = new Map<string, boolean>();
@@ -1352,7 +1353,8 @@ export function createGameView(
       // 直に書くと基準が組んだときの時間帯で上書きされ、書き割りを持たない時間帯へ移っても絵が変わらない。
       const timed = timeLookOf(map, time, timeFallback);
       const builtFor = time;
-      const shown = withTimeLook(withoutHiddenLayers(withStartHiddenBuilt(map)), timed);
+      // 組むときから描画モードに合わせる（低負荷は雲の影を切る。GS-173）。
+      const shown = withTimeLook(withoutHiddenLayers(withStartHiddenBuilt(map)), { ...timed, lighting: lightingForDrawMode(timed.lighting) });
       // 目を閉じたレイヤーは形を作らない（DEC-270）。ゲームは目を戻さないので素直に省ける。
       // 法線マップは**台帳で決める**（DEC-374）。無い絵を取りに行かせない——
       // 開発サーバの 404 が高くつく（実測 32 秒 → 0.5 秒）。
@@ -1400,7 +1402,7 @@ export function createGameView(
         // レンダラは映り込みを焼くのに要る（DEC-296）。
         mapModels = createMapModels({ onLoad: () => built?.setSunModels([mapModels!.group]), renderer });
         scene.add(mapModels.group);
-        mapModels.apply(models, map.grid?.unit ?? 1, timed.lighting, timed.cameraFx, timed.lights);
+        mapModels.apply(models, map.grid?.unit ?? 1, lightingForDrawMode(timed.lighting), timed.cameraFx, timed.lights);
         built.setSunModels([mapModels.group]);
       }
       built.setPointLights(shownLights(map));

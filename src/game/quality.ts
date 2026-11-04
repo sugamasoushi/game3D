@@ -64,6 +64,11 @@ export const HEAVY_DRAWS = {
    * 低負荷では出さない（画面の霧・揺れは出る。フィールドエフェクトの木漏れ日も出る）。
    */
   screenDapple: { label: '木漏れ日（画面）', note: '画面全体に光の筋をもう 1 枚重ねる。画面の霧・揺れは低負荷でも出る', light: false },
+  /**
+   * 雲の影（DEC-218）。**画素ごとに雲のノイズを 2 枚読む**（マップ・人・置いた 3D のどれも）。
+   * 低負荷では光の設定の `cloudShadow` を切って渡す（`lightingForDrawMode`）。太陽の影は出る。
+   */
+  cloudShadow: { label: '雲の影', note: '画素ごとに雲の模様を読む。太陽の影は低負荷でも出る', light: false },
 } as const;
 
 export type HeavyDraw = keyof typeof HEAVY_DRAWS;
@@ -99,4 +104,13 @@ export function drawMode(): DrawMode {
 export function heavyOn(kind: HeavyDraw): boolean {
   if (drawMode() === 'high') return true;
   return HEAVY_DRAWS[kind]?.light ?? true;
+}
+
+/**
+ * 光の設定を描画モードに合わせる（GS-173）。低負荷では雲の影（`cloudShadow`）を切る。
+ * ほかの値は触らない。切る物が無ければ同じ物をそのまま返す（ローダが組み直さないように）。
+ */
+export function lightingForDrawMode<T extends { cloudShadow?: boolean }>(lighting: T): T {
+  if (!lighting.cloudShadow || heavyOn('cloudShadow')) return lighting;
+  return { ...lighting, cloudShadow: false };
 }
