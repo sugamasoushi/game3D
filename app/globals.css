@@ -2800,6 +2800,47 @@ body {
  * 一瞬だけ出して、自分で消える札にする。フィールドアタックの取り分・先頭の入れ替えも同じ札。
  * 置き場所は**画面の上から 3/4**（札の真ん中。2026-11-01。前は上端）。
  */
+/*
+ * マップ名のテロップ（2026-11-04）。マップを移って読み込みが終わったら、画面の上のほうに出す。
+ * 入口の暗転（400ms）が明けてから出始め、フェードイン → 見せる → フェードアウト。全部で約 3.4 秒。
+ * 帯は左右の端を透かして、地図の上に置いても箱に見えないようにする。押せない（`pointer-events: none`）。
+ */
+.map-title {
+  position: absolute;
+  top: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 120px;
+  background: linear-gradient(90deg, rgba(10, 16, 40, 0) 0%, rgba(10, 16, 40, 0.72) 22%, rgba(10, 16, 40, 0.72) 78%, rgba(10, 16, 40, 0) 100%);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  animation: map-title 3s ease-in-out 400ms both;
+}
+.map-title::before,
+.map-title::after {
+  content: '';
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 212, 121, 0.75), transparent);
+}
+.map-title::before { top: 0; }
+.map-title::after { bottom: 0; }
+.map-title-text {
+  color: #fff;
+  font-size: 32px;
+  letter-spacing: 0.2em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+@keyframes map-title {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 .walk-note {
   position: absolute;
   top: 75%;

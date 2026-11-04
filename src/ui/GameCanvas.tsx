@@ -53,6 +53,7 @@ import { canRun, meets, runCommands, ReturnToTitle, timeMatches } from '../event
 import type { EventCommand, EventDef, EventFile, IfCondition } from '../event/types';
 import { mapNpcSettingsForFile, rollFoes } from '../game/mapNpcs';
 import type { MapDef } from '../mep3d/types';
+import { MapTitle } from './MapTitle';
 import { MessageWindow } from './MessageWindow';
 import { VirtualPad } from './VirtualPad';
 import { Menu } from './menu/Menu';
@@ -129,6 +130,8 @@ export default function GameCanvas() {
   const cameraPreviewRef = useRef(false);
   const bridgeRef = useRef<EventBridge | null>(null);
   const [notice, setNotice] = useState('');
+  /** マップ名のテロップ（2026-11-04）。`serial` は同じ名前でも出し直すための通し番号。 */
+  const [mapTitle, setMapTitle] = useState<{ text: string; serial: number } | null>(null);
   const [, refreshParty] = useState(0);
   /** デバッグのマップ移動（GS-216）。台帳（`maps.json`）の id と、セーブの一覧と同じ名前。クリア後にも出すので、いつも読んでおく（台帳は使い回し）。 */
   const [debugMaps, setDebugMaps] = useState<Array<{ key: string; label: string }>>([]);
@@ -758,6 +761,8 @@ export default function GameCanvas() {
         await new Promise((done) => window.setTimeout(done, DOOR_FADE_MS));
       }
     }
+    // 移る前のマップ。**別のマップへ移ったときだけ**テロップを出す（同じマップの中で置き直すだけなら出さない）。
+    const fromFile = mapRef.current;
     try {
       // 行き先はマップの id（`home_forest`）。台帳で引き当てる（`.json` 付きのファイル名でもよい）。
       const entry = await mapEntryOf(map);
@@ -783,6 +788,9 @@ export default function GameCanvas() {
       } else if (soundAfterPaint) {
         applyMapSound(entry);
       }
+      // 読み込みが終わったらマップ名のテロップ（2026-11-04）。台帳に名前（`name`）が無いマップは出さない。
+      const title = entry.name?.trim();
+      if (title && file !== fromFile) setMapTitle((now) => ({ text: title, serial: (now?.serial ?? 0) + 1 }));
       setNotice('');
     } catch (error) {
       setNotice(`マップ移動に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
@@ -1888,6 +1896,13 @@ export default function GameCanvas() {
         {walkNote ? <div key={walkNote} className="walk-note">{walkNote}</div> : null}
         {/* フィールドアタックの絵と数字（GS-295）。歩いている画面だけ。 */}
         {phase === 'play' && !battle ? fieldAttack.overlay : null}
+        {/*
+         * マップ名のテロップ（2026-11-04）。会話と暗転（`MessageWindow`）より後ろに置いて上に重ね、
+         * メニューや店はさらに後ろなのでテロップを覆う。出始めは暗転が明けてから（`.map-title` の遅れ）。戦闘中は出さない。
+         */}
+        {phase === 'play' && mapTitle && !battle ? (
+          <MapTitle text={mapTitle.text} serial={mapTitle.serial} onDone={() => setMapTitle(null)} />
+        ) : null}
         {phase === 'title' ? (
           <TitleScreen
             onStart={() => void startNew()}
