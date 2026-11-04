@@ -51,6 +51,8 @@ vec3 mepSwayOffset(float y) {
   #ifndef USE_INSTANCING
     return vec3(0.0);
   #else
+  // 風が無ければ何も読まずに抜ける。低負荷（GS-173 の windSway）は風を 0 個で渡すので、ここで止まる。
+  if (mepWindCount <= 0) return vec3(0.0);
   int w = max(mepSwayDataWidth, 1);
   // 番号で直に読む。texture2D は頂点シェーダでは傾き（ミップ）が決まらず、D3D 越しだと 0 が返った。
   // 番号は boxThick.w（loader が入れる）。組み込みのインスタンス番号は D3D11 で属性を 1 つ食い、16 個を超えて組めなかった。
