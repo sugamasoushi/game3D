@@ -1321,6 +1321,15 @@ body {
   background: rgba(25, 25, 112, 0.92);
 }
 
+/*
+ * タイトルから開く設定（`SettingsMenu`）。描画モードのカスタム（2026-11-04）でチェックの行が増えると
+ * 画面（720px）を超えて下が切れたので、枠の中を縦にスクロールさせる。ゲーム中のメニューは `.gmenu-body` が持つ。
+ */
+.menu:has(.settings-actions) {
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+}
+
 .menu-head {
   margin: 0 0 14px;
   font-size: 24px;

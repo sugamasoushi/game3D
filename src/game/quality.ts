@@ -27,14 +27,18 @@ import { looksLikePhone } from './device';
 /** 解いたあとの描画モード。**判断に使うのはこの 2 つだけ。** */
 export type DrawMode = 'high' | 'light';
 
-/** 設定に持つ値。`auto` は端末から見当を付ける（旧作と同じ入り口）。 */
-export type DrawModeSetting = 'auto' | DrawMode;
+/**
+ * 設定に持つ値。`auto` は端末から見当を付ける（旧作と同じ入り口）。
+ * `custom` は描画ごとのチェック（`options.heavyDraws`）で決める（2026-11-04）。
+ */
+export type DrawModeSetting = 'auto' | DrawMode | 'custom';
 
 /** 画面に出す名前。設定画面と、開発中の口（`__quality`）で使う。 */
 export const DRAW_MODE_LABELS: Record<DrawModeSetting, string> = {
   auto: '自動',
   high: '高負荷（PC）',
   light: '低負荷（スマホ）',
+  custom: 'カスタム',
 };
 
 /**
@@ -68,6 +72,12 @@ export const HEAVY_DRAWS = {
    * 雲の影（DEC-218）。**画素ごとに雲のノイズを 2 枚読む**（マップ・人・置いた 3D のどれも）。
    * 低負荷では光の設定の `cloudShadow` を切って渡す（`lightingForDrawMode`）。太陽の影は出る。
    */
+  /**
+   * 太陽の影（DEC-145）。影そのもの——マップの影・キャラクターの足元の影・建物の影を受ける面のすべて。
+   * 焼くのは変わったときだけだが、受ける画素ごとに毎フレーム読む。**低負荷でも出す**（カスタムでだけ切れる）。
+   * 切るときは光の設定の `blockShadow` を切って渡す（`lightingForDrawMode`）。旧方式の塗りも出ない。
+   */
+  sunShadow: { label: '影', note: '太陽の影とキャラクターの足元の影。切ると影を焼かず、読まない', light: true },
   cloudShadow: { label: '雲の影', note: '画素ごとに雲の模様を読む。太陽の影は低負荷でも出る', light: false },
   /**
    * 太陽の影の縁のなめらかさ（DEC-145）。影を受ける画素ごとに焼いた影を **4×4＝16 回**読む。
@@ -84,6 +94,11 @@ export const HEAVY_DRAWS = {
    * 低負荷では出さない（マップ・戦闘の構図・カメラ演出でオンでも切る。`cameraFxForDrawMode`）。色被せは出る。
    */
   tiltShift: { label: 'チルトシフト', note: '毎フレーム画面を写してぼかす。色被せは低負荷でも出る', light: false },
+  /**
+   * 全画面で拡大しているときの細かさ（`GameView` の `renderRatio`）。倍率に合わせて最大 1.5 倍で描く。
+   * 低負荷ではいつも 1280×720 で描く。
+   */
+  highRes: { label: '全画面を細かく描く', note: '全画面で拡大したとき最大 1.5 倍の細かさで描く。切ると 1280×720 のまま', light: false },
 } as const;
 
 export type HeavyDraw = keyof typeof HEAVY_DRAWS;
@@ -106,10 +121,18 @@ export function guessDrawMode(): DrawMode {
  * 「間引く側」へ倒れると**画面が真っ暗になって理由が分からない**——
  * 重いほうへ倒れるぶんには、遅いだけで見えてはいる。
  */
-export function drawMode(): DrawMode {
+export function drawMode(): DrawMode | 'custom' {
   const set = options.drawMode;
   if (set === 'auto') return guessDrawMode();
+  if (set === 'custom') return 'custom';
   return set === 'light' ? 'light' : 'high';
+}
+
+/** そのモードで出す物の一覧（GS-173）。カスタムを初めて選んだときのチェックの始まりに使う。 */
+export function heavyDrawsOf(mode: DrawMode): Record<HeavyDraw, boolean> {
+  const out = {} as Record<HeavyDraw, boolean>;
+  for (const kind of Object.keys(HEAVY_DRAWS) as HeavyDraw[]) out[kind] = mode === 'high' ? true : HEAVY_DRAWS[kind].light;
+  return out;
 }
 
 /**
@@ -117,17 +140,23 @@ export function drawMode(): DrawMode {
  * 知らない名前を渡したら出す側に倒す——表に足し忘れて絵が消えるより、重いほうがまし。
  */
 export function heavyOn(kind: HeavyDraw): boolean {
-  if (drawMode() === 'high') return true;
+  const mode = drawMode();
+  if (mode === 'high') return true;
+  // カスタムはチェックのとおり。書いていない物は出す（表に足したばかりの物が黙って消えないように）。
+  if (mode === 'custom') return options.heavyDraws?.[kind] ?? true;
   return HEAVY_DRAWS[kind]?.light ?? true;
 }
 
 /**
- * 光の設定を描画モードに合わせる（GS-173）。低負荷では雲の影（`cloudShadow`）を切る。
+ * 光の設定を描画モードに合わせる（GS-173）。雲の影（`cloudShadow`）と影（`blockShadow`）を切る。
  * ほかの値は触らない。切る物が無ければ同じ物をそのまま返す（ローダが組み直さないように）。
+ * `blockShadow` は書いていなければ出す扱い（`LIGHTING_DEFAULTS`）なので、切るときは false を書く。
  */
-export function lightingForDrawMode<T extends { cloudShadow?: boolean }>(lighting: T): T {
-  if (!lighting.cloudShadow || heavyOn('cloudShadow')) return lighting;
-  return { ...lighting, cloudShadow: false };
+export function lightingForDrawMode<T extends { cloudShadow?: boolean; blockShadow?: boolean }>(lighting: T): T {
+  const cutCloud = lighting.cloudShadow === true && !heavyOn('cloudShadow');
+  const cutShadow = lighting.blockShadow !== false && !heavyOn('sunShadow');
+  if (!cutCloud && !cutShadow) return lighting;
+  return { ...lighting, ...(cutCloud ? { cloudShadow: false } : {}), ...(cutShadow ? { blockShadow: false } : {}) };
 }
 
 /** 低負荷で足元の影を出す人数（カメラに近い順）。 */

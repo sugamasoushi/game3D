@@ -17,7 +17,7 @@ import {
   type Options,
   type VirtualPadSetting,
 } from '../../game/options';
-import { DRAW_MODE_LABELS, drawMode, guessDrawMode, type DrawModeSetting } from '../../game/quality';
+import { DRAW_MODE_LABELS, drawMode, guessDrawMode, heavyDrawsOf, heavyOn, HEAVY_DRAWS, type DrawModeSetting, type HeavyDraw } from '../../game/quality';
 import { DEV_MODE, devOptions, setDevOptions, type DevOptions } from '../../game/devMode';
 import { stopBgm, stopBgs } from '../../game/audio';
 import { fullscreenSupported, isFullscreen, onFullscreenChange, setFullscreen } from '../../game/fullscreen';
@@ -80,6 +80,21 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
     </li>
   );
 
+  /** 描画ごとのチェック（2026-11-04）。表（`HEAVY_DRAWS`）に足せば行も増える。 */
+  const heavyKinds = Object.keys(HEAVY_DRAWS) as HeavyDraw[];
+  /** 低負荷で減らす物の数。説明に出す。 */
+  const lightCuts = heavyKinds.filter((kind) => !HEAVY_DRAWS[kind].light).length;
+
+  /** 描画モードを変える。**初めてカスタムにしたときは、そのとき描いていた形から始める。** */
+  const changeDrawMode = (next: DrawModeSetting) => {
+    if (next === 'custom' && Object.keys(now.heavyDraws ?? {}).length === 0) {
+      const base = drawMode();
+      change({ drawMode: next, heavyDraws: heavyDrawsOf(base === 'light' ? 'light' : 'high') });
+      return;
+    }
+    change({ drawMode: next });
+  };
+
   /** 音量 1 本。値は 0〜1、見せるのは %。 */
   const volume = (label: string, key: 'masterVolume' | 'bgmVolume' | 'seVolume') => (
     <li key={key}>
@@ -125,9 +140,9 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
             className="menu-pick"
             value={now.drawMode}
             data-pick
-            onChange={(event) => change({ drawMode: event.currentTarget.value as DrawModeSetting })}
+            onChange={(event) => changeDrawMode(event.currentTarget.value as DrawModeSetting)}
           >
-            {(['auto', 'high', 'light'] as DrawModeSetting[]).map((key) => (
+            {(['auto', 'high', 'light', 'custom'] as DrawModeSetting[]).map((key) => (
               <option key={key} value={key}>
                 {DRAW_MODE_LABELS[key]}
               </option>
@@ -137,9 +152,11 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
           <span className="menu-hint">
             {now.drawMode === 'auto'
               ? `いまは ${DRAW_MODE_LABELS[guessDrawMode()]}`
-              : drawMode() === 'light'
-                ? '光源と水面の映り込みを出しません'
-                : '全部出します'}
+              : now.drawMode === 'custom'
+                ? `${heavyKinds.filter((kind) => heavyOn(kind)).length} / ${heavyKinds.length} 個を出します（下で選ぶ）`
+                : drawMode() === 'light'
+                  ? `重い描画 ${lightCuts} 個を減らします`
+                  : '全部出します'}
           </span>
         </li>
         <li>
@@ -197,6 +214,27 @@ export function SettingsPage({ extra }: { extra?: React.ReactNode }) {
         {volume('BGM', 'bgmVolume')}
         {volume('効果音', 'seVolume')}
       </ul>
+      {/* カスタムのときだけ、描画ごとのチェック（2026-11-04）。変えたその場で効く。 */}
+      {now.drawMode === 'custom' ? (
+        <>
+          <h3 className="menu-sub">描画（カスタム）</h3>
+          <ul className="menu-slots">
+            {heavyKinds.map((kind) => (
+              <li key={kind}>
+                <span className="menu-label menu-label-wide">{HEAVY_DRAWS[kind].label}</span>
+                <input
+                  className="menu-check"
+                  type="checkbox"
+                  checked={now.heavyDraws?.[kind] ?? true}
+                  data-pick
+                  onChange={(event) => change({ heavyDraws: { ...now.heavyDraws, [kind]: event.currentTarget.checked } })}
+                />
+                <span className="menu-hint">{HEAVY_DRAWS[kind].note}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       {/* 開発モードのときだけ（GS-126）。書き出した物には最初から出ない。 */}
       {DEV_MODE ? (
         <>

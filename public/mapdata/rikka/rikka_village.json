@@ -5761,9 +5761,9 @@
       "azimuth": 225,
       "elevation": 50,
       "ambient": 1.3,
-      "intensity": 1.8,
+      "intensity": 1,
       "wrap": 0,
-      "billboard": 1.7,
+      "billboard": 1,
       "ambientColor": "#d7ebfe",
       "sunColor": "#e5fcff",
       "lights": 1,
@@ -5788,11 +5788,11 @@
       "azimuth": 225,
       "elevation": 50,
       "ambient": 1,
-      "intensity": 1.8,
+      "intensity": 1.2,
       "wrap": 0,
-      "billboard": 1.8,
+      "billboard": 1,
       "ambientColor": "#ffffff",
-      "sunColor": "#feffdb",
+      "sunColor": "#ffffd1",
       "lights": 1,
       "blockShadow": true,
       "blockShadowStrength": 1,
@@ -5879,19 +5879,19 @@
   "editor": {
     "camera": {
       "target": [
-        0.8326868655328634,
-        3.5507287260201212,
-        8.925059276557244
+        -4.769707029726362,
+        3.3767076883392413,
+        20.542986361434945
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 11.277990709674587,
+      "distance": 10.725256947765176,
       "orthographic": false
     },
     "height": 0,
     "activeLayer": "オブジェクトレイヤー_2",
     "brush": {
-      "shape": "wall",
+      "shape": "floor",
       "rotation": 0,
       "chipTurn": 0,
       "color": "#c45c5c",

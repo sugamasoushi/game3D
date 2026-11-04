@@ -71,7 +71,7 @@ import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from 
 import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
-import { cameraFxForDrawMode, drawMode, heavyOn, lightingForDrawMode, sunActorLimit } from './quality';
+import { cameraFxForDrawMode, heavyOn, lightingForDrawMode, sunActorLimit } from './quality';
 import { SUN_SHADOW_BLUR } from '../mep3d/sunShadow';
 import { battlePartyFiguresShown, DEV_MODE } from './devMode';
 import { watchShaderErrors } from '../mep3d/shaderErrors';
@@ -1255,12 +1255,12 @@ export function createGameView(
   /** 画面に出している倍率（`setDisplayScale`）。 */
   let displayScale = 1;
   /**
-   * 描く細かさ。**全画面で拡大しているとき（倍率が 1 を超える）だけ**、高負荷の描画モードで上げる。
+   * 描く細かさ。**全画面で拡大しているとき（倍率が 1 を超える）だけ**、描画の `highRes` が出す側なら上げる（GS-173）。
    * 倍率 × 端末の画素の細かさ（Windows の表示倍率など）に合わせ、上限は 1080p 相当（1.5 倍）——
    * 4K の画面で 3 倍に描くと 9 倍重くなる。ふだんは今までどおり 1280×720 で描く。
    */
   const renderRatio = (): number => {
-    if (displayScale <= 1 || drawMode() !== 'high') return 1;
+    if (displayScale <= 1 || !heavyOn('highRes')) return 1;
     const device = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
     return Math.min(MAX_RENDER_RATIO, Math.max(1, displayScale * device));
   };

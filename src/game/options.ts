@@ -6,7 +6,7 @@
 //
 // 開発中は `window.__options`（`GameCanvas` が入れる）から触って試せる。
 
-import type { DrawModeSetting } from './quality';
+import type { DrawModeSetting, HeavyDraw } from './quality';
 import { looksLikePhone } from './device';
 
 /** 仮想パッドを出すか（GS-214）。`auto` はスマホなら出す。 */
@@ -40,6 +40,11 @@ export interface Options {
    */
   drawMode: DrawModeSetting;
   /**
+   * 描画ごとのオン／オフ（2026-11-04）。**描画モードが `custom` のときだけ読む。**
+   * 書いていない物は出す。ほかのモードに戻しても消さない（次にカスタムへ戻ったとき同じ形で始まる）。
+   */
+  heavyDraws: Partial<Record<HeavyDraw, boolean>>;
+  /**
    * 仮想パッド（GS-214）。**既定は自動**——スマホ（`looksLikePhone`）なら出し、PC では出さない。
    * 旧作も設定で切り替えられた（`GameStateManager.virtualPad`）。
    */
@@ -57,6 +62,7 @@ export const DEFAULT_OPTIONS: Options = {
   charMs: 40,
   // 既定は自動（GS-173）。**端末を見て決める**ので、スマホは初めから低負荷で始まる。
   drawMode: 'auto',
+  heavyDraws: {},
   virtualPad: 'auto',
   font: 'mplus',
   masterVolume: 1,
@@ -74,7 +80,18 @@ const STORE_KEY = 'samplegame.options';
 
 /** 知っている描画モードだけ受ける（GS-173）。読めない値は自動に落とす。 */
 function saneDrawMode(value: unknown): DrawModeSetting {
-  return value === 'high' || value === 'light' || value === 'auto' ? value : DEFAULT_OPTIONS.drawMode;
+  return value === 'high' || value === 'light' || value === 'auto' || value === 'custom' ? value : DEFAULT_OPTIONS.drawMode;
+}
+
+/**
+ * 描画ごとのチェック（2026-11-04）。真偽の値だけ受ける。名前は確かめない——
+ * 知らない名前は `heavyOn` が引かないだけで害が無く、ここで表（`quality.ts`）を読むと読み込みが輪になる。
+ */
+function saneHeavyDraws(value: unknown): Partial<Record<HeavyDraw, boolean>> {
+  if (!value || typeof value !== 'object') return {};
+  const out: Record<string, boolean> = {};
+  for (const [key, on] of Object.entries(value)) if (typeof on === 'boolean') out[key] = on;
+  return out as Partial<Record<HeavyDraw, boolean>>;
 }
 
 /** 知っている値だけ受ける（GS-214）。読めない値は自動に落とす。 */
@@ -116,6 +133,7 @@ export function loadOptions(): void {
     setOptions({
       charMs: sane(saved.charMs, DEFAULT_OPTIONS.charMs, 5, 200),
       drawMode: saneDrawMode(saved.drawMode),
+      heavyDraws: saneHeavyDraws(saved.heavyDraws),
       virtualPad: saneVirtualPad(saved.virtualPad),
       font: saneFont(saved.font),
       masterVolume: sane(saved.masterVolume, DEFAULT_OPTIONS.masterVolume, 0, 1),
