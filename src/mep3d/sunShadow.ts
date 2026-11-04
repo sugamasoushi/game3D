@@ -57,6 +57,9 @@ function emptySunMap(): DepthTexture {
   return texture;
 }
 
+/** 太陽の影の縁の既定の半径（絵の画素）。0 なら 1 回だけ読むベタ塗り。 */
+export const SUN_SHADOW_BLUR = 0.5;
+
 export const SUN_SHADOW_UNIFORMS_GLSL = /* glsl */ `
 uniform sampler2D mepSunMap;
 uniform mat4 mepSunMatrix;    // ワールド → 影テクスチャ（xy=UV, z=深度。0..1）
@@ -327,7 +330,7 @@ export function createSunShadow(): SunShadow {
   let groundStep = 1;
   let mapWidth = 0;
   let mapHeight = 0;
-  let blur = 0.5;
+  let blur = SUN_SHADOW_BLUR;
   let ready = false;
   /** 一度でも枠を組めたか。組めていなければ `refit` に関わらず組む。 */
   let fitted = false;

@@ -69,6 +69,21 @@ export const HEAVY_DRAWS = {
    * 低負荷では光の設定の `cloudShadow` を切って渡す（`lightingForDrawMode`）。太陽の影は出る。
    */
   cloudShadow: { label: '雲の影', note: '画素ごとに雲の模様を読む。太陽の影は低負荷でも出る', light: false },
+  /**
+   * 太陽の影の縁のなめらかさ（DEC-145）。影を受ける画素ごとに焼いた影を **4×4＝16 回**読む。
+   * 低負荷では 1 回だけ読む（縁はギザギザになるが、影は出る）。焼く回数は変わらない。
+   */
+  softShadow: { label: '影の縁のなめらかさ', note: '画素ごとに影を 16 回読む。低負荷は 1 回（影そのものは出る）', light: false },
+  /**
+   * キャラクターの足元の影（DEC-157）。焼かずに、**画素ごとに人数ぶん**計算する（最大 `MAX_SUN_ACTORS`）。
+   * 低負荷ではカメラに近い `LIGHT_SUN_ACTORS` 人だけにする（`sunActorLimit`）。
+   */
+  actorShadows: { label: 'キャラクターの影（全員）', note: '画素ごとに人数ぶん計算する。低負荷は近い 2 人だけ', light: false },
+  /**
+   * チルトシフト（ぼかし）。**毎フレーム画面を 1 枚写して、もう 1 回描く**。
+   * 低負荷では出さない（マップ・戦闘の構図・カメラ演出でオンでも切る。`cameraFxForDrawMode`）。色被せは出る。
+   */
+  tiltShift: { label: 'チルトシフト', note: '毎フレーム画面を写してぼかす。色被せは低負荷でも出る', light: false },
 } as const;
 
 export type HeavyDraw = keyof typeof HEAVY_DRAWS;
@@ -113,4 +128,18 @@ export function heavyOn(kind: HeavyDraw): boolean {
 export function lightingForDrawMode<T extends { cloudShadow?: boolean }>(lighting: T): T {
   if (!lighting.cloudShadow || heavyOn('cloudShadow')) return lighting;
   return { ...lighting, cloudShadow: false };
+}
+
+/** 低負荷で足元の影を出す人数（カメラに近い順）。 */
+export const LIGHT_SUN_ACTORS = 2;
+
+/** 足元の影を出す人数の上限（GS-173）。低負荷では `LIGHT_SUN_ACTORS` 人まで。 */
+export function sunActorLimit(max: number): number {
+  return heavyOn('actorShadows') ? max : Math.min(max, LIGHT_SUN_ACTORS);
+}
+
+/** カメラの見た目を描画モードに合わせる（GS-173）。低負荷ではチルトシフトを切る。ほかの値は触らない。 */
+export function cameraFxForDrawMode<T extends { tilt?: boolean }>(fx: T): T {
+  if (!fx.tilt || heavyOn('tiltShift')) return fx;
+  return { ...fx, tilt: false };
 }

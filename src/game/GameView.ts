@@ -71,7 +71,8 @@ import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from 
 import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
-import { drawMode, heavyOn, lightingForDrawMode } from './quality';
+import { cameraFxForDrawMode, drawMode, heavyOn, lightingForDrawMode, sunActorLimit } from './quality';
+import { SUN_SHADOW_BLUR } from '../mep3d/sunShadow';
 import { battlePartyFiguresShown, DEV_MODE } from './devMode';
 import { watchShaderErrors } from '../mep3d/shaderErrors';
 import { onOptionsChanged } from './options';
@@ -1627,11 +1628,13 @@ export function createGameView(
       sizedW = 0;
       resize();
       paintBackground();
-      tilt.update(map.camera ?? {});
+      tilt.update(cameraFxForDrawMode(map.camera ?? {}));
 
       built.setCullHidden(true);
       // 太陽の影は正射深度 1 枚（DEC-145）。旧方式の塗りは出さない。
       built.setSunShadow(true);
+      // 影の縁（GS-173 の `softShadow`）。低負荷は 1 回だけ読む。
+      built.setSunShadowBlur(heavyOn('softShadow') ? SUN_SHADOW_BLUR : 0);
       // キャラの影は深度パスに入れない（DEC-157）。地面へ寝かせた絵で出すので焼き直しが要らない。
       built.setSunCasters([]);
       status.tiles = built.stats.tiles;
@@ -2174,7 +2177,7 @@ export function createGameView(
     }
     sunActorPicks.sort((a, b) => a.far - b.far);
     sunActorList.length = 0;
-    for (let i = 0; i < Math.min(sunActorPicks.length, MAX_SUN_ACTORS); i += 1) {
+    for (let i = 0; i < Math.min(sunActorPicks.length, sunActorLimit(MAX_SUN_ACTORS)); i += 1) {
       const { actor, figure } = sunActorPicks[i]!;
       if (actor) sunActorList.push({ texture: actor.texture, frame: actor.frame(), foot: actor.boardFoot(), size: actor.size });
       else if (figure) {
@@ -2987,12 +2990,13 @@ export function createGameView(
     // コマンド選択中の味方を左端へ（GS-103）。カメラが決まった後で寄せる。
     applyCommandFigures(dt);
     renderedYaw = rig.yaw;
-    tilt.update({
+    // 低負荷ではチルトシフトを切る（GS-173 の `tiltShift`）。構図・演出でオンでも。
+    tilt.update(cameraFxForDrawMode({
       ...mapDef?.camera,
       // 戦闘中の ON/OFF は構図のキーが決める（ぼかしの位置・強さはマップのまま。舞台の板とマスの線はぼかさない）。
       ...(battleCamera?.tilt === undefined ? {} : { tilt: battleCamera.tilt }),
       ...(cue?.tilt === undefined ? {} : { tilt: cue.tilt }),
-    });
+    }));
     // ビルボードなのでどちらのモードでもカメラを向く。
     player?.faceCamera((rig.yaw * Math.PI) / 180);
     updateFollowers(dt);
@@ -3257,6 +3261,7 @@ export function createGameView(
     fieldEffects.setMirror(heavyOn('mirror'));
     setScreenEffects(screenList);
     if (!built || !mapDef) return;
+    built.setSunShadowBlur(heavyOn('softShadow') ? SUN_SHADOW_BLUR : 0);
     applyLook();
   };
   const stopOptionWatch = onOptionsChanged(applyDrawMode);
