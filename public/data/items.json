@@ -251,7 +251,7 @@
     },
     "iron_sword": {
       "name": "鉄の剣",
-      "text": "攻撃 +28、素早さ -1。頼れる鉄の剣。",
+      "text": "頼れる鉄の剣。",
       "price": 180,
       "equip": {
         "slot": "weapon",

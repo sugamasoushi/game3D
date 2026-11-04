@@ -709,6 +709,13 @@ export function createGameView(
   let renderedYaw = 0;
   /** 画面エフェクト（DEC-389）。マップの一覧をそのまま出す。 */
   const screenEffects = createScreenEffects();
+  /** いま渡したい画面エフェクトの一覧。描画モードを変えたら、ここから出し直す（GS-173）。 */
+  let screenList: Parameters<typeof screenEffects.set>[0] = [];
+  /** 画面エフェクトを渡す口。**低負荷では木漏れ日（`dapple`）を外す**（`heavyOn('screenDapple')`）。 */
+  const setScreenEffects = (list: Parameters<typeof screenEffects.set>[0]) => {
+    screenList = list;
+    screenEffects.set(heavyOn('screenDapple') ? list : list.filter((entry) => entry.kind !== 'dapple'));
+  };
   scene.add(fieldEffects.group);
   /** カメラエディタ用のマス目（GS-167）。既定は非表示——遊ぶ画面には出ない。 */
   const editorGrid = createEditorGrid(scene);
@@ -1403,7 +1410,7 @@ export function createGameView(
       fieldEffects.setMirror(heavyOn('mirror'));
       // 画面エフェクト（DEC-389）。**隠したレイヤーとは無関係**——置き場所を持たない。
       // 時間帯で出す物（`showIn`。GS-227）はその時間帯の物だけ。
-      screenEffects.set(screenEffectsAtTime(map.screenEffects ?? [], shownTimeId));
+      setScreenEffects(screenEffectsAtTime(map.screenEffects ?? [], shownTimeId));
       // イベントの出し入れ（GS-270）は**覚えのとおりに置く**。最初の 1 枚から正しい形で描く。
       effectFades.clear();
       effectWeights.clear();
@@ -3060,7 +3067,8 @@ export function createGameView(
       options.onEffectLevels(levels);
     }
     // 風で揺らす（GS-274）。出し入れと時間帯の濃さを掛けた後の風を、`Sway` のレイヤーへ渡す。
-    built?.setWind(fieldEffects.windZones());
+    // 低負荷では風を渡さない（GS-173 の `windSway`）。木は止まり、風の絵は出る。
+    built?.setWind(heavyOn('windSway') ? fieldEffects.windZones() : []);
     // マップか太陽が変わった次のフレームで 1 回だけ焼く（DEC-145）。
     built?.tickSunShadow(renderer);
     // カメラ演出（DEC-388）。**`rig.apply()` の後**——リグが組んだ位置と投影に足す。
@@ -3190,7 +3198,7 @@ export function createGameView(
     if (shift) return;
     fieldEffects.setFade(1);
     fieldEffects.setVolumes(readFieldVolumes(mapDef, shownTimeId), mapDef.grid?.unit ?? 1);
-    screenEffects.set(screenEffectsAtTime(mapDef.screenEffects ?? [], shownTimeId));
+    setScreenEffects(screenEffectsAtTime(mapDef.screenEffects ?? [], shownTimeId));
   };
   /** 時間帯の切り替えを 1 フレーム進める（GS-222）。 */
   const advanceTimeShift = (dt: number) => {
@@ -3206,7 +3214,7 @@ export function createGameView(
     // 画面エフェクト（GS-227）。片方の時間帯だけの物を濃さで出し入れする。
     if (mapDef) {
       const list = mapDef.screenEffects ?? [];
-      screenEffects.set(blendScreenEffects(screenEffectsAtTime(list, shift.from.time), screenEffectsAtTime(list, shift.to.time), k));
+      setScreenEffects(blendScreenEffects(screenEffectsAtTime(list, shift.from.time), screenEffectsAtTime(list, shift.to.time), k));
     }
     if (!shift.swapped && k >= 0.5) {
       shift.swapped = true;
@@ -3245,6 +3253,7 @@ export function createGameView(
   };
   const applyDrawMode = () => {
     fieldEffects.setMirror(heavyOn('mirror'));
+    setScreenEffects(screenList);
     if (!built || !mapDef) return;
     applyLook();
   };
