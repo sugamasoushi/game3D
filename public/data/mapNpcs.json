@@ -52,13 +52,13 @@
       },
       "sukowaimu": {
         "wander": {},
+        "enemy": "sukowaimu",
         "companions": [
           {
             "enemy": "naga",
             "chance": 1
           }
-        ],
-        "enemy": "sukowaimu"
+        ]
       }
     },
     "forest_cave": {
@@ -91,7 +91,12 @@
     },
     "forest_mansion": {
       "1": {
-        "wander": {}
+        "wander": {
+          "range": 9
+        },
+        "ally": {
+          "member": "adult_male_swordsman_01"
+        }
       },
       "2": {
         "wander": {}

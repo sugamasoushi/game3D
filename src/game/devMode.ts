@@ -36,14 +36,10 @@ export interface DevOptions {
    * 消すと会話まわりの確認がしづらい。うるさいときだけ切る。
    */
   muteSe: boolean;
-  /**
-   * 3D の戦闘で**味方の**立ち絵の板（ビルボード）を出す（GS-247）。**既定は出さない**——しばらく味方の板を見せない。
-   * 敵の板はいつも出す。出さなくても板の位置は測るので、敵の素手の攻撃の絵はその位置に出る。
-   */
-  battlePartyFigures: boolean;
 }
 
-export const DEFAULT_DEV_OPTIONS: DevOptions = { skipOpening: true, muteBgm: true, muteSe: false, battlePartyFigures: false };
+// 3D の戦闘で味方の板を出すつまみ（GS-247）は 2026-11-06 にやめた。味方の板はいつも出す（GS-311）。
+export const DEFAULT_DEV_OPTIONS: DevOptions = { skipOpening: true, muteBgm: true, muteSe: false };
 
 /** いまのつまみ。**この 1 つを見に行く**（`options.ts` と同じ作り）。 */
 export const devOptions: DevOptions = { ...DEFAULT_DEV_OPTIONS };
@@ -60,7 +56,6 @@ export function loadDevOptions(): void {
     if (typeof saved.skipOpening === 'boolean') devOptions.skipOpening = saved.skipOpening;
     if (typeof saved.muteBgm === 'boolean') devOptions.muteBgm = saved.muteBgm;
     if (typeof saved.muteSe === 'boolean') devOptions.muteSe = saved.muteSe;
-    if (typeof saved.battlePartyFigures === 'boolean') devOptions.battlePartyFigures = saved.battlePartyFigures;
   } catch {
     /* 読めなければ既定のまま。 */
   }
@@ -93,12 +88,4 @@ export function bgmAllowed(): boolean {
 /** 効果音を鳴らしてよいか。同じく本番では必ず鳴る。 */
 export function seAllowed(): boolean {
   return !(DEV_MODE && devOptions.muteSe);
-}
-
-/**
- * 3D の戦闘で味方の立ち絵の板を出すか（GS-247）。**本番では出さない**——しばらく板を見せない間は、
- * 書き出した物にも出さない。出すようにするときはここを変える。敵の板はこれを見ない。
- */
-export function battlePartyFiguresShown(): boolean {
-  return DEV_MODE && devOptions.battlePartyFigures;
 }

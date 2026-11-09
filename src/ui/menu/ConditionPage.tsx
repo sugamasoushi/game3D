@@ -3,11 +3,12 @@
 // コンディション。**仲間の様子をひと目で見る**ページ（ほかの RPG のメニューの最初の画面に当たる）。
 //
 // 上の帯に所持金・遊んだ時間・現在地、その下に仲間 1 人ずつのカード（絵・名前・レベル・状態・
-// HP・MP・経験値・攻撃／守り／素早さ）。カードは窓の下まで伸ばし、絵はカードの高さに合わせ、項目は絵に重ねて
+// HP・MP・経験値・物理攻撃力／物理防御力／魔法攻撃力／魔法防御力／素早さ）。カードは窓の下まで伸ばし、絵はカードの高さに合わせ、項目は絵に重ねて
 // 下側にそろえる。カードは**3 人分の場所をいつも取る**——人数が少なくても
 // 1 枚の幅は変わらない（戦闘の隊列の窓と同じ考え）。絵は装備やステータスと同じメニュー用の絵、無ければ「No Data」。
 
 import { equipBonus, memberStats } from '../../game/battle/party';
+import { POWER_KEYS, STAT_NAMES, powerWithGear } from '../../game/battle/statNames';
 import { characterMenuImage, characterName } from '../../game/characters';
 import { levelUpRule } from '../../game/battle/book';
 import { expForLevel, expToNext } from '../../game/battle/growth';
@@ -106,17 +107,13 @@ function ConditionCard({ who, member }: { who: string; member: MemberState | nul
             text={maxed ? 'MAX' : `あと ${toNext}`}
           />
         </div>
-        {/* 攻撃・守り・素早さは 1 行に「名前：数」で並べる。 */}
+        {/* 物理・魔法の攻撃力と防御力は 2 列の格子、素早さは最後の行に「名前：数」で並べる（2026-11-07）。 */}
         <p className="condition-stats">
-          <span>
-            攻撃：<b>{full.attack + gear.attack}</b>
-          </span>
-          <span>
-            守り：<b>{full.guard + gear.guard}</b>
-          </span>
-          <span>
-            素早さ：<b>{Math.max(1, full.speed + gear.speed)}</b>
-          </span>
+          {POWER_KEYS.map((key) => (
+            <span key={key}>
+              {STAT_NAMES[key]}：<b>{powerWithGear(full, gear, key)}</b>
+            </span>
+          ))}
         </p>
       </div>
     </li>

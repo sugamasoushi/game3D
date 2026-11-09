@@ -141,7 +141,8 @@
       "frameHeight": 64,
       "columns": 3,
       "rows": 4,
-      "actorScale": 1.4
+      "actorScale": 1.4,
+      "footPx": 4
     },
     "PlayerParty/lamy_32_40.png": {
       "frameWidth": 32,
@@ -349,6 +350,30 @@
       "columns": 3,
       "rows": 4,
       "footPx": -63
+    },
+    "Effects/sweep-8frames.png": {
+      "frameWidth": 128,
+      "frameHeight": 128,
+      "columns": 4,
+      "rows": 2
+    },
+    "Effects/fireball-original.png": {
+      "frameWidth": 72,
+      "frameHeight": 70,
+      "columns": 4,
+      "rows": 3
+    },
+    "Effects/sweep_320x192_5x7.png": {
+      "frameWidth": 320,
+      "frameHeight": 192,
+      "columns": 5,
+      "rows": 7
+    },
+    "Effects/sweep200x120_5x7.png": {
+      "frameWidth": 200,
+      "frameHeight": 120,
+      "columns": 5,
+      "rows": 7
     }
   }
 }

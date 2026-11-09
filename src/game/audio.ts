@@ -6,11 +6,14 @@
 //
 // BGM・環境音は `HTMLAudioElement` で流し、短い効果音は Web Audio へ事前デコードする。
 // モバイルで効果音を鳴らすたびに MP3 の読み込み・デコードを待たないため。
+// **ループ点（`loopStart` / `loopEnd`）を書いた曲だけ**は Web Audio で丸ごと読んで鳴らす（GS-317）。
+// `HTMLAudioElement` の繰り返しは折り返しで途切れ、途中の点へは戻れないため。
 
 import { assetUrl } from './assets';
 import { bgmAllowed, seAllowed } from './devMode';
 import { onOptionsChanged, options } from './options';
 import { ambienceGain, readAmbience, strikeDue, strikeOverlap, type AmbienceDef, type EffectLevel } from './ambience';
+import { hasLoopPoints, loopPosition, loopWindow, type LoopWindow } from './loopPoints';
 
 /** 台帳の 1 行。 */
 export interface SoundDef {
@@ -20,6 +23,13 @@ export interface SoundDef {
   volume?: number;
   /** 繰り返すか。BGM と環境音は true。 */
   loop?: boolean;
+  /**
+   * ループの戻り先（GS-317）。**48kHz のサンプル数**。0 秒から鳴らし、`loopEnd` に来たらここへ戻る。
+   * 冒頭のある曲のための値で、`loopEnd` と組で書く。決まりは `loopPoints.ts`。
+   */
+  loopStart?: number;
+  /** ループの終わり（GS-317）。48kHz のサンプル数。ここから後ろ（尻尾）は鳴らない。 */
+  loopEnd?: number;
 }
 
 export interface SoundFile {
@@ -96,16 +106,188 @@ const volumeOf = (kind: 'bgm' | 'se'): number =>
  */
 let unlocked = false;
 
+/**
+ * 流しっぱなしの音を鳴らす器（GS-317）。ふつうの曲は `HTMLAudioElement`、ループ点のある曲は Web Audio。
+ * 呼ぶ側（チャンネル）はどちらかを気にしない。
+ */
+interface Player {
+  /** 音量（0〜1。設定と台帳を掛けた後）。 */
+  setLevel(level: number): void;
+  /** 鳴らす。読み込み中なら、済んだら鳴らす。 */
+  play(): void;
+  /** 止める。`ms` を渡すと薄れて消える。止めた器は使い回さない。 */
+  stop(ms: number): void;
+  playing(): boolean;
+  /** 開発中の確認用。ループ点で回しているなら区間と今の位置（秒）。 */
+  loop(): { start: number; end: number; position: number } | null;
+}
+
+/** ふつうの曲（ファイル全体を繰り返す）。 */
+function elementPlayer(def: SoundDef, level: number): Player {
+  const el = new Audio(urlOf(def.file));
+  el.loop = def.loop ?? true;
+  el.volume = level;
+  let timer: number | null = null;
+  return {
+    setLevel(next) {
+      if (timer === null) el.volume = next;
+    },
+    play() {
+      void el.play().catch(() => undefined);
+    },
+    stop(ms) {
+      if (timer !== null) return;
+      if (ms <= 0) {
+        el.pause();
+        return;
+      }
+      const from = el.volume;
+      const steps = Math.max(1, Math.round(ms / FADE_STEP));
+      let at = 0;
+      timer = window.setInterval(() => {
+        at += 1;
+        el.volume = Math.max(0, from * (1 - at / steps));
+        if (at >= steps) {
+          if (timer !== null) window.clearInterval(timer);
+          el.pause();
+        }
+      }, FADE_STEP);
+    },
+    playing: () => !el.paused,
+    loop: () => null,
+  };
+}
+
+/**
+ * ループ点の曲の読み込み（GS-317）。丸ごとデコードするので 1 曲 30MB ほど使う。
+ * **新しい 2 曲だけ覚えておく**（フィールドの曲と戦闘の曲を行き来しても、読み直しで待たせない）。
+ */
+const loopBuffers = new Map<string, Promise<AudioBuffer>>();
+const KEEP_LOOP_BUFFERS = 2;
+
+function loopBuffer(context: AudioContext, key: string, def: SoundDef): Promise<AudioBuffer> {
+  const id = `${key}\n${def.file}`;
+  const known = loopBuffers.get(id);
+  if (known) {
+    loopBuffers.delete(id);
+    loopBuffers.set(id, known);
+    return known;
+  }
+  const loading = fetch(urlOf(def.file))
+    .then((response) => {
+      if (!response.ok) throw new Error(`曲を読めません: ${key}（${def.file}）`);
+      return response.arrayBuffer();
+    })
+    .then((data) => context.decodeAudioData(data));
+  loading.catch(() => loopBuffers.delete(id));
+  loopBuffers.set(id, loading);
+  while (loopBuffers.size > KEEP_LOOP_BUFFERS) {
+    const oldest = loopBuffers.keys().next().value;
+    if (oldest === undefined) break;
+    loopBuffers.delete(oldest);
+  }
+  return loading;
+}
+
+/**
+ * ループ点のある曲（GS-317）。0 秒から鳴らし、`loopEnd` で `loopStart` へ戻る（Web Audio がサンプル単位で戻す）。
+ * 読めない・デコードできない（その端末が形式に対応していない）時は、ふつうの曲として鳴らす。
+ * ループ点が曲より後ろなら、知らせてファイル全体を繰り返す。
+ */
+function bufferPlayer(context: AudioContext, key: string, def: SoundDef, level: number): Player {
+  const volume = context.createGain();
+  volume.gain.value = level;
+  volume.connect(context.destination);
+  let buffer: AudioBuffer | null = null;
+  let source: AudioBufferSourceNode | null = null;
+  let window_: LoopWindow | null = null;
+  let startedAt = 0;
+  let wanted = false;
+  let stopped = false;
+  let fallback: Player | null = null;
+  const begin = () => {
+    if (!buffer || !wanted || stopped || source) return;
+    window_ = loopWindow(def, buffer.duration);
+    if (!window_) console.warn(`[sound] ループ点が曲の長さを越えています。全体を繰り返します: ${key}`);
+    source = context.createBufferSource();
+    source.buffer = buffer;
+    source.loop = true;
+    if (window_) {
+      source.loopStart = window_.start;
+      source.loopEnd = window_.end;
+    }
+    source.connect(volume);
+    if (context.state === 'suspended') void context.resume();
+    startedAt = context.currentTime;
+    source.start();
+  };
+  loopBuffer(context, key, def).then(
+    (ready) => {
+      buffer = ready;
+      begin();
+    },
+    (error: unknown) => {
+      console.warn(`[sound] ループ点の曲を読めないので、ふつうに繰り返します: ${key}`, error);
+      volume.disconnect();
+      if (stopped) return;
+      fallback = elementPlayer(def, volume.gain.value);
+      if (wanted) fallback.play();
+    },
+  );
+  return {
+    setLevel(next) {
+      if (stopped) return;
+      if (fallback) fallback.setLevel(next);
+      volume.gain.cancelScheduledValues(context.currentTime);
+      volume.gain.value = next;
+    },
+    play() {
+      wanted = true;
+      if (fallback) fallback.play();
+      else begin();
+    },
+    stop(ms) {
+      if (stopped) return;
+      stopped = true;
+      if (fallback) {
+        fallback.stop(ms);
+        return;
+      }
+      const now = context.currentTime;
+      const end = now + Math.max(0, ms) / 1000;
+      volume.gain.cancelScheduledValues(now);
+      volume.gain.setValueAtTime(volume.gain.value, now);
+      if (ms > 0) volume.gain.linearRampToValueAtTime(0, end);
+      try {
+        source?.stop(ms > 0 ? end + 0.02 : now);
+      } catch {
+        /* もう止まっている */
+      }
+      window.setTimeout(() => volume.disconnect(), Math.max(0, ms) + 100);
+    },
+    playing: () => (fallback ? fallback.playing() : source !== null && !stopped && context.state === 'running'),
+    loop() {
+      if (!source || !buffer || !window_) return null;
+      return { ...window_, position: loopPosition(context.currentTime - startedAt, window_, buffer.duration) };
+    },
+  };
+}
+
+/** 曲に合った器を作る。ループ点のある曲は Web Audio（使えない環境ならふつうの器）。 */
+function playerOf(key: string, def: SoundDef, level: number): Player {
+  const context = hasLoopPoints(def) ? audioContext() : null;
+  return context ? bufferPlayer(context, key, def, level) : elementPlayer(def, level);
+}
+
 /** 流しっぱなしの 1 本（BGM か環境音）。 */
 interface Channel {
-  el: HTMLAudioElement | null;
+  player: Player | null;
   key: string;
   /** 台帳の音量に掛ける倍率（イベントが指定したぶん）。 */
   gain: number;
-  fade: number | null;
 }
 
-const bgm: Channel = { el: null, key: '', gain: 1, fade: null };
+const bgm: Channel = { player: null, key: '', gain: 1 };
 /**
  * 環境音（GS-278）。**何本でも同時に流す**。キーは音の名前（同じ音を 2 行に書かない。検査で止める）。
  * `ambienceRows` はいまのマップの台帳の行。`strikes` は雷の行ごとの前に見た光の回数。
@@ -125,46 +307,25 @@ function start(channel: Channel, key: string, gain: number): void {
     console.warn(`[sound] 台帳に無い音: ${key}`);
     return;
   }
-  if (channel.key === key && channel.el) {
+  if (channel.key === key && channel.player) {
     channel.gain = gain;
-    channel.el.volume = levelOf(def, gain, 'bgm');
+    channel.player.setLevel(levelOf(def, gain, 'bgm'));
     return;
   }
   stop(channel, 0);
-  const el = new Audio(urlOf(def.file));
-  el.loop = def.loop ?? true;
-  el.volume = levelOf(def, gain, 'bgm');
-  channel.el = el;
+  const player = playerOf(key, def, levelOf(def, gain, 'bgm'));
+  channel.player = player;
   channel.key = key;
   channel.gain = gain;
-  if (unlocked) void el.play().catch(() => undefined);
+  if (unlocked) player.play();
 }
 
 /** 止める。`ms` を渡すと薄れて消える。 */
 function stop(channel: Channel, ms: number): void {
-  const el = channel.el;
-  if (channel.fade !== null) {
-    window.clearInterval(channel.fade);
-    channel.fade = null;
-  }
-  channel.el = null;
+  const player = channel.player;
+  channel.player = null;
   channel.key = '';
-  if (!el) return;
-  if (ms <= 0) {
-    el.pause();
-    return;
-  }
-  const from = el.volume;
-  const steps = Math.max(1, Math.round(ms / FADE_STEP));
-  let at = 0;
-  const timer = window.setInterval(() => {
-    at += 1;
-    el.volume = Math.max(0, from * (1 - at / steps));
-    if (at >= steps) {
-      window.clearInterval(timer);
-      el.pause();
-    }
-  }, FADE_STEP);
+  player?.stop(ms);
 }
 
 // 設定で音量が変わったら、**いま鳴っているもの**にもすぐ効かせる（GS-25）。
@@ -172,7 +333,7 @@ function stop(channel: Channel, ms: number): void {
 onOptionsChanged(() => {
   for (const channel of channels()) {
     const def = channel.key ? book[channel.key] : null;
-    if (channel.el && def) channel.el.volume = levelOf(def, channel.gain, 'bgm');
+    if (channel.player && def) channel.player.setLevel(levelOf(def, channel.gain, 'bgm'));
   }
 });
 
@@ -182,9 +343,7 @@ export function unlockAudio(): void {
   unlocked = true;
   const context = audioContext();
   if (context?.state === 'suspended') void context.resume();
-  for (const channel of channels()) {
-    if (channel.el) void channel.el.play().catch(() => undefined);
-  }
+  for (const channel of channels()) channel.player?.play();
 }
 
 export function playBgm(key: string, gain = 1): void {
@@ -229,11 +388,11 @@ export function setAmbience(rows: readonly AmbienceDef[], ms = 400): void {
   for (const [key, gain] of wanted) {
     let channel = bgsChannels.get(key);
     if (!channel) {
-      channel = { el: null, key: '', gain, fade: null };
+      channel = { player: null, key: '', gain };
       bgsChannels.set(key, channel);
     }
     start(channel, key, gain);
-    if (!channel.el) bgsChannels.delete(key);
+    if (!channel.player) bgsChannels.delete(key);
   }
 }
 
@@ -259,11 +418,11 @@ export function updateAmbience(levels: ReadonlyMap<string, EffectLevel>): void {
     if (!row.effect) return;
     const channel = bgsChannels.get(row.key);
     const def = book[row.key];
-    if (!channel?.el || !def) return;
+    if (!channel?.player || !def) return;
     const gain = ambienceGain(row, levels);
     if (Math.abs(gain - channel.gain) < 0.001) return;
     channel.gain = gain;
-    channel.el.volume = levelOf(def, gain, 'bgm');
+    channel.player.setLevel(levelOf(def, gain, 'bgm'));
   });
 }
 
@@ -341,13 +500,23 @@ export function audioUnlocked(): boolean {
   return unlocked;
 }
 
-/** いま鳴っているもの（開発中の確認用）。 */
-export function nowPlaying(): { bgm: string; bgs: string[]; playing: boolean; unlocked: boolean } {
+/**
+ * いま鳴っているもの（開発中の確認用）。`loop` はループ点で回している曲の区間と今の位置（秒。GS-317）。
+ * ふつうに繰り返している曲では null。
+ */
+export function nowPlaying(): {
+  bgm: string;
+  bgs: string[];
+  playing: boolean;
+  unlocked: boolean;
+  loop: { start: number; end: number; position: number } | null;
+} {
   return {
     bgm: bgm.key,
     bgs: [...bgsChannels.keys()],
-    playing: Boolean(bgm.el && !bgm.el.paused),
+    playing: Boolean(bgm.player?.playing()),
     unlocked,
+    loop: bgm.player?.loop() ?? null,
   };
 }
 

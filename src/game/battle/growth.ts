@@ -20,6 +20,9 @@ export function statsAt(def: MemberDef, level: number): Stats {
     mp: def.mp + (up.mp ?? 0) * steps,
     attack: def.attack + (up.attack ?? 0) * steps,
     guard: def.guard + (up.guard ?? 0) * steps,
+    // 魔法攻撃力・魔法防御力（2026-11-07）。台帳に書いていなければ物理と同じ伸びで育てる。
+    magic: def.magic === undefined ? def.attack + (up.attack ?? 0) * steps : def.magic + (up.magic ?? 0) * steps,
+    magicGuard: def.magicGuard === undefined ? def.guard + (up.guard ?? 0) * steps : def.magicGuard + (up.magicGuard ?? 0) * steps,
     speed: def.speed + (up.speed ?? 0) * steps,
   };
 }

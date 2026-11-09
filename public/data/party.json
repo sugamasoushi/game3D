@@ -1,5 +1,5 @@
 {
-  "information": "はじめの仲間と数値（GS-63）。キーは characterdata.json の人。hp/mp は「レベル 1 の」満タンの値で、いま減っている量はセーブが持つ。level が 1 上がるごとに growth のぶん増える。learn はレベル → そこで覚える技。levelUp は次のレベルに要る経験の出し方。 equip は はじめから身に着けている物（GS-67）。 party に載っていない人は「まだ仲間ではない」（GS-70。イベントの party 命令で入る）。 races は種族（2026-11-03）: id → { name, text?, traits }。仲間は members.<id>.race で指す。特性は craft（道具を作れる）/ craftExtra（chance の見込みでもう 1 個）/ mpRate・powerRate（kind の技の消費MP・威力を rate 倍）。level を書くとそのレベルから効く。",
+  "information": "はじめの仲間と数値（GS-63）。キーは characterdata.json の人。hp/mp は「レベル 1 の」満タンの値で、いま減っている量はセーブが持つ。level が 1 上がるごとに growth のぶん増える。learn はレベル → そこで覚える技。levelUp は次のレベルに要る経験の出し方。 equip は はじめから身に着けている物（GS-67）。 party に載っていない人は「まだ仲間ではない」（GS-70。イベントの party 命令で入る）。 races は種族（2026-11-03）: id → { name, text?, traits }。仲間は members.<id>.race で指す。特性は craft（道具を作れる）/ craftExtra（chance の見込みでもう 1 個）/ mpRate・powerRate（kind の技の消費MP・威力を rate 倍）。level を書くとそのレベルから効く。 attack・guard は物理攻撃力・物理防御力、magic・magicGuard は魔法攻撃力・魔法防御力（2026-11-07。種類「魔法」の技は magic と相手の magicGuard で計算する。書かなければ attack・guard と同じ値で読む）。",
   "party": [
     "meina"
   ],
@@ -10,13 +10,16 @@
       "mp": 20,
       "attack": 14,
       "guard": 10,
+      "magic": 14,
+      "magicGuard": 10,
       "speed": 10,
       "skills": [
         "guard",
         "dodge",
         "fireball",
         "heal",
-        "throw_stone"
+        "throw_stone",
+        "retreat"
       ],
       "equip": {
         "armor": "cloak",
@@ -27,6 +30,8 @@
         "mp": 3,
         "attack": 3,
         "guard": 1,
+        "magic": 3,
+        "magicGuard": 1,
         "speed": 1
       },
       "learn": {
@@ -45,6 +50,8 @@
       "mp": 12,
       "attack": 18,
       "guard": 8,
+      "magic": 18,
+      "magicGuard": 8,
       "speed": 6,
       "skills": [
         "guard"
@@ -54,6 +61,8 @@
         "mp": 2,
         "attack": 3,
         "guard": 2,
+        "magic": 3,
+        "magicGuard": 2,
         "speed": 1
       }
     },
@@ -63,6 +72,8 @@
       "mp": 30,
       "attack": 11,
       "guard": 3,
+      "magic": 11,
+      "magicGuard": 3,
       "speed": 12,
       "skills": [
         "wind_blade",
@@ -76,6 +87,8 @@
         "mp": 5,
         "attack": 2,
         "guard": 1,
+        "magic": 2,
+        "magicGuard": 1,
         "speed": 1
       },
       "learn": {
@@ -88,6 +101,22 @@
       },
       "fieldAttack": "wind_blade",
       "race": "naga"
+    },
+    "adult_male_swordsman_01": {
+      "level": 5,
+      "hp": 90,
+      "mp": 20,
+      "attack": 30,
+      "guard": 15,
+      "magic": 30,
+      "magicGuard": 15,
+      "speed": 20,
+      "skills": [],
+      "equip": {
+        "weapon": "iron_sword",
+        "armor": "iron_armor"
+      },
+      "race": "nol"
     }
   },
   "levelUp": {

@@ -16,8 +16,11 @@ import { loadSpriteSheets, sheetUrl, spriteSheet } from './spriteSheets';
 export interface ActorEntry {
   /** 行の並び。省略すると 下・左・右・上。 */
   order?: Facing[];
-  /** 歩きの見せ方（GS-47）。止まり絵のコマと 1 コマの秒数。 */
-  walk?: { stand?: number; ms?: number };
+  /**
+   * 歩きの見せ方（GS-47）。止まり絵のコマと 1 コマの秒数。
+   * `always: true` は**止まっていても歩きのコマを回す**（2026-11-04。飛んで羽ばたく物など）。
+   */
+  walk?: { stand?: number; ms?: number; always?: boolean };
   /** 静止コマの名前（GS-47）。宝箱の開閉など、向きを持たない物用。 */
   poses?: Record<string, number>;
 }

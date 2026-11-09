@@ -29,6 +29,7 @@ import { enemyIdOf } from './party';
 import { applyUse, healLine, skillUse, wouldHelp } from './heal';
 import { itemEquip, itemName, itemUse } from '../items';
 import { backRowRate, battleSettings, heightRates, normalAttackOf } from './settings';
+import { guestAction } from '../allyNpc';
 
 /**
  * ゲームオーバーの合図（GS-60）。**エラーではなく「ここで話は終わり」の印。**
@@ -51,7 +52,7 @@ export type BattleAction =
   | { kind: 'run' };
 
 /** 決着。 */
-export type BattleOutcome = 'win' | 'lose' | 'escape';
+export type BattleOutcome = 'win' | 'lose' | 'escape' | 'retreat';
 
 /** 戦いの始まり方（GS-295）。書かなければふつうの始まり。 */
 export interface BattleOpening {
@@ -96,6 +97,11 @@ export interface BattleIo {
    * 逃げたときは呼ばない（決着ではないので、マップの曲へそのまま戻る）。
    */
   decided?(outcome: BattleOutcome): void;
+  /**
+   * そのターンの行動（技や攻撃・ターンの終わりの毒）がすべて終わった（2026-11-06 / GS-313）。勝ち負けが決まったときも、
+   * 決着の合図（`decided`）より先に呼ぶ。画面はここで戦闘開始の構図から戦闘待機の見え方へ戻す。無い画面では飛ばす。
+   */
+  actionsDone?(): void;
   /** 音を 1 つ鳴らす（`data/sounds.json` のキー）。鳴らない画面もあるので任意。 */
   se?(key: string): void;
   /**
@@ -112,6 +118,10 @@ export interface BattleIo {
   hit?(id: string, amount: number, kind: 'damage' | 'heal' | 'miss' | 'ailment'): Promise<void> | void;
   /** 0 以上 1 未満。**外から渡す**ので、確かめるときは固定できる。 */
   random(): number;
+  /** 撤退（技の種類 `retreat`。GS-304）できる戦いか。フィールドの敵シンボルとの戦いだけ true。無ければできない。 */
+  canRetreat?(): boolean;
+  /** 逃げられる戦いか（2026-11-05。イベントの `battle` の `noEscape`）。無ければ逃げられる。 */
+  canEscape?(): boolean;
 }
 
 // 当たった音・かわした音・勝った音・持ち物の既定の音は戦闘共通の台帳（`battleSettings.json`。GS-106）が持つ。
@@ -292,17 +302,22 @@ async function strike(attacker: Fighter, defender: Fighter, skill: SkillDef | nu
   if (skill?.ailment) await inflict(defender, skill, io);
 }
 
-/** 味方 1 人ぶんの手を実行する。返り値は「逃げ切ったか」。 */
+/** 味方 1 人ぶんの手を実行する。返り値は戦いを抜けたか（逃げ切った `escape`・撤退した `retreat`）。抜けなければ false。 */
 async function actParty(
   who: Fighter,
   action: BattleAction,
   enemies: Fighter[],
   party: Fighter[],
   io: BattleIo,
-): Promise<boolean> {
+): Promise<false | 'escape' | 'retreat'> {
   if (action.kind === 'run') {
+    // 逃げられない戦い（2026-11-05）。選ばせる側で止めているが、ここでも見る。
+    if (io.canEscape && !io.canEscape()) {
+      await io.say('にげられない！');
+      return false;
+    }
     await io.say(`${who.name} は にげだした！`);
-    if (io.random() < escapeChance(party, enemies)) return true;
+    if (io.random() < escapeChance(party, enemies)) return 'escape';
     await io.say('しかし まわりこまれてしまった！');
     return false;
   }
@@ -332,6 +347,11 @@ async function actParty(
 
   const skill = action.kind === 'skill' ? skillDef(action.skill) : null;
   if (action.kind === 'skill') {
+    // 撤退（2026-11-05 / GS-304）はフィールドの敵シンボルとの戦いだけ。ほかでは MP を払わずに止める。
+    if (skill?.type === 'retreat' && !io.canRetreat?.()) {
+      await io.say('ここでは てったい できない！');
+      return false;
+    }
     // **払えなければ何もしない。** 選ばせる側で止めているが、
     // 選んでから減った（MP を使う敵の技など）ときのために、ここでも見る。
     if (!skill || !payMp(who, skill)) {
@@ -340,6 +360,11 @@ async function actParty(
     }
     await io.update();
     await io.say(`${who.name} の ${skill.name}！`);
+    // 撤退は必ず成功する（GS-304）。生き残った敵はフィールドへ戻る（戻し方は呼ぶ側）。
+    if (skill.type === 'retreat') {
+      await io.say('いったん ひいて たてなおす！');
+      return 'retreat';
+    }
     if (skill.type === 'guard') {
       who.guarding = skill.value;
       await io.say(`${who.name} は 身を かためた！`);
@@ -467,8 +492,16 @@ export async function runBattle(
     // 「殴ろうとした相手がもう居ない」が毎回起きる。
     // **眠っている人には聞かない**（GS-69）。聞いてから「動けなかった」と出すのは、
     // 選ばせておいて無かったことにするのと同じで、操作した意味が消える。
-    const askable = turn === 0 && ambush ? [] : party.filter((who) => alive(who) && !asleep(who));
+    // 客（加勢する NPC。GS-306）には聞かず、自分で手を決める。
+    const askable = turn === 0 && ambush ? [] : party.filter((who) => alive(who) && !asleep(who) && !who.guest);
     const orders = askable.length > 0 ? await io.commands(askable) : new Map<string, BattleAction>();
+    if (!(turn === 0 && ambush)) {
+      for (const guest of party) {
+        if (!guest.guest || !alive(guest) || asleep(guest)) continue;
+        const action = guestAction(enemies);
+        if (action) orders.set(guest.id, action);
+      }
+    }
 
     // **守りは速さより先。** 順番どおりだと、足の遅い者の「防御」は
     // 殴られた後に効くことになり、選んだ意味が無い。
@@ -490,9 +523,9 @@ export async function runBattle(
       if (who.side === 'party') {
         const action = orders.get(who.id);
         if (!action) continue;
-        if (await actParty(who, action, enemies, party, io)) {
-          return { outcome: 'escape', spoils: { exp: 0, gold: 0 } };
-        }
+        const left = await actParty(who, action, enemies, party, io);
+        // 撤退（GS-304）は、それまでに倒した敵の取り分を入れる。逃げたときは何も入らない。
+        if (left) return { outcome: left, spoils: left === 'retreat' ? beatenSpoils(enemies) : { exp: 0, gold: 0 } };
       } else {
         if (turn === 0 && opening.preemptive) continue;
         await actEnemy(who, party, io);
@@ -516,6 +549,7 @@ export async function runBattle(
       }
     }
 
+    io.actionsDone?.();
     const decided = battleResult(fighters);
     if (decided) return await finish(decided, enemies, io);
   }
@@ -532,6 +566,8 @@ async function finish(
   enemies: Fighter[],
   io: BattleIo,
 ): Promise<{ outcome: BattleOutcome; spoils: BattleSpoils }> {
+  // 行動の途中で決まったときも、戦闘待機の見え方へ戻す合図を先に（GS-313）。
+  io.actionsDone?.();
   // 決着の合図（GS-85）。**一言より先**——曲が鳴ったまま「かった！」と言うと締まらない。
   io.decided?.(outcome);
   await io.update();
@@ -541,6 +577,11 @@ async function finish(
   if (outcome === 'win' && spoils.exp > 0) await io.say(`けいけんち ${spoils.exp} を かくとく！`);
   if (outcome === 'win' && spoils.gold > 0) await io.say(`${spoils.gold} G を てにいれた！`);
   return { outcome, spoils };
+}
+
+/** 撤退したときの取り分（GS-304）。それまでに倒した敵だけ。 */
+export function beatenSpoils(enemies: Fighter[]): BattleSpoils {
+  return spoilsOf('win', enemies.filter((who) => who.hp <= 0));
 }
 
 /** 取り分。**勝ったときだけ**（逃げても負けても 0）。 */

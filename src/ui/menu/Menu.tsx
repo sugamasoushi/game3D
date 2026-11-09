@@ -9,11 +9,13 @@
 // **キーは capture 段階で止める。** ここで止めないと、開いている間もプレイヤーが歩く
 // （会話ウィンドウと同じ手口）。
 //
-// **カーソルは 3 段（GS-206）。** タブ → 中身 → 小窓（使い先・武具の選択）。
-// 決定で 1 段深く、取り消し（Esc / ✕）で 1 段浅く戻る。タブで取り消すと閉じる。
-// ←→ がタブを移るのは**タブに居るときだけ**——中身の中では同じ行の隣へ動く
-// （セーブの「書く／読む」、装備の「変更／外す」）。つまみと選ぶ箱は値を動かし、
-// 仲間の切り替え（`data-lr`）は人を替える。
+// **開いたときはタブを選ばずにコンディション（仲間のカード）を見せる（2026-11-04）。** コンディションはタブではなく
+// メニューの「最初の画面」。カーソルはタブの列に居るが、どのタブも開いていない。←→ でタブを選び、決定（↓）で開いて中身へ入る。
+//
+// **取り消しは「小窓 → 最初の画面 → 閉じる」（2026-11-04）。** タブを開いていれば、中身に居てもタブに居ても
+// 1 回の取り消しで最初の画面へ戻り、もう 1 回で閉じる。✕ はいつでもすぐ閉じる。
+// タブを開いている間の ←→ は今までどおり：タブに居ればタブを移り、中身の中では同じ行の隣へ動く
+// （セーブの「書く／読む」、装備の「変更／外す」）。つまみと選ぶ箱は値を動かし、仲間の切り替え（`data-lr`）は人を替える。
 // ↑↓ は画面の上の位置で辿る（同じ列の真下へ）。中身の一番上で ↑ を押すとタブへ戻る。
 //
 // ページが守る約束は 3 つだけ:
@@ -33,17 +35,27 @@ import { StatusPage } from './StatusPage';
 import { SavePage } from './SavePage';
 import { SettingsPage } from './SettingsPage';
 import { ConditionPage } from './ConditionPage';
+import { CodexPage } from './CodexPage';
+import { RacePage } from './RacePage';
+import { TacticsPage } from './TacticsPage';
+import type { Tactic } from '../../game/partyTactics';
+import type { FoeRecord } from '../../game/codex';
 import { PICK, nearest, nudge } from './menuNav';
 
 /**
- * タブの並び。旧作と同じくコンディションから始める。
+ * タブの並び（2026-11-04）。コンディションはタブにせず、開いたときの最初の画面にした。
+ * 装備・スキル・ステータスは「仲間」にまとめ、中の種類のタブで分ける（クエストと同じ形）。
  * 中身の無いタブは並べない——押せるのに何も起きない場所を作らないため（GS-54）。
- * 「スキル」は**見せるだけ**：いまある技はどれも戦闘中にしか意味がない（GS-67）。
+ * 「作戦」（2026-11-07）はフィールドの作戦の切り替えと、コマンド戦闘の隊列（見せるだけ）。
  */
-const PAGES = ['コンディション', 'アイテム', '装備', 'スキル', 'ステータス', 'クエスト', 'セーブ', '設定'] as const;
+const PAGES = ['アイテム', '仲間', '作戦', 'クエスト', '図鑑', 'セーブ', '設定'] as const;
 type Page = (typeof PAGES)[number];
-/** 誰を見るかを選ぶページ（GS-70）。 */
-const MEMBER_PAGES: readonly Page[] = ['装備', 'スキル', 'ステータス'];
+/**
+ * 「仲間」の中の種類（2026-11-04）。「スキル」は**見せるだけ**：いまある技はどれも戦闘中にしか意味がない（GS-67）。
+ * 「種族特性」（2026-11-07）はステータスの右に出していた種族と特性を移した物。
+ */
+const MEMBER_KINDS = ['装備', 'スキル', 'ステータス', '種族特性'] as const;
+type MemberKind = (typeof MEMBER_KINDS)[number];
 
 export function Menu({
   story,
@@ -51,11 +63,15 @@ export function Menu({
   quests,
   questExp,
   items,
+  found,
+  foes,
   party,
   members,
   gold,
   playSeconds,
   place,
+  tactic,
+  onTactic,
   onUseItem,
   onCraftItem,
   onEquip,
@@ -73,6 +89,9 @@ export function Menu({
   questExp: number;
   /** いま持っている物（GS-46）。数はここ、名前と説明は台帳から。 */
   items: Map<string, number>;
+  /** 図鑑（2026-11-04）。手に入れたことのある持ち物と、魔物の記録。 */
+  found: ReadonlySet<string>;
+  foes: ReadonlyMap<string, FoeRecord>;
   /** 隊列（GS-60）。**先頭が左の柱に出る人。** */
   party: string[];
   /** 仲間のいまの状態。満タンの値は台帳から引く。 */
@@ -83,6 +102,9 @@ export function Menu({
   playSeconds: number;
   /** いまいるマップの名前（コンディションの「現在地」）。 */
   place: string;
+  /** 仲間の作戦（2026-11-07。「作戦」で見せて切り替える）。 */
+  tactic: Tactic;
+  onTactic(next: Tactic): void;
   /** 持ち物を使う（GS-64）。返り値は画面に出す一言。 */
   onUseItem(id: string, who: string): string;
   /** 道具から道具を作る（2026-11-03）。返り値は画面に出す一言。 */
@@ -95,7 +117,12 @@ export function Menu({
   onTitle(): void;
   onClose(): void;
 }) {
-  const [page, setPage] = useState<Page>('コンディション');
+  /** 開いているタブ。null は最初の画面（コンディション）。 */
+  const [page, setPage] = useState<Page | null>(null);
+  /** 最初の画面でカーソルを置くタブ（最後に開いていたタブ）。 */
+  const [homeTab, setHomeTab] = useState<Page>(PAGES[0]);
+  /** 「仲間」の中の種類。 */
+  const [memberKind, setMemberKind] = useState<MemberKind>('装備');
   /** 隊列の何人目を見ているか（GS-70）。 */
   const [pickAt, setPickAt] = useState(0);
   /**
@@ -109,14 +136,33 @@ export function Menu({
   // キーの受け口は 1 度だけ付ける。いまの値は ref 越しに読む。
   const pageRef = useRef(page);
   pageRef.current = page;
+  /** 最初の画面で決定してタブを開いたら、描いた後で中身へ入る。 */
+  const enterNext = useRef(false);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
 
-  const focusTab = () => tabsRef.current?.querySelector<HTMLButtonElement>('button.on')?.focus();
+  /** タブの列へカーソルを置く。開いているタブ、最初の画面なら最後に開いていたタブ。 */
+  const focusTab = () =>
+    (tabsRef.current?.querySelector<HTMLButtonElement>('button.on') ?? tabsRef.current?.querySelector<HTMLButtonElement>('button.home'))?.focus();
 
-  // 開いたときと、タブに居るままタブが替わったときは、開いているタブにカーソルを置く。
+  /** タブを開く。最初の画面へ戻ったときにカーソルを置く所も覚える。 */
+  const openPage = (name: Page) => {
+    setHomeTab(name);
+    setPage(name);
+  };
+
+  // 開いたときと、タブに居るままタブが替わったときは、タブの列にカーソルを置く。
   // 中身に居るときは動かさない。開いた瞬間の焦点はゲームの画面（canvas）に居る。
+  // 最初の画面から決定で開いたときは、描いた後で中身の先頭へ入る。
   useEffect(() => {
+    if (enterNext.current) {
+      enterNext.current = false;
+      const first = [bodyRef.current, footRef.current].flatMap((root) => [...(root?.querySelectorAll<HTMLElement>(PICK) ?? [])])[0];
+      if (first) {
+        first.focus();
+        return;
+      }
+    }
     const active = document.activeElement;
     if (!active || !(bodyRef.current?.contains(active) || footRef.current?.contains(active))) focusTab();
   }, [page]);
@@ -146,11 +192,30 @@ export function Menu({
       const key = event.key;
 
       if (key === 'Escape') {
-        // 取り消しは 1 段ずつ戻る: 小窓 → 中身 → タブ → 閉じる。
+        // 取り消し: 小窓 → 最初の画面 → 閉じる（2026-11-04）。中身に居てもタブに居ても 1 回で最初の画面へ。
         const open = layer();
         if (open) open.querySelector<HTMLElement>('[data-cancel]')?.click();
-        else if (inBody) focusTab();
+        // 開いていたタブにカーソルを残すのは、タブが替わったときの描き直し（上の useEffect）が `home` の印で探してする。
+        // ここで 1 こま待って置くと、その間に決定でタブを開いたときにカーソルをタブへ引き戻してしまう。
+        else if (pageRef.current) setPage(null);
         else closeRef.current();
+        return;
+      }
+
+      // 最初の画面（2026-11-04）。←→ はタブの上でカーソルを動かすだけ、決定（↓）で開いて中身へ入る。
+      if (!pageRef.current) {
+        const tabs = [...(tabsRef.current?.querySelectorAll<HTMLButtonElement>('button') ?? [])];
+        const at = Math.max(0, tabs.indexOf(active as HTMLButtonElement));
+        if (!inTabs) {
+          focusTab();
+        } else if (key === 'ArrowLeft' || key === 'ArrowRight') {
+          const next = (at + (key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+          tabs[next]?.focus();
+          setHomeTab(PAGES[next]);
+        } else if (key === 'ArrowDown' || key === 'Enter' || key === ' ') {
+          enterNext.current = true;
+          openPage(PAGES[at]);
+        }
         return;
       }
 
@@ -165,7 +230,7 @@ export function Menu({
           if (!inTabs) focusTab();
           const at = PAGES.indexOf(pageRef.current);
           const delta = key === 'ArrowRight' ? 1 : -1;
-          setPage(PAGES[(at + delta + PAGES.length) % PAGES.length]);
+          openPage(PAGES[(at + delta + PAGES.length) % PAGES.length]);
         } else if (key === 'ArrowDown' || key === 'Enter' || key === ' ') {
           enter();
         } else if (key === 'ArrowUp' && !inTabs) {
@@ -201,6 +266,8 @@ export function Menu({
 
   // 見ている人（GS-70）。**隊列が 1 人なら選ばせない**——押せるのに 1 つしか無い列を作らない。
   const at = Math.min(pickAt, Math.max(0, party.length - 1));
+  /** 「仲間」で見ている種類。ほかのタブでは null。 */
+  const memberPage = page === '仲間' ? memberKind : null;
   const hero = party[at] ?? '';
   const now = members.get(hero) ?? null;
 
@@ -216,8 +283,8 @@ export function Menu({
               <button
                 key={name}
                 type="button"
-                className={name === page ? 'on' : ''}
-                onClick={() => setPage(name)}
+                className={name === page ? 'on' : !page && name === homeTab ? 'home' : ''}
+                onClick={() => openPage(name)}
               >
                 {name}
               </button>
@@ -225,12 +292,24 @@ export function Menu({
           </nav>
 
           <div className="gmenu-body" ref={bodyRef}>
+            {/* 最初の画面（2026-11-04）。タブを選んでいない間は仲間のカードを見せる。 */}
+            {!page ? <ConditionPage party={party} members={members} gold={gold} playSeconds={playSeconds} place={place} /> : null}
+            {/* 「仲間」の種類（2026-11-04）。中身の先頭の行（←→ で隣へ、決定で切り替え）。クエストの種類と同じ形。 */}
+            {page === '仲間' ? (
+              <div className="quest-kinds" role="tablist" aria-label="仲間の見るもの">
+                {MEMBER_KINDS.map((one) => (
+                  <button key={one} type="button" role="tab" data-pick aria-selected={one === memberKind} className={one === memberKind ? 'on' : ''} onClick={() => setMemberKind(one)}>
+                    {one}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             {/*
              * 誰を見るか（GS-70）。**中身の側に置く**——枠の外に置くと、
              * ↑↓ で辿れる並び（`data-pick`）から外れてキーで選べなくなる。
              * カーソルを置いて ←→ で人を替える（GS-206）。◀▶ はマウス用。
              */}
-            {party.length > 1 && MEMBER_PAGES.includes(page) ? (
+            {party.length > 1 && memberPage ? (
               <div className="menu-who" data-pick data-lr tabIndex={0} role="group" aria-label="見る仲間">
                 <button type="button" tabIndex={-1} data-step="-1" aria-label="前の仲間" disabled={at <= 0} onClick={() => setPickAt(at - 1)}>◀</button>
                 <span className="menu-who-name">{characterName(hero)}</span>
@@ -239,10 +318,10 @@ export function Menu({
               </div>
             ) : null}
             {page === 'クエスト' ? <QuestsPage story={story} substories={substories} quests={quests} questExp={questExp} items={items} /> : null}
-            {page === 'コンディション' ? <ConditionPage party={party} members={members} gold={gold} playSeconds={playSeconds} place={place} /> : null}
             {page === 'アイテム' ? (
               <ItemsPage
                 items={items}
+                found={found}
                 party={party}
                 members={members}
                 onUse={(id, who) => {
@@ -257,7 +336,7 @@ export function Menu({
                 }}
               />
             ) : null}
-            {page === '装備' ? (
+            {memberPage === '装備' ? (
               <EquipPage
                 key={hero}
                 who={hero}
@@ -275,8 +354,11 @@ export function Menu({
                 }}
               />
             ) : null}
-            {page === 'スキル' ? <SkillsPage who={hero} member={now} /> : null}
-            {page === 'ステータス' ? <StatusPage who={hero} member={now} /> : null}
+            {memberPage === 'スキル' ? <SkillsPage who={hero} member={now} /> : null}
+            {memberPage === 'ステータス' ? <StatusPage who={hero} member={now} /> : null}
+            {memberPage === '種族特性' ? <RacePage who={hero} member={now} /> : null}
+            {page === '作戦' ? <TacticsPage tactic={tactic} onTactic={onTactic} party={party} members={members} /> : null}
+            {page === '図鑑' ? <CodexPage found={found} foes={foes} members={members} /> : null}
             {page === 'セーブ' ? <SavePage onSave={onSave} onLoad={onLoad} /> : null}
             {page === '設定' ? <SettingsPage /> : null}
           </div>

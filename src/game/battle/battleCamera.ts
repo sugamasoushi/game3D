@@ -21,6 +21,10 @@ export interface BattleCameraKey {
   height?: number;
   /** カメラを傾けて見せるか（チルトシフト）。 */
   tilt?: boolean;
+  /**
+   * 平行投影にするか（2026-11-06 / GS-310。チルトと同じく、キーの時刻で切り替わる）。どのキーにも書かなければマップの投影のまま。
+   */
+  ortho?: boolean;
 }
 
 export interface BattleCamera {
@@ -40,6 +44,8 @@ export interface BattleCameraView {
   distance: number;
   height: number;
   tilt?: boolean;
+  /** 平行投影（GS-310）。無ければマップの投影。 */
+  ortho?: boolean;
 }
 
 /** どのキーにも書いていない値。見る点は胸の高さ、カメラは手前 9 マス・高さ 4 マス。 */
@@ -57,6 +63,7 @@ export function battleCameraStartView(camera: BattleCamera | null): BattleCamera
     if (key.at > 0) break;
     for (const name of NUMBER_KEYS) if (key[name] !== undefined) view[name] = key[name];
     if (key.tilt !== undefined) view.tilt = key.tilt;
+    if (key.ortho !== undefined) view.ortho = key.ortho;
   }
   return view;
 }
@@ -81,8 +88,25 @@ export function sampleBattleCamera(camera: BattleCamera, time: number, from: Bat
     }
     view[name] = value;
   }
-  for (const key of camera.keys) if (key.at <= t && key.tilt !== undefined) view.tilt = key.tilt;
+  for (const key of camera.keys) {
+    if (key.at > t) continue;
+    if (key.tilt !== undefined) view.tilt = key.tilt;
+    if (key.ortho !== undefined) view.ortho = key.ortho;
+  }
   return view;
+}
+
+/**
+ * `view` へ `duration` ミリ秒で戻る構図（2026-11-06 / GS-310）。コマンド選択の構図を抜けるとき、その前の見え方へ戻すのに使う。
+ * 戻った後もその見え方を保つ。チルト・投影は着いた時に切り替わる（書いていなければ切り替えない）。
+ */
+export function battleCameraReturn(view: BattleCameraView, duration: number): BattleCamera {
+  const at = Math.max(0, duration);
+  const key: BattleCameraKey = { at };
+  for (const name of NUMBER_KEYS) key[name] = view[name];
+  if (view.tilt !== undefined) key.tilt = view.tilt;
+  if (view.ortho !== undefined) key.ortho = view.ortho;
+  return { duration: at, hold: true, keys: [key] };
 }
 
 /**
@@ -93,6 +117,42 @@ export function battleCameraPose(view: BattleCameraView, k: number): { up: numbe
   const across = Math.max(0.01, view.distance * k);
   const rise = (view.height - view.y) * k;
   return { up: view.y * k, pitch: (-Math.atan2(rise, across) * 180) / Math.PI, distance: Math.hypot(across, rise) };
+}
+
+/**
+ * 戦闘の場面（2026-11-06 / GS-312）。`null` は戦闘待機（構図 `start` を流し終えて保つ見え方。出だしの一文もここ）、
+ * `command` はコマンド選択（手を聞いているあいだ）、`action` は戦闘開始（手を決め終えて技や攻撃が流れるあいだ）。
+ */
+export type BattleCameraPhase = 'command' | 'action' | null;
+
+/** 行動選択の構図を流す段（戦闘画面の段 `kind`）。「戦う」を選んでからの段だけ（2026-11-06 / GS-314）。 */
+const FIGHT_STEPS = new Set(['attack', 'skills', 'target']);
+
+/**
+ * 戦闘画面の今の場面（GS-312・GS-314）。手を聞いているとき、「戦う」を選んでからの段（攻め方・技の一覧・相手を選ぶ・
+ * 技の相手の味方を選ぶ）なら行動選択（`command`）。隊列の命令（戦う／オート／アイテム／逃げる）・アイテムの段は戦闘待機（null）。
+ * 手を決め終えてそのターンの行動が終わるまでは戦闘開始（`action`）。
+ */
+export function battleCameraPhaseOf(asking: boolean, acting: boolean, step: { kind: string; skill?: string | null }): BattleCameraPhase {
+  if (asking) return FIGHT_STEPS.has(step.kind) || (step.kind === 'friend' && !!step.skill) ? 'command' : null;
+  return acting ? 'action' : null;
+}
+
+/** 場面が替わったときにすること。構図を流す・戦闘待機の見え方へ戻す・何もしない。 */
+export type BattlePhaseStep =
+  | { kind: 'play'; camera: BattleCamera }
+  | { kind: 'back'; camera: BattleCamera }
+  | { kind: 'none' };
+
+/**
+ * 場面の構図を決める（GS-312）。`camera` は入った場面の構図（無い・待機なら null）、`wait` は戦闘待機の見え方
+ * （待機から離れていれば、その離れる前の値。待機のままなら null）、`lastMs` はいま流している場面の構図の長さ。
+ * 構図があればそれを流す。無ければ、待機から離れているときだけ同じ長さで待機の見え方へ戻る。
+ */
+export function battlePhaseStep(camera: BattleCamera | null, wait: BattleCameraView | null, lastMs: number): BattlePhaseStep {
+  if (camera) return { kind: 'play', camera };
+  if (wait) return { kind: 'back', camera: battleCameraReturn(wait, lastMs) };
+  return { kind: 'none' };
 }
 
 /** 戦闘のカメラを流す。舞台を片づけるときは `stop`。 */

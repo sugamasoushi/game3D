@@ -59,6 +59,65 @@ export function gridHeights(grid: BattleStageGrid): { climb: number; highStep: n
   return { climb: grid.climb ?? DEFAULT_GRID_CLIMB, highStep: grid.highStep ?? DEFAULT_HIGH_STEP, flyHeight: grid.flyHeight ?? DEFAULT_FLY_HEIGHT };
 }
 
+/** 味方の板の大きさの倍率の範囲と既定（GS-309）。戦闘演出エディタの `validate.mjs` の `PARTY_SCALE_RANGE` と同じ。 */
+export const PARTY_SCALE_RANGE = [0.25, 4] as const;
+export const DEFAULT_PARTY_SCALE = 1;
+/** 書いていなければ既定を入れた、味方の板の大きさの倍率。 */
+export function partyScaleOf(settings: Pick<BattleStageSettings, 'partyScale'>): number {
+  return settings.partyScale ?? DEFAULT_PARTY_SCALE;
+}
+
+/**
+ * 戦闘の絵の 1 マスの画素（2026-11-08 / GS-322。`figurePx`。8〜1024）。舞台の板（敵・味方）の大きさは
+ * 「絵の画素 ÷ これ × 倍率 × CharacterScale」。コマンド戦闘の絵はフィールドのドット絵より細かく描くので、マップの 1 マスの画素
+ * （`tilePx`）とは別に持つ。書かなければマップの `tilePx`（前の決め方）。コマンド戦闘の技の絵もこれで数える（GS-325。フィールドの技の絵はマップの 1 マスの画素）。
+ */
+export const FIGURE_PX_RANGE = [8, 1024] as const;
+/**
+ * 敵の攻撃を受けたときの画面の揺れ（2026-11-09 / GS-337。`hitShake`）。カメラを揺らす（カメラエディタの演出「impact」と同じ揺れ。
+ * `GameView.playShot` の `shake`）。`ms` は長さ（0〜3000）、`power` は揺れ幅（マス。0〜5。0 で揺らさない）。
+ * 書かなければ前に使っていた impact と同じ 450ms・0.5。項目ごとに共通の値・マップで差し替える。
+ * `timing`（GS-338・GS-339）は揺らす時: `impact`＝当たったとき（既定。技の絵が終わり、当たった音〈`se.hit`〉と隊列の窓のアイコンの点滅と同じ瞬間。
+ * かわされたら揺らさない）／`lunge`＝攻めかかったとき（攻撃の音と同時。前の動き）。
+ */
+export type HitShakeTiming = 'impact' | 'lunge';
+export const HIT_SHAKE_TIMINGS: readonly HitShakeTiming[] = ['impact', 'lunge'];
+export interface BattleHitShake {
+  ms: number;
+  power: number;
+  timing: HitShakeTiming;
+}
+export const HIT_SHAKE_RANGES = { ms: [0, 3000], power: [0, 5] } as const;
+export const DEFAULT_HIT_SHAKE: BattleHitShake = { ms: 450, power: 0.5, timing: 'impact' };
+/** 書いていなければ既定を入れた、被弾の揺れ。 */
+export function hitShakeOf(settings: Pick<BattleStageSettings, 'hitShake'>): BattleHitShake {
+  return {
+    ms: settings.hitShake?.ms ?? DEFAULT_HIT_SHAKE.ms,
+    power: settings.hitShake?.power ?? DEFAULT_HIT_SHAKE.power,
+    timing: settings.hitShake?.timing ?? DEFAULT_HIT_SHAKE.timing,
+  };
+}
+/**
+ * 当たった印（`BattleIo.hit`）で揺らすか（GS-339）。揺らす時が「当たったとき」で、味方が実際に食らった（`damage`）ときだけ。
+ * 攻めかかったときに揺らす設定なら、印では揺らさない（見せ場〈`act`〉で揺らしている）。
+ */
+export function shakesOnHit(timing: HitShakeTiming, side: 'party' | 'enemy' | undefined, kind: string): boolean {
+  return timing === 'impact' && side === 'party' && kind === 'damage';
+}
+
+/**
+ * 技が流れるあいだ（戦闘の場面 `action`。手を決め終えてそのターンの行動が終わるまで）、舞台の味方の板を隠すか（2026-11-09 / GS-340。
+ * `hidePartyInAction`）。書かなければ隠す。行動選択の左端の板・味方に重ねる技の絵（隊列の窓・画面）には効かない。
+ */
+export function partyHiddenInActionOf(settings: Pick<BattleStageSettings, 'hidePartyInAction'>): boolean {
+  return settings.hidePartyInAction ?? true;
+}
+
+/** 書いていなければマップの 1 マスの画素。 */
+export function figurePxOf(settings: Pick<BattleStageSettings, 'figurePx'>, tilePx: number): number {
+  return settings.figurePx ?? (tilePx > 0 ? tilePx : 32);
+}
+
 /** マスの印のキー（`"col,row"`。GS-288）。 */
 export function cellKey(cell: { col: number; row: number }): string {
   return `${cell.col},${cell.row}`;
@@ -72,16 +131,38 @@ export interface NamedBattleCamera extends BattleCamera {
 
 /** 1 つのマップの戦闘の舞台（共通の値に差し替えを重ねた後の形）。 */
 export interface BattleStageSettings {
-  /** 戦闘開始の構図（この欄専用）。舞台のカメラはこの構図で決まる（BattleStage から直接。`battleCamera.ts`）。 */
+  /**
+   * 戦闘待機の構図（この欄専用。2026-11-06 に「戦闘開始」から呼び名を替えた。キーは `start` のまま）。舞台を組むと流し、
+   * 流し終えた見え方が待機の見え方（出だしの一文・コマンド選択や戦闘開始の構図が無いとき・それらから戻る先）。
+   */
   start: NamedBattleCamera;
-  /** コマンド選択の構図（この欄専用）。null なら無し。**今は再生しない**（味方の板を出すようになったら使う）。 */
+  /**
+   * コマンド選択の構図（この欄専用）。null なら無し。手を聞いているあいだ（隊列の命令から相手を選ぶまで）流し、
+   * 聞き終えたら前の見え方へ同じ長さで戻る（2026-11-06 / GS-310）。
+   */
   command: NamedBattleCamera | null;
+  /**
+   * 戦闘開始の構図（この欄専用。2026-11-06 / GS-312）。手を決め終えて技や攻撃が流れるあいだ流し、そのターンの行動が終わる
+   * （決着も）と戦闘待機の見え方へ戻る（GS-313）。null・書かなければ無し（技のあいだも待機の見え方）。戦いの進行はこの構図を待たない。
+   */
+  action?: NamedBattleCamera | null;
   commandFigure: BattleCommandFigure;
   /**
    * このマップの戦闘に出る敵の数の最大（1〜6）。台帳エディタは敵シンボルのお供をこの範囲で決める
    * （触った 1 体と合わせて最大まで）。隊形の敵の枠はこの数以上要る。ゲームは数を切り詰めない（決めるのは台帳と検査）。
    */
   maxEnemies: number;
+  /**
+   * 舞台に立つ味方の板の大きさの倍率（2026-11-06 / GS-309。0.25〜4。書かなければ 1）。左端の板（コマンド選択）の大きさは
+   * `commandFigure.scale` のまま変えない。
+   */
+  partyScale?: number;
+  /** 戦闘の絵の 1 マスの画素（GS-322。`figurePxOf`）。 */
+  figurePx?: number;
+  /** 敵の攻撃を受けたときの画面の揺れ（GS-337。`hitShakeOf`）。 */
+  hitShake?: Partial<BattleHitShake>;
+  /** 技が流れるあいだ味方の板を隠すか（GS-340。`partyHiddenInActionOf`）。 */
+  hidePartyInAction?: boolean;
   grid: BattleStageGrid;
   /**
    * マスごとの手書きの印（2026-10-30 / GS-288。`"col,row"` → 分け方）。地形から拾った分け方を上書きする。
@@ -94,8 +175,13 @@ export interface BattleStageSettings {
 export interface BattleStageOverride {
   start?: NamedBattleCamera;
   command?: NamedBattleCamera | null;
+  action?: NamedBattleCamera | null;
   commandFigure?: Partial<BattleCommandFigure>;
   maxEnemies?: number;
+  partyScale?: number;
+  figurePx?: number;
+  hitShake?: Partial<BattleHitShake>;
+  hidePartyInAction?: boolean;
   grid?: Partial<BattleStageGrid>;
   cells?: Record<string, CellMark>;
 }
@@ -120,6 +206,7 @@ export const DEFAULT_BATTLE_STAGES: BattleStageBook = {
       ],
     },
     command: null,
+    action: null,
     commandFigure: { x: 0.10, depth: 2, scale: 1, moveS: 0.25, offsetX: 0, offsetY: 0, offsetZ: 0 },
     maxEnemies: 3,
     grid: { across: [-6, 6], depth: [-5, 5] },
@@ -164,6 +251,7 @@ function readCamera(raw: unknown): NamedBattleCamera | null {
     const next: BattleCameraKey = { at: key.at };
     for (const name of KEY_NUMBERS) if (finite(key[name])) next[name] = key[name];
     if (typeof key.tilt === 'boolean') next.tilt = key.tilt;
+    if (typeof key.ortho === 'boolean') next.ortho = key.ortho;
     keys.push(next);
   }
   keys.sort((a, b) => a.at - b.at);
@@ -176,11 +264,36 @@ function readSettings(raw: unknown, base: BattleStageSettings): BattleStageSetti
   return {
     start: readCamera(raw.start) ?? structuredClone(base.start),
     command: !('command' in raw) ? structuredClone(base.command) : raw.command === null ? null : readCamera(raw.command) ?? structuredClone(base.command),
+    action: !('action' in raw) ? structuredClone(base.action ?? null) : raw.action === null ? null : readCamera(raw.action) ?? structuredClone(base.action ?? null),
     commandFigure: readFigure(raw.commandFigure, base.commandFigure),
     maxEnemies: Number.isInteger(raw.maxEnemies) && (raw.maxEnemies as number) >= 1 && (raw.maxEnemies as number) <= 6 ? raw.maxEnemies as number : base.maxEnemies,
     grid: readGrid(raw.grid, base.grid),
+    ...(finite(raw.partyScale) && raw.partyScale >= PARTY_SCALE_RANGE[0] && raw.partyScale <= PARTY_SCALE_RANGE[1]
+      ? { partyScale: raw.partyScale }
+      : base.partyScale !== undefined ? { partyScale: base.partyScale } : {}),
+    ...(finite(raw.figurePx) && raw.figurePx >= FIGURE_PX_RANGE[0] && raw.figurePx <= FIGURE_PX_RANGE[1]
+      ? { figurePx: raw.figurePx }
+      : base.figurePx !== undefined ? { figurePx: base.figurePx } : {}),
+    ...readHitShake(raw.hitShake, base.hitShake),
+    ...(typeof raw.hidePartyInAction === 'boolean'
+      ? { hidePartyInAction: raw.hidePartyInAction }
+      : base.hidePartyInAction !== undefined ? { hidePartyInAction: base.hidePartyInAction } : {}),
     ...(readCells(raw.cells) ?? (base.cells ? { cells: { ...base.cells } } : {})),
   };
+}
+
+/** 被弾の揺れ（GS-337）。項目ごとに差し替える（範囲の外・数でない値は共通の値のまま）。 */
+function readHitShake(raw: unknown, base: Partial<BattleHitShake> | undefined): { hitShake?: Partial<BattleHitShake> } {
+  const out: Partial<BattleHitShake> = { ...(base ?? {}) };
+  if (object(raw)) {
+    for (const key of ['ms', 'power'] as const) {
+      const value = raw[key];
+      const [min, max] = HIT_SHAKE_RANGES[key];
+      if (finite(value) && value >= min && value <= max) out[key] = value;
+    }
+    if ((HIT_SHAKE_TIMINGS as readonly unknown[]).includes(raw.timing)) out.timing = raw.timing as HitShakeTiming;
+  }
+  return Object.keys(out).length ? { hitShake: out } : {};
 }
 
 /** 手書きの印（GS-288）。形の違うキー・知らない印は捨てる。書いていなければ null（共通の値のまま）。 */

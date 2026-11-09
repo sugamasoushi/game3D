@@ -92,6 +92,32 @@ export function previewCameraCues(next: CameraCueBook): void { book = structured
 /** 場面の基準（マス）。`cell` のキーを差に直すのに使う（GS-167）。 */
 export interface CueBase { x: number; y: number; z: number }
 
+/**
+ * イベントの「カメラ配置」（2026-11-04）を、保持の演出 1 本に直す。再生は台帳の演出と同じ再生器——
+ * 前の演出（保持）の状態から続けて動き、後の演出もここから続く。
+ *
+ * - `to` があれば、見る所を `ms` かけてそのマス（マスの数そのまま。真ん中への寄せは呼ぶ側）へ。`from` があればそこから、無ければ今の所から。
+ * - `to` が null なら**いつもの位置へ戻す**: 差を 0・寄り 1・向き 0・仰角 `pitch`（いつもの仰角）へ。
+ * - `distance` は着いたときの寄りの倍率（戻すときは 1）。
+ */
+export function cameraMoveCue(
+  to: CueBase | null,
+  ms: number,
+  options: { from?: CueBase; distance?: number; pitch: number },
+): CameraCue {
+  const duration = Math.max(0, ms);
+  const frames: CueFrame[] = [];
+  if (to) {
+    if (options.from) frames.push({ at: 0, ...options.from, cell: true });
+    const end: CueFrame = { at: duration, ...to, cell: true };
+    if (options.distance !== undefined) end.distance = options.distance;
+    frames.push(end);
+  } else {
+    frames.push({ at: duration, x: 0, y: 0, z: 0, distance: 1, yaw: 0, pitch: options.pitch });
+  }
+  return { name: to ? 'カメラ配置' : 'カメラ配置（戻す）', duration, hold: true, frames, effects: [] };
+}
+
 export function sampleCue(
   cue: CameraCue,
   time: number,

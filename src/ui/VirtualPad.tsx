@@ -30,6 +30,8 @@ export const SHOULDER_BUTTONS = [
   { label: 'L2', name: '先頭を前の人へ', code: 'KeyQ' },
   { label: '走る', name: '走る（押しているあいだ）', code: 'ShiftLeft' },
   { label: 'R2', name: '先頭を次の人へ', code: 'KeyE' },
+  // 仲間の作戦（GS-305。ゲームパッドの Select）。
+  { label: '作戦', name: '仲間の作戦を切り替える', code: 'KeyC' },
 ] as const;
 
 const keyValue = (code: string) => {

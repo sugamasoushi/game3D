@@ -19,6 +19,11 @@ export interface MapEntry {
   /** そのマップで流す曲（`sounds.json` のキー）。 */
   bgm?: string;
   /**
+   * このマップで戦うときの曲（2026-11-09。`sounds.json` のキー。BattleBGM フォルダの音）。書かなければ戦闘共通の曲。
+   * イベントの戦闘の `bgm`・敵の `battleBgm` が先（決まりは `battle/battleBgm.ts`）。
+   */
+  battleBgm?: string;
+  /**
    * 環境音（GS-278）。**行の並び**で、何本でも同時に流す。行ごとにエフェクトのプリセットへ合わせられる
    * （出し入れで音もついてくる。雷は光るたびに鳴らせる）。決まりは `ambience.ts`。
    */
@@ -33,6 +38,11 @@ export interface MapEntry {
   time?: MapTimeDef;
   /** `false` ならこのマップではフィールドアタックを使えない（GS-295。家・町など）。書かなければ使える。 */
   fieldAttack?: boolean;
+  /**
+   * 敵シンボル・ランダムエンカウントの戦闘をどこで戦うか（2026-11-05 / GS-304）。書かなければ**その場**（主人公の立つ所）、
+   * `stage` なら今までどおり舞台の点（`BattleStage`）。イベントの戦闘はいつも舞台の点。
+   */
+  battleAt?: 'stage';
   /**
    * ランダムエンカウント（GS-299）。出る敵・出現比率・間隔。枠はマップの RANDOM_ENCOUNT レイヤー。
    * 台帳エディタの「マップ構成」で直す。無ければ枠があっても出会わない。

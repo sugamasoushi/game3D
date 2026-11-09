@@ -15,6 +15,7 @@ import type { SkillDef, Stats } from './rules';
 import { applyBattleSettings } from './settings';
 import type { SkillFieldFrom, SkillFieldKind } from './skillFieldLimits';
 import type { RaceDef } from './races';
+import type { EffectPlace } from '../effectPlace';
 
 /** 敵の絵の置き場所（2026-10-27）。人の立ち絵（`CharaStand`）とは棚を分けた。 */
 const ENEMY_DIR = 'assets/img/Enemy';
@@ -57,10 +58,19 @@ export interface EnemySkillRef {
 /** 敵 1 体ぶん。数値は `Stats` と同じ綴りにしてある——そのまま戦えるように。 */
 export interface EnemyDef extends Stats {
   name: string;
+  /** 図鑑の説明（2026-11-04）。出会ったら図鑑に出す。 */
+  text?: string;
+  /** 図鑑に載せるか（2026-11-04）。`false` で載せない。書かなければ載せる。 */
+  codex?: boolean;
   /** 絵の名前（`assets/img/Enemy` からの道。拡張子なし）。無ければ絵なしで出す。 */
   image?: string;
   /** 戦闘の絵の大きさの倍率（2026-10-17）。書かなければ 1（絵の高さから決めた大きさのまま）。 */
   scale?: number;
+  /**
+   * 体力の帯の位置のずらし（2026-11-06。絵の画素）。既定は絵の上端の真ん中の少し上で、`x` は右へ、`y` は下へずらす。
+   * 絵の上に余白がある敵などで使う。書かなければずらさない。
+   */
+  hpBar?: { x?: number; y?: number };
   /** 倒したときに入る経験（GS-63）。 */
   exp?: number;
   /** 倒したときの取り分。 */
@@ -77,6 +87,11 @@ export interface EnemyDef extends Stats {
    * 前衛・後衛の決まりの外。単体の攻撃で守られた後衛も狙える。飛ばない相手からの直接攻撃は `rates.flyGuard`（既定 0.5）倍。
    */
   flying?: boolean;
+  /**
+   * この敵と戦うときの曲（2026-11-09。`sounds.json` のキー。BattleBGM フォルダの音）。ボスなど。
+   * 敵が何体もいれば並びの前の敵が先。イベントの戦闘の `bgm` のほうが先で、マップ・戦闘共通の曲より先（`battleBgm.ts`）。
+   */
+  battleBgm?: string;
 }
 
 /** はじめの仲間 1 人ぶん。数値は**レベル 1 のとき**の値（GS-63）。 */
@@ -113,15 +128,22 @@ export interface BattleFormationSlot {
 }
 
 /**
- * 戦闘隊形（2026-10-19。**人数によらず共通の並び**）。陣営ごとに 6 人までの枠を並べ、N 人のときは前から N 個を使う。
+ * 戦闘隊形（2026-10-19。**人数によらず共通の並び**）。陣営ごとに枠を並べ（数の上限は無い。2026-11-07）、N 人のときは前から N 個を使う。
  * `center` が偽でなければ、使う枠を横の真ん中へ寄せる（列の平均を舞台の点へ。マスの番号のまま整数でずらす）——
  * 1 人でも 4 人でも同じ並びのまま真ん中に立つ。
  */
 export interface BattleFormationDef {
   name?: string;
+  /** 味方を中央配置に補正するか（偽でなければ補正）。敵は補正しない（2026-11-07 / GS-316）。 */
   center?: boolean;
   party?: BattleFormationSlot[];
+  /** 敵の札（GS-316）。優先して立たせるマス。人数が札より少なければ札の中からくじ。 */
   enemy?: BattleFormationSlot[];
+  /**
+   * 敵の配置範囲（2026-11-07 / GS-316）。敵が立ってよいマス（札を含む）。札より多い敵は、範囲の札の無いマスからくじで立つ。
+   * 範囲の外には立たない。書かなければ札だけ（札の数が人数の上限）。`height` は使わない。
+   */
+  enemyArea?: BattleFormationSlot[];
 }
 
 /**
@@ -209,8 +231,13 @@ export interface SpriteEffectEntry {
   frames: [number, number];
   /** 1 秒にめくるコマ数（GS-121。画像ごとではなく**演出ごと**）。 */
   fps: number;
-  /** 出しておく時間（ミリ秒）。 */
+  /** 出しておく時間（ミリ秒）。めくる回数（`loops`）を書いたときは「1 回の長さ × 回数」にそろえて書く（戦闘演出エディタ）。 */
   ms: number;
+  /**
+   * めくる回数（GS-336。1〜99。書かなければ出しておく時間のあいだくり返す）。書いたら、その回数めくった後は最後のコマのまま
+   * （出しておく時間が 1 回の長さで割り切れずに少し長くても、最初のコマへ戻らない）。
+   */
+  loops?: number;
   /** 大きさ `[始め, 終わり]`。書かなければ等倍のまま。 */
   scale?: [number, number];
   /** 大きさを 1 回伸ばすのにかける時間。 */
@@ -219,6 +246,8 @@ export interface SpriteEffectEntry {
   yoyo?: boolean;
   /** 出したときに鳴らす音（`sounds.json` のキー）。 */
   se?: string;
+  /** 置き方（当てる点・絵の基準点・出し先ごとのずらし・フィールドの大きさ。GS-318）。書かなければ絵の真ん中を相手の真ん中へ。 */
+  place?: EffectPlace;
 }
 
 /** 描くときの形。演出の行に、その画像のコマ割りを重ねた物（GS-114）。値は旧作の `NormalAttack` / `MagicFrame` / `WindCutter` と同じ。 */
@@ -356,6 +385,11 @@ export function enemyList(): Array<{ id: string; name: string }> {
   return Object.entries(enemies).map(([id, entry]) => ({ id, name: entry.name ?? id }));
 }
 
+/** 敵の台帳の全部（図鑑が並び順で読む。2026-11-04）。 */
+export function enemyBook(): Record<string, EnemyDef> {
+  return enemies;
+}
+
 export function skillList(): Array<{ id: string; name: string }> {
   return Object.entries(skills).map(([id, entry]) => ({ id, name: entry.name ?? id }));
 }
@@ -378,6 +412,11 @@ export function battleFormationSlots(
     && (slot.height === undefined || Number.isFinite(slot.height)))) return null;
   const shift = formation?.center === false ? 0 : centerShift(slots);
   return slots.map((slot) => ({ ...slot, col: slot.col + shift }));
+}
+
+/** 既定の隊形（台帳の `default`）。メニューの「作戦」→ 隊列が見せる並び（2026-11-07）。無ければ null。 */
+export function defaultFormationDef(): BattleFormationDef | null {
+  return battleFormationDef(defaultFormation);
 }
 
 /** 隊形 1 つ（2026-10-29 / GS-280。戦闘のマスの割り当て `cells.ts` が読む）。無ければ null。 */
@@ -452,10 +491,38 @@ export function enemyImage(id: string): string | null {
   return image ? assetUrl(`${ENEMY_DIR}/${image}.png`) : null;
 }
 
-/** 敵の絵の大きさの倍率（2026-10-17）。書かない・0 以下・数でない値は 1。 */
+/**
+ * 戦闘演出エディタの敵の大きさの下書き（GS-322）。開発用の口からだけ入れる。読み直すと台帳へ戻る。
+ * キーは敵の id、値は倍率（`enemies.json` の `scale` の代わり）。
+ */
+let enemyScaleDraft: Record<string, number> | null = null;
+export function previewEnemyScales(next: Record<string, number> | null): void {
+  enemyScaleDraft = next ? { ...next } : null;
+}
+
+/** 敵の絵の大きさの倍率（2026-10-17）。書かない・0 以下・数でない値は 1。下書き（GS-322）があればそちら。 */
 export function enemyScale(id: string): number {
-  const scale = enemies[id]?.scale;
+  const scale = enemyScaleDraft && id in enemyScaleDraft ? enemyScaleDraft[id] : enemies[id]?.scale;
   return typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : 1;
+}
+
+/** 敵の体力の帯のずらし（2026-11-06。絵の画素。右と下が正）。書かない・数でない値は 0。 */
+export function enemyHpBar(id: string): { x: number; y: number } {
+  return hpBarOffset(enemies[id]?.hpBar);
+}
+
+/** `hpBar` の値をそろえる（書かない・数でない値は 0）。 */
+export function hpBarOffset(bar: { x?: unknown; y?: unknown } | undefined): { x: number; y: number } {
+  const num = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+  return { x: num(bar?.x), y: num(bar?.y) };
+}
+
+/**
+ * 舞台の板をいつも出すか（2026-11-06 / GS-311）。敵はいつも、味方も**いつも出す**（前は開発中のつまみ GS-247 で、既定は出さなかった）。
+ * `partyShown` は戦闘演出エディタの「味方の板を出す」（切ると味方を隠し、コマンドを選んでいる間だけ左端に出す）。
+ */
+export function stageFigureShown(side: 'party' | 'enemy', partyShown = true): boolean {
+  return side === 'enemy' || partyShown;
 }
 
 /**

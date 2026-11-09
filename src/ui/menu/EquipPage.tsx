@@ -5,7 +5,7 @@
 // 身に着けた物は袋から出る（`equipItem`）。両方に置くと「装備している剣を売る」が
 // できてしまい、店とメニューのどちらが正しいのか分からなくなる。
 //
-// **増えるのは攻撃・守り・速さだけ**（GS-67）。満タンの HP を装備で変えると、
+// **増えるのは物理攻撃力・物理防御力・魔法攻撃力・魔法防御力・素早さだけ**（GS-67。魔法の 2 つは 2026-11-07）。満タンの HP を装備で変えると、
 // 外した瞬間に「いまの HP が満タンを超える」始末を毎回することになる。
 //
 // 絵はステータスと同じメニュー用の絵を左に置く（GS-206）。武具を選ぶ小窓はページの上に重ね、
@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { itemEquip, itemName, itemText } from '../../game/items';
 import { characterMenuImage } from '../../game/characters';
 import { equipBonus, memberStats } from '../../game/battle/party';
+import { POWER_KEYS, STAT_NAMES, powerWithGear } from '../../game/battle/statNames';
 import type { MemberState } from '../../game/state';
 
 /**
@@ -25,12 +26,8 @@ const SLOT_LABEL: Record<string, string> = { weapon: '武器', armor: '鎧' };
 /** 並べる順。ここに無い置き場所は後ろにまとめる。 */
 const SLOT_ORDER = ['weapon', 'armor'];
 
-/** 装備で上がる（下がる）数の呼び名。ステータスのページと同じ言葉にする。 */
-const BONUS_LABEL = [
-  ['attack', '攻撃'],
-  ['guard', '守り'],
-  ['speed', '素早さ'],
-] as const;
+/** 装備で上がる（下がる）数の呼び名。ステータスのページと同じ言葉にする（`statNames.ts`。2026-11-07）。 */
+const BONUS_LABEL = POWER_KEYS.map((key) => [key, STAT_NAMES[key]] as const);
 
 /** 武具 1 つで増える数（「攻撃 +20　素早さ +1」）。何も増えなければ空。 */
 function bonusText(id: string): string {
@@ -93,7 +90,7 @@ export function EquipPage({
   const image = characterMenuImage(who);
   const base = memberStats(who, member.level);
   const gear = equipBonus(member.equip);
-  const totals = { attack: base.attack + gear.attack, guard: base.guard + gear.guard, speed: Math.max(1, base.speed + gear.speed) };
+  const totals = Object.fromEntries(POWER_KEYS.map((key) => [key, powerWithGear(base, gear, key)])) as Record<(typeof POWER_KEYS)[number], number>;
 
   const close = () => {
     backTo.current = choosingSlot;

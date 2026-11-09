@@ -8,6 +8,10 @@
 //
 //     ダメージ = max(攻撃力 + 技の効き目 - 相手の守り, 1)
 //
+// **攻撃力と守りは物理と魔法に分かれる（2026-11-07）。** 種類が「魔法」の技は魔法攻撃力（`magic`）と
+// 相手の魔法防御力（`magicGuard`）、ほか（通常攻撃・特技）は物理攻撃力（`attack`）と物理防御力（`guard`）で計算する。
+// 魔法の 2 つを書いていない数値は物理と同じ値で読む（`magicOf`・`magicGuardOf`）。
+//
 // **必ず 1 は通る。** 0 が出ると「効いていないのか、当たっていないのか」が
 // 見ている側に分からず、詰まったのかどうかも判断できない。
 
@@ -17,8 +21,14 @@ export interface Stats {
   /** 満タンの HP。**いまいくつあるか**は `Fighter.hp`。 */
   hp: number;
   mp: number;
+  /** 物理攻撃力。通常攻撃と特技のダメージに使う。 */
   attack: number;
+  /** 物理防御力。通常攻撃と特技を受けるときの守り。 */
   guard: number;
+  /** 魔法攻撃力（2026-11-07）。種類「魔法」の技のダメージに使う。書かなければ物理攻撃力と同じ。 */
+  magic?: number;
+  /** 魔法防御力（2026-11-07）。種類「魔法」の技を受けるときの守り。書かなければ物理防御力と同じ。 */
+  magicGuard?: number;
   /** 行動順。大きいほうが先。 */
   speed: number;
 }
@@ -61,6 +71,10 @@ export interface Fighter {
    * 近くの仲間（`cover.ts` の `covers`）への攻撃を代わりに受ける。
    */
   covering?: number;
+  /** 客（2026-11-05 / GS-306。加勢する NPC）。手は聞かず毎ターン自分で動く。経験は入らず、記録（`state.members`）にも書き戻さない。 */
+  guest?: boolean;
+  /** 絵を引く人のキー（客のとき。借りた仲間）。無ければ `id`。 */
+  look?: string;
   /**
    * 効いている種族特性（2026-11-03。味方だけ。`races.ts`）。レベルで増えるので、戦いの始めの値で組む。
    * 消費 MP（`mpCostOf`）と技のダメージ（`powerRateOf`）に効く。
@@ -134,9 +148,24 @@ export function canPay(who: Fighter, skill: SkillDef | null): boolean {
   return !skill || who.mp >= costOf(who, skill);
 }
 
-/** いまの守り。台帳の値＋このターンぶん。 */
+/** いまの守り（物理）。台帳の値＋このターンぶん。 */
 export function guardOf(who: Fighter): number {
   return who.stats.guard + who.guarding;
+}
+
+/** 魔法攻撃力（2026-11-07）。書いていなければ物理攻撃力。 */
+export function magicOf(stats: Pick<Stats, 'attack' | 'magic'>): number {
+  return stats.magic ?? stats.attack;
+}
+
+/** 魔法防御力（2026-11-07）。書いていなければ物理防御力。 */
+export function magicGuardOf(stats: Pick<Stats, 'guard' | 'magicGuard'>): number {
+  return stats.magicGuard ?? stats.guard;
+}
+
+/** 魔法で計算する技か（2026-11-07）。種類が「魔法」の技。通常攻撃（技なし）と特技は物理。 */
+export function isMagicSkill(skill: Pick<SkillDef, 'kind'> | null | undefined): boolean {
+  return skill?.kind === '魔法';
 }
 
 /**
@@ -147,6 +176,8 @@ export function guardOf(who: Fighter): number {
 export function damageOf(attacker: Fighter, defender: Fighter, skill?: SkillDef | null): number {
   if (defender.avoiding) return 0;
   const value = skill && skill.type === 'attack' ? skill.value : 0;
+  // 魔法の技は魔法攻撃力と魔法防御力（2026-11-07）。防御を選んだぶん（`guarding`）はどちらの守りにも足す。
+  if (isMagicSkill(skill)) return Math.max(magicOf(attacker.stats) + value - (magicGuardOf(defender.stats) + defender.guarding), 1);
   return Math.max(attacker.stats.attack + value - guardOf(defender), 1);
 }
 

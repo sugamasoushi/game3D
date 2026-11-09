@@ -24,14 +24,15 @@
       ],
       "battleStage": {
         "formations": [
-          "standard"
+          "pattern00"
         ]
       },
       "time": {
         "fallback": {
           "morning": "day"
         }
-      }
+      },
+      "battleAt": "stage"
     },
     "forest_mansion": {
       "name": "忘れ森の館",
@@ -75,7 +76,8 @@
         ],
         "steps": 8,
         "chance": 0.5
-      }
+      },
+      "battleAt": "stage"
     },
     "forest_cave": {
       "name": "青鳴洞・入口",
@@ -93,7 +95,8 @@
       "bgm": "The_Cave",
       "time": {
         "stopClock": true
-      }
+      },
+      "battleAt": "stage"
     },
     "gald_peaks_road": {
       "name": "ガルドの山道",

@@ -18,7 +18,7 @@ import { loadMapIndex, mapLabel } from './mapIndex';
 import { loadStoryBook, storyBook, storyChapterLabel } from './story';
 
 /** セーブの形の版（GS-27）。形を変えたらここを上げ、読む側で古い版を判別する。 */
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 /**
  * 読める版（GS-46）。**欄を足しただけなら古い版も読む**——足りない欄は `fromSave` が既定で埋める。
  * 読めなくなる変え方（欄の意味を変えるなど）をしたときだけ、ここから外す。
@@ -28,8 +28,10 @@ export const SAVE_VERSION = 9;
  *   7 …… 討伐依頼（`quests`）を足した版。
  *   8 …… サブストーリー（`substories`）を足した版（2026-11-02）。7 までは始まっていない扱いで読む。
  *   9 …… 依頼経験値（`questExp`）を足した版（2026-11-02）。8 までは 0 で読む。
+ *  10 …… 図鑑（手に入れた持ち物 `found`・魔物の記録 `foes`）を足した版（2026-11-04）。
+ *        9 までは、いま持っている物・身に着けている物を手に入れた扱い、魔物は出会っていない扱いで読む。
  */
-const READABLE = new Set([6, 7, 8, 9]);
+const READABLE = new Set([6, 7, 8, 9, 10]);
 
 /** その記録は読めるか。 */
 export function readableSave(version: number): boolean {
@@ -75,6 +77,10 @@ export interface SaveData {
    * 名前と説明は台帳（`data/items.json`）が持つので、ここには数だけ。
    */
   items?: Record<string, number>;
+  /** 版10: 手に入れたことのある持ち物の id（図鑑）。 */
+  found?: string[];
+  /** 版10: 魔物の記録（図鑑）。id → 出会った数・倒した数。 */
+  foes?: Record<string, { met?: number; beaten?: number }>;
   /**
    * 隊列と仲間のいまの状態（GS-60。版 3 から）。**満タンの値は台帳**
    * （`data/party.json`）が持つので、ここには減っているぶんと覚えた技だけ。

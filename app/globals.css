@@ -437,6 +437,53 @@ body {
   100% { opacity: 0; transform: translate(-50%, -140%); }
 }
 
+/* 敵の技で仲間が受けたダメージ（2026-11-05）。赤い字。 */
+.field-hit.hurt {
+  color: #ff6a5a;
+}
+
+/* 敵の技を受けたあと少しのあいだ出す仲間の HP（2026-11-05）。左上。 */
+.field-party-hp {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--message-background);
+  color: #fff;
+  font-size: 15px;
+  pointer-events: none;
+  z-index: 41;
+  display: grid;
+  gap: 4px;
+}
+.field-party-hp .row {
+  display: grid;
+  grid-template-columns: 6em 120px 3em;
+  align-items: center;
+  gap: 8px;
+}
+.field-party-hp .row.down {
+  opacity: 0.45;
+}
+.field-party-hp .bar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+.field-party-hp .bar > span {
+  display: block;
+  height: 100%;
+  background: #6fd66f;
+}
+.field-party-hp .bar > span.low {
+  background: #e05040;
+}
+.field-party-hp .num {
+  text-align: right;
+}
+
 @keyframes blink {
   to {
     opacity: 0.2;
@@ -1719,6 +1766,11 @@ body {
   box-shadow: inset 0 0 0 1px rgba(255, 212, 121, 0.55);
 }
 .gmenu-body .item-row[aria-disabled='true']:focus { background: rgba(255, 212, 121, 0.08); }
+/* スキルの行（2026-11-06）。見せるだけの行なので、ボタンの枠は無く、内側の金の線と薄い金で示す。 */
+.gmenu-body .skill-items li[data-pick]:focus {
+  background: rgba(255, 212, 121, 0.16);
+  box-shadow: inset 0 0 0 2px #ffd479;
+}
 
 /* つまみ・選ぶ箱・チェックは形を変えにくいので、外側に細く。行の中ほどにあるので切れない。 */
 .gmenu-body input[data-pick]:focus,
@@ -1834,8 +1886,9 @@ body {
 .gmenu-body:has(.equip) .equip-head button,
 .gmenu-body:has(.equip) .equip-list button { padding: 8px 12px; }
 .gmenu-body .equip-name { min-width: 0; overflow-wrap: anywhere; }
-.gmenu-body:has(.status) .status-facts { font-size: 20px; }
-.gmenu-body:has(.status) .status-facts dd { font-size: 24px; }
+/* 物理・魔法の攻撃力と防御力で 12 行になった（2026-11-07）ので、窓に収まる大きさにする。 */
+.gmenu-body:has(.status) .status-facts { font-size: 18px; }
+.gmenu-body:has(.status) .status-facts dd { font-size: 20px; }
 
 .gmenu-body:has(.status) { overflow: hidden; }
 /* 絵を左に置くページ（ステータス・装備・スキル。GS-206）。絵の大きさと置き方はここ 1 か所。 */
@@ -1855,19 +1908,20 @@ body {
 .menu-figured-body { flex: 1; min-width: 0; min-height: 0; overflow-y: auto; }
 /* 数の並びは縦いっぱいに割り付ける（行の間を広げて、下に余白を残さない）。 */
 .status-content { display: flex; flex-direction: column; }
-.status-content .status-facts { flex: 1; max-height: 440px; grid-template-columns: max-content minmax(0, 1fr); align-content: space-evenly; gap: 6px 24px; line-height: 1.25; margin: 0; }
+.status-content .status-facts { flex: 1; max-height: 440px; grid-template-columns: max-content minmax(0, 1fr); align-content: space-evenly; gap: 2px 24px; line-height: 1.2; margin: 0; }
 .status-content .status-facts dt { align-self: center; }
 .status-content .status-facts dd { overflow-wrap: anywhere; }
-.gmenu-body:has(.status) .status-facts .equip-plus { margin-left: 12px; font-size: 18px; white-space: nowrap; }
+.gmenu-body:has(.status) .status-facts .equip-plus { margin-left: 12px; font-size: 16px; white-space: nowrap; }
 
 /* 武具の上がる数（説明の上の行）。 */
 .equip-desc,
 .equip-text { display: flex; flex-direction: column; gap: 2px; }
 .equip-bonus { color: #ffd479; opacity: 1; }
 .equip-current .equip-desc .equip-bonus { font-size: 18px; }
-/* 着けている物を合わせた数。装備の行の下に、ステータスと同じ並びで置く。 */
-.equip-total { display: grid; gap: 10px; margin: 28px 0 0; padding: 18px 20px; border: 1px solid rgba(142,166,200,.45); border-radius: 8px; background: rgba(10,18,32,.3); }
-.equip-total-row { display: grid; grid-template-columns: 5em minmax(0, 1fr); align-items: baseline; }
+/* 着けている物を合わせた数。装備の行の下に、ステータスと同じ並びで置く（5 つになったので 2 列。2026-11-07）。 */
+.equip-total { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; margin: 28px 0 0; padding: 18px 20px; border: 1px solid rgba(142,166,200,.45); border-radius: 8px; background: rgba(10,18,32,.3); }
+.equip-total-row { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.equip-total dt { white-space: nowrap; }
 .equip-total dt { opacity: 0.6; font-size: 20px; }
 .equip-total dd { margin: 0; font-size: 24px; font-variant-numeric: tabular-nums; }
 .equip-total .equip-plus { margin-left: 12px; font-size: 18px; }
@@ -1898,7 +1952,7 @@ body {
 .equip-chooser .equip-list { max-height: 420px; overflow-y: auto; }
 .equip-chooser .equip-list button { text-align: left; }
 
-.gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(0, 6em) max-content 3ch minmax(0, 1fr); gap: 14px; align-items: baseline; padding: 10px 0; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
+.gmenu-body:has(.skill-items) .skill-items li { display: grid; grid-template-columns: minmax(0, 6em) max-content 3ch minmax(0, 1fr); gap: 14px; align-items: baseline; padding: 10px 8px; font-size: 24px; border-bottom: 1px solid rgba(142,166,200,.25); }
 .skill-items .item-name { min-width: 0; overflow-wrap: anywhere; }
 .skill-items .skill-mp-label { font-size: 15px; opacity: 0.7; }
 .skill-items .item-count { width: auto; min-width: 0; text-align: right; font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -1967,15 +2021,15 @@ body {
   left: 50%;
   bottom: 100%;
   margin-bottom: 8px;
-  /* 画面の上へ出るときは --head-drop だけ下げる（高台の敵。`foeHeadDrop`）。 */
-  transform: translate(-50%, var(--head-drop, 0px));
+  /* 画面の上へ出るときは --head-drop だけ下げる（高台の敵。`foeHeadDrop`）。--bar-x / --bar-y は敵ごとのずらし（台帳の `hpBar`）。 */
+  transform: translate(calc(-50% + var(--bar-x, 0px)), calc(var(--bar-y, 0px) + var(--head-drop, 0px)));
 }
 
 .battle-foe .ail-tags {
   position: absolute;
   left: 50%;
   bottom: 100%;
-  transform: translate(-50%, calc(-22px + var(--head-drop, 0px)));
+  transform: translate(calc(-50% + var(--bar-x, 0px)), calc(-22px + var(--bar-y, 0px) + var(--head-drop, 0px)));
 }
 
 /* 倒した敵は**消しきる**（3D の板と同じ）。体力の帯と状態の札も一緒に消える。 */
@@ -3818,13 +3872,13 @@ body {
   --bar-lo: #c98a1a;
 }
 
-/* 攻撃・守り・素早さ。1 行に「名前：数」で並べる。 */
+/* 物理・魔法の攻撃力と防御力、素早さ（2026-11-07）。2 列の格子に「名前：数」で並べる（上の行が物理、次が魔法）。 */
 .condition-stats {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 8px;
   margin: 2px 0 0;
-  font-size: 15px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -3922,3 +3976,226 @@ body {
 .quest-log ol { margin: 0; padding-left: 1.4rem; line-height: 1.5; }
 /* 台帳から消えた依頼は右の柱が無いので、左を広げる。 */
 .quest-card:not(:has(.quest-facts)) { grid-template-columns: minmax(0, 1fr); }
+
+/*
+ * メニューを開いたときの最初の画面（2026-11-04）。どのタブも開いていないが、最初の画面から戻る先のタブは
+ * カーソルが来たときだけ見える（`:focus` の枠）。開いているタブ（`.on`）と見分けられるよう、色は付けない。
+ */
+.gmenu-tabs button.home { opacity: 0.85; }
+
+/* 図鑑（2026-11-04）。上に種類のタブ、左に一覧、右にくわしく。 */
+.codex-page { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.codex-page .quest-kinds { align-items: center; }
+.codex-rate { margin-left: auto; font-size: 17px; opacity: 0.8; font-variant-numeric: tabular-nums; }
+/* 一覧の幅は中身に合わせる（名前 10 文字ぶん。2026-11-05）。em で決めると一覧の字（13px）で測られて狭くなる。 */
+.codex-columns { flex: 1; min-height: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 20px; }
+.codex-list { margin: 0; padding: 2px 6px 2px 2px; list-style: none; overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; display: grid; gap: 4px; align-content: start; }
+/* 番号・名前（10 文字。超えたら「…」）・倒した印の 3 列。印の列は無い行も空けて、名前の幅をそろえる。 */
+.gmenu-body .codex-row { display: grid; grid-template-columns: 3.2ch 10em 1.6em; gap: 12px; align-items: baseline; width: 100%; padding: 4px 10px; border-color: transparent; text-align: left; }
+.gmenu-body .codex-row.on { border-color: rgba(255, 212, 121, 0.6); }
+.codex-row.unknown .codex-name { opacity: 0.5; }
+.codex-no { font-size: 16px; opacity: 0.6; font-variant-numeric: tabular-nums; }
+.codex-name { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.codex-mark { font-size: 14px; padding: 0 6px; border: 1px solid #edcc8b; border-radius: 4px; color: #edcc8b; }
+.codex-detail { min-width: 0; overflow: auto; padding: 6px 16px; border-left: 2px solid rgba(142, 166, 200, 0.4); font-size: 18px; line-height: 1.6; }
+.codex-detail h3 { margin: 0 0 8px; font-size: 24px; }
+.codex-detail h3 small { margin-left: 14px; font-size: 16px; font-weight: normal; opacity: 0.7; }
+.codex-detail p { margin: 0 0 10px; }
+.codex-hint { opacity: 0.7; }
+.codex-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 18px; margin: 0; }
+.codex-facts dt { color: #edcc8b; }
+.codex-facts dd { margin: 0; overflow-wrap: anywhere; }
+.codex-stats { grid-template-columns: repeat(2, max-content minmax(3em, max-content)); }
+.codex-stats dd { font-variant-numeric: tabular-nums; }
+.codex-foe { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+.codex-foe-image { max-width: 220px; max-height: 300px; object-fit: contain; image-rendering: pixelated; }
+
+/*
+ * 作戦（2026-11-07）。上に種類のタブ（フィールド／隊列）。
+ * フィールド: 作戦の行（名前と説明。いまの作戦に ●）と、下に注意書き。
+ * 隊列: 左に並びの格子（上が敵の側。前衛は金の枠）、右にひとりずつの位置と、マス位置の効果。
+ */
+/* 種類のタブは流さず、下の中身（`.tactics-scroll`）だけを流す（2026-11-07）。 */
+.gmenu-body:has(> .tactics-page) { display: flex; flex-direction: column; overflow: hidden; }
+.tactics-page { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tactics-page > .quest-kinds { flex: none; }
+.tactics-scroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; scroll-padding: 8px 0; }
+/* 説明の行（カーソルが止まるが押せない）。選んでいるときはスキルの行と同じく内側の金の線。 */
+.gmenu-body .tactics-info { border-radius: 4px; }
+.gmenu-body .tactics-info:focus { background: rgba(255, 212, 121, 0.16); box-shadow: inset 0 0 0 2px #ffd479; }
+.tactics-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gmenu-body .tactics-list button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1.4em max-content minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid rgba(142, 166, 200, 0.45);
+  border-radius: 8px;
+  background: rgba(10, 18, 32, 0.35);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.gmenu-body .tactics-list button.on { border-color: #edcc8b; background: #3a3123; }
+.gmenu-body .tactics-list button:focus-visible { outline: 2px solid #edcc8b; outline-offset: 2px; }
+.tactics-mark { color: #edcc8b; }
+.tactics-name { min-width: 6.5em; font-size: 22px; white-space: nowrap; }
+.tactics-text { font-size: 17px; line-height: 1.5; opacity: 0.85; }
+.tactics-notes { margin: 16px 0 0; padding-left: 1.4em; font-size: 16px; line-height: 1.6; }
+.tactics-notes li { padding: 2px 6px; opacity: 0.85; }
+
+.tactics-formation { display: grid; align-items: start; grid-template-columns: minmax(240px, 1fr) minmax(0, 1.7fr); gap: 24px; }
+.tactics-board-wrap { display: flex; flex-direction: column; gap: 8px; }
+.tactics-foe-side { margin: 0; text-align: center; font-size: 15px; opacity: 0.7; letter-spacing: 0.1em; }
+.tactics-board { display: grid; gap: 6px; padding: 12px; border: 1px solid rgba(142, 166, 200, 0.35); border-radius: 8px; background: rgba(10, 18, 32, 0.3); }
+.tactics-cell { min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 6px; font-size: 15px; text-align: center; overflow-wrap: anywhere; }
+.tactics-cell.empty { border: 1px dashed rgba(142, 166, 200, 0.2); }
+.tactics-cell.front { border: 2px solid #edcc8b; background: rgba(58, 49, 35, 0.6); }
+.tactics-cell.back { border: 2px solid rgba(142, 166, 200, 0.7); background: rgba(23, 28, 38, 0.8); }
+.tactics-line { font-size: 13px; opacity: 0.75; }
+.tactics-fixed { margin: 0; font-size: 15px; opacity: 0.65; }
+.tactics-detail { font-size: 15px; line-height: 1.45; }
+/* 仲間ごとの位置と、位置に関わる技（格子の下）。 */
+.tactics-seats { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; font-size: 15px; line-height: 1.4; }
+.tactics-seats li { display: grid; gap: 0; padding: 2px 6px; }
+.tactics-seats b { font-weight: normal; color: #edcc8b; }
+/* 効果の 1 行は見出しと説明。見出しの幅をそろえる。 */
+.tactics-rules { display: grid; gap: 2px; }
+.tactics-rules .tactics-info { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 12px; padding: 3px 6px; }
+.tactics-rules b { font-weight: normal; color: #edcc8b; }
+.tactics-rules span { opacity: 0.9; }
+
+/* 種族特性（2026-11-07。「仲間」の種類）。ステータスの右から専用の種類へ移したので、字を大きめにする。 */
+.race-page .status-race { margin-top: 4px; font-size: 20px; line-height: 1.6; }
+.race-page .status-race-name { margin-bottom: 12px; font-size: 26px; }
+.race-page .status-traits { gap: 8px 0; }
+
+/*
+ * 味方に当たった技の絵（GS-328）。隊列の窓のその人の行（`li`。position: relative）に重ねる。
+ * 箱の位置と大きさ・コマは `PartyEffect`（画面の画素）。窓より手前に、押せないように。
+ */
+.battle-party-fx {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+}
+/* 戦闘演出エディタの「絵の枠」。外枠と、基準点を通る縦横の線。 */
+.battle-party-fx.guide { outline: 1px solid #40ff80; }
+.battle-party-fx .fx-guide-h, .battle-party-fx .fx-guide-v { position: absolute; background: #40ff80; }
+.battle-party-fx .fx-guide-h { left: 0; right: 0; height: 1px; }
+.battle-party-fx .fx-guide-v { top: 0; bottom: 0; width: 1px; }
+/* 味方に出す絵のうち「画面の真ん中」の物（GS-330）。戦闘画面いっぱいの層で、命令・隊列の窓より手前。 */
+.battle-fx-layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+
+/*
+ * 戦闘へ入る・出るときの場面転換（2026-11-09。`ui/battle/BattleTransition.tsx`・`game/battle/transition.ts`）。
+ * 戦闘の画面（`.battle` 40）より上。時間は TS から `animation-duration` / `animation-delay` で渡す。
+ */
+.battle-wipe,
+.battle-fade {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 最初の白い光。 */
+.battle-wipe-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: battle-wipe-flash linear both;
+}
+@keyframes battle-wipe-flash {
+  0% { opacity: 0; }
+  25% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+
+/* 集中線。真ん中は抜いて、外ほど濃く。外から内へ縮みながら回る。 */
+.battle-wipe-lines {
+  position: absolute;
+  inset: -40%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.85) 0deg 0.8deg, transparent 0.8deg 7deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 18%, #000 52%);
+  mask-image: radial-gradient(circle, transparent 18%, #000 52%);
+  animation: battle-wipe-lines 420ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+@keyframes battle-wipe-lines {
+  0% { opacity: 0; transform: scale(1.7) rotate(0deg); }
+  30% { opacity: 1; }
+  100% { opacity: 0.7; transform: scale(1) rotate(8deg); }
+}
+
+/* 斜めの帯。画面より大きく取って傾け、隅まで覆う。 */
+.battle-wipe-bars {
+  position: absolute;
+  left: -30%;
+  top: -40%;
+  width: 160%;
+  height: 180%;
+  display: flex;
+  flex-direction: column;
+  transform: rotate(-14deg);
+}
+.battle-wipe-bar {
+  position: relative;
+  flex: 1;
+  /* 帯どうしの継ぎ目を見せない。 */
+  margin-bottom: -2px;
+  background: linear-gradient(180deg, #0b0d1a, #000 40%, #000 60%, #0b0d1a);
+}
+/* 帯の両端の光る縁。走っている向きが分かる。 */
+.battle-wipe-bar::before,
+.battle-wipe-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: #fff;
+  box-shadow: 0 0 18px 6px rgba(160, 210, 255, 0.85);
+}
+.battle-wipe-bar::before { left: 0; }
+.battle-wipe-bar::after { right: 0; }
+.battle-wipe[data-wipe='cover'] .battle-wipe-bar {
+  animation-name: battle-wipe-in;
+  animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
+  animation-fill-mode: both;
+}
+.battle-wipe[data-wipe='reveal'] .battle-wipe-bar {
+  animation-name: battle-wipe-out;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  animation-fill-mode: both;
+}
+/* `--dir` は飛び込んでくる側（左 -1・右 1）。抜けるのは反対側へ。 */
+@keyframes battle-wipe-in {
+  from { transform: translateX(calc(var(--dir) * 105%)); }
+  to { transform: translateX(0); }
+}
+@keyframes battle-wipe-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(var(--dir) * -105%)); }
+}
+
+/* 戦闘の終わりの暗転（`exit` で黒く、`return` で明ける）。 */
+.battle-fade {
+  background: #000;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+.battle-fade[data-wipe='exit'] { animation-name: battle-fade-out; }
+.battle-fade[data-wipe='return'] { animation-name: battle-fade-in; }
+@keyframes battle-fade-out {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes battle-fade-in {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

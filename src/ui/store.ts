@@ -181,12 +181,17 @@ export type Phase = 'title' | 'play';
  */
 export type Scene = 'title' | 'field' | 'event' | 'menu' | 'battle';
 
+/** 見ている旗。`battleWipe` は無くてもよい（無ければ場面転換をしていない）。 */
+type SceneFlags = Pick<UiState, 'phase' | 'busy' | 'menu' | 'settings' | 'battle'> & Partial<Pick<UiState, 'battleWipe'>>;
+
 /** 見ている旗から今の状態を出す。並び順が優先順位——上にあるものが勝つ。 */
-export function sceneOf(state: Pick<UiState, 'phase' | 'busy' | 'menu' | 'settings' | 'battle'>): Scene {
+export function sceneOf(state: SceneFlags): Scene {
   if (state.phase !== 'play') return 'title';
   // **戦闘はメニューより先に見る。** 戦闘中に開いた設定を閉じたとき、
   // まだ戦っているのに `field` に戻って歩き出さないように。
-  if (state.battle) return 'battle';
+  // 戦闘へ入る・出る場面転換のあいだ（2026-11-09。`battleWipe`）も戦闘——
+  // 帯が覆っているあいだはまだ `battle` が無いので、キーを押したままだと歩き続けてしまう。
+  if (state.battle || state.battleWipe) return 'battle';
   if (state.menu || state.settings) return 'menu';
   if (state.busy) return 'event';
   return 'field';
@@ -199,7 +204,7 @@ export function sceneOf(state: Pick<UiState, 'phase' | 'busy' | 'menu' | 'settin
  * **入力の出どころが増えると崩れる**——ゲームパッドの合成イベント（GS-58）は
  * window へ直に送るので捕まえる段が無く、メニューを開いたまま歩けてしまった。
  */
-export function canWalk(state: Pick<UiState, 'phase' | 'busy' | 'menu' | 'settings' | 'battle'>): boolean {
+export function canWalk(state: SceneFlags): boolean {
   return sceneOf(state) === 'field';
 }
 
@@ -223,6 +228,11 @@ interface UiState {
    * **黒を出すときは 0**（一瞬で覆う）。かけて出すと、その間だけ素の画面が見えてしまう。
    */
   fadeMs: number;
+  /**
+   * 戦闘へ入る・出るときの場面転換（2026-11-09。`game/battle/transition.ts`）。
+   * `cover` 帯が飛び込んで覆う／`reveal` 帯が走り抜けて戦闘を見せる／`exit` 黒へフェードアウト／`return` 黒から明ける。
+   */
+  battleWipe: 'cover' | 'reveal' | 'exit' | 'return' | null;
   /** イベント実行中か。歩く操作を止めるのに使う（構想 §5.2）。 */
   busy: boolean;
   /**
@@ -268,6 +278,7 @@ interface UiState {
   clearPortraits(): void;
   setFade(value: number, ms?: number): void;
   setBusy(busy: boolean): void;
+  setBattleWipe(wipe: UiState['battleWipe']): void;
   setBattle(enemies: string[] | null): void;
   setShop(shop: { items: string[]; sell: boolean } | null): void;
   setInn(inn: { price: number } | null): void;
@@ -287,6 +298,7 @@ export const useUi = create<UiState>((set) => ({
   fade: 0,
   fadeMs: 400,
   busy: false,
+  battleWipe: null,
   battle: null,
   shop: null,
   inn: null,
@@ -347,6 +359,7 @@ export const useUi = create<UiState>((set) => ({
     })),
   setFade: (fade, ms = 400) => set({ fade, fadeMs: ms }),
   setBusy: (busy) => set({ busy }),
+  setBattleWipe: (battleWipe) => set({ battleWipe }),
   setBattle: (battle) => set({ battle }),
   setShop: (shop) => set({ shop }),
   setInn: (inn) => set({ inn }),

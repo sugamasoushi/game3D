@@ -4,6 +4,7 @@
 import type { ItemStrike } from '../items';
 import type { HeightRates, SkillRange } from './height';
 import type { FieldUseDef } from '../fieldAttack';
+import { FIELD_BATTLE_DEFAULTS, FIELD_BATTLE_LIMITS } from '../fieldBattle';
 
 /**
  * 通常攻撃（素手）の見せ方（GS-123）。**味方と敵で別に持つ。**
@@ -68,7 +69,19 @@ export interface BattleSettings {
     flyGuard?: number;
     /** フィールドアタックで倒したときの経験とお金の倍率（0〜1。既定 0.5。端数は切り捨て。GS-295）。 */
     fieldKill?: number;
+    /**
+     * 交戦中（その敵がこちらに気づいていた）にフィールドで倒したときの**経験**の倍率（0〜1。既定 1。2026-11-05）。
+     * お金は交戦中でも `fieldKill` 倍。
+     */
+    fieldEngaged?: number;
   };
+  /**
+   * フィールドの戦闘（2026-11-05 / GS-304。`fieldBattle.ts`）。書かなければ既定。
+   * `join` は触れた敵シンボルの近くで気づいている敵シンボルを巻き込む距離（マス。0〜12。既定 4。0 で巻き込まない）、
+   * `retreatStun` は撤退のあと敵シンボルが怯む長さ（ミリ秒。0〜10000。既定 1500）、
+   * `together` は先頭からこれより離れた仲間がコマンド戦闘に入らない距離（マス。1〜30。既定 5。GS-305）。
+   */
+  fieldBattle?: { join?: number; retreatStun?: number; together?: number };
 }
 
 /** 既定値。直書きしていた値と同じ（敵の攻めかかる音は重いパンチ1＝punch。GS-112 で strike にして GS-113 で戻した）。 */
@@ -79,7 +92,7 @@ export const DEFAULT_BATTLE_SETTINGS: BattleSettings = {
   normalAttack: { party: { effect: 'normal', se: '' }, enemy: { effect: '', se: 'punch' } },
   se: { hit: 'hit', dodge: 'dodge', win: 'fanfare', enemyAttack: 'punch', item: 'levelup', levelUp: 'levelup', walkPoison: 'hit' },
   ms: { say: 900, beat: 260, hit: 520, lean: 200, enemyAct: 500, noItem: 1200 },
-  rates: { back: 0.5, high: 1.2, highGuard: 0.8, flyGuard: 0.5, fieldKill: 0.5 },
+  rates: { back: 0.5, high: 1.2, highGuard: 0.8, flyGuard: 0.5, fieldKill: 0.5, fieldEngaged: 1 },
 };
 
 let settings: BattleSettings = structuredClone(DEFAULT_BATTLE_SETTINGS);
@@ -102,6 +115,16 @@ export function heightRates(): HeightRates {
 /** フィールドで倒したときの取り分の倍率（GS-295）。台帳に無ければ既定の 0.5。 */
 export function fieldKillRate(): number {
   return settings.rates?.fieldKill ?? DEFAULT_BATTLE_SETTINGS.rates!.fieldKill!;
+}
+
+/** フィールドの戦闘の巻き込み・撤退（GS-304）。書いていない項目は既定。 */
+export function fieldBattleSettings(): { join: number; retreatStun: number; together: number } {
+  return { ...FIELD_BATTLE_DEFAULTS, ...settings.fieldBattle } as { join: number; retreatStun: number; together: number };
+}
+
+/** 交戦中にフィールドで倒したときの経験の倍率（2026-11-05）。台帳に無ければ既定の 1。 */
+export function fieldEngagedExpRate(): number {
+  return settings.rates?.fieldEngaged ?? DEFAULT_BATTLE_SETTINGS.rates!.fieldEngaged!;
 }
 
 /** いまの設定。読み終わる前は既定値。 */
@@ -148,7 +171,18 @@ export function applyBattleSettings(raw: unknown): BattleSettings {
       if (within(raw.rates.highGuard, 0, 1, true)) rates.highGuard = raw.rates.highGuard;
       if (within(raw.rates.flyGuard, 0, 1, true)) rates.flyGuard = raw.rates.flyGuard;
       if (within(raw.rates.fieldKill, 0, 1)) rates.fieldKill = raw.rates.fieldKill;
+      if (within(raw.rates.fieldEngaged, 0, 1)) rates.fieldEngaged = raw.rates.fieldEngaged;
       next.rates = rates;
+    }
+    // フィールドの戦闘（GS-304）。範囲の外は既定のまま。
+    if (object(raw.fieldBattle)) {
+      const fb: { join?: number; retreatStun?: number; together?: number } = {};
+      for (const key of ['join', 'retreatStun', 'together'] as const) {
+        const value = raw.fieldBattle[key];
+        const { min, max } = FIELD_BATTLE_LIMITS[key];
+        if (typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max) fb[key] = value;
+      }
+      if (Object.keys(fb).length) next.fieldBattle = fb;
     }
   }
   settings = next;

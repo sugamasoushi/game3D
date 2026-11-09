@@ -32,6 +32,7 @@ const BUTTON_KEYS: Record<number, string> = {
   5: 'ShiftLeft', // R1 走る
   6: 'KeyQ', // L2 先頭を前の人へ（GS-295）
   7: 'KeyE', // R2 先頭を次の人へ（GS-295）
+  8: 'KeyC', // Select（Share）仲間の作戦を切り替える（GS-305）
   12: 'ArrowUp',
   13: 'ArrowDown',
   14: 'ArrowLeft',

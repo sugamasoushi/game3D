@@ -15,19 +15,22 @@ import { loadItemBook } from '../game/items';
 import { character, characterBattleImage, characterIds, characterName, characterStand, loadCharacterBook } from '../game/characters';
 import { loadIllustrations } from '../game/illustrations';
 import { startGamepad } from '../game/gamepad';
-import { chooseBattleFormation, loadBattleBook, previewEffects, previewFormations, type EffectDef, type EffectEntry } from '../game/battle/book';
+import { FIELD_FX_RISE } from '../game/effectPlace';
+import { chooseBattleFormation, loadBattleBook, previewEffects, previewEnemyScales, previewFormations, type EffectDef, type EffectEntry } from '../game/battle/book';
 import { previewBattleStages } from '../game/battle/stage';
-import { battleSettings } from '../game/battle/settings';
+import { battleSettings, fieldBattleSettings } from '../game/battle/settings';
+import { battleBgmFor } from '../game/battle/battleBgm';
 import type { BattlePresentationContext, BattlePresentationHook } from '../game/battle/presentation';
 import { ensureParty, joinParty, resetParty, revive } from '../game/battle/party';
 import * as dev from '../game/devMode';
 import { DEV_WINDOW, expose, withdraw, type BattleEffectEditorWindow, type CameraEditorWindow } from '../dev/devWindow';
 import { debugToolsShown, loadDevOptions } from '../game/devMode';
 import { previewCameraCues, type CameraCueBook } from '../game/cameraCues';
-import { GameOver, type BattleOutcome } from '../game/battle/flow';
+import { GameOver, type BattleOutcome, type BattleSpoils } from '../game/battle/flow';
 import { createWalkAilments } from '../game/battle/walkAilment';
 import { createEncounterCounter, encounterAreaAt, encounterChance, encounterSteps, readEncounterAreas, rollEncounter, type EncounterArea, type EncounterDef } from '../game/randomEncounter';
-import { ailmentDef, enemyDef, enemyList, memberIds } from '../game/battle/book';
+import { ailmentDef, enemyDef, enemyList, memberIds, skillDef } from '../game/battle/book';
+import { foeAreasOf } from '../game/foeFieldAttack';
 import { touchedFromBehind } from '../game/symbolSense';
 import { equipItem, memberStats, partyTraits, unequipItem } from '../game/battle/party';
 import { canCraftWith, craftExtraChance } from '../game/battle/races';
@@ -36,8 +39,13 @@ import { craftItem, itemList, itemName, itemPrice, itemSellPrice, itemUse } from
 import { ShopScreen } from './shop/ShopScreen';
 import { InnScreen } from './shop/InnScreen';
 import { BattleView, type BattleStage, type BattleStartOpening } from './battle/BattleView';
+import { BattleTransition } from './battle/BattleTransition';
+import { BATTLE_WIPE_MS, battleWipeCoverMs, battleWipeRevealMs } from '../game/battle/transition';
 import { useFieldAttack } from './useFieldAttack';
 import { preemptiveOf } from '../game/fieldAttack';
+import { joinRoom, pickJoiners, retreatSurvivors, type SymbolGroup } from '../game/fieldBattle';
+import { TACTIC_NAMES, awayMembers, nextTactic, type Tactic } from '../game/partyTactics';
+import type { Fighter } from '../game/battle/rules';
 import * as audio from '../game/audio';
 import * as gameOptions from '../game/options';
 import { applyMapSound, loadSoundBook, unlockAudio } from '../game/audio';
@@ -49,7 +57,7 @@ import { facesOnTalk } from '../game/talkTurn';
 import { layerKey, readSwitchLayers, switchLayerShown, type SwitchLayer } from '../game/layerSwitch';
 import { mapEffectHereKey, mapEffectKey } from '../game/mapEffectSwitch';
 import { applyEventVisit, forgetRespawn, NO_VISIT, rollEventVisit, type EventVisit } from '../game/eventVisit';
-import { canRun, meets, runCommands, ReturnToTitle, timeMatches } from '../event/interpreter';
+import { canRun, EventAbandoned, meets, runCommands, ReturnToTitle, timeMatches, type BattleRules } from '../event/interpreter';
 import type { EventCommand, EventDef, EventFile, IfCondition } from '../event/types';
 import { mapNpcSettingsForFile, rollFoes } from '../game/mapNpcs';
 import type { MapDef } from '../mep3d/types';
@@ -71,6 +79,26 @@ import { installFullscreenShortcut, isFullscreen, onFullscreenChange } from '../
 import { AUTO_SLOT, readSave, writeSave } from '../game/save';
 import { canWalk, useUi } from './store';
 import { clearComic, useComic } from './comic';
+
+/** 撤退の怯みが解けてから、触れても戦わない時間を延ばす（ミリ秒。GS-304）。 */
+const RETREAT_GRACE_MS = 300;
+
+/**
+ * 先頭から離れて行動している仲間（GS-305）。そのコマンド戦闘には入らない。距離は戦闘共通の `fieldBattle.together`。
+ * 離れた人がいなければ空の物（`opening` に混ぜる）。
+ */
+function absentNow(
+  view: GameView,
+  /** 加勢する NPC（GS-306）のうち、先頭の近くにいて客として入る人を返す口。 */
+  guestsFor?: (near: (at: { x: number; z: number }) => boolean) => Fighter[],
+): { absent?: string[]; guests?: Fighter[] } {
+  const [leader, ...rest] = view.partyAt();
+  if (!leader) return {};
+  const together = fieldBattleSettings().together;
+  const absent = awayMembers(leader.at, rest, together);
+  const guests = guestsFor?.((at) => Math.hypot(at.x - leader.at.x, at.z - leader.at.z) <= together) ?? [];
+  return { ...(absent.length ? { absent } : {}), ...(guests.length ? { guests } : {}) };
+}
 
 /** 決定キー。会話ウィンドウと同じ割り当て。 */
 const DECIDE = ['Enter', 'Space', 'KeyZ'];
@@ -268,6 +296,9 @@ export default function GameCanvas() {
     pose: (id, pose) => viewRef.current?.figurePose(id, pose),
     terrain: (cell) => viewRef.current?.battleCellTerrain(cell) ?? null,
     fx: (id, def) => { viewRef.current?.figureFx(id, def); },
+    hitShake: () => viewRef.current?.playHitShake() ?? 0,
+    hitShakeTiming: () => viewRef.current?.hitShakeTiming() ?? 'impact',
+    cameraPhase: (phase) => viewRef.current?.setBattleCameraPhase(phase),
   });
   const battle = useUi((s) => s.battle);
   /**
@@ -289,12 +320,37 @@ export default function GameCanvas() {
   }, []);
 
   /**
+   * 戦闘の画面へ替える（2026-11-09）。帯が飛び込んで画面を覆い（`cover`）、覆っているあいだに戦闘を出し、
+   * 帯が走り抜けて戦闘を見せる（`reveal`）。時間は `game/battle/transition.ts`。
+   * 途中でタイトルへ戻されたら（`battleAbortRef` が替わったら）戦闘は出さない。
+   */
+  const enterBattle = useCallback(async (enemies: string[]) => {
+    const ui = useUi.getState();
+    const abort = battleAbortRef.current;
+    const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+    ui.setBattleWipe('cover');
+    await sleep(battleWipeCoverMs());
+    if (battleAbortRef.current !== abort || abort?.signal.aborted) {
+      useUi.getState().setBattleWipe(null);
+      return;
+    }
+    useUi.getState().setBattle(enemies);
+    // 舞台を組んで最初の絵が出るまで待つ（2 回描いてから）。
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve())));
+    await sleep(BATTLE_WIPE_MS.hold);
+    useUi.getState().setBattleWipe('reveal');
+    await sleep(battleWipeRevealMs());
+    if (useUi.getState().battleWipe === 'reveal') useUi.getState().setBattleWipe(null);
+  }, []);
+
+  /**
    * 戦闘を始めて、決着が付くまで待つ（GS-60）。
    * `canLose` は「負けても話が続くか」——`battle` 命令に `lose` の枝が書いてあるか。
    * **書いていなければ負け＝ゲームオーバー**で、`GameOver` を投げてイベントを止める。
+   * `bgm` はイベントの戦闘の曲（`battle` 命令の `bgm`。2026-11-09）。流す曲は `battleBgmFor` が決める。
    */
   const startBattle = useCallback(
-    async (enemies: string[], canLose: boolean, formation?: string, opening?: BattleStartOpening) => {
+    async (enemies: string[], canLose: boolean, formation?: string, opening?: BattleStartOpening, bgm?: string) => {
       await Promise.all([loadBattleBook(), loadQuestBook()]);
       battleOpeningRef.current = opening;
       const mapEntry = await entryForFile(mapRef.current);
@@ -311,7 +367,13 @@ export default function GameCanvas() {
           return;
         }
         // 戦いの曲へ（GS-62）。**環境音は止める**——滝の音の上で戦うと落ち着かない（旧作も同じ）。
-        audio.playBgm(battleSettings().bgm);
+        // 曲はイベント → 敵 → マップ → 戦闘共通の順に、最初に書いてある物（2026-11-09。`battle/battleBgm.ts`）。
+        audio.playBgm(battleBgmFor({
+          event: bgm,
+          enemies: enemies.map((id) => enemyDef(id)?.battleBgm),
+          map: mapEntry?.battleBgm,
+          common: battleSettings().bgm,
+        }));
         audio.stopBgs(400);
         battleEndRef.current = (outcome) => {
           if (outcome === 'lose' && !canLose) {
@@ -323,7 +385,7 @@ export default function GameCanvas() {
           if (outcome === 'lose') revive(stateRef.current);
           resolve(outcome);
         };
-        useUi.getState().setBattle(enemies);
+        void enterBattle(enemies);
       });
     },
     [],
@@ -343,6 +405,9 @@ export default function GameCanvas() {
       members: structuredClone(state.members),
       items: new Map(state.items),
       quests: structuredClone(state.quests),
+      // 図鑑（2026-11-04）。試しの戦いで出会った・倒した数は残さない。
+      found: new Set(state.found),
+      foes: structuredClone(state.foes),
       gold: state.gold,
     };
     try {
@@ -356,12 +421,26 @@ export default function GameCanvas() {
       state.gold = saved.gold;
       state.quests.clear();
       for (const [id, progress] of saved.quests) state.quests.set(id, progress);
+      state.found.clear();
+      for (const id of saved.found) state.found.add(id);
+      state.foes.clear();
+      for (const [id, one] of saved.foes) state.foes.set(id, one);
     }
   }, []);
 
-  /** 戦いが終わった。取り分を足して、待っている人へ返す。 */
-  const endBattle = useCallback((outcome: BattleOutcome) => {
+  /** 戦いの後始末。取り分を足して、待っている人へ返す。 */
+  const finishBattle = useCallback((
+    outcome: BattleOutcome,
+    _spoils?: BattleSpoils,
+    foesHp: number[] = [],
+    guests: Array<{ id: string; hp: number; mp: number }> = [],
+  ) => {
     // 取り分（経験・お金）を入れるのは戦闘画面（GS-63）。ここは場面の後始末だけ。
+    // 客（加勢する NPC。GS-306）の減った HP を持ち帰る。
+    takeGuestsRef.current(guests);
+    battleFoesHpRef.current = foesHp;
+    // その場で戦った舞台を戻す（GS-304）。舞台を片付けた後なので、次の戦闘（イベント）は舞台の点。
+    viewRef.current?.setBattleHere(null);
     useUi.getState().setBattle(null);
     battleFormationRef.current = undefined;
     battleOpeningRef.current = undefined;
@@ -373,6 +452,43 @@ export default function GameCanvas() {
     battleEndRef.current = null;
     done?.(outcome);
     canvasRef.current?.focus();
+  }, []);
+
+  /**
+   * 戦いが終わった。黒へフェードアウトしてから（2026-11-09）片付けて、待っている人へ返し、フィールドへ明ける。
+   * 戦闘演出エディタの背景の戦闘（`battleBackdropRef`）と、止められた戦闘はその場で片付ける。
+   */
+  const battleEndingRef = useRef(false);
+  const endBattle = useCallback((
+    outcome: BattleOutcome,
+    spoils?: BattleSpoils,
+    foesHp: number[] = [],
+    guests: Array<{ id: string; hp: number; mp: number }> = [],
+  ) => {
+    const abort = battleAbortRef.current;
+    if (battleBackdropRef.current || abort?.signal.aborted) {
+      finishBattle(outcome, spoils, foesHp, guests);
+      return;
+    }
+    if (battleEndingRef.current) return;
+    battleEndingRef.current = true;
+    useUi.getState().setBattleWipe('exit');
+    window.setTimeout(() => {
+      battleEndingRef.current = false;
+      // 暗くなるあいだにタイトルへ戻されたら、片付けはそちらがする。
+      if (battleAbortRef.current !== abort) return;
+      finishBattle(outcome, spoils, foesHp, guests);
+      // ゲームオーバーならタイトルへの暗転に任せる（黒は `.fade` が引き継ぐ）。
+      if (titleTransitionRef.current) {
+        useUi.getState().setFade(1, 0);
+        useUi.getState().setBattleWipe(null);
+        return;
+      }
+      useUi.getState().setBattleWipe('return');
+      window.setTimeout(() => {
+        if (useUi.getState().battleWipe === 'return') useUi.getState().setBattleWipe(null);
+      }, BATTLE_WIPE_MS.exitReturn);
+    }, BATTLE_WIPE_MS.exitFade);
   }, []);
 
   /** 店を開いて、閉じるまで待つ（GS-66）。 */
@@ -485,6 +601,7 @@ export default function GameCanvas() {
       battleFormationRef.current = undefined;
       battleBackdropRef.current = false;
       ui.setBattle(null);
+      ui.setBattleWipe(null);
       ui.setShop(null);
       ui.setInn(null);
       innEndRef.current = null;
@@ -513,6 +630,30 @@ export default function GameCanvas() {
    * 消す前に 2 度見てしまわないための控えとして残す。
    */
   const symbolHeldRef = useRef('');
+  /** フィールドの戦闘をその場で戦うか（GS-304。`maps.json` の `battleAt` が `stage` でなければ）。 */
+  const battleHereRef = useRef(true);
+  /** 終わった戦闘の敵の残り HP（`enemies` と同じ並び。撤退で敵シンボルを戻す。GS-304）。 */
+  const battleFoesHpRef = useRef<number[]>([]);
+  /** この時刻（`performance.now()`）までは敵シンボルに触れても戦わない（撤退の直後。GS-304）。 */
+  const touchGraceUntilRef = useRef(0);
+  /**
+   * イベントの戦闘から撤退して追われているあいだ（2026-11-05。`battle` 命令の `chase`）。
+   * イベントは止まったまま歩ける。追ってくる NPC を倒したら `win`、マップを出たら `left` で返す。
+   */
+  // `bgm` は追われる元になったイベントの戦闘の曲（2026-11-09）。追ってくる相手と戦うときも同じ曲にする。
+  const huntRef = useRef<{ npc: string; enemy: string; noEscape: boolean; bgm?: string; resolve: (result: 'win' | 'left') => void } | null>(null);
+  /** 追われ始める（`startHunt`。定義はフィールドアタックの後ろ）。 */
+  const startHuntRef = useRef<(npc: string, enemy: string, noEscape: boolean, bgm?: string) => Promise<'win' | 'left'>>(async () => 'left');
+  /** 追われているのを終える。追っていなければ何もしない。 */
+  const endHunt = useCallback((result: 'win' | 'left') => {
+    const hunt = huntRef.current;
+    if (!hunt) return;
+    huntRef.current = null;
+    viewRef.current?.huntNpc(hunt.npc, null);
+    hunt.resolve(result);
+  }, []);
+  /** 仲間の作戦（GS-305）。セーブには入れない（読み込むと「戦わない」）。 */
+  const tacticRef = useRef<Tactic>('follow');
   /**
    * いまのマップの NPC ぜんぶ（GS-130）。出す条件（台帳 `mapNpcs.json` の `showWhen` など）は
    * **スイッチが変わったら見直す**ので、条件を持ったまま控えておく。
@@ -630,7 +771,44 @@ export default function GameCanvas() {
     npcIds: () => npcDefsRef.current.map((npc) => npc.id),
     allowed: () => fieldAttackRef.current,
     note: showNote,
+    // 敵のフィールド攻撃で仲間がみんな倒れた（2026-11-05）。戦闘の負けと同じくゲームオーバー。
+    wiped: () => {
+      if (fieldBattleRef.current) return;
+      fieldBattleRef.current = true;
+      void gameOverRef.current().finally(() => {
+        fieldBattleRef.current = false;
+      });
+    },
+    // 仲間の作戦（GS-305）。歩けるときだけ回す。
+    cycleTactic: () => {
+      if (!canWalk(useUi.getState()) || useUi.getState().busy) return;
+      tacticRef.current = nextTactic(tacticRef.current);
+      audio.playUi('decide');
+      showNote(`作戦：${TACTIC_NAMES[tacticRef.current]}`);
+    },
+    // 撤退したあと追ってくる相手（2026-11-05）。フィールドで倒したら取り分は全額で、イベントの続きへ。
+    hunted: () => huntRef.current?.npc ?? '',
+    beaten: (npc: string) => {
+      if (huntRef.current?.npc === npc) endHunt('win');
+    },
   });
+  const foeStrikeRef = useRef(fieldAttack.foeStrike);
+  foeStrikeRef.current = fieldAttack.foeStrike;
+  const allyReachRef = useRef(fieldAttack.allyReach);
+  allyReachRef.current = fieldAttack.allyReach;
+  // 加勢する NPC（GS-306）。
+  const allyNpcReachRef = useRef(fieldAttack.allyNpcReach);
+  allyNpcReachRef.current = fieldAttack.allyNpcReach;
+  const allyNpcStrikeRef = useRef(fieldAttack.allyNpcStrike);
+  allyNpcStrikeRef.current = fieldAttack.allyNpcStrike;
+  const allyNpcAliveRef = useRef(fieldAttack.allyNpcAlive);
+  allyNpcAliveRef.current = fieldAttack.allyNpcAlive;
+  const guestsForRef = useRef(fieldAttack.guestsFor);
+  guestsForRef.current = fieldAttack.guestsFor;
+  const takeGuestsRef = useRef(fieldAttack.takeGuests);
+  takeGuestsRef.current = fieldAttack.takeGuests;
+  const allyStrikeRef = useRef(fieldAttack.allyStrike);
+  allyStrikeRef.current = fieldAttack.allyStrike;
   const resetFieldAttackRef = useRef(fieldAttack.reset);
   resetFieldAttackRef.current = fieldAttack.reset;
 
@@ -776,7 +954,8 @@ export default function GameCanvas() {
       else if (landing.marker) view.placeAtMarker(landing.marker, landing.px);
       if (face) view.face(face);
       await adoptRef.current(file);
-      if (fade) await view.waitForRenderedFrame();
+      // 描画が落ち着いてから明ける（2026-11-09）。初めの数フレームの固まりを黒いうちに済ませる。
+      if (fade) await view.waitUntilSettled();
       if (fade) {
         // 黒いうちに、踏んでいる場所のイベントを起こす。
         useUi.getState().setBusy(false);
@@ -808,6 +987,8 @@ export default function GameCanvas() {
   const play = useCallback(async (event: EventDef, npc = '', carry: { owner?: string } = {}) => {
     const bridge = bridgeRef.current;
     if (!bridge || useUi.getState().busy || useUi.getState().phase !== 'play') return;
+    // 撤退して追われているあいだ（2026-11-05）は、ほかのイベントを起こさない（止めているイベントの途中なので）。
+    if (huntRef.current) return;
     useUi.getState().setBusy(true);
     // どのイベントを動かしているかを先に伝える（GS-27）。セルフスイッチの宛先になる。
     // `carry.owner` は起こした物の `Id`（GS-134）。物ごとの覚えの宛先。
@@ -817,7 +998,8 @@ export default function GameCanvas() {
     } catch (error) {
       // **ゲームオーバーはエラーではない**（GS-60）。ここで話が終わっただけなので、
       // 赤い印を出さずに片付けへ進む。
-      if (!(error instanceof GameOver) && !(error instanceof ReturnToTitle)) throw error;
+      // 追われている途中でマップを出た（`EventAbandoned`。2026-11-05）のも、話がここで終わっただけ。
+      if (!(error instanceof GameOver) && !(error instanceof ReturnToTitle) && !(error instanceof EventAbandoned)) throw error;
     } finally {
       viewRef.current?.stopCameraCue();
       // カメラ追従は既定へ戻す（GS-166）。切ったまま歩き出すと、画面が付いてこない。
@@ -851,6 +1033,9 @@ export default function GameCanvas() {
       stopClockRef.current = mapEntry?.time?.stopClock === true;
       // フィールドアタック（GS-295）。書かなければ使える。減らした HP はマップごと（入り直すとシンボルごと戻る）。
       fieldAttackRef.current = mapEntry?.fieldAttack !== false;
+      // フィールドの戦闘をその場で戦うか（GS-304）。`battleAt: "stage"` なら舞台の点。
+      battleHereRef.current = mapEntry?.battleAt !== 'stage';
+      touchGraceUntilRef.current = 0;
       // ランダムエンカウントの出る敵と間隔（GS-299）。
       encounterDefRef.current = mapEntry?.encounter;
       resetFieldAttackRef.current();
@@ -896,6 +1081,8 @@ export default function GameCanvas() {
         npcShown(npc, (key) => switchOnRef.current(key, npc.id), (when) => npcMeetsRef.current(when, npc.id)),
       );
       npcTalkRef.current = new Map(npcList.map((npc) => [npc.id, npc.event]));
+      // 撤退して追われていた（2026-11-05）なら、マップを出たのでイベントはここで終わる。
+      endHunt('left');
       // 敵シンボル（GS-76）。`EnemyData` を書いた NPC だけ。マップが変われば作り直す。
       symbolsRef.current = new Map(
         npcList.filter((npc) => npc.enemy).map((npc) => [npc.id, npc.enemy as string]),
@@ -979,6 +1166,18 @@ export default function GameCanvas() {
         symbolsRef.current.delete(id);
         fieldAttack.wounds.current.delete(id);
       },
+      // 敵のフィールド攻撃（2026-11-05）。敵の技のうち形が範囲の物。フィールドアタックを禁止したマップでは攻めてこない。
+      foeAreas: (enemy) => (fieldAttackRef.current ? foeAreasOf(enemyDef(enemy)?.skills, skillDef) : []),
+      memberAlive: (id) => (stateRef.current.members.get(id)?.hp ?? 0) > 0,
+      foeStrike: (npc, area, hits, center) => foeStrikeRef.current(npc, area, hits, center),
+      // 仲間の作戦（GS-305）。
+      tactic: () => tacticRef.current,
+      allyReach: (member) => allyReachRef.current(member),
+      allyStrike: (member, npc) => allyStrikeRef.current(member, npc),
+      // 加勢する NPC（GS-306）。
+      allyNpcReach: (npc) => allyNpcReachRef.current(npc),
+      allyNpcStrike: (npc, foe) => allyNpcStrikeRef.current(npc, foe),
+      allyNpcAlive: (npc) => allyNpcAliveRef.current(npc),
       // マップに入るたびに戻るイベント（GS-233）。**組む前に**覚えを消し、出るかを決める。
       // イベントは組む前に読んである（GS-195。`readEventsAhead`）。
       prepareMap: (name, map) => {
@@ -1120,8 +1319,13 @@ export default function GameCanvas() {
           await cameraEditor.prepare(file);
         },
         setEffects: (next: Record<string, EffectEntry>) => previewEffects(next),
+        // 敵の板の大きさの下書き（GS-322）。次に背景の戦闘を出すときから効く。
+        setEnemyScales: (next: Record<string, number> | null) => previewEnemyScales(next),
         async backdrop(enemies: string[]) {
           clearBackdrop();
+          // フィールドの見本の人（GS-324）は戦闘の背景では使わない。
+          view.previewFigure('foe', null);
+          view.previewFigure('ally', null);
           idle();
           if (enemies.length === 0) throw new Error('背景に出す敵を選んでください');
           await Promise.all([loadBattleBook(), loadQuestBook()]);
@@ -1155,17 +1359,82 @@ export default function GameCanvas() {
           return list.sort((a, b) => Number(b.kind === 'player') - Number(a.kind === 'player'));
         },
         showCells: (on: boolean) => view.showStageCells(on),
-        replayStart: () => view.playBattleStart(),
+        // 戦闘待機を流し直す（場面の構図は外す。GS-312）。
+        replayStart: () => { view.setBattleCameraPhase(null); return view.playBattleStart(); },
+        // 場面の構図だけ替える（GS-319。技の絵タブの「戦闘開始の構図」）。舞台は組み直さない。`replay` なら待機へ戻してから流し直す。
+        setCameraPhase(phase, replay = false) {
+          if (!battleBackdropRef.current) return false;
+          if (replay) view.setBattleCameraPhase(null);
+          view.setBattleCameraPhase(phase);
+          return true;
+        },
         cellTerrain: () => view.battleStageTerrain(),
         previewCommand(member: number | null) {
           if (!battleBackdropRef.current || !useUi.getState().battle) return false;
           window.dispatchEvent(new CustomEvent('battle-command-preview', { detail: { member } }));
           return true;
         },
-        playEffect(def: EffectDef) {
-          if (!useUi.getState().battle) return false;
-          window.dispatchEvent(new CustomEvent('battle-effect-preview', { detail: { def } }));
+        setFreeCamera(free) {
+          // 外すのはいつでも（背景を片づけた後でも、平行投影を残さないように）。
+          if (!free) { view.setFreeBattleCamera(null); return true; }
+          if (!battleBackdropRef.current) return false;
+          view.setFreeBattleCamera(free);
           return true;
+        },
+        cameraView: () => view.battleCameraView(),
+        playEffect(def: EffectDef, how?: { target?: 'foe' | 'party' }) {
+          if (!useUi.getState().battle) return false;
+          window.dispatchEvent(new CustomEvent('battle-effect-preview', { detail: { def, target: how?.target ?? 'foe' } }));
+          return true;
+        },
+        // 被弾の揺れを試す（GS-337。戦闘演出エディタの舞台タブ）。下書きの舞台の台帳（`setStages`）で揺らす。
+        playHitShake: () => (battleBackdropRef.current ? view.playHitShake() : 0),
+        setFxGuide(on: boolean) {
+          view.setFxGuide(on);
+          // 隊列の窓に重ねた味方への絵（GS-328）にも枠を出す。
+          window.dispatchEvent(new CustomEvent('battle-fx-guide', { detail: { on } }));
+        },
+        // フィールドで技の絵を試す（GS-323・GS-324）。背景の戦闘は片付け、フィールドのカメラのまま、プレイヤーの前に
+        // 見本の敵と味方（キャラクターの台帳の絵。`previewFigure`）を左右に並べて立たせ、`side` の方へ
+        // フィールドアタックと同じ置き方・大きさで絵を出す（`useFieldAttack` の当たった絵と同じ。味方は「フィールド: 味方に」のずらし）。
+        fieldEffect(def: EffectDef, how?: { side?: 'foe' | 'party'; foe?: string; ally?: string; distance?: number }) {
+          clearBackdrop();
+          const at = view.playerAt();
+          const dir = view.facingVector();
+          if (!at || !dir) return null;
+          const distance = Math.max(1, how?.distance ?? 2);
+          // 向いた先 `distance` マスの、横へ 1 マスずつ（敵と味方）。
+          const cross = { x: -dir.z, z: dir.x };
+          const cell = (k: number) => ({
+            x: Math.floor(at.x + dir.x * distance + cross.x * k),
+            y: Math.floor(at.y),
+            z: Math.floor(at.z + dir.z * distance + cross.z * k),
+          });
+          const facing = view.playerFacing();
+          const back = facing === 'up' ? 'down' : facing === 'down' ? 'up' : facing === 'left' ? 'right' : facing === 'right' ? 'left' : undefined;
+          const foe = view.previewFigure('foe', how?.foe || null, cell(1), back);
+          const ally = view.previewFigure('ally', how?.ally || null, cell(-1), back);
+          const side = how?.side === 'party' ? 'party' : 'foe';
+          const target = side === 'party' ? ally : foe;
+          const there = target ? view.npcAt(target) : null;
+          // 立たせられなかったとき（姿を選んでいないなど）は、そのマスの真ん中へ出す。
+          const empty = cell(side === 'party' ? -1 : 1);
+          const spot = there ? { x: there.x, y: there.y, z: there.z } : { x: empty.x + 0.5, y: empty.y, z: empty.z + 0.5 };
+          if (def.se) audio.playSe(def.se);
+          view.playFx(def, { x: spot.x, y: spot.y + FIELD_FX_RISE, z: spot.z }, { foot: spot.y, side });
+          return { foe: !!foe, ally: !!ally };
+        },
+        // フィールドの見本の人を片付ける（GS-324。戦闘の見本へ戻るとき）。
+        clearFieldFigures() {
+          view.previewFigure('foe', null);
+          view.previewFigure('ally', null);
+        },
+        // フィールドの見本に立たせられる姿（GS-324）。キャラクターの台帳でフィールドの絵（`sheet`）がある人。
+        fieldFigureChoices() {
+          return characterIds()
+            .map((id) => ({ id, entry: character(id)! }))
+            .filter(({ entry }) => !!entry.sheet)
+            .map(({ id, entry }) => ({ id, name: entry.name ?? id, kind: entry.kind ?? '' }));
         },
       };
       expose('__battleEffectEditor', battleEffectEditor);
@@ -1205,8 +1474,17 @@ export default function GameCanvas() {
           fade?: boolean,
           px?: { x: number; y?: number; z: number },
         ) => goTo(map, { marker: '', at, ...(px ? { px } : {}) }, face ?? '', fade),
-        battle: (enemies: string[], canLose: boolean, formation?: string) =>
-          startBattleRef.current(enemies, canLose, formation),
+        // イベントの戦闘（2026-11-05）。撤退できるのは `chase` を書いた戦闘だけ（`rules.retreat`）。撤退のあとは `hunt`。
+        battle: (enemies: string[], canLose: boolean, formation?: string, rules?: BattleRules) => {
+          const opening: BattleStartOpening | undefined = rules?.noEscape || rules?.retreat
+            ? { ...(rules.noEscape ? { noEscape: true } : {}), ...(rules.retreat ? { retreat: true } : {}) }
+            : undefined;
+          // `chase` の NPC は戦闘のあいだ隠す（2026-11-07）。舞台を片付けたら出し直す（撤退したらそのまま追ってくる）。
+          viewRef.current?.hideInBattle(rules?.hide ?? []);
+          return startBattleRef.current(enemies, canLose, formation, opening, rules?.bgm)
+            .finally(() => viewRef.current?.hideInBattle([]));
+        },
+        hunt: (npc: string, enemy: string, noEscape: boolean, bgm?: string) => startHuntRef.current(npc, enemy, noEscape, bgm),
         shop: (goods: string[], sell: boolean) => startShopRef.current(goods, sell),
         inn: (price: number) => startInnRef.current(price),
         returnToTitle: () => returnToTitle(400),
@@ -1297,6 +1575,8 @@ export default function GameCanvas() {
     if (!canWalk(useUi.getState()) || fieldBattleRef.current) return;
     // 時間帯の切り替え中は戦闘を始めない（触ったままなら終わったところで始まる）。
     if (view.timeShifting()) return;
+    // 撤退した直後（GS-304）は触れても戦わない。
+    if (performance.now() < touchGraceUntilRef.current) return;
 
     let near = '';
     for (const [id] of symbolsRef.current) {
@@ -1312,6 +1592,8 @@ export default function GameCanvas() {
     }
     const enemy = symbolsRef.current.get(near);
     if (!enemy) return;
+    // 隊列が交戦中（2026-11-05。HP の帯が出ている）なら、近くの敵シンボルは気づいていなくても巻き込む。消す前に見る。
+    const partyEngaged = fieldAttack.engaged();
     // 後ろから触れられたか（GS-296。不意打ち）。消す前に位置を見る。
     const foeAt = view.npcAt(near);
     const aim = view.facingVector();
@@ -1332,20 +1614,128 @@ export default function GameCanvas() {
     const wound = fieldAttack.wounds.current.get(near);
     fieldAttack.wounds.current.delete(near);
     const preemptive = wound ? preemptiveOf(wound, performance.now()) : false;
-    const opening: BattleStartOpening | undefined = wound || behind
-      ? {
-        ...(preemptive ? { preemptive } : {}),
-        ...(behind && !preemptive ? { ambush: true } : {}),
-        ...(wound ? { enemyHp: [wound.hp] } : {}),
-      }
-      : undefined;
+    const enemyHp: Array<number | undefined> = foes.map((_, index) => (index === 0 ? wound?.hp : undefined));
+    // 撤退で戻すときのために、どの敵がどのシンボルの物かを覚える（GS-304）。
+    const home = foeAt ?? { x: at.x, y: at.y, z: at.z };
+    const groups: SymbolGroup[] = [{ npc: near, enemy, from: 0, to: foes.length, at: { x: home.x, y: home.y, z: home.z } }];
+    // その場で戦う（GS-304）。マップが舞台の点で戦うと決めていなければ、主人公の立つ所が舞台になる。
+    // 触れた組すら立てない狭さ（家の中など）なら、壁の外に並ばないように舞台の点で戦う。
+    if (battleHereRef.current) {
+      view.setBattleHere(at);
+      if (view.battleStandable() < foes.length) view.setBattleHere(null);
+    }
+    // 巻き込み（GS-304）。近くでこちらに気づいている敵シンボルも 1 体ずつ加わる。その場で敵が立てる枠の数まで。
+    const joiners = pickJoiners(
+      [...symbolsRef.current].map(([id, foe]) => {
+        const spot = view.npcAt(id);
+        return { npc: id, enemy: foe, distance: spot ? Math.hypot(spot.x - at.x, spot.z - at.z) : Infinity, engaged: partyEngaged || view.symbolEngaged(id) };
+      }),
+      fieldBattleSettings().join,
+      joinRoom(view.battleStandable(), foes.length),
+    );
+    for (const one of joiners) {
+      const spot = view.npcAt(one.npc) ?? home;
+      groups.push({ npc: one.npc, enemy: one.enemy, from: foes.length, to: foes.length + 1, at: { x: spot.x, y: spot.y, z: spot.z } });
+      foes.push(one.enemy);
+      enemyHp.push(fieldAttack.wounds.current.get(one.npc)?.hp);
+      fieldAttack.wounds.current.delete(one.npc);
+      symbolsRef.current.delete(one.npc);
+      view.removeNpc(one.npc);
+    }
+    const opening: BattleStartOpening = {
+      ...(preemptive ? { preemptive } : {}),
+      ...(behind && !preemptive ? { ambush: true } : {}),
+      ...(enemyHp.some((hp) => hp !== undefined) ? { enemyHp } : {}),
+      // 敵シンボルとの戦いだけ撤退できる（GS-304）。
+      retreat: true,
+      // 追ってくるボス（2026-11-05）が入っていれば、イベントの「逃げられない」を引き継ぐ。
+      ...(huntRef.current?.noEscape && groups.some((group) => group.npc === huntRef.current?.npc) ? { noEscape: true } : {}),
+      // 離れて行動している仲間はこの戦闘に入らない（GS-305）。
+      ...absentNow(view, guestsForRef.current),
+    };
     fieldBattleRef.current = true;
-    void startBattleRef.current(foes, false, undefined, opening).catch((error) => {
+    // 追ってくるボスが入っていれば、元のイベントの戦闘の曲（2026-11-09）。
+    const huntBgm = groups.some((group) => group.npc === huntRef.current?.npc) ? huntRef.current?.bgm : undefined;
+    void startBattleRef.current(foes, false, undefined, opening, huntBgm).then((outcome) => {
+      afterSymbolBattle(outcome, groups, foes);
+    }).catch((error) => {
       if (!(error instanceof GameOver)) throw error;
     }).finally(() => {
       fieldBattleRef.current = false;
     });
   }, []);
+
+  /**
+   * 撤退のあと（GS-304）。生き残りのいる敵シンボルを、触れたときの居場所へ減った HP のまま戻して怯ませる。
+   * 怯みのあいだ（とその少し後）は触れても戦闘にしない——戻ってすぐ同じ戦いへ入らないように。
+   */
+  const returnFromRetreat = useCallback((groups: SymbolGroup[], foes: string[], hp: number[]) => {
+    const view = viewRef.current;
+    if (!view) return;
+    const stun = fieldBattleSettings().retreatStun;
+    const now = performance.now();
+    for (const { group, hp: left } of retreatSurvivors(groups, foes, hp)) {
+      if (!view.restoreNpcAt(group.npc, group.at)) continue;
+      symbolsRef.current.set(group.npc, group.enemy);
+      const max = enemyDef(group.enemy)?.hp ?? 1;
+      fieldAttack.wounds.current.set(group.npc, { hp: Math.min(max, left ?? max), stunUntil: now + stun });
+      // 「！」は戻した時から出して怯みと重ねる（2026-11-08。怯みが解けたらすぐ追う）。
+      view.stunNpc(group.npc, stun, 'retreat');
+    }
+    touchGraceUntilRef.current = now + stun + RETREAT_GRACE_MS;
+  }, []);
+
+  /**
+   * 敵シンボルの入った戦闘が終わった（2026-11-05）。撤退なら敵シンボルを戻す。
+   * 追ってくるボスが入っていたら、勝てばイベントの続きへ、逃げたら（逃げられる戦いなら）ボスだけ戻す。
+   */
+  const afterSymbolBattle = useCallback((outcome: BattleOutcome, groups: SymbolGroup[], foes: string[]) => {
+    const hunted = huntRef.current?.npc;
+    const inHunt = !!hunted && groups.some((group) => group.npc === hunted);
+    if (outcome === 'retreat') returnFromRetreat(groups, foes, battleFoesHpRef.current);
+    else if (inHunt && outcome === 'escape') returnFromRetreat(groups.filter((group) => group.npc === hunted), foes, battleFoesHpRef.current);
+    if (inHunt && outcome === 'win') endHunt('win');
+  }, [returnFromRetreat, endHunt]);
+
+  /**
+   * イベントの戦闘から撤退した（2026-11-05。`battle` 命令の `chase`）。イベントの見た目を片付けて歩けるようにし、
+   * `npc` を `enemy` の敵シンボルにして制限なく追わせる。HP は戦闘の残り、撤退のあとの怯みも敵シンボルと同じ。
+   * 勝ったら歩けない状態へ戻してから返す（イベントの続きが動く）。
+   */
+  const startHunt = useCallback((npc: string, enemy: string, noEscape: boolean, bgm?: string) => new Promise<'win' | 'left'>((resolve) => {
+    const view = viewRef.current;
+    if (!view || !view.hasNpc(npc)) {
+      console.warn(`[event] 撤退したあと追ってくる NPC「${npc}」がこのマップにいません`);
+      resolve('left');
+      return;
+    }
+    // イベントの見た目を片付ける（`play` の終わりと同じ）。
+    view.stopCameraCue();
+    view.setCameraFollow(true);
+    view.releaseFollowers();
+    const ui = useUi.getState();
+    ui.setTalk(null);
+    ui.setChoices(null);
+    ui.clearPortraits();
+    clearComic();
+    view.clearEmotes();
+    huntRef.current = { npc, enemy, noEscape, ...(bgm ? { bgm } : {}), resolve };
+    view.huntNpc(npc, enemy);
+    symbolsRef.current.set(npc, enemy);
+    const stun = fieldBattleSettings().retreatStun;
+    const now = performance.now();
+    const max = enemyDef(enemy)?.hp ?? 1;
+    const left = battleFoesHpRef.current[0];
+    fieldAttack.wounds.current.set(npc, { hp: left !== undefined && left > 0 ? Math.min(max, left) : max, stunUntil: now + stun });
+    view.stunNpc(npc, stun, 'retreat');
+    touchGraceUntilRef.current = now + stun + RETREAT_GRACE_MS;
+    ui.setBusy(false);
+    canvasRef.current?.focus();
+  }).then((result) => {
+    if (result === 'win') useUi.getState().setBusy(true);
+    return result;
+  }), []);
+  startHuntRef.current = startHunt;
   const checkSymbolsRef = useRef(checkSymbols);
   checkSymbolsRef.current = checkSymbols;
 
@@ -1384,8 +1774,48 @@ export default function GameCanvas() {
     const enemies = rollEncounter(def?.enemies);
     if (enemies.length === 0) return;
     encounterRef.current.reset();
+    // その場で戦う（GS-304）。ランダムエンカウントは敵シンボルが無いので撤退はできない。
+    if (battleHereRef.current) {
+      view.setBattleHere(at);
+      if (view.battleStandable() < enemies.length) view.setBattleHere(null);
+    }
+    // 隊列が交戦中（2026-11-05）なら、近くの敵シンボルも巻き込む（気づいていなくても）。その場で敵が立てる枠の数まで。
+    const groups: SymbolGroup[] = [];
+    const foes = [...enemies];
+    const enemyHp: Array<number | undefined> = foes.map(() => undefined);
+    if (fieldAttack.engaged()) {
+      const joiners = pickJoiners(
+        [...symbolsRef.current].map(([id, foe]) => {
+          const spot = view.npcAt(id);
+          return { npc: id, enemy: foe, distance: spot ? Math.hypot(spot.x - at.x, spot.z - at.z) : Infinity, engaged: true };
+        }),
+        fieldBattleSettings().join,
+        joinRoom(view.battleStandable(), foes.length),
+      );
+      for (const one of joiners) {
+        const spot = view.npcAt(one.npc) ?? at;
+        groups.push({ npc: one.npc, enemy: one.enemy, from: foes.length, to: foes.length + 1, at: { x: spot.x, y: spot.y, z: spot.z } });
+        foes.push(one.enemy);
+        enemyHp.push(fieldAttack.wounds.current.get(one.npc)?.hp);
+        fieldAttack.wounds.current.delete(one.npc);
+        symbolsRef.current.delete(one.npc);
+        view.removeNpc(one.npc);
+      }
+    }
     fieldBattleRef.current = true;
-    void startBattleRef.current(enemies, false).catch((error) => {
+    // 離れて行動している仲間はこの戦闘に入らない（GS-305）。
+    const away = absentNow(view, guestsForRef.current);
+    const opening: BattleStartOpening = {
+      ...away,
+      // 巻き込んだ敵シンボルがいれば撤退できる（その敵シンボルを戻す。出会った敵は消える）。
+      ...(groups.length ? { retreat: true } : {}),
+      ...(enemyHp.some((hp) => hp !== undefined) ? { enemyHp } : {}),
+      ...(huntRef.current?.noEscape && groups.some((group) => group.npc === huntRef.current?.npc) ? { noEscape: true } : {}),
+    };
+    const huntBgm = groups.some((group) => group.npc === huntRef.current?.npc) ? huntRef.current?.bgm : undefined;
+    void startBattleRef.current(foes, false, undefined, Object.keys(opening).length ? opening : undefined, huntBgm).then((outcome) => {
+      if (groups.length) afterSymbolBattle(outcome, groups, foes);
+    }).catch((error) => {
       if (!(error instanceof GameOver)) throw error;
     }).finally(() => {
       fieldBattleRef.current = false;
@@ -1652,7 +2082,7 @@ export default function GameCanvas() {
     await adoptRef.current(startFile);
     // 曲は**読み込み終えて画面が出始めるところで**鳴らす（黒い読み込みのあいだは鳴らさない）。
     // 明けるのは次の 2 フレーム後。イベントより先に当てる——踏んで起きるイベントが曲を指していれば、そちらが勝つ。
-    await viewRef.current?.waitForRenderedFrame();
+    await viewRef.current?.waitUntilSettled();
     applyMapSound(entry);
     checkSpotsRef.current();
     await painted();
@@ -1918,11 +2348,15 @@ export default function GameCanvas() {
             quests={stateRef.current.quests}
             questExp={stateRef.current.questExp}
             items={stateRef.current.items}
+            found={stateRef.current.found}
+            foes={stateRef.current.foes}
             party={stateRef.current.party}
             members={stateRef.current.members}
             gold={stateRef.current.gold}
             playSeconds={stateRef.current.playSeconds}
             place={knownMapLabel(mapRef.current)}
+            tactic={tacticRef.current}
+            onTactic={(next) => { tacticRef.current = next; }}
             onUseItem={useItem}
             onCraftItem={makeItem}
             onEquip={(who, id) => equipItem(stateRef.current, who, id)}
@@ -1947,6 +2381,8 @@ export default function GameCanvas() {
             onEnd={endBattle}
           />
         ) : null}
+        {/* 戦闘へ入る・出るときの場面転換（2026-11-09）。戦闘の画面より上。 */}
+        {phase === 'play' ? <BattleTransition /> : null}
         {/* 店（GS-66）。イベントの最中に開くので、会話ウィンドウより上に重ねる。 */}
         {phase === 'play' && shop ? (
           <ShopScreen

@@ -164,7 +164,7 @@
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
         { "type": "portrait", "slot": "scene", "image": "20250603.jpg" },
-        { "type": "cameraFollow", "on": true },
+        { "type": "cameraPlace", "to": { "x": 0, "y": 0, "z": -3 }, "ms": 1000 },
         { "type": "place", "target": "player", "at": { "x": -1, "y": 0, "z": -3 }, "face": "right" },
         {
           "type": "place",

@@ -34,10 +34,11 @@ import { createFieldEffects, mergeFieldVolumes, ownerWeightKey, readFieldVolumes
 import { CAMERA_SHOT_DEFAULTS, applyCameraShot, createCameraShots, type CameraShot } from '../mep3d/cameraShots';
 import { blendScreenEffects, createScreenEffects, screenEffectsAtTime } from '../mep3d/screenEffects';
 import { createEditorGrid } from '../view/editorGrid';
+import { createBattleFloorGrid, createEnemyCellMark, type BattleFloorGrid, type EnemyCellMark } from '../view/battleFloorGrid';
+import { enemyCellCorners, enemyCellShown, floorGridLines, floorGridOrder, floorGridShown, stepFloorGridFade } from './battle/floorGrid';
 import { backdropFade, blendTimeLook, layerShownAtTime, readShowIn, timeLookOf, withTimeLook, type TimeLook } from '../mep3d/lightingPresets';
 import type { AssetsDef, ChipStretch, FaceName, MapDef } from '../mep3d/types';
 import { createPhysicsWorld, loadRapier, type PhysicsBody, type PhysicsWorld } from './physics';
-import { createHitWires, type HitWires } from '../mep3d/hitWires';
 import type { HitRole } from '../mep3d/hitRules';
 import { createCameraRig, HD2D_PITCH, HD2D_YAW } from './cameraRig';
 import { battleStageAnchor, type BattleStageSource } from './battleStageMarker';
@@ -69,19 +70,25 @@ import { createHeadMarks } from './headMarks';
 import { characterBookReady, characterSheet, PLAYER_CHARACTER } from './characters';
 import { loadMapNpcs, mapNpcSettings, wanderWithDefaults, type WanderDef } from './mapNpcs';
 import { readNpcRoutes, createRouteState, routeInput, pauseNpcRoute, type NpcRoute, type NpcRouteMotion, type RouteState } from './npcRoutes';
-import type { IfCondition } from '../event/types';
+import type { IfCondition, PlaceAt } from '../event/types';
 import { canWalk, useUi } from '../ui/store';
 import { cameraFxForDrawMode, heavyOn, lightingForDrawMode, sunActorLimit } from './quality';
 import { SUN_SHADOW_BLUR } from '../mep3d/sunShadow';
-import { battlePartyFiguresShown, DEV_MODE } from './devMode';
+import { DEV_MODE } from './devMode';
 import { watchShaderErrors } from '../mep3d/shaderErrors';
 import { onOptionsChanged } from './options';
 import { loadFileIndex } from './fileIndex';
 import { readNpcs, npcShown, FACINGS, type NpcDef } from './npcs';
 import { coreCells, overlaps, symbolTouching } from './symbolTouch';
-import { chaseSteps, fleeSteps, fleesNow, homeSteps, inSight, lostSight, noticeWithDefaults, withinLeash, type NoticeDef, type Step } from './symbolSense';
+import { chaseSteps, fleeSteps, fleesNow, homeSteps, HUNT_NOTICE, inSight, lostSight, hitStunMs, noticesNow, noticeWithDefaults, pathStep, PROVOKED_NOTICE, withinLeash, type NoticeDef, type PathCell, type Step } from './symbolSense';
 import { createFieldFx } from './fieldFx';
+import { createDangerCells } from './dangerCells';
+import { FIELD_ATTACK_RISE, areaHits, areaOffset, axisOf, meleeHit, type FieldTarget } from './fieldAttack';
+import { ALLY_COOLDOWN_S, ALLY_SPEED, allyTarget, reachLength, standoff, stepToward, type AllyFoe, type AllyReach, type Tactic } from './partyTactics';
+import { allyWithDefaults, type AllyNpcDef } from './allyNpc';
+import { beginWindup, cancelWindup, finishStrike, foeClockAt, pickFoeArea, type FoeArea, type FoeClock } from './foeFieldAttack';
 import { isFieldEffect, type EffectDef } from './battle/book';
+import { aimsFoot, battleFxScale, placeOf, planeAnchor, scaleOf } from './effectPlace';
 import { skillFieldCell, skillFieldOrder } from './skillFieldFx';
 import { withoutHiddenLayers } from './hiddenLayers';
 import type { EffectLevel } from './ambience';
@@ -90,18 +97,20 @@ import { backdropLoaded, preloadBackdrop } from '../mep3d/backdrop';
 import { readSwitchLayers, switchLayerShown, withStartHiddenBuilt } from './layerSwitch';
 import {
   cameraCue,
+  cameraMoveCue,
   createCuePlayer,
   loadCameraCues,
   type CameraCueState,
   type CameraIllustrationSample,
 } from './cameraCues';
-import { battleCameraPose, battleCameraStartView, createBattleCameraPlayer, type BattleCamera, type BattleCameraView } from './battle/battleCamera';
+import { battleCameraPose, battlePhaseStep, battleCameraStartView, createBattleCameraPlayer, sampleBattleCamera, type BattleCamera, type BattleCameraPhase, type BattleCameraView } from './battle/battleCamera';
 import { entryForFile, mapKeyForFile, type MapEntry } from './mapIndex';
 import { mapUrl } from './assets';
-import { battleFormationSlots, chooseBattleFormation, stageFigureCells, type BattleFormationSlot } from './battle/book';
+import { battleFormationDef, battleFormationSlots, chooseBattleFormation, stageFigureCells, stageFigureShown, type BattleFormationSlot } from './battle/book';
 import { LEAN_BACK_S, leanBackOffset } from './battle/leanBack';
-import { battleStageBook, battleStageSettingsOf, cellKey, gridHeights, loadBattleStages, stageCellOffset, stageFigureOrder, STAGE_FIGURE_MATERIAL, STAGE_ROW_ORDER, type BattleStageSettings } from './battle/stage';
+import { battleStageBook, battleStageSettingsOf, cellKey, figurePxOf, gridHeights, hitShakeOf, partyHiddenInActionOf, type HitShakeTiming, loadBattleStages, partyScaleOf, stageCellOffset, stageFigureOrder, STAGE_FIGURE_MATERIAL, STAGE_ROW_ORDER, type BattleStageSettings } from './battle/stage';
 import { canStand, groundOf, type CellGround } from './battle/height';
+import { createSettleWatch, warmUpScene } from './mapWarmUp';
 import type { CellTerrain } from './battle/cells';
 
 /** 現れるのにかかる時間の既定（GS-207。ミリ秒）。 */
@@ -119,6 +128,8 @@ const easeIn = (t: number) => t * t;
 const PAN_SPEED = 8;
 /** プレイのカメラ距離（マス）。編集時の寄りをそのまま使うと近すぎる。 */
 const PLAY_DISTANCE = 18;
+/** カメラ演出の行き先の高さ（マス。足元から）。主人公を追うときの見る点（`lookAt.y += 0.6 * unit`）と同じ。 */
+const CUE_LOOK_RISE = 0.6;
 /** 出発点に使うオブジェクトの名前（GC-14）。 */
 const SPAWN_OBJECT = 'default';
 /**
@@ -160,8 +171,6 @@ export interface GameStatus {
   distance: number;
   /** 出発点をどこから取ったか。 */
   spawn: 'default' | 'auto';
-  /** 当たり判定のデバッグ表示。 */
-  showCollision: boolean;
   /** 隠面除去（N-10）で落とした面の数。ゲームでは**常に効かせる**（DEC-267）。 */
   hiddenFaces: number;
   /** 当たりの三角形の数（役割ごと。GS-239）。 */
@@ -198,19 +207,31 @@ export interface BattleStageSpec {
 }
 
 /** 舞台の組み直し（`restageBattle`）の指定。書かない物は今のまま。 */
+/** 戦闘演出エディタの自由なカメラ（2026-11-06）。値は構図と同じ形（BattleStage の床から。マス）。 */
+export interface FreeBattleCamera {
+  view: BattleCameraView;
+  /** 平行投影で見るか。 */
+  orthographic: boolean;
+}
+
 export interface RestageOptions {
   /** 見る隊形（`battleFormations.json` のキー）。 */
   formation?: string;
   /** 立たせる人数。今の面子の絵をくり返して使う（エディタで人数ごとの並びを見るため）。 */
   party?: number;
   enemy?: number;
-  /** 味方の板を見せる（ふだんは開発中のつまみ `battlePartyFigures` しだい）。 */
+  /** 味方の板を見せる（ふだんはいつも見せる。GS-311。偽で隠す）。 */
   showParty?: boolean;
   /**
    * 味方の何人目（0 始まり）の板にどの絵を使うか（URL。2026-10-29 / GS-282。戦闘演出エディタの見本）。
    * 空・null の番は今の面子の絵のまま。組み直すたびに渡す（覚えない）。
    */
   partyImages?: Array<string | null>;
+  /**
+   * 組み直した後に見せる場面の構図（2026-11-06 / GS-312。戦闘演出エディタの「戦闘開始を見る」で `action`）。
+   * 書かなければ今の場面のまま（コマンド選択の見本なら、その構図）。
+   */
+  phase?: BattleCameraPhase;
 }
 
 /** 組み直した結果。床の無い所に立った人（陣営と、その陣営の何人目か。0 始まり）。 */
@@ -260,6 +281,8 @@ export interface GameView {
   load(name: string): Promise<void>;
   /** 着地点を設定した後、実際に 1 フレーム描画されるまで待つ。 */
   waitForRenderedFrame(): Promise<void>;
+  /** 描画が落ち着く（重いフレームが続かなくなる）まで待つ。暗転を明ける前に呼ぶ（2026-11-09）。 */
+  waitUntilSettled(): Promise<void>;
   setMode(mode: GameMode): void;
   /**
    * イベントからプレイヤーを**1 マス歩かせる**（GS-13）。着いたら `true`。
@@ -316,6 +339,12 @@ export interface GameView {
   playShot(shot: CameraShot): number;
   playCameraCue(id: string): number;
   /**
+   * カメラ配置（2026-11-04）。見る所を `ms` かけて `to` へ動かし、長さ（ミリ秒）を返す。
+   * 所はマス（`PlaceAt`。数の軸はマスの真ん中）か人の呼び名（`'player'`・`'npc:<id>'`・`'follower:<id>'`）。
+   * `to` が null ならいつもの位置へ戻す。所が決まらない（居ない人）ときは何もせず 0。
+   */
+  placeCamera(to: PlaceAt | string | null, ms: number, options?: { from?: PlaceAt | string; distance?: number }): number;
+  /**
    * 戦闘用のカメラ（GS-105）。**イベント用のカメラ演出とは別の再生器**で、舞台のカメラへ重ねる。
    * 舞台を片づけると止まる。返すのは長さ（ミリ秒）。
    */
@@ -325,8 +354,20 @@ export interface GameView {
    * 長さはマップの `CharacterScale` に合わせる。舞台が無い・構図が無ければ 0。
    */
   playBattleStart(): number;
+  /**
+   * 戦闘の場面の構図（2026-11-06 / GS-310・GS-312）。`command` でコマンド選択の構図、`action` で戦闘開始の構図を流し、
+   * `null`（戦闘待機）や構図の無い場面では戦闘待機の見え方へ同じ長さで戻す。同じ場面を続けて渡しても流し直さない。
+   */
+  setBattleCameraPhase(phase: BattleCameraPhase): void;
   /** 戦闘のマスの線を出す・消す（戦闘演出エディタの舞台タブ）。舞台が無ければ何もしない。 */
   showStageCells(on: boolean): void;
+  /**
+   * 戦闘演出エディタの「カメラ」タブ（2026-11-06）。舞台のカメラを、構図の代わりにこの値で置く（`orthographic` で平行投影）。
+   * 構図を流していても、こちらが勝つ。null で外す（構図の値と、マップの投影へ戻す）。舞台を組み直しても残る。
+   */
+  setFreeBattleCamera(free: FreeBattleCamera | null): void;
+  /** いまの舞台の構図の値（自由なカメラを当てていても構図の方）。舞台が無ければ null。 */
+  battleCameraView(): BattleCameraView | null;
   /**
    * 出している舞台を組み直す（戦闘演出エディタの舞台タブ。2026-10-19 / BPE-30）。下書きのマス・隊形を当て直して、
    * 戦闘開始の構図を流し直す。舞台が無ければ偽。
@@ -337,6 +378,13 @@ export interface GameView {
    * 舞台を組む前でも聞ける（戦闘を開くときのマスの割り当てが使う）。マップを読んでいなければ null。
    */
   battleCellTerrain(cell: { col: number; row: number }): CellTerrain | null;
+  /**
+   * その場で戦う（2026-11-05 / GS-304）。舞台の真ん中を主人公の立つ所（マス）にする。null で舞台の点へ戻す。
+   * 壁のマスは立てない（`block`）。手書きの印は使わない。戦闘が終わったら null に戻す。
+   */
+  setBattleHere(here: { x: number; y: number; z: number } | null): void;
+  /** いまの舞台で敵が立てる隊形の枠の数（飛ばない敵。GS-304 の巻き込みの数）。 */
+  battleStandable(formation?: string): number;
   /** 組んでいる舞台の、マスの範囲ぜんぶの地形（戦闘演出エディタのマスの色）。舞台が無ければ空。 */
   battleStageTerrain(): Array<{ col: number; row: number; ground: CellGround; height: number | null }>;
   /** エディタが次のキーへ引き継ぐ、直前の演出状態。場面の既定値だけなら null。 */
@@ -353,6 +401,12 @@ export interface GameView {
    * **マップは書き換えない**ので、入り直せば戻ってくる。居なければ false。
    */
   removeNpc(id: string): boolean;
+  /**
+   * 見本の人（GS-324。戦闘演出エディタのフィールドの見本）。キャラクターの台帳のキー `character` のフィールドの絵で、`at` のマスに立たせる
+   * （動かない・話さない・敵シンボルでない）。同じ `slot` はキャラクターが同じなら置き直し、違えば作り直す。`character` が null なら消す。
+   * 返すのは NPC の id（`npcAt` に使う）。作れなければ ''。
+   */
+  previewFigure(slot: string, character: string | null, at?: { x: number; y: number; z: number }, face?: WalkDir): string;
   /** その名前の NPC がこのマップに居るか。 */
   hasNpc(id: string): boolean;
   /**
@@ -372,25 +426,59 @@ export interface GameView {
    * 隠していなければ何もしない（false）。
    */
   restoreNpc(id: string): boolean;
+  /**
+   * 消した NPC を、渡した所（マス）に戻す（GS-304。撤退のあと敵シンボルを触れたときの居場所へ）。
+   * 戻せなければ false。
+   */
+  restoreNpcAt(id: string, at: { x: number; y: number; z: number }): boolean;
+  /** 隊列の人の居場所（マス）。先頭は主人公の板、ほかは付いて歩く板（GS-305。離れた仲間を数える）。 */
+  partyAt(): Array<{ id: string; at: { x: number; y: number; z: number } }>;
+  /** 仲間を列（道）へ戻す（GS-305。作戦を「戦わない」にしたとき・マップに入ったとき）。 */
+  regroupAllies(): void;
+  /** このマップの加勢する NPC（GS-306）。居場所はマス。消えている人は入れない。 */
+  allyNpcs(): Array<{ id: string; ally: Required<AllyNpcDef>; at: { x: number; y: number; z: number } }>;
   /** NPC の居る所と向き（マス。小数）。`half` は体の半幅（マス）。居なければ null。 */
   npcAt(id: string): { x: number; y: number; z: number; facing: WalkDir; half: number } | null;
   /**
    * NPC を怯ませる（GS-295。フィールドアタックが当たった）。`ms` のあいだうろつき・経路の歩きを止める。
-   * **怯んでいるあいだは延ばさない**。居なければ false。
+   * **怯んでいるあいだは延ばさない**。`wake` なら、まだ気づいていない敵シンボルはその場で気づき（「！」を怯みと重ねる）、
+   * 怯みが解けたらすぐ動く。`hit`（叩かれた。2026-11-06）は怯みを `WAKE_STUN_MS` まで縮め、`retreat`（撤退で戻した。2026-11-08）は `ms` のまま。
+   * 返すのは残りの怯み（ミリ秒）。居なければ 0。
    */
-  stunNpc(id: string, ms: number): boolean;
+  stunNpc(id: string, ms: number, wake?: 'hit' | 'retreat'): number;
+  /**
+   * 敵シンボルが**交戦中**か（2026-11-05）。主人公に気づいている（「！」〜追う・逃げる・見失った直後）か、技の予兆・当てたあとの間。
+   * フィールドで倒したときの経験の倍率に使う。
+   */
+  symbolEngaged(id: string): boolean;
+  /**
+   * 制限なく追わせる（2026-11-05。イベントの戦闘から撤退したあと）。`enemy` の敵シンボルにして、見失わず綱も無く、
+   * 壁を回り込んで追ってくる。消えて置き直しても続く。`enemy` が null なら止める。マップを読み直すと止まる。
+   */
+  huntNpc(id: string, enemy: string | null): boolean;
   /** フィールドアタックを振った（GS-295）。`holdMs` のあいだ歩けなくし、絵を少し前へ踏み込ませる。 */
   strike(holdMs: number): void;
   /**
    * フィールドの技の絵を 3D の板で出す（GS-295）。`at` はマス（絵の真ん中）。深度を見るので手前の物に隠れる。
    * `hold` なら長さが来ても消さない（飛ぶ物。`endFx` で消す）。返すのは番号。
    */
-  playFx(def: EffectDef, at: { x: number; y: number; z: number }, how?: { hold?: boolean; scale?: number; foot?: number }): number;
+  playFx(def: EffectDef, at: { x: number; y: number; z: number }, how?: { hold?: boolean; foot?: number; side?: 'foe' | 'party' }): number;
   /**
-   * 戦闘の舞台の板に技の絵を出す（2026-10-31。前は DOM の重ね絵）。板の真ん中に、**画面の上で絵の画素どおりの大きさ**で。
+   * 戦闘の舞台の板に技の絵を出す（2026-10-31。前は DOM の重ね絵）。板の真ん中に、**板と同じものさし**（絵の 1 画素 ＝ 戦闘の絵の
+   * 1 マスの画素の 1 画素 × `CharacterScale`。GS-321・GS-325）で。カメラが寄れば板と一緒に大きくなる。
+   * コマンド戦闘の味方へのコマ絵は呼ばない（隊列の窓に重ねる。GS-328）。
    * 深度を見るので、手前の板に隠れる。長さが来たら消える。舞台に居なければ 0。
    */
   figureFx(id: string, def: EffectDef): number;
+  /**
+   * 敵の攻撃を受けたときの画面の揺れ（GS-337）。舞台の台帳の `hitShake`（このマップ）でカメラを揺らす。返すのは長さ（ミリ秒）。
+   * 舞台が無い・揺れ幅 0 なら 0。
+   */
+  playHitShake(): number;
+  /** 被弾の揺れを揺らす時（GS-338・GS-339。このマップの舞台の台帳）。 */
+  hitShakeTiming(): HitShakeTiming;
+  /** 技の絵に枠と基準点の十字を重ねるか（GS-318。戦闘演出エディタ）。 */
+  setFxGuide(on: boolean): void;
   /** 出している絵を動かす（飛ぶ物）。 */
   moveFx(id: number, at: { x: number; y: number; z: number }): void;
   /** 絵を消す。 */
@@ -563,8 +651,16 @@ export interface GameView {
   stageBattle(spec: BattleStageSpec, figures: BattleFigure[], debugGrid?: boolean): void;
   /** 舞台を片付けて、カメラとプレイヤーを元へ戻す。 */
   unstageBattle(): void;
-  /** 舞台の板が画面のどこにあるか（画素）。HP の帯や数字を重ねる用。絵が来ていなければ null。 */
-  figureRect(id: string): { left: number; top: number; width: number; height: number } | null;
+  /**
+   * 次からの舞台で、フィールドの敵と同じく隠す NPC（2026-11-07。イベントの `battle` の `chase`）。
+   * 片付けたら出し直す。空を渡すと戻す。
+   */
+  hideInBattle(ids: string[]): void;
+  /**
+   * 舞台の板が画面のどこにあるか（画素）。HP の帯や数字を重ねる用。絵が来ていなければ null。
+   * `pixel` は絵の 1 画素が画面で何画素か（2026-11-06。敵ごとの帯の位置 `hpBar` を画面の画素へ直す用）。
+   */
+  figureRect(id: string): { left: number; top: number; width: number; height: number; pixel: number } | null;
   /** 舞台の板の見せ方を変える。 */
   figurePose(id: string, pose: FigurePose): void;
   /** 1 フレーム分だけ進めて描く。ふだんは描画ループが呼ぶ。目視確認の自動化からも呼べる。 */
@@ -607,8 +703,6 @@ const STAGE_BREATH_S = 2.6;
 const STAGE_COMMAND_RENDER_ORDER = 5000;
 /** 舞台の板とマスの線を置く描画の層（three.js の `layers`）。チルトシフトのぼかしの後に描く（2026-10-19）。 */
 const STAGE_SHARP_LAYER = 1;
-/** 画面に入っていない板（カメラの後ろの味方）へ出す技の絵を、カメラから何マス先に置くか（2026-10-31）。 */
-const FX_LOOSE_CELLS = 3;
 /** 隊列を描く順の始まり（GS-190）。同じ場所に重なったときだけ効く（深度が同じなら後に描いた方が上）。 */
 const PARTY_RENDER_ORDER = 50;
 /**
@@ -652,6 +746,30 @@ export interface GameViewOptions {
    * 呼ぶ側の敵シンボルの一覧から外す。消し終えるのはこちら（入り直せば戻る）。
    */
   symbolLeft?: (id: string) => void;
+  /**
+   * 敵のフィールド攻撃（2026-11-05。`foeFieldAttack.ts`）。その敵が使える範囲の技。空なら攻めてこない（追って触れるだけ）。
+   * 初めて気づいたときに 1 回だけ聞く。
+   */
+  foeAreas?: (enemy: string) => FoeArea[];
+  /** 仲間が倒れていないか（倒れた人は狙わない・当たらない）。渡さなければみんな立っている扱い。 */
+  memberAlive?: (id: string) => boolean;
+  /**
+   * 敵の技の予兆が終わって当てた。`hits` はそのとき範囲にいた仲間（id と位置〈マス〉）、`center` は範囲の真ん中（マス。体の高さ）。
+   * ダメージ・倒れる・ゲームオーバーは呼ぶ側。
+   */
+  foeStrike?: (npc: string, area: FoeArea, hits: { id: string; at: { x: number; y: number; z: number } }[], center: { x: number; y: number; z: number }) => void;
+  /** 仲間の作戦（2026-11-05 / GS-305。`partyTactics.ts`）。渡さなければいつも「戦わない」。 */
+  tactic?: () => Tactic;
+  /** その仲間のフィールドアタックの届き方。null なら攻めない。 */
+  allyReach?: (member: string) => AllyReach | null;
+  /** 仲間が敵シンボルを攻めた（届くのを確かめた後）。ダメージ・絵・取り分は呼ぶ側。 */
+  allyStrike?: (member: string, npc: string) => void;
+  /** 加勢する NPC（GS-306）の攻撃の届き方。null なら攻めない。 */
+  allyNpcReach?: (npc: string) => AllyReach | null;
+  /** 加勢する NPC が敵シンボルを攻めた。 */
+  allyNpcStrike?: (npc: string, foe: string) => void;
+  /** 加勢する NPC が倒れていないか。渡さなければ立っている扱い。 */
+  allyNpcAlive?: (npc: string) => boolean;
   /**
    * **組む前に**マップを整える口（GS-180 / GS-233）。マップに入るたびに 1 回呼ぶ。
    * 入るたびに出るかどうかが変わる物（イベントの `respawn` / `chance`）を、ここで抜いておく——
@@ -699,10 +817,18 @@ export function createGameView(
   const cuePlayer = createCuePlayer();
   /** 戦闘用のカメラ（GS-105）。イベント用の `cuePlayer` とは分ける。 */
   const battleCameraPlayer = createBattleCameraPlayer();
+  /** 戦闘演出エディタの自由なカメラ（2026-11-06）。当てているあいだは構図より勝つ。 */
+  let freeBattleCamera: FreeBattleCamera | null = null;
+  /** 構図の値（自由なカメラを当てていても、構図が決めた方）。外したらこれへ戻し、エディタが取り込む。 */
+  let composedView: BattleCameraView | null = null;
+  /** 戦闘の場面（GS-312）と、戦闘待機の見え方（待機から離れているときの戻り先。待機のままなら null）、いまの場面の構図の長さ。 */
+  let cameraPhase: BattleCameraPhase = null;
+  let waitView: BattleCameraView | null = null;
+  let phaseMs = 0;
   let renderedIllustrations: CameraIllustrationSample[] = [];
   let battleSetup: MapEntry['battleStage'];
   /** 舞台の組み直しで味方の板を見せるか（戦闘演出エディタ。2026-10-19）。 */
-  let stagePartyShown = false;
+  let stagePartyShown = true;
   /** 組み直しのもとにする面子（はじめに舞台を組んだときの物）。人数を変えても絵はここからくり返す。 */
   let stageOriginal: BattleFigure[] = [];
   /** いまのマップの id（`maps.json` のキー）。戦闘の舞台の台帳（`battleStages.json` の `maps`）を引く。台帳に無ければ null。 */
@@ -742,11 +868,7 @@ export function createGameView(
   let playerBody: PhysicsBody | null = null;
   /** NPC の体。最初に動かすときに作り、消すときに外す（GS-239）。 */
   const npcBodies = new Map<string, PhysicsBody>();
-  /** 当たりの線（C キー）。形どおりの当たり（`hitWires.ts`。エディタと同じ見せ方）。 */
-  let wires: HitWires | null = null;
   const dropPhysics = () => {
-    wires?.dispose();
-    wires = null;
     playerBody = null;
     npcBodies.clear();
     collision?.dispose();
@@ -781,6 +903,8 @@ export function createGameView(
    * 解くのはイベントの終わり（`releaseFollowers`）と、隊列を作り直すとき。
    */
   const pinnedFollowers = new Set<string>();
+  /** 仲間の作戦の動き（GS-305）。`free` は列を離れているか、`readyAt` は次に攻められる時刻（経過秒）。 */
+  const allies = new Map<string, { free: boolean; readyAt: number }>();
   const clearFollowers = () => {
     for (const actor of followers.values()) { actor.group.removeFromParent(); actor.dispose(); }
     followers.clear();
@@ -816,12 +940,19 @@ export function createGameView(
       }
     });
   };
-  const resetFollowers = () => {
+  /**
+   * 仲間を主人公の足元へ寄せ直す。`keepPinned` のときは**イベントが置いた仲間をその場に残す**
+   * ——イベントで仲間を置いたあとに主人公を置き直すと、置いた仲間まで主人公へ重なっていた。
+   */
+  const resetFollowers = (keepPinned = false) => {
     if (!player) return;
-    pinnedFollowers.clear();
+    if (!keepPinned) pinnedFollowers.clear();
+    // 作戦で列を離れていた仲間も列へ戻す（GS-305。置き直し・マップ移動）。
+    allies.clear();
     const unit = collision?.unit ?? 1;
     partyTrail.reset(leaderPoint(unit));
-    for (const actor of followers.values()) {
+    for (const [id, actor] of followers) {
+      if (pinnedFollowers.has(id)) continue;
       actor.followAt(player.position, 0, rig.yaw);
       actor.face(player.facingNow());
     }
@@ -920,7 +1051,8 @@ export function createGameView(
       const actor = followers.get(id);
       if (!actor) return;
       // イベントが置いた仲間はその場に留める（GS-184）。
-      if (!pinnedFollowers.has(id)) {
+      // 仲間の作戦（GS-305）で列を離れている間は、その動きに任せる。
+      if (!pinnedFollowers.has(id) && !allyStep(id, actor, partyTrail.behind((index + 1) * spacing), dt, unit)) {
         const at = partyTrail.behind((index + 1) * spacing);
         // 向きは**主人公がそこを通ったときの向き**（GS-185）。歩いた向きから出すと、
         // 斜めに歩いたとき縦と横を行ったり来たりした。
@@ -930,6 +1062,101 @@ export function createGameView(
       actor.faceCamera(rig.yaw * Math.PI / 180);
       actor.setTime(elapsed);
     });
+  };
+  // --- 仲間の作戦（2026-11-05 / GS-305。決まりは `partyTactics.ts`） ------------------------------
+  /** 敵シンボルの一覧（狙う相手）。位置はマス。 */
+  const allyFoes = (unit: number): AllyFoe[] => {
+    const out: AllyFoe[] = [];
+    for (const npc of npcs.values()) {
+      if (!npc.def.enemy || !npc.actor.group.visible || npc.sense?.mode === 'gone') continue;
+      const at = npc.actor.position;
+      out.push({ id: npc.def.id, at: { x: at.x / unit, y: at.y / unit, z: at.z / unit }, half: npc.actor.radius, engaged: api.symbolEngaged(npc.def.id) });
+    }
+    return out;
+  };
+  /** その仲間の攻撃が相手に届くか（形ごと。飛ばす物は壁ごしに撃たない）。 */
+  const allyReaches = (reach: AllyReach, from: { x: number; y: number; z: number }, half: number, foe: AllyFoe): boolean => {
+    const dx = foe.at.x - from.x;
+    const dz = foe.at.z - from.z;
+    const d = Math.hypot(dx, dz) || 1;
+    const aim = { x: dx / d, z: dz / d };
+    const target = { id: foe.id, at: foe.at, half: foe.half };
+    if (reach.type === 'area') return areaHits(from, axisOf(aim), reach.cells, [target]).length > 0;
+    if (reach.type === 'shot') {
+      if (Math.abs(foe.at.y - from.y) > FIELD_ATTACK_RISE || d > reach.range + foe.half) return false;
+      for (let t = 0.5; t < d - foe.half; t += 0.25) {
+        if (api.shotBlocked({ x: from.x + aim.x * t, y: from.y + 0.6, z: from.z + aim.z * t })) return false;
+      }
+      return true;
+    }
+    return meleeHit(from, aim, half, reach.range, [target], reach.width) !== null;
+  };
+  /** 仲間を地形に沿って 1 フレームぶん歩かせる（壁は軸ごとに避ける。段差は 0.6 マスまで）。歩けたら true。 */
+  const allyWalk = (actor: Player, goal: { x: number; z: number }, dt: number, unit: number): boolean => {
+    const here = { x: actor.position.x / unit, z: actor.position.z / unit };
+    const next = stepToward(here, goal, ALLY_SPEED, dt);
+    const tries = [next, { x: next.x, z: here.z }, { x: here.x, z: next.z }];
+    for (const at of tries) {
+      if (Math.abs(at.x - here.x) < 1e-6 && Math.abs(at.z - here.z) < 1e-6) continue;
+      const spot = standExact(at.x, actor.position.y / unit, at.z, unit, 0.6);
+      if (Math.abs(spot.y - actor.position.y) > 0.6 * unit) continue;
+      if (collision && !collision.fits(spot.x, spot.y + 0.05 * unit, spot.z, actor.radius * 0.6 * unit, 0.8 * unit)) continue;
+      actor.followAt(spot, dt, rig.yaw);
+      return true;
+    }
+    actor.followAt(actor.position, dt, rig.yaw);
+    return false;
+  };
+  /**
+   * 仲間 1 人ぶんの作戦の動き。列（道）をたどるなら false を返し、ふだんの付いて歩きに任せる。
+   * `trail` はその人の道の上の居場所（マス）。
+   */
+  const allyStep = (id: string, actor: Player, trail: { x: number; y: number; z: number }, dt: number, unit: number): boolean => {
+    let state = allies.get(id);
+    if (!state) allies.set(id, (state = { free: false, readyAt: 0 }));
+    const tactic: Tactic = eventBusy ? 'follow' : options.tactic?.() ?? 'follow';
+    const alive = !options.memberAlive || options.memberAlive(id);
+    const playable = canWalk(useUi.getState());
+    if (!state.free && (tactic === 'follow' || !alive)) return false;
+    // 歩けないあいだ（会話・メニュー・戦闘）は、離れている人はその場で止まる。
+    if (!playable || dt <= 0) {
+      if (!state.free) return false;
+      actor.followAt(actor.position, dt, rig.yaw);
+      return true;
+    }
+    const from = { x: actor.position.x / unit, y: actor.position.y / unit, z: actor.position.z / unit };
+    const reach = alive ? options.allyReach?.(id) ?? null : null;
+    const leader = player ? { x: player.position.x / unit, z: player.position.z / unit } : undefined;
+    const foe = reach ? allyTarget(tactic, from, allyFoes(unit), reachLength(reach), leader) : null;
+    if (tactic !== 'follow' && alive) state.free = true;
+    if (foe && reach) {
+      if (allyReaches(reach, from, actor.radius, foe)) {
+        const dir = screenDirOf(foe.at.x - from.x, foe.at.z - from.z);
+        actor.face(DIR_FACE[dir]);
+        actor.followAt(actor.position, dt, rig.yaw);
+        if (elapsed >= state.readyAt) {
+          state.readyAt = elapsed + ALLY_COOLDOWN_S;
+          options.allyStrike?.(id, foe.id);
+        }
+        return true;
+      }
+      // 待機・迎撃なら動かない（届く敵だけ）。ほかの作戦は近づく。
+      if (tactic !== 'stay') allyWalk(actor, standoff(from, foe.at, reachLength(reach)), dt, unit);
+      else actor.followAt(actor.position, dt, rig.yaw);
+      return true;
+    }
+    if (tactic === 'stay' && alive) {
+      actor.followAt(actor.position, dt, rig.yaw);
+      return true;
+    }
+    // 狙う敵がいない（移動・迎撃・移動・攻撃・自由に戦闘）・戦わないに戻した → 道の居場所へ歩いて戻る。着いたら列に入る。
+    const back = Math.hypot(trail.x - from.x, trail.z - from.z);
+    if (back < 0.35 || !allyWalk(actor, trail, dt, unit)) {
+      // 着いた・塞がれて戻れない（段差など）→ 列へ入れる（次のフレームから道をたどる）。
+      state.free = false;
+      return false;
+    }
+    return true;
   };
   /** マップに立っている NPC（GS-16）。作りはプレイヤーと同じで、入力の代わりにイベントが動かす。 */
   interface NpcActor {
@@ -968,6 +1195,15 @@ export function createGameView(
     stunUntil?: number;
     /** 敵シンボルが自分から動く（GS-296。`mapNpcs.json` の `notice`）。書いていなければ無し。 */
     sense?: SymbolSense;
+    /** 加勢する NPC（GS-306。`mapNpcs.json` の `ally`）。書いていなければ無し。 */
+    ally?: Required<AllyNpcDef>;
+    /** 加勢する NPC が次に攻められる時刻（経過秒）と、置き場を離れているか。 */
+    allyReady?: number;
+    allyAway?: boolean;
+    /** 敵のフィールド攻撃の段取り（2026-11-05）。範囲の技を持つ敵が気づいたときに作る。 */
+    foe?: FoeClock;
+    /** その敵が使える範囲の技（初めて気づいたときに聞いて覚える）。 */
+    foeAreas?: FoeArea[];
   }
   /**
    * 敵シンボルの気づき（GS-296）。うろつく（`idle`）→ 気づく（`alert`。「！」で止まる）→ 追う（`chase`）／逃げる（`flee`）
@@ -988,10 +1224,18 @@ export function createGameView(
     fails: number;
     /** 叩かれた（GS-295 の怯み）。怯みが解けたら見えていなくても気づく。 */
     provoked?: boolean;
+    /** 制限なく追う（2026-11-05。`huntNpc`）。見失わず、綱も無く、壁を回り込む。 */
+    hunt?: boolean;
+    /** 襲ってこない敵（2026-11-06。`notice` を書いていない）。見えても気づかず、叩かれたときだけ追う。 */
+    passive?: boolean;
     /** 追い詰められて汗を出した（逃げる敵。1 回だけ出す）。 */
     cornered?: boolean;
   }
   const npcs = new Map<string, NpcActor>();
+  /** 制限なく追わせている NPC（2026-11-05。`huntNpc`）。消えて置き直しても続ける。マップを読み直したら空にする。 */
+  const hunters = new Set<string>();
+  /** 舞台で隠す NPC（`hideInBattle`）。敵シンボル・加勢する NPC のほかに。 */
+  let battleHides = new Set<string>();
   /** フィールドアタックの硬直の終わり（経過秒。GS-295）。このあいだは歩けない。 */
   let strikeHoldUntil = 0;
   /** 踏み込み（GS-295）。始めた時刻（経過秒）と向き（ワールド。長さ 1）。 */
@@ -1015,6 +1259,8 @@ export function createGameView(
     tilePx: () => mapDef?.grid?.tilePx ?? 32,
     scale: () => characterScaleOf(mapDef?.properties),
   });
+  /** 敵の技の予兆（2026-11-05）。当たる範囲のマスを床に赤く出す。 */
+  const dangerCells = createDangerCells(scene);
   /** マークを付ける人。`player`・`npc:<id>`・`follower:<id>`。 */
   const markActor = (who: string): Player | null =>
     who === 'player'
@@ -1134,6 +1380,24 @@ export function createGameView(
   let renderedFrames = 0;
   let disposed = false;
   const renderWaiters = new Set<{ target: number; resolve: () => void }>();
+  /**
+   * 描画が落ち着くまで待つ（2026-11-09。`mapWarmUp.ts`）。暗転を明ける前に呼ぶ。
+   * 続けて軽いフレームが来るか、時間切れで解ける。フレームが来ない（隠れたタブ）ときも時間で解ける。
+   */
+  const settleWaiters = new Set<{ watch: ReturnType<typeof createSettleWatch>; resolve: () => void }>();
+  const waitUntilSettled = () => {
+    if (disposed) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      const waiter = { watch: createSettleWatch(performance.now()), resolve };
+      settleWaiters.add(waiter);
+      const timer = window.setInterval(() => {
+        if (settleWaiters.has(waiter) && !waiter.watch.timedOut(performance.now())) return;
+        window.clearInterval(timer);
+        if (!settleWaiters.delete(waiter)) return;
+        resolve();
+      }, 100);
+    });
+  };
   const waitForRenderedFrame = () => {
     if (disposed) return Promise.resolve();
     const waiter: { target: number; resolve: () => void } = { target: renderedFrames + 1, resolve: () => {} };
@@ -1163,7 +1427,6 @@ export function createGameView(
     pitch: HD2D_PITCH,
     distance: PLAY_DISTANCE,
     spawn: 'auto',
-    showCollision: false,
     hiddenFaces: 0,
     collision: null,
     loading: false,
@@ -1443,10 +1706,7 @@ export function createGameView(
       if (gen !== buildGen) return;
       collision = createPhysicsWorld(rapier, map);
       watch.lap('collision');
-      wires = createHitWires(scene, map);
-      wires.setVisible(status.showCollision);
       status.collision = { ...collision.stats };
-      watch.lap('wires');
 
       const unit = map.grid?.unit ?? 1;
       // 跳ねている途中の人は着地させて約束を解く（GS-184）。絵ごと作り直すので待たせたままにしない。
@@ -1507,10 +1767,12 @@ export function createGameView(
       }
       npcs.clear();
       hiddenNpcs.clear();
+      hunters.clear();
       cutWalks.clear();
       // 頭の上のマークも前のマップのぶんは捨てる（GS-267）。
       headMarks.clear();
       fieldFx.clear();
+      dangerCells.clearAll();
       // 追従は既定へ戻す（GS-166）。前のマップで切ったまま持ち越さない。
       cameraFollow = true;
       // 1 人ぶんを作る（GS-153）。**関数にしてあとからも呼べるようにする**——
@@ -1567,7 +1829,12 @@ export function createGameView(
         if (motion?.idleEmote) headMarks.setIdle(`npc:${def.id}`, motion.idleEmote);
         const wander = wanderWithDefaults(motion);
         // 自分から動くのは敵シンボルだけ（GS-296）。
-        const notice = def.enemy ? noticeWithDefaults(motion?.notice) : null;
+        // 制限なく追わせている人（2026-11-05）は、気づいた状態から始める。
+        const hunted = hunters.has(def.id) && !!def.enemy;
+        const written = hunted ? HUNT_NOTICE : def.enemy ? noticeWithDefaults(motion?.notice) : null;
+        // 襲ってこない敵シンボル（2026-11-06）も、叩かれたら追ってくる。ふだんは見えても気づかない。
+        const passive = !written && !!def.enemy;
+        const notice = written ?? (passive ? PROVOKED_NOTICE : null);
         const path = motion?.route ? motionRoutes.find((r) => r.id === motion.route!.id) : undefined;
         npcs.set(def.id, {
           def,
@@ -1583,7 +1850,12 @@ export function createGameView(
           wanderIn: wander ? Math.random() * (wander.ms[1] / 1000) : 0,
           home: actor.position.clone(),
           ...(def.opacity !== undefined ? { opacity: def.opacity } : {}),
-          ...(notice ? { sense: { def: notice, mode: 'idle' as const, flee: false, until: 0, step: null, blocked: null, fails: 0 } } : {}),
+          ...(notice ? { sense: { def: notice, mode: 'idle' as const, flee: false, until: 0, step: null, blocked: null, fails: 0, ...(hunted ? { hunt: true, provoked: true } : {}), ...(passive ? { passive: true } : {}) } } : {}),
+          // 加勢する NPC（GS-306）。敵シンボルには付けない。
+          ...(() => {
+            const ally = def.enemy ? null : allyWithDefaults(motion?.ally);
+            return ally ? { ally } : {};
+          })(),
         });
         return true;
       };
@@ -1651,6 +1923,11 @@ export function createGameView(
         sky.ready(),
       ]);
       if (gen !== buildGen) return;
+      // 暗転のうちに形の組み立てと絵の転送を済ませる（2026-11-09。`mapWarmUp.ts`）。明けた後に歩くたび固まり、
+      // そのあいだ接触の見張りが止まって、入った直後の当たりが遅れて見えていた。
+      await warmUpScene(renderer, scene, rig.active());
+      if (gen !== buildGen) return;
+      watch.lap('warm');
       // 組んでいるあいだに時間帯が変わっていたら（開発用のボタン・時計・イベント。GS-226）、いまの時間帯へ移す。
       // 組み始めの時間帯のまま終えると、頼んだ切り替えが消える。
       if (time !== builtFor) beginTime(timeLookOf(map, time, timeFallback), 0);
@@ -1800,6 +2077,8 @@ export function createGameView(
     base: Vector3;
     width: number;
     height: number;
+    /** 絵の元の高さ（画素。2026-11-06）。来る前は 0。 */
+    imageHeight: number;
     pose: FigurePose;
     leanAt: number;
     lungeAt: number;
@@ -1812,15 +2091,20 @@ export function createGameView(
     breathPhase: number;
     /** 左端へ寄せた割合（0＝隊形の位置、1＝左端。GS-103）。`moveS` かけて行き来する。 */
     commandK: number;
+    /** 舞台に立つときの大きさの倍率（味方は `partyScale`。GS-309）。左端へ寄せるときはこれを割り戻す。 */
+    stageScale: number;
     /** 左端で持ち上げた高さ（ワールド。`offsetY` の反映ぶん。GS-108）。画面上の枠の高さに足す。 */
     commandLift: number;
     /** 隊形の位置にいるときの描く順（戦闘のマスの列で決める。2026-10-19 / BPE-30）。 */
     order: number;
     /**
-     * 舞台にいつも出すか。敵と、味方の板を出すつまみ（GS-247）が入っているとき。
+     * 舞台にいつも出すか（`stageFigureShown`。敵も味方もいつも。戦闘演出エディタで味方の板を切ったときだけ偽。GS-311）。
      * 偽の味方は**コマンドを選んでいる間だけ**左端に出す（2026-10-29 / GS-280）。
      */
     shownAlways: boolean;
+    /** 敵の立つマスの赤い光（GS-343）。味方は null。`markFade` はいまの濃さ（0〜1）。 */
+    mark: EnemyCellMark | null;
+    markFade: number;
   }
   let stage: {
     /** BattleStage の床（ワールド）。構図の見る点とカメラの高さの基準。 */
@@ -1835,6 +2119,9 @@ export function createGameView(
     settings: BattleStageSettings;
     /** 戦闘のマスの線（戦闘演出エディタの舞台タブだけで出す）。 */
     cells: Group | null;
+    /** コマンド戦闘の床のマス（GS-342）。行動の間は消す。`floorFade` はいまの濃さ（0〜1）。 */
+    floorGrid: BattleFloorGrid | null;
+    floorFade: number;
     /** 床の無い所に立った人（地形の外・穴の上）。戦闘演出エディタが知らせる。 */
     floorless: Array<{ side: 'party' | 'enemy'; index: number }>;
     /** 戦いのあいだ隠したフィールドの敵（GS-88）。片付けたら出し直す。 */
@@ -1847,6 +2134,10 @@ export function createGameView(
   const stageLoader = new TextureLoader();
   const stageCorner = new Vector3();
   const disposeFigure = (figure: StageFigure) => {
+    if (figure.mark) {
+      scene.remove(figure.mark.mesh);
+      figure.mark.dispose();
+    }
     scene.remove(figure.mesh);
     figure.mesh.geometry.dispose();
     (figure.skin.material.uniforms.map.value as Texture | null)?.dispose();
@@ -1917,10 +2208,22 @@ export function createGameView(
     const top = collision?.surfaceUnder(fx, fz, from, x - fx, z - fz) ?? null;
     const floor = standExact(at.x, at.y, at.z, unit).y;
     const height = top === null ? null : (top - floor) / unit;
+    // その場で戦う（GS-304）ときは、手書きの印（舞台の点からの番号）は使わない。代わりに、
+    // 床の上に体が入らないマス（壁・天井の下）を立てないマス（`block`）にする。
+    if (battleHere) {
+      const ground: CellGround = top === null
+        ? 'sky'
+        : collision && !collision.fits(x * unit, top + 0.05 * unit, z * unit, 0.25 * unit, 0.8 * unit)
+          ? 'block'
+          : groundOf(height, highStep);
+      return { x, z, y: top ?? Math.floor(at.y) * unit, height, ground };
+    }
     // 手書きの印（GS-288）があれば、地形の分け方を上書きする（高さは地形のまま）。
     const ground = settings.cells?.[cellKey(cell)] ?? groundOf(height, highStep);
     return { x, z, y: top ?? Math.floor(at.y) * unit, height, ground };
   };
+  /** その場で戦う舞台の真ん中（マス。GS-304）。null なら舞台の点。戦闘を開く前に `setBattleHere` で決める。 */
+  let battleHere: { x: number; y: number; z: number } | null = null;
 
   /**
    * 戦闘のマスの線（2026-10-19 / BPE-30）。舞台の点を原点に、カメラから見た横・奥へ、マスの境目を引く。
@@ -1970,6 +2273,33 @@ export function createGameView(
     group.add(strips(borders, 0.04, 0xffffff, 0.55, STAGE_ROW_ORDER - 2), strips(center, 0.1, 0xffa62b, 0.9, STAGE_ROW_ORDER - 1));
     return group;
   };
+  /**
+   * コマンド戦闘の床のマス（2026-11-09 / GS-342）。エディタの線（上）と同じ点に、黒い線と走る白い光を敷く。
+   * 手を聞く間・待機に出し、技や攻撃が流れる間（場面 `action`）とエディタの線を出している間は消す。
+   */
+  /** 戦闘のマスの番号（半端も可）を、高さ `y`（ワールド）の床の点へ直す口（床のマス・敵のマスの赤い光）。 */
+  const stageCellPointer = (current: NonNullable<typeof stage>, unit: number, y: number) => {
+    const scale = characterScaleOf(mapDef?.properties);
+    const at = current.spec.at;
+    const camYaw = ((current.saved.yaw + current.spec.yaw) * Math.PI) / 180;
+    const right = { x: Math.cos(camYaw), z: -Math.sin(camYaw) };
+    const toward = { x: Math.sin(camYaw), z: Math.cos(camYaw) };
+    return (col: number, row: number): [number, number, number] => {
+      const { across, depth } = stageCellOffset({ col, row }, scale);
+      return [(at.x + right.x * across + toward.x * depth) * unit, y, (at.z + right.z * across + toward.z * depth) * unit];
+    };
+  };
+  const createStageFloorGrid = (current: NonNullable<typeof stage>, unit: number): BattleFloorGrid => {
+    const { grid } = current.settings;
+    const scale = characterScaleOf(mapDef?.properties);
+    const at = current.spec.at;
+    const point = stageCellPointer(current, unit, standExact(at.x, at.y, at.z, unit).y + 0.035 * unit);
+    // 板（敵・味方）より前に描く（GS-343。後に描くと奥の敵の板の上に線が重なる）。
+    const floorGrid = createBattleFloorGrid(floorGridLines(grid), point, scale * unit,
+      { front: grid.depth[1] + 0.5, back: grid.depth[0] - 0.5 }, floorGridOrder(grid.depth));
+    for (const child of floorGrid.group.children) child.layers.set(STAGE_SHARP_LAYER);
+    return floorGrid;
+  };
   const removeStageCells = () => {
     if (!stage?.cells) return;
     scene.remove(stage.cells);
@@ -2000,6 +2330,11 @@ export function createGameView(
       else stage.axes.material.dispose();
     }
     removeStageCells();
+    if (stage.floorGrid) {
+      scene.remove(stage.floorGrid.group);
+      stage.floorGrid.dispose();
+      stage.floorGrid = null;
+    }
     // 隠していたフィールドの敵を出し直す（GS-88）。倒して消えた相手は npcs に居ないので出ない。
     for (const id of stage.hiddenNpcs) {
       const npc = npcs.get(id);
@@ -2009,6 +2344,12 @@ export function createGameView(
     rig.yaw = stage.saved.yaw;
     rig.pitch = stage.saved.pitch;
     rig.distance = stage.saved.distance;
+    // 自由なカメラ（2026-11-06）の平行投影を、マップの投影へ戻す。
+    rig.orthographic = playOrtho;
+    composedView = null;
+    cameraPhase = null;
+    waitView = null;
+    phaseMs = 0;
     stage = null;
     if (player) {
       player.group.visible = true;
@@ -2095,9 +2436,12 @@ export function createGameView(
     const yawR = (rig.yaw * Math.PI) / 180;
     const awayX = -Math.sin(yawR);
     const awayZ = -Math.cos(yawR);
+    // 技が流れるあいだ（場面 `action`）は味方の板を隠す（GS-340。舞台の台帳の `hidePartyInAction`。書かなければ隠す）。
+    const hideParty = cameraPhase === 'action' && partyHiddenInActionOf(stage.settings);
     for (const figure of stage.figures.values()) {
       const want = figure.pose.commanding && !figure.pose.gone;
       figure.commandK = want ? Math.min(1, figure.commandK + step) : Math.max(0, figure.commandK - step);
+      if (figure.shownAlways && figure.def.side === 'party') figure.mesh.visible = figure.width > 0 && !hideParty;
       // いつもは出さない味方の板（GS-247）は、**左端へ寄っている間だけ**出す（2026-10-29 / GS-280）。絵が来る前は出さない。
       if (!figure.shownAlways) figure.mesh.visible = figure.width > 0 && figure.commandK > 0;
       // 左端にいるあいだは手前に重ねて描く。戻り切ったら元の描き方へ。
@@ -2120,7 +2464,8 @@ export function createGameView(
       const shiftZ = (-Math.sin(yawR) * look.offsetX + awayZ * look.offsetZ) * unit;
       const dx = (commandSpot.x + shiftX - figure.base.x) * k;
       const dz = (commandSpot.z + shiftZ - figure.base.z) * k;
-      const grow = 1 + (look.scale - 1) * k;
+      // 左端の板の大きさは `commandFigure.scale` のまま（舞台での味方の倍率〈GS-309〉は割り戻す）。
+      const grow = 1 + (look.scale / (figure.stageScale || 1) - 1) * k;
       figure.commandLift = look.offsetY * unit * k;
       figure.mesh.position.x += dx;
       figure.mesh.position.y += figure.commandLift;
@@ -2222,20 +2567,7 @@ export function createGameView(
 
   /** 押しっぱなしでないキー。1 フレームに 1 回だけ効く。 */
   const handleTaps = () => {
-    let changed = false;
-    if (input.pressed('KeyP')) {
-      setMode(status.mode === 'play' ? 'camera' : 'play');
-      return;
-    }
-    if (input.pressed('KeyC')) {
-      status.showCollision = !status.showCollision;
-      wires?.setVisible(status.showCollision);
-      changed = true;
-    }
-    if (changed) {
-      rig.apply();
-      report();
-    }
+    if (input.pressed('KeyP')) setMode(status.mode === 'play' ? 'camera' : 'play');
   };
 
   /**
@@ -2576,6 +2908,12 @@ export function createGameView(
     sense.fails = 0;
     sense.provoked = false;
     sense.cornered = false;
+    // 範囲の技を持つ敵は攻めてくる（2026-11-05）。技は初めて気づいたときに聞いて覚える。
+    if (npc.def.enemy && !npc.foeAreas) npc.foeAreas = options.foeAreas?.(npc.def.enemy) ?? [];
+    if (npc.foeAreas?.length) {
+      foeCancel(npc);
+      npc.foe = foeClockAt(elapsed);
+    }
     // うろつきの途中で気づいたら、歩き出したマスを基準にマスへ揃える（半端な所から追わない。GS-117）。
     if (npc.wandering && collision) npc.actor.settle(collision, npc.wandering.from);
     npc.wandering = null;
@@ -2587,6 +2925,7 @@ export function createGameView(
   };
 
   const senseLose = (npc: NpcActor, sense: SymbolSense) => {
+    foeCancel(npc);
     // 見失ったら消える（GS-296）。「？」は出さずに薄れる。触れても戦わないよう先に一覧から外す。
     if (sense.def.after === 'vanish') {
       sense.mode = 'gone';
@@ -2606,6 +2945,151 @@ export function createGameView(
 
   const sameStep = (a: Step | null, b: Step) => !!a && a.x === b.x && a.z === b.z;
 
+  // --- 敵のフィールド攻撃（2026-11-05。数と決まりは `foeFieldAttack.ts`） ------------------------
+
+  /** 狙える仲間（先頭は主人公の板、ほかは付いて歩く板）。倒れた人・見えていない人は外す。位置はマス。 */
+  const partyTargets = (unit: number): FieldTarget[] => {
+    const out: FieldTarget[] = [];
+    (options.party?.() ?? []).forEach((id, index) => {
+      if (options.memberAlive && !options.memberAlive(id)) return;
+      const actor = index === 0 ? player : followers.get(id);
+      if (!actor || !actor.group.visible) return;
+      const at = actor.position;
+      out.push({ id, at: { x: at.x / unit, y: at.y / unit, z: at.z / unit }, half: actor.radius });
+    });
+    // 加勢する NPC（GS-306）も狙われる。id は `npc:<id>`。
+    for (const npc of npcs.values()) {
+      if (!npc.ally || !npc.actor.group.visible) continue;
+      if (options.allyNpcAlive && !options.allyNpcAlive(npc.def.id)) continue;
+      const at = npc.actor.position;
+      out.push({ id: `npc:${npc.def.id}`, at: { x: at.x / unit, y: at.y / unit, z: at.z / unit }, half: npc.actor.radius });
+    }
+    return out;
+  };
+
+  /**
+   * 加勢する NPC を 1 体ぶん進める（GS-306）。置き場から `range` マス以内の敵シンボルへ近づいて攻め、いなければ置き場へ戻る。
+   * 動かす向きと速さを返す。null なら任せる（うろつき・経路）。
+   */
+  const advanceAllyNpc = (npc: NpcActor, unit: number, playable: boolean): SenseMove | null => {
+    const ally = npc.ally;
+    if (!ally || !collision) return null;
+    if (npc.walk || npc.march || eventBusy || !playable || elapsed < senseQuietUntil) return npc.allyAway ? SENSE_STOP : null;
+    // 倒れていたら立ち止まる（そのマップにいるあいだ）。
+    if (options.allyNpcAlive && !options.allyNpcAlive(npc.def.id)) return SENSE_STOP;
+    const reach = options.allyNpcReach?.(npc.def.id) ?? null;
+    if (!reach) return null;
+    const pos = npc.actor.position;
+    const from = { x: pos.x / unit, y: pos.y / unit, z: pos.z / unit };
+    const home = cellsOf(npc.home, unit);
+    let foe: AllyFoe | null = null;
+    for (const one of allyFoes(unit)) {
+      if (Math.hypot(one.at.x - home.x, one.at.z - home.z) > ally.range) continue;
+      if (!foe || Math.hypot(one.at.x - from.x, one.at.z - from.z) < Math.hypot(foe.at.x - from.x, foe.at.z - from.z)) foe = one;
+    }
+    if (foe) {
+      if (npc.wandering) npc.actor.settle(collision, npc.wandering.from);
+      npc.wandering = null;
+      npc.allyAway = true;
+      if (allyReaches(reach, from, npc.actor.radius, foe)) {
+        npc.actor.face(DIR_FACE[screenDirOf(foe.at.x - from.x, foe.at.z - from.z)]);
+        if (elapsed >= (npc.allyReady ?? 0)) {
+          npc.allyReady = elapsed + ALLY_COOLDOWN_S;
+          options.allyNpcStrike?.(npc.def.id, foe.id);
+        }
+        return SENSE_STOP;
+      }
+      const goal = standoff(from, foe.at, reachLength(reach));
+      const dx = goal.x - from.x;
+      const dz = goal.z - from.z;
+      const d = Math.hypot(dx, dz) || 1;
+      return { move: { x: dx / d, z: dz / d }, speed: ALLY_SPEED };
+    }
+    if (!npc.allyAway) return null;
+    const dx = home.x - from.x;
+    const dz = home.z - from.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.3) {
+      // 着いた。置き場へ揃えてうろつきへ戻す。
+      npc.actor.settle(collision, { x: npc.home.x, z: npc.home.z });
+      npc.allyAway = false;
+      if (npc.wander) npc.wanderIn = nextWanderAt(npc.wander);
+      return null;
+    }
+    return { move: { x: dx / d, z: dz / d }, speed: ALLY_SPEED * 0.8 };
+  };
+
+  /** 予兆を取りやめる（床の範囲も消す）。 */
+  const foeCancel = (npc: NpcActor) => {
+    if (npc.foe?.phase === 'windup') cancelWindup(npc.foe, elapsed);
+    dangerCells.clear(npc.def.id);
+  };
+
+  /** 技を出せるなら予兆を始める。始めたら true。 */
+  const foeTry = (npc: NpcActor, unit: number): boolean => {
+    const foe = npc.foe;
+    const areas = npc.foeAreas;
+    if (!foe || !areas?.length || !player || foe.phase !== 'ready' || elapsed < foe.readyAt) return false;
+    const pos = npc.actor.position;
+    const from = { x: pos.x / unit, y: pos.y / unit, z: pos.z / unit };
+    const aim = axisOf({ x: player.position.x - pos.x, z: player.position.z - pos.z });
+    const area = pickFoeArea(areas, from, aim, partyTargets(unit), Math.random());
+    if (!area) return false;
+    beginWindup(foe, area, from, aim, elapsed);
+    npc.actor.face(DIR_FACE[screenDirOf(aim.x, aim.z)]);
+    const spots = area.cells.map((cell) => {
+      const off = areaOffset(cell, aim);
+      return standExact(from.x + off.x, from.y, from.z + off.z, unit, 0.5);
+    });
+    dangerCells.show(npc.def.id, spots, unit, area.windup);
+    return true;
+  };
+
+  /** 予兆が終わった。そのとき範囲にいる仲間に当てる。 */
+  const foeHit = (npc: NpcActor, unit: number) => {
+    const foe = npc.foe;
+    if (!foe?.area || !foe.from || !foe.aim) return;
+    const { area, from, aim } = foe;
+    dangerCells.clear(npc.def.id);
+    const targets = partyTargets(unit);
+    const hit = new Set(areaHits(from, aim, area.cells, targets));
+    const hits = targets.filter((one) => hit.has(one.id)).map((one) => ({ id: one.id, at: one.at }));
+    let cx = 0;
+    let cz = 0;
+    for (const cell of area.cells) {
+      const off = areaOffset(cell, aim);
+      cx += off.x;
+      cz += off.z;
+    }
+    const count = Math.max(1, area.cells.length);
+    const center = { x: from.x + cx / count, y: from.y + 0.6, z: from.z + cz / count };
+    finishStrike(foe, elapsed);
+    options.foeStrike?.(npc.def.id, area, hits, center);
+  };
+
+  /**
+   * 制限なく追う敵の、壁を回り込む最初の 1 歩（2026-11-05）。進めるかは仲間の歩き（`allyWalk`）と同じ見方:
+   * 段差は 0.6 マスまで、体が地形と重ならない、マスの境目に壁の板が無い。道が無ければ null。
+   */
+  const huntStep = (npc: NpcActor, at: { x: number; z: number }, you: { x: number; z: number }, unit: number): Step | null => {
+    if (!collision) return null;
+    const world = collision;
+    const half = Math.min(0.45, npc.actor.radius * 0.9) * unit;
+    const next = (cell: PathCell, step: Step): PathCell | null => {
+      const bx = cell.x + step.x;
+      const bz = cell.z + step.z;
+      const spot = standExact(bx + 0.5, cell.y / unit, bz + 0.5, unit, 0.6);
+      if (Math.abs(spot.y - cell.y) > 0.6 * unit) return null;
+      if (!world.fits(spot.x, spot.y + 0.05 * unit, spot.z, half, 0.8 * unit)) return null;
+      // マスの境目（辺の壁の板）。細い体で境目の真ん中を見る。
+      const edge = standExact(cell.x + 0.5 + step.x * 0.5, cell.y / unit, cell.z + 0.5 + step.z * 0.5, unit, 0.6);
+      if (!world.fits(edge.x, Math.max(edge.y, cell.y) + 0.05 * unit, edge.z, 0.12 * unit, 0.8 * unit)) return null;
+      return { x: bx, z: bz, y: spot.y };
+    };
+    const from: PathCell = { x: Math.floor(at.x), z: Math.floor(at.z), y: npc.actor.position.y };
+    return pathStep(from, you, next, npc.foeAreas?.length ? 1 : 0);
+  };
+
   /**
    * 敵シンボルを 1 体ぶん進める（GS-296）。動かす向き（ワールド。長さ 1）と速さ（マス／秒）を返す。
    * null なら任せない（うろつき・経路が動く）。`playable` は主人公が歩けるか。
@@ -2616,6 +3100,8 @@ export function createGameView(
     if (sense.mode === 'gone') return SENSE_STOP;
     // 止まるとき: イベントが歩かせている・会話中・歩けない・怯んでいる・気づかない時間。
     if (npc.walk || npc.march || eventBusy || !playable || stunned(npc) || elapsed < senseQuietUntil) {
+      // 技の予兆は取りやめ（怯ませれば止められる。2026-11-05）。
+      foeCancel(npc);
       if (sense.step) npc.actor.settle(collision, sense.step.from);
       sense.step = null;
       return sense.mode === 'idle' ? null : SENSE_STOP;
@@ -2626,7 +3112,7 @@ export function createGameView(
     const home = cellsOf(npc.home, unit);
 
     if (sense.mode === 'idle' || sense.mode === 'return') {
-      if (sense.provoked || senseSees(npc, def, unit)) {
+      if (noticesNow(!!sense.provoked, !!sense.passive, () => senseSees(npc, def, unit))) {
         if (sense.step) npc.actor.settle(collision, sense.step.from);
         senseNotice(npc, sense);
         return SENSE_STOP;
@@ -2645,6 +3131,14 @@ export function createGameView(
       sense.mode = sense.mode === 'lost' ? 'return' : sense.flee ? 'flee' : 'chase';
     }
     const speed = sense.mode === 'return' ? def.speed * SENSE_RETURN_RATE : def.speed;
+
+    // 技の予兆・当てたあとの間（2026-11-05）は止まっている。
+    if (sense.mode === 'chase' && npc.foe && npc.foe.phase !== 'ready') {
+      const foe = npc.foe;
+      if (foe.phase === 'windup' && elapsed >= foe.until) foeHit(npc, unit);
+      else if (foe.phase === 'recover' && elapsed >= foe.until) foe.phase = 'ready';
+      if (foe.phase !== 'ready') return SENSE_STOP;
+    }
 
     // 歩いている 1 マス。着いたら同じフレームで次を決める（1 マスごとに止まって見えないように）。
     const going = sense.step;
@@ -2678,8 +3172,15 @@ export function createGameView(
       }
     }
 
-    if ((sense.mode === 'chase' || sense.mode === 'flee') && lostSight(me(), you, def.see)) {
+    if (!sense.hunt && (sense.mode === 'chase' || sense.mode === 'flee') && lostSight(me(), you, def.see)) {
       senseLose(npc, sense);
+      return SENSE_STOP;
+    }
+    // 範囲に仲間が入ったら技を出す（2026-11-05）。マスに着いたときだけ見る。
+    if (sense.mode === 'chase' && foeTry(npc, unit)) return SENSE_STOP;
+    // 範囲の技を持つ敵は、隣まで来たらそこで構える（主人公のマスへ踏み込もうとして塞がれ、諦めて帰らないように）。
+    if (sense.mode === 'chase' && npc.foeAreas?.length && Math.abs(you.x - me().x) + Math.abs(you.z - me().z) < 1.6) {
+      npc.actor.face(DIR_FACE[screenDirOf(you.x - me().x, you.z - me().z)]);
       return SENSE_STOP;
     }
     const at = me();
@@ -2688,6 +3189,19 @@ export function createGameView(
       const raw = chaseSteps(at, you);
       // 重なるほど近い。触れた判定は外（`npcTouching`）が見る。
       if (raw.length === 0) return SENSE_STOP;
+      if (sense.hunt) {
+        // 制限なく追う（2026-11-05）。壁を回り込む道の 1 歩を先に。塞がれ続けても諦めずに数え直す。
+        if (sense.fails >= SENSE_GIVE_UP) {
+          sense.fails = 0;
+          sense.blocked = null;
+        }
+        const way = huntStep(npc, at, you, unit);
+        choices = way ? [way, ...raw.filter((dir) => !sameStep(way, dir))] : raw;
+        const pick = choices.find((dir) => !sameStep(sense.blocked, dir)) ?? choices[0]!;
+        const here = npc.actor.position;
+        sense.step = { from: { x: here.x, z: here.z }, to: { x: here.x + pick.x * unit, z: here.z + pick.z * unit }, dir: pick, best: 0, stall: 0 };
+        return { move: { x: pick.x, z: pick.z }, speed };
+      }
       choices = raw.filter((dir) => withinLeash({ x: at.x + dir.x, z: at.z + dir.z }, home, def.leash));
       // 綱の外へしか行けない・塞がれ続けた → 諦めて帰る。
       if (choices.length === 0 || sense.fails >= SENSE_GIVE_UP) {
@@ -2881,7 +3395,7 @@ export function createGameView(
         // 向きは渡さない（null）——`turn` で振り向かせたらそちらを向いて踏み続ける。
         if (npc.stepping && !npc.march && !npc.walk) void beginMarch(npc, npc.actor, null, 0, false, npc.stepMs);
         // 敵シンボルが自分から動く（GS-296）。動かしているあいだはうろつき・経路を止める。
-        const senseMove = npc.sense ? advanceSense(npc, dt, unit, playable) : null;
+        const senseMove = npc.sense ? advanceSense(npc, dt, unit, playable) : npc.ally ? advanceAllyNpc(npc, unit, playable) : null;
         // うろつきの判断は**動かす前**に。止める指示がその場で効く（GS-50）。
         if (!npc.route && !senseMove) advanceWander(npc, dt, unit);
         const routeMove = !senseMove && npc.route && !npc.walk && !npc.march ? routeInput(
@@ -2966,9 +3480,20 @@ export function createGameView(
     const battleCamera = stage ? battleCameraPlayer.update(dt) : null;
     if (stage && battleCamera) {
       stage.view = battleCamera;
+      // 構図の投影（GS-310）。書いていなければマップの投影。
+      rig.orthographic = battleCamera.ortho ?? playOrtho;
       applyStageCamera(stage);
       for (const figure of stage.figures.values()) figure.mesh.rotation.y = rig.yaw * Math.PI / 180;
     }
+    // 戦闘演出エディタの自由なカメラ（2026-11-06）。構図より後に置いて勝たせる。
+    if (stage && (battleCamera || !freeBattleCamera)) composedView = { ...stage.view };
+    if (stage && freeBattleCamera) {
+      stage.view = { ...freeBattleCamera.view };
+      rig.orthographic = freeBattleCamera.orthographic;
+      applyStageCamera(stage);
+      for (const figure of stage.figures.values()) figure.mesh.rotation.y = rig.yaw * Math.PI / 180;
+    }
+    const stageTilt = stage && freeBattleCamera ? freeBattleCamera.view.tilt : battleCamera?.tilt;
     // イベント用のカメラ演出（GS-115 で戦闘の板を動かす・注視する機能は削除）。
     // 場面の基準（マス。GS-167）。`cell` のキーはここからの差に直して重ねる。
     const cueUnit = mapDef?.grid?.unit ?? 1;
@@ -2989,12 +3514,21 @@ export function createGameView(
     }
     // コマンド選択中の味方を左端へ（GS-103）。カメラが決まった後で寄せる。
     applyCommandFigures(dt);
+    if (stage?.floorGrid) {
+      stage.floorFade = stepFloorGridFade(stage.floorFade, floorGridShown(cameraPhase, !!stage.cells), dt);
+      stage.floorGrid.update(elapsed, stage.floorFade);
+    }
+    for (const figure of stage?.figures.values() ?? []) {
+      if (!figure.mark) continue;
+      figure.markFade = stepFloorGridFade(figure.markFade, enemyCellShown(cameraPhase, !!figure.pose.gone), dt);
+      figure.mark.update(elapsed, figure.markFade);
+    }
     renderedYaw = rig.yaw;
     // 低負荷ではチルトシフトを切る（GS-173 の `tiltShift`）。構図・演出でオンでも。
     tilt.update(cameraFxForDrawMode({
       ...mapDef?.camera,
       // 戦闘中の ON/OFF は構図のキーが決める（ぼかしの位置・強さはマップのまま。舞台の板とマスの線はぼかさない）。
-      ...(battleCamera?.tilt === undefined ? {} : { tilt: battleCamera.tilt }),
+      ...(stageTilt === undefined ? {} : { tilt: stageTilt }),
       ...(cue?.tilt === undefined ? {} : { tilt: cue.tilt }),
     }));
     // ビルボードなのでどちらのモードでもカメラを向く。
@@ -3022,6 +3556,8 @@ export function createGameView(
     headMarks.update(dt, markActor);
     // フィールドの技の絵（GS-295）。カメラの正面へ向ける。
     fieldFx.update(dt, rig.active());
+    // 敵の技の予兆（2026-11-05）。明滅させる。
+    dangerCells.update(elapsed);
 
     // キャラが動くたびに遮光の位置とコマを渡し直す（GC-39）。
     applyActorOccluder();
@@ -3138,7 +3674,17 @@ export function createGameView(
   renderer.setAnimationLoop((time: number) => {
     const dt = lastTime === 0 ? 1 / 60 : Math.min((time - lastTime) / 1000, 0.1);
     lastTime = time;
+    const begin = performance.now();
     step(dt);
+    // 落ち着くのを待っている人に、このフレームの重さを渡す（2026-11-09）。
+    if (settleWaiters.size) {
+      const end = performance.now();
+      for (const waiter of settleWaiters) {
+        if (!waiter.watch.push(end - begin, end)) continue;
+        settleWaiters.delete(waiter);
+        waiter.resolve();
+      }
+    }
   });
 
   /**
@@ -3269,6 +3815,7 @@ export function createGameView(
   const api: GameView = {
     load,
     waitForRenderedFrame,
+    waitUntilSettled,
     setMode,
     step,
     walk(dir, run = false, slide = false) {
@@ -3469,13 +4016,81 @@ export function createGameView(
       cuePlayer.play(cue);
       return cue.duration;
     },
+    placeCamera(to, ms, options) {
+      const unit = collision?.unit || 1;
+      // 所をマスに直す。人は足元から、主人公を追うときと同じ高さ（`CUE_LOOK_RISE`）を足す。
+      const spotOf = (spot: PlaceAt | string) => {
+        if (typeof spot === 'string') {
+          const actor = spot === 'player' ? player
+            : spot.startsWith('npc:') ? npcs.get(spot.slice(4))?.actor ?? null
+              : spot.startsWith('follower:') ? (updateFollowers(0), followers.get(spot.slice(9)) ?? null)
+                : null;
+          if (!actor) {
+            console.warn('[cameraPlace] 居ない人: ' + spot);
+            return null;
+          }
+          return { x: actor.position.x / unit, y: actor.position.y / unit + CUE_LOOK_RISE, z: actor.position.z / unit };
+        }
+        // 数の軸はマスの真ん中、「プレイヤー位置」の軸は主人公の居る所そのもの。
+        const here = player ? { x: player.position.x / unit, y: player.position.y / unit, z: player.position.z / unit } : null;
+        const axis = (value: PlaceAt['x'], key: 'x' | 'y' | 'z') => {
+          const rise = key === 'y' ? CUE_LOOK_RISE : 0.5;
+          if (value !== 'player') return value + rise;
+          return (here?.[key] ?? 0) + (key === 'y' ? CUE_LOOK_RISE : 0);
+        };
+        return { x: axis(spot.x, 'x'), y: axis(spot.y, 'y'), z: axis(spot.z, 'z') };
+      };
+      const goal = to === null ? null : spotOf(to);
+      if (to !== null && !goal) return 0;
+      const from = to !== null && options?.from !== undefined ? spotOf(options.from) ?? undefined : undefined;
+      const cue = cameraMoveCue(goal, ms, { from, distance: options?.distance, pitch: playPitch });
+      cuePlayer.play(cue);
+      return cue.duration;
+    },
     playBattleCamera(camera) {
       battleCameraPlayer.play(camera);
       return camera.duration;
     },
     playBattleStart() {
       if (!stage) return 0;
+      // 戦闘待機を流し直したら、場面の構図から戻る先は無くなる（戻すと待機の構図を上書きする）。
+      waitView = null;
+      // 前の構図の値（投影・チルト）を引き継がない。ゲームでは舞台を組んだ直後に流すので、いつもこの形。
+      battleCameraPlayer.stop();
       return this.playBattleCamera(stage.settings.start);
+    },
+    setBattleCameraPhase(phase) {
+      if (phase === cameraPhase) return;
+      cameraPhase = phase;
+      if (!stage) return;
+      const camera = phase ? stage.settings[phase] ?? null : null;
+      const step = battlePhaseStep(camera, waitView, phaseMs);
+      if (step.kind === 'play') {
+        // 待機から離れるときだけ、戻り先を覚える（コマンド選択 → 戦闘開始と続くときは最初の待機の見え方のまま）。
+        // 投影・チルトは書いていなければマップのまま（戻るときにそれへ戻す）。
+        if (!waitView) {
+          const now = composedView ?? stage.view;
+          waitView = { ...now, ortho: now.ortho ?? playOrtho };
+        }
+        phaseMs = step.camera.duration;
+        battleCameraPlayer.play(step.camera);
+      } else if (step.kind === 'back') {
+        battleCameraPlayer.play(step.camera);
+        waitView = null;
+        phaseMs = 0;
+      }
+    },
+    setBattleHere(here) {
+      if (!here) { battleHere = null; return; }
+      // マスの真ん中へ（舞台の点と同じ置き方）。
+      battleHere = { x: Math.floor(here.x) + 0.5, y: here.y, z: Math.floor(here.z) + 0.5 };
+    },
+    battleStandable(formation) {
+      const spec = this.battleStage(formation);
+      const def = spec ? battleFormationDef(spec.formation) : null;
+      if (!spec || !def?.enemy) return 0;
+      const settings = battleStageSettingsOf(battleStageBook(), mapKey);
+      return def.enemy.filter((slot) => canStand(stageTerrainAt(spec.at, rig.yaw + spec.yaw, settings, slot).ground)).length;
     },
     battleCellTerrain(cell) {
       if (!mapDef || !collision) return null;
@@ -3521,12 +4136,33 @@ export function createGameView(
       const figures = [...party, ...pick('enemy', options.enemy)];
       const spec = { ...stage.spec, ...(options.formation ? { formation: options.formation } : {}) };
       const original = stageOriginal;
+      // 場面の構図を見せていたら、組み直した後もその構図で見せる（GS-310・GS-312）。エディタが場面を渡したらそれを見せる。
+      const phase = options.phase !== undefined ? options.phase : cameraPhase;
       this.stageBattle(spec, figures);
       stageOriginal = original;
       if (cells) this.showStageCells(true);
       this.playBattleStart();
+      if (phase && stage) {
+        this.setBattleCameraPhase(phase);
+        // 戻り先は戦闘待機の構図の終わり（ゲームでは待機の構図を流し終えてから手を聞くので）。
+        if (waitView) {
+          const end = sampleBattleCamera(stage.settings.start, stage.settings.start.duration, null);
+          waitView = { ...end, ortho: end.ortho ?? playOrtho };
+        }
+      }
       return { floorless: stage ? stage.floorless.slice() : [] };
     },
+    setFreeBattleCamera(free) {
+      if (!free && freeBattleCamera) {
+        rig.orthographic = playOrtho;
+        if (stage && composedView) {
+          stage.view = { ...composedView };
+          applyStageCamera(stage);
+        }
+      }
+      freeBattleCamera = free ? { view: { ...free.view }, orthographic: free.orthographic } : null;
+    },
+    battleCameraView: () => (stage ? { ...(composedView ?? stage.view) } : null),
     showStageCells(on) {
       if (!stage) return;
       removeStageCells();
@@ -3556,9 +4192,29 @@ export function createGameView(
       cuePlayer.stop();
     },
 
+    previewFigure(slot, character, at, face) {
+      const id = `fxPreview_${slot}`;
+      const now = npcs.get(id);
+      // 消すとき・別のキャラクターへ替えるときは、控え（`hiddenNpcs`）にも残さない（見本の人はマップの人ではない）。
+      if (now && (!character || now.def.character !== character)) {
+        this.removeNpc(id);
+        hiddenNpcs.delete(id);
+      }
+      if (!character) {
+        hiddenNpcs.delete(id);
+        return '';
+      }
+      if (!npcs.has(id)) {
+        if (!makeNpc || !at) return '';
+        if (!makeNpc({ id, character, event: '', x: at.x, y: at.y, z: at.z, facing: face ?? 'down' })) return '';
+      }
+      if (at) this.placeNpc(id, at.x, at.y, at.z, face);
+      return id;
+    },
     removeNpc(id) {
       const npc = npcs.get(id);
       if (!npc) return false;
+      dangerCells.clear(id);
       // **消した人は控えに戻す**（GS-157）。同じ場面で「消す」→「置き直す」と書けるように
       // ——戻さないと、いちど消した人は入り直すまで二度と出せない。
       hiddenNpcs.set(id, npc.def);
@@ -3666,6 +4322,41 @@ export function createGameView(
       cutWalks.delete(id);
       return true;
     },
+    partyAt() {
+      const unit = collision?.unit || 1;
+      const out: Array<{ id: string; at: { x: number; y: number; z: number } }> = [];
+      (options.party?.() ?? []).forEach((id, index) => {
+        const actor = index === 0 ? player : followers.get(id);
+        if (!actor) return;
+        out.push({ id, at: { x: actor.position.x / unit, y: actor.position.y / unit, z: actor.position.z / unit } });
+      });
+      return out;
+    },
+    regroupAllies() {
+      allies.clear();
+      resetFollowers(true);
+    },
+    allyNpcs() {
+      const unit = collision?.unit || 1;
+      const out: Array<{ id: string; ally: Required<AllyNpcDef>; at: { x: number; y: number; z: number } }> = [];
+      for (const npc of npcs.values()) {
+        if (!npc.ally) continue;
+        const at = npc.actor.position;
+        out.push({ id: npc.def.id, ally: npc.ally, at: { x: at.x / unit, y: at.y / unit, z: at.z / unit } });
+      }
+      return out;
+    },
+    restoreNpcAt(id, at) {
+      if (!this.restoreNpc(id)) return false;
+      const npc = npcs.get(id);
+      if (!npc || !collision) return true;
+      const unit = collision.unit || 1;
+      // 居たマスの真ん中（歩いている途中に触れたら半端な所にいる。半端な所から追わない。GS-117）。
+      // 置き場（`home`）は元のまま——見失ったら帰る所は変えない。
+      const spot = standExact(Math.floor(at.x) + 0.5, at.y, Math.floor(at.z) + 0.5, unit);
+      npc.actor.placeAt(spot.x, spot.y, spot.z);
+      return true;
+    },
     npcAt(id) {
       const npc = npcs.get(id);
       if (!npc || !collision) return null;
@@ -3678,15 +4369,51 @@ export function createGameView(
         half: npc.actor.radius,
       };
     },
-    stunNpc(id, ms) {
+    stunNpc(id, ms, wake) {
       const npc = npcs.get(id);
-      if (!npc) return false;
+      if (!npc) return 0;
+      const sense = npc.sense;
+      // まだ気づいていない敵シンボルを叩いた（2026-11-06）。その場で気づき、怯みは短くしてすぐ追わせる。
+      const unaware = !!wake && !!sense && !!player && (sense.mode === 'idle' || sense.mode === 'return');
       // 延ばさない（GS-295）。怯んでいるあいだに当てても終わりは最初のまま。
-      if (!stunned(npc)) npc.stunUntil = elapsed + ms / 1000;
+      if (!stunned(npc)) npc.stunUntil = elapsed + hitStunMs(ms, unaware && wake === 'hit') / 1000;
+      // うろつきの途中なら歩き出したマスへ揃える（半端な所から追わない。GS-117）。
+      if (npc.wandering && collision) npc.actor.settle(collision, npc.wandering.from);
       npc.wandering = null;
-      // 叩かれた敵シンボルは、怯みが解けたら気づく（GS-296）。
-      if (npc.sense) npc.sense.provoked = true;
+      if (unaware && sense) {
+        // 「！」は怯みと重ねる（怯みが解けたらすぐ追う）。
+        senseNotice(npc, sense);
+        sense.until = Math.min(sense.until, npc.stunUntil ?? elapsed);
+      } else if (sense) {
+        // 叩かれた敵シンボルは、怯みが解けたら気づく（GS-296）。
+        sense.provoked = true;
+      }
+      return Math.max(0, ((npc.stunUntil ?? elapsed) - elapsed) * 1000);
+    },
+    huntNpc(id, enemy) {
+      if (!enemy) {
+        hunters.delete(id);
+        const npc = npcs.get(id);
+        if (npc?.sense) npc.sense.hunt = false;
+        return !!npc;
+      }
+      hunters.add(id);
+      // 消えている人（戦闘中など）は、置き直したときに追い始める（`makeNpc` が見る）。
+      const hidden = hiddenNpcs.get(id);
+      if (hidden) hiddenNpcs.set(id, { ...hidden, enemy });
+      const npc = npcs.get(id);
+      if (!npc) return !!hidden;
+      npc.def = { ...npc.def, enemy };
+      npc.wandering = null;
+      npc.foeAreas = undefined;
+      npc.sense = { def: HUNT_NOTICE, mode: 'idle', flee: false, until: 0, step: null, blocked: null, fails: 0, hunt: true, provoked: true };
       return true;
+    },
+    symbolEngaged(id) {
+      const npc = npcs.get(id);
+      const mode = npc?.sense?.mode;
+      if (mode === 'alert' || mode === 'chase' || mode === 'flee' || mode === 'lost') return true;
+      return !!npc?.foe && npc.foe.phase !== 'ready';
     },
     strike(holdMs) {
       if (!player) return;
@@ -3701,7 +4428,27 @@ export function createGameView(
         const shift = { x: (def.cell.col ?? 0) * k, z: (def.cell.row ?? 0) * k };
         return fieldFx.play(def, { x: at.x + shift.x, y: at.y, z: at.z + shift.z }, how);
       }
-      return fieldFx.play(def, at, how);
+      // コマ絵の置き方（GS-318）はフィールドの分（`place.field`。GS-332）: 足元を当てる点にするなら `foot` へ下ろし、大きさとずらしを掛ける。
+      const place = placeOf(def);
+      // 敵に・味方にで別の置き方（`place.field.foe` / `place.field.party`。GS-335）。ずらしはマップの画素で、大きさを掛けない。
+      const { side, ...rest } = how ?? {};
+      const target = side === 'party' ? 'party' : 'foe';
+      const spot = aimsFoot(place, 'field', target) && how?.foot !== undefined ? { x: at.x, y: how.foot, z: at.z } : at;
+      const size = scaleOf(place, 'field', target);
+      return fieldFx.play(def, spot, { ...rest, scale: size, anchor: planeAnchor(place, 'field', target, size) });
+    },
+    setFxGuide(on) {
+      fieldFx.setGuide(on);
+    },
+    hitShakeTiming() {
+      return hitShakeOf(battleStageSettingsOf(battleStageBook(), mapKey)).timing;
+    },
+    playHitShake() {
+      if (!stage) return 0;
+      // 台帳（戦闘演出エディタの下書きも）をそのつど読む。舞台を組んだときの値のままだと、下書きが組み直すまで効かない。
+      const shake = hitShakeOf(battleStageSettingsOf(battleStageBook(), mapKey));
+      if (shake.power <= 0 || shake.ms <= 0) return 0;
+      return this.playShot({ kind: 'shake', ms: shake.ms, power: shake.power });
     },
     figureFx(id, def) {
       const figure = stage?.figures.get(id);
@@ -3719,38 +4466,28 @@ export function createGameView(
         const terrain = stageTerrainAt(current.spec.at, current.saved.yaw + current.spec.yaw, current.settings, cell);
         // 絵の真ん中の高さは、相手の板の真ん中と同じだけ足元から上げる（爆発を体の高さに出す）。
         const middle = terrain.y + (figure.height * grow) / 2;
-        const spot = new Vector3(terrain.x * unit, middle, terrain.z * unit);
-        const view = rig.active();
-        const shown = spot.clone().project(view);
-        // 画面に入らない所（味方の板はカメラの後ろに立っている）なら、コマ絵と同じく画面の下寄りの真ん中へ、全部の板より後に出す。
-        if (shown.z > 1 || Math.abs(shown.x) > 1.1 || Math.abs(shown.y) > 1.1) {
-          const eye = view.getWorldPosition(new Vector3());
-          const ray = new Vector3(0, 1 - 2 * 0.72, 0.5).unproject(view).sub(eye).normalize();
-          spot.copy(eye).addScaledVector(ray, FX_LOOSE_CELLS * unit);
-          return fieldFx.play(def, { x: spot.x / unit, y: spot.y / unit, z: spot.z / unit }, {
-            layer: STAGE_SHARP_LAYER,
-            foot: (spot.y - (figure.height * grow) / 2) / unit,
-          });
-        }
+        // 出すマスが画面に入らなくても、そのマスへ出す（GS-329。前は画面の下寄りの真ん中へ出していた）。
         return fieldFx.play(def, { x: terrain.x, y: middle / unit, z: terrain.z }, {
           layer: STAGE_SHARP_LAYER,
           foot: terrain.y / unit,
           order: skillFieldOrder(cell.row),
         });
       }
-      // 板の真ん中（`figureRect` と同じ高さの取り方）。画面の上で絵の画素どおりの大きさ。
-      const y = figure.base.y + figure.commandLift + (figure.height * grow) / 2;
-      const camera = rig.active();
+      // 板の真ん中（`figureRect` と同じ高さの取り方）か足元（置き方の `aim`。GS-318）。
+      const place = placeOf(def);
+      // 置き方はコマンド戦闘の分（`place.battle`。GS-332）。ずらしは戦闘の絵の画素で、大きさを掛けない。
+      const target = figure.def.side === 'enemy' ? 'foe' : 'party';
+      const y = figure.base.y + figure.commandLift + (aimsFoot(place, 'battle', target) ? 0 : (figure.height * grow) / 2);
       const at = new Vector3(figure.mesh.position.x, y, figure.mesh.position.z);
-      // 板が画面に入っていなければ（味方の板はカメラの後ろに立っている）、前の重ね絵と同じく**画面の下寄りの真ん中**
-      // （横 50%・縦 72%）に、カメラの少し先へ出す。
-      const seen = at.clone().project(camera);
-      if (seen.z > 1 || Math.abs(seen.x) > 1.1 || Math.abs(seen.y) > 1.1) {
-        const eye = camera.getWorldPosition(new Vector3());
-        const ray = new Vector3(0, 1 - 2 * 0.72, 0.5).unproject(camera).sub(eye).normalize();
-        at.copy(eye).addScaledVector(ray, FX_LOOSE_CELLS * unit);
-      }
-      return fieldFx.play(def, { x: at.x / unit, y: at.y / unit, z: at.z / unit }, { pixel: camera, layer: STAGE_SHARP_LAYER });
+      const anchor = planeAnchor(place, 'battle', target, scaleOf(place, 'battle', target));
+      // 大きさは板と同じものさし（GS-321）で、**戦闘の絵の 1 マスの画素**で数える（GS-325。絵の画素 ÷ `figurePx` × `CharacterScale`）。
+      // 技の絵の 1 画素 ＝ 倍率 1 の板の 1 画素。前は画面の画素どおり（GS-321 まで）→ マップの 1 マスの画素（GS-325 まで）。
+      const tilePx = mapDef?.grid?.tilePx ?? 32;
+      // 置き方の「コマンド戦闘の大きさ」（GS-326）も掛ける。
+      const scale = (stage ? battleFxScale(tilePx, figurePxOf(stage.settings, tilePx)) : 1) * scaleOf(place, 'battle', target);
+      // 相手の板が画面に入らなくても、その板の所へ出す（GS-328。前は画面の下寄りの真ん中へ出していた）。
+      // 味方への絵は隊列の窓に重ねる（`BattleView` の `PartyEffect`）ので、ここへ来るのは敵への絵と、見本・古い呼び方だけ。
+      return fieldFx.play(def, { x: at.x / unit, y: at.y / unit, z: at.z / unit }, { layer: STAGE_SHARP_LAYER, anchor, scale });
     },
     moveFx(id, at) {
       fieldFx.move(id, at);
@@ -3812,9 +4549,12 @@ export function createGameView(
       if (!npc || !player || !collision) return false;
       const unit = collision.unit || 1;
       if (Math.abs(npc.actor.position.y - player.position.y) / unit > TALK_RISE) return false;
+      // 範囲の技で攻めてくる敵（2026-11-05）は、向こうから隣へ来ただけでは触れたことにしない（目の前の技を出せるように）。
+      // 主人公から触れる（向いて接する）か重なれば戦闘。
+      const fights = !!npc.foeAreas?.length;
       return symbolTouching(
         { at: { x: player.position.x / unit, z: player.position.z / unit }, half: player.radius, aim: moveVector(DIR_AXIS[FACE_DIR[player.facingNow()]]) },
-        { at: { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit }, half: npc.actor.radius, aim: moveVector(DIR_AXIS[FACE_DIR[npc.actor.facingNow()]]) },
+        { at: { x: npc.actor.position.x / unit, z: npc.actor.position.z / unit }, half: npc.actor.radius, aim: fights ? { x: 0, z: 0 } : moveVector(DIR_AXIS[FACE_DIR[npc.actor.facingNow()]]) },
       );
     },
     playerAt() {
@@ -3839,7 +4579,8 @@ export function createGameView(
       const spot = standWith(x, y, z, unit, px, keep);
       player.placeAt(spot.x, spot.y, spot.z);
       // 追従を切っているあいだは画面を動かさない（GS-166）。
-      resetFollowers();
+      // 先に置いた仲間はその場に残す（イベントの置き直しの順で重ならないように）。
+      resetFollowers(true);
       // 暗転の裏で並べ直すような使い方のため。ふだん（マップ移動・復帰）は今までどおり寄せる。
       if (cameraFollow) rig.target.copy(player.position);
     },
@@ -3904,7 +4645,8 @@ export function createGameView(
     battleStage(formation) {
       if (!mapDef) return null;
       // いつも 3D の舞台で戦う（2026-10-29。2D の背景の戦闘はやめた）。BattleStage → default → 原点。
-      const { source, ...at } = battleStageAnchor(mapDef);
+      // その場で戦う（GS-304）ときは主人公の立つマス。
+      const { source, ...at } = battleHere ? { ...battleHere, source: 'here' as const } : battleStageAnchor(mapDef);
       return { at, source, yaw: 0, pitch: playPitch, zoom: 1,
         formation: chooseBattleFormation(formation, battleSetup?.formations, () => 0) };
     },
@@ -3928,18 +4670,23 @@ export function createGameView(
         spec,
         settings,
         cells: null,
+        floorGrid: null,
+        floorFade: 0,
         floorless: [],
         hiddenNpcs: [],
         grid: debugGrid ? createStageGrid(at, unit) : null,
         axes: debugGrid ? createStageAxes(at, unit) : null,
       };
       const current = stage;
+      current.floorGrid = createStageFloorGrid(current, unit);
+      scene.add(current.floorGrid.group);
       if (current.grid) scene.add(current.grid);
       if (current.axes) scene.add(current.axes);
       // **フィールドの敵（`EnemyData` を持つ NPC）は隠す**（GS-88）。舞台に同じ敵が板で立つので、
       // 後ろに小さなシンボルが残っていると同じ相手が 2 回見える。
       for (const [id, npc] of npcs) {
-        if (!npc.def.enemy || !npc.actor.group.visible) continue;
+        // 加勢する NPC（GS-306）も隠す（客として舞台に立つ。入らないときもフィールドの姿は戦闘の下地に要らない）。
+        if ((!npc.def.enemy && !npc.ally && !battleHides.has(id)) || !npc.actor.group.visible) continue;
         npc.actor.group.visible = false;
         current.hiddenNpcs.push(id);
       }
@@ -3985,6 +4732,8 @@ export function createGameView(
         }
         const mesh = new Mesh(new PlaneGeometry(1, 1), skin.material);
         mesh.visible = false;
+        // 味方の板の大きさ（GS-309。`battleStages.json` の `partyScale`）。敵は台帳の `scale` だけ。
+        const stageScale = def.side === 'party' ? partyScaleOf(settings) : 1;
         const figure: StageFigure = {
           def,
           mesh,
@@ -3993,6 +4742,7 @@ export function createGameView(
           base,
           width: 0,
           height: 0,
+          imageHeight: 0,
           pose: {},
           leanAt: -1,
           lungeAt: -1,
@@ -4001,12 +4751,25 @@ export function createGameView(
           cell: { col: slot?.col ?? 0, row },
           breathPhase: Math.random() * Math.PI * 2,
           commandK: 0,
+          stageScale,
           commandLift: 0,
           // 前後関係は戦闘のマスの列（手前ほど後に描く）。同じ列なら並び順。
           order: stageFigureOrder(row, order),
-          // 味方の板を出すかは開発中のつまみ（GS-247。既定は出さない）。敵はいつも出す。
-          shownAlways: def.side === 'enemy' || stagePartyShown || battlePartyFiguresShown(),
+          // 味方の板もいつも出す（2026-11-06 / GS-311。前は開発中のつまみで、既定は出さなかった）。
+          // 戦闘演出エディタの「味方の板を出す」を切ったときだけ隠す（`restageBattle` の `showParty`）。
+          shownAlways: stageFigureShown(def.side, stagePartyShown),
+          mark: null,
+          markFade: 0,
         };
+        // 敵の立つマスを赤く光らせる（GS-343）。高さはそのマスの床（浮く敵も床に）。線のすぐ後に描く。
+        if (def.side === 'enemy' && slot) {
+          const point = stageCellPointer(current, unit, terrain.y + 0.04 * unit);
+          const corners = enemyCellCorners({ col: slot.col, row }).map((one) => point(one.col, one.row)) as [
+            [number, number, number], [number, number, number], [number, number, number], [number, number, number]];
+          figure.mark = createEnemyCellMark(corners, index * 0.37, floorGridOrder(settings.grid.depth) + 1);
+          figure.mark.mesh.layers.set(STAGE_SHARP_LAYER);
+          scene.add(figure.mark.mesh);
+        }
         mesh.renderOrder = figure.order;
         mesh.layers.set(STAGE_SHARP_LAYER);
         current.figures.set(def.id, figure);
@@ -4023,11 +4786,12 @@ export function createGameView(
           texture.minFilter = NearestFilter;
           texture.generateMipmaps = false;
           const img = texture.image as { width: number; height: number };
-          // 絵の 1 画素 = マップの 1 画素（`tilePx`）。フィールドのキャラとそろう。
-          const cells = stageFigureCells(def.height, img.height, mapDef?.grid?.tilePx ?? 32, def.scale);
+          // 絵の画素 ÷ 戦闘の絵の 1 マスの画素（`figurePx`。GS-322。書かなければマップの `tilePx`）。
+          const cells = stageFigureCells(def.height, img.height, figurePxOf(settings, mapDef?.grid?.tilePx ?? 32), def.scale * stageScale);
           // 戦闘の絵にもマップのキャラクターの大きさを掛ける（2026-10-11）。
           figure.height = cells * unit * characterScaleOf(mapDef?.properties);
           figure.width = (figure.height * img.width) / img.height;
+          figure.imageHeight = img.height;
           mesh.geometry.dispose();
           mesh.geometry = new PlaneGeometry(figure.width, figure.height).translate(0, figure.height / 2, 0);
           skin.material.uniforms.map.value = texture;
@@ -4045,7 +4809,10 @@ export function createGameView(
     },
     unstageBattle() {
       unstage();
-      stagePartyShown = false;
+      stagePartyShown = true;
+    },
+    hideInBattle(ids) {
+      battleHides = new Set(ids);
     },
     figureRect(id) {
       const figure = stage?.figures.get(id);
@@ -4079,7 +4846,8 @@ export function createGameView(
         minY = Math.min(minY, py);
         maxY = Math.max(maxY, py);
       }
-      return { left: minX, top: minY, width: maxX - minX, height: maxY - minY };
+      const height = maxY - minY;
+      return { left: minX, top: minY, width: maxX - minX, height, pixel: figure.imageHeight > 0 ? height / figure.imageHeight : 0 };
     },
     figurePose(id, pose) {
       const figure = stage?.figures.get(id);
@@ -4094,6 +4862,8 @@ export function createGameView(
       disposed = true;
       for (const waiter of renderWaiters) waiter.resolve();
       renderWaiters.clear();
+      for (const waiter of settleWaiters) waiter.resolve();
+      settleWaiters.clear();
       canvas.removeEventListener('pointerdown', pickCellFromEvent);
       canvas.removeEventListener('pointermove', hoverCellFromEvent);
       canvas.removeEventListener('pointerleave', clearHoverCell);
@@ -4111,9 +4881,9 @@ export function createGameView(
       clearFollowers();
       headMarks.dispose();
       fieldFx.dispose();
+      dangerCells.dispose();
       for (const npc of npcs.values()) npc.actor.dispose();
       npcs.clear();
-      wires?.dispose();
       dropPhysics();
       mapModels?.dispose();
       built?.dispose();

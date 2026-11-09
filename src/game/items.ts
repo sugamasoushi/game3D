@@ -32,13 +32,19 @@ export interface ItemUse {
 
 /**
  * 身に着ける物（GS-67）。**置き場所（`slot`）は 1 つにつき 1 個**。
- * 増えるのは攻撃・守り・速さだけ——満タンの HP を装備で変えると、
+ * 増えるのは物理攻撃力・物理防御力・魔法攻撃力・魔法防御力・速さだけ——満タンの HP を装備で変えると、
  * 外した瞬間に「いまの HP が満タンを超える」始末を毎回することになる。
  */
 export interface ItemEquip {
   slot: string;
+  /** 物理攻撃力。 */
   attack?: number;
+  /** 物理防御力。 */
   guard?: number;
+  /** 魔法攻撃力（2026-11-07）。 */
+  magic?: number;
+  /** 魔法防御力（2026-11-07）。 */
+  magicGuard?: number;
   speed?: number;
   /**
    * 武器で殴ったときの見せ方（2026-10-28 / GS-273）。書いた項目だけ、戦闘共通の「通常攻撃（味方の素手）」を差し替える。
@@ -80,6 +86,8 @@ export interface ItemDef {
    * メニューの「アイテム」で材料を選んで「つくる」から 1 個作れる（`craft.ts`）。
    */
   craft?: ItemCraft;
+  /** 図鑑に載せるか（2026-11-04）。`false` で載せない（試し用の物など）。書かなければ載せる。 */
+  codex?: boolean;
 }
 
 export interface ItemBook {
@@ -174,6 +182,11 @@ export function itemSellPrice(id: string): number {
 /** 台帳に載っているか。道具（`check.mjs`）と同じ判断を画面でも使う。 */
 export function knownItem(id: string): boolean {
   return Boolean(book.items[id]);
+}
+
+/** 台帳の全部（図鑑・「つくる」の一覧が並び順と作り方を読む。2026-11-04）。 */
+export function itemBook(): Record<string, ItemDef> {
+  return book.items;
 }
 
 /** 一覧（id と名前）。イベントエディタに渡す。 */

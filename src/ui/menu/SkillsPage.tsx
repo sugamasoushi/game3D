@@ -8,6 +8,10 @@
 // 使うのは戦闘の「とくぎ」「まほう」から。
 //
 // 絵はステータスと同じメニュー用の絵を左に置く（GS-206）。
+//
+// **技の行はどれもカーソルが止まる（2026-11-06）。** 押しても何も起きないが、止まらないと
+// ゲームパッドで一覧を辿れず、窓に入りきらない技までスクロールできなかった。
+// カーソルを動かすと、その行が見える所までブラウザが一覧を流す（`focus()`）。
 
 import { skillDef } from '../../game/battle/book';
 import { skillTagText } from '../../game/battle/skillTags';
@@ -35,7 +39,7 @@ export function SkillsPage({ who, member }: { who: string; member: MemberState |
             {member.skills.map((id) => {
               const skill = skillDef(id);
               return (
-                <li key={id}>
+                <li key={id} data-pick tabIndex={0}>
                   <span className="item-name">{skill?.name ?? id}</span>
                   {/* 「消費MP」と数は別の列。数は幅を決めて右にそろえる（桁が変わっても説明がずれない）。 */}
                   <span className="skill-mp-label">消費MP</span>

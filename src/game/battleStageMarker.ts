@@ -29,8 +29,8 @@ export function battleStageMarker(map: Pick<MapDef, 'layers'>): BattleStageMarke
   return battleStageMarkers(map)[0] ?? null;
 }
 
-/** 戦闘の舞台を何を基準に組んだか（2026-10-29）。 */
-export type BattleStageSource = 'stage' | 'default' | 'origin';
+/** 戦闘の舞台を何を基準に組んだか（2026-10-29）。`here` は主人公の立つ所（その場で戦う。2026-11-05 / GS-304）。 */
+export type BattleStageSource = 'stage' | 'default' | 'origin' | 'here';
 
 /** 出発点の目印の名前（`GameView` の `SPAWN_OBJECT` と同じ）。 */
 const DEFAULT_MARKER = 'default';

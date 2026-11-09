@@ -4,6 +4,7 @@
 // 位置はマス単位のワールド座標（x, z）。進むのは**マスの軸に沿って 1 マスずつ**——
 // 半端に進むとマスの端に立ち、塞ぐマスと絵の立ち位置が食い違う（うろつきと同じ。GS-117）。
 // 経路探し（回り込み）はしない。塞がれたら諦めるので、追われる側は物陰で撒ける。
+// ただし**制限なく追う敵**（イベントで撤退したあとのボス。2026-11-05）だけは `pathStep` で壁を回り込む。
 
 /** 気づいたときにどうするか。 */
 export type NoticeAct =
@@ -47,6 +48,31 @@ export const NOTICE_DEFAULT: Required<Omit<NoticeDef, 'act'>> = {
   gap: 5,
   after: 'return',
 };
+
+/**
+ * 襲ってこない敵シンボル（`notice` を書いていない）が叩かれたときの追い方（2026-11-06）。
+ * ふだんは見えても気づかず、叩かれたら怯みが解けたところで気づいて追う。見失ったら帰って、また襲ってこない敵に戻る。
+ */
+export const PROVOKED_NOTICE: Required<NoticeDef> = { ...NOTICE_DEFAULT, act: 'chase' };
+
+/**
+ * 気づくか。叩かれた（`provoked`）ならいつも気づく。襲ってこない敵（`passive`）は見えても気づかない。
+ */
+export function noticesNow(provoked: boolean, passive: boolean, sees: () => boolean): boolean {
+  if (provoked) return true;
+  return !passive && sees();
+}
+
+/**
+ * まだ気づいていない敵シンボルを叩いたときの怯み（ミリ秒。2026-11-06）。叩かれたその場で「！」を出し、これだけで追い始める。
+ * 気づいている敵の怯みはフィールドアタックの怯み（`FIELD_STUN_MS`）のまま。
+ */
+export const WAKE_STUN_MS = 500;
+
+/** 叩かれたときの怯みの長さ。まだ気づいていない（`unaware`）なら `WAKE_STUN_MS` まで縮める。 */
+export function hitStunMs(ms: number, unaware: boolean): number {
+  return unaware ? Math.min(ms, WAKE_STUN_MS) : ms;
+}
 
 /** 気づいてからこれだけ離れたら見失う（気づく距離に足すマス）。 */
 export const NOTICE_LOSE_EXTRA = 3;
@@ -150,4 +176,64 @@ export function touchedFromBehind(me: Point, aim: Point, it: Point): boolean {
   const len = Math.hypot(dx, dz) * Math.hypot(aim.x, aim.z);
   if (len < 1e-6) return false;
   return (dx * aim.x + dz * aim.z) / len < -0.5;
+}
+
+/**
+ * 制限なく追う敵（イベントで撤退したあとのボス。2026-11-05）の追い方。見失わず、置き場からの綱も無い。
+ * 速さ以外は意味を持たない（見える距離・向きは使わない）。
+ */
+export const HUNT_NOTICE: Required<NoticeDef> = { ...NOTICE_DEFAULT, act: 'chase', see: 9999, view: 'around', leash: 9999 };
+
+/** 道探しのマス。`x`・`z` は整数のマス、`y` はそのマスの床の高さ（呼ぶ側の単位のまま）。 */
+export interface PathCell {
+  x: number;
+  z: number;
+  y: number;
+}
+
+/** 道探しで調べるマスの上限（広いマップでも 1 回で重くならないように）。 */
+export const PATH_LIMIT = 2500;
+
+/**
+ * 壁を回り込んで `goal` へ向かう最初の 1 歩（2026-11-05）。マスの軸に沿って幅優先で探す。
+ * `next` はそのマスからその向きへ 1 歩進めるなら進んだ先、進めなければ null を返す（壁・段差・体が入らない）。
+ * `goal` から `near` マス以内（縦横の歩数）に着けば着いたとする。もう着いている・道が無い・上限を越えたら null
+ * （呼ぶ側はまっすぐ近づく `chaseSteps` に戻す）。同じ近さなら `chaseSteps` の向きを先に試す。
+ */
+export function pathStep(
+  from: PathCell,
+  goal: Point,
+  next: (at: PathCell, step: Step) => PathCell | null,
+  near = 0,
+  limit = PATH_LIMIT,
+): Step | null {
+  const gx = Math.floor(goal.x);
+  const gz = Math.floor(goal.z);
+  const reached = (cell: PathCell) => Math.abs(cell.x - gx) + Math.abs(cell.z - gz) <= near;
+  if (reached(from)) return null;
+  const key = (cell: PathCell) => `${cell.x},${cell.z}`;
+  // 向きの並び: 近づく向きを先に。並びが同じなら幅優先でも、まっすぐ追うのと同じ道を選ぶ。
+  const ahead = chaseSteps({ x: from.x + 0.5, z: from.z + 0.5 }, { x: gx + 0.5, z: gz + 0.5 });
+  const order = [...ahead, ...STEPS.filter((one) => !ahead.some((a) => a.x === one.x && a.z === one.z))];
+  const first = new Map<string, Step>();
+  const seen = new Set<string>([key(from)]);
+  let wave: PathCell[] = [from];
+  while (wave.length && seen.size <= limit) {
+    const after: PathCell[] = [];
+    for (const cell of wave) {
+      for (const step of order) {
+        const to = next(cell, step);
+        if (!to) continue;
+        const k = key(to);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        const head = cell === from ? step : first.get(key(cell))!;
+        if (reached(to)) return head;
+        first.set(k, head);
+        after.push(to);
+      }
+    }
+    wave = after;
+  }
+  return null;
 }

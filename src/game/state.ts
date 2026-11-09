@@ -10,6 +10,7 @@ import type { TimeClock } from './timeClock';
 import type { SaveData } from './save';
 import { SAVE_VERSION } from './save';
 import type { WalkDir } from './GameView';
+import { ItemBag, readFoes, type FoeRecord } from './codex';
 
 export interface GameState {
   /** 討伐依頼の受注・討伐数・報告済み。 */
@@ -26,8 +27,15 @@ export interface GameState {
   /** セルフスイッチ。キーは `<マップ>/<イベント>/<名前>`。 */
   self: Map<string, boolean>;
   clear: SaveData['clear'];
-  /** 持ち物（GS-46）。**id → 個数**。0 個になったら消す（「0 個持っている」を残さない）。 */
+  /**
+   * 持ち物（GS-46）。**id → 個数**。0 個になったら消す（「0 個持っている」を残さない）。
+   * 入れ物は `ItemBag`（2026-11-04）——1 個以上入れた id を `found` に足す。
+   */
   items: Map<string, number>;
+  /** 手に入れたことのある持ち物（図鑑。2026-11-04）。`items` の袋が自分で足す。 */
+  found: Set<string>;
+  /** 魔物の記録（図鑑。2026-11-04）。id → 出会った数・倒した数。 */
+  foes: Map<string, FoeRecord>;
   /** 遊んだ秒。読み込んだ記録の続きから数える。 */
   playSeconds: number;
   /** 隊列（GS-60）。人のキーを並び順で。**先頭がメニューの左に出る人。** */
@@ -89,6 +97,7 @@ export interface Progress {
 
 /** はじめから。 */
 export function newState(): GameState {
+  const found = new Set<string>();
   return {
     quests: new Map(),
     questExp: 0,
@@ -98,7 +107,9 @@ export function newState(): GameState {
     variables: new Map(),
     self: new Map(),
     clear: { count: 0, lap: 1, carry: {} },
-    items: new Map(),
+    items: new ItemBag(found),
+    found,
+    foes: new Map(),
     playSeconds: 0,
     party: [],
     members: new Map(),
@@ -143,6 +154,8 @@ export function toSave(state: GameState, progress: Progress): SaveData {
     variables: Object.fromEntries(state.variables),
     self: Object.fromEntries(state.self),
     items: Object.fromEntries(state.items),
+    found: [...state.found],
+    foes: Object.fromEntries([...state.foes].map(([id, one]) => [id, { ...one }])),
     party: state.party.slice(),
     members: Object.fromEntries(
       [...state.members].map(([who, one]) => [
@@ -180,6 +193,9 @@ export function resetState(target: GameState): void {
 }
 
 export function fromSave(data: SaveData): { state: GameState; progress: Progress } {
+  // 版 9 までの記録には図鑑が無い。いま持っている物・身に着けている物を手に入れた扱いで読む（袋に入れると足される）。
+  const found = new Set((data.found ?? []).filter((id) => typeof id === 'string' && id));
+  for (const one of Object.values(data.members ?? {})) for (const id of Object.values(one.equip ?? {})) if (id) found.add(id);
   return {
     state: {
       quests: new Map(Object.entries(data.quests ?? {}).map(([id, value]) => [id, { ...value }])),
@@ -198,7 +214,10 @@ export function fromSave(data: SaveData): { state: GameState; progress: Progress
         carry: { ...(data.clear?.carry ?? {}) },
       },
       // 版 1 の記録には持ち物が無い。空で始める（GS-46）。
-      items: new Map(Object.entries(data.items ?? {})),
+      items: new ItemBag(found, Object.entries(data.items ?? {})),
+      found,
+      // 版 9 までの記録には魔物の記録が無い。出会っていない扱いで読む。
+      foes: readFoes(data.foes),
       playSeconds: data.playSeconds ?? 0,
       // 版 2 までの記録には仲間が無い。空で読んでおき、台帳から入れ直す（GS-60）。
       party: (data.party ?? []).slice(),

@@ -8087,48 +8087,6 @@
         "tile": 166
       },
       {
-        "id": "p_plants_466_wall_o0_-3_0",
-        "name": "plants #466 wall",
-        "shape": "wall",
-        "mat": "mat_plants",
-        "ts": "plants",
-        "tile": 466,
-        "base": "p_plants_466_wall",
-        "offset": [
-          0,
-          -3,
-          0
-        ]
-      },
-      {
-        "id": "p_plants_467_wall_o0_-3_0",
-        "name": "plants #467 wall",
-        "shape": "wall",
-        "mat": "mat_plants",
-        "ts": "plants",
-        "tile": 467,
-        "base": "p_plants_467_wall",
-        "offset": [
-          0,
-          -3,
-          0
-        ]
-      },
-      {
-        "id": "p_plants_468_wall_o0_-3_0",
-        "name": "plants #468 wall",
-        "shape": "wall",
-        "mat": "mat_plants",
-        "ts": "plants",
-        "tile": 468,
-        "base": "p_plants_468_wall",
-        "offset": [
-          0,
-          -3,
-          0
-        ]
-      },
-      {
         "id": "p_plants_256_floor",
         "name": "plants #256 floor",
         "shape": "floor",
@@ -8371,6 +8329,51 @@
         "mat": "mat_plants",
         "ts": "plants",
         "tile": 272
+      },
+      {
+        "id": "p_plants_466_wall_o0_-3_0_u48",
+        "name": "plants #466 wall",
+        "shape": "wall",
+        "mat": "mat_plants",
+        "ts": "plants",
+        "tile": 466,
+        "base": "p_plants_466_wall",
+        "offset": [
+          0,
+          -3,
+          0
+        ],
+        "offsetUnit": 48
+      },
+      {
+        "id": "p_plants_467_wall_o0_-3_0_u48",
+        "name": "plants #467 wall",
+        "shape": "wall",
+        "mat": "mat_plants",
+        "ts": "plants",
+        "tile": 467,
+        "base": "p_plants_467_wall",
+        "offset": [
+          0,
+          -3,
+          0
+        ],
+        "offsetUnit": 48
+      },
+      {
+        "id": "p_plants_468_wall_o0_-3_0_u48",
+        "name": "plants #468 wall",
+        "shape": "wall",
+        "mat": "mat_plants",
+        "ts": "plants",
+        "tile": 468,
+        "base": "p_plants_468_wall",
+        "offset": [
+          0,
+          -3,
+          0
+        ],
+        "offsetUnit": 48
       }
     ]
   },
@@ -8578,24 +8581,24 @@
   "editor": {
     "camera": {
       "target": [
-        0.44834901280884565,
-        2.411663040571609,
-        26.765557235768973
+        -6.989883839715263,
+        1.5583553317980732,
+        13.13485577198621
       ],
       "yaw": 0,
       "pitch": -20,
-      "distance": 6.047825152050004,
+      "distance": 7.3917862969500066,
       "orthographic": false
     },
     "height": 0,
-    "activeLayer": "オブジェクトレイヤー_4",
+    "activeLayer": "タイルマップレイヤー_16",
     "brush": {
       "shape": "floor",
       "rotation": 0,
       "chipTurn": 0,
-      "color": "#c45c5c",
-      "tileset": "plants",
-      "tile": 256,
+      "color": "#d5dbe0",
+      "tileset": "terrain-v7",
+      "tile": 1866,
       "paint": "chip",
       "edgeEnabled": false,
       "edgeColor": "#3a4149",
@@ -8638,7 +8641,7 @@
     {
       "name": "ScrollMaxZ",
       "type": "float",
-      "value": 35
+      "value": 34
     },
     {
       "name": "ScrollWhole",
@@ -10566,9 +10569,6 @@
               9,
               -8,
               0,
-              10,
-              -8,
-              0,
               11,
               -8,
               0,
@@ -12851,9 +12851,6 @@
               0,
               10,
               -5,
-              0,
-              11,
-              -7,
               0,
               11,
               -7,
@@ -18357,7 +18354,13 @@
               1,
               33,
               0,
-              1
+              1,
+              -8,
+              0,
+              10,
+              -7,
+              0,
+              11
             ],
             "proto": [
               0,
@@ -46543,6 +46546,115 @@
       ]
     },
     {
+      "id": "タイルマップレイヤー_16",
+      "name": "倒木",
+      "kind": "tile",
+      "parent": "",
+      "visible": true,
+      "opacity": 1,
+      "properties": [],
+      "batches": [
+        {
+          "id": "タイルマップレイヤー_16-wall-0",
+          "shape": "wall",
+          "mat": "mat_plants",
+          "ts": "plants",
+          "mode": "instanced",
+          "anim": null,
+          "protos": [
+            "p_plants_466_wall_o0_-3_0_u48",
+            "p_plants_467_wall_o0_-3_0_u48",
+            "p_plants_468_wall_o0_-3_0_u48"
+          ],
+          "count": 12,
+          "enc": "json",
+          "cellEnc": "abs",
+          "attrs": {
+            "cell": [
+              -1,
+              0,
+              15,
+              0,
+              0,
+              15,
+              1,
+              0,
+              15,
+              -16,
+              0,
+              14,
+              -15,
+              0,
+              14,
+              -14,
+              0,
+              14,
+              -18,
+              0,
+              1,
+              -17,
+              0,
+              1,
+              -16,
+              0,
+              1,
+              -22,
+              0,
+              -24,
+              -21,
+              0,
+              -24,
+              -20,
+              0,
+              -24
+            ],
+            "proto": [
+              0,
+              1,
+              2,
+              0,
+              1,
+              2,
+              0,
+              1,
+              2,
+              0,
+              1,
+              2
+            ],
+            "rf": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "gid": [
+              303,
+              303,
+              303,
+              304,
+              304,
+              304,
+              305,
+              305,
+              305,
+              306,
+              306,
+              306
+            ]
+          }
+        }
+      ]
+    },
+    {
       "id": "タイルマップレイヤー_12",
       "name": "草",
       "kind": "tile",
@@ -46579,16 +46691,13 @@
             "p_plants_166_wall",
             "p_plants_132_wall",
             "p_plants_133_wall",
-            "p_plants_466_wall_o0_-3_0",
-            "p_plants_467_wall_o0_-3_0",
-            "p_plants_468_wall_o0_-3_0",
             "p_plants_160_wall_o0_-5_0",
             "p_plants_102_wall_o0_-5_0",
             "p_plants_103_wall_o0_-5_0",
             "p_plants_104_wall_o0_-5_0",
             "p_plants_105_wall_o0_-5_0"
           ],
-          "count": 133,
+          "count": 121,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -46896,42 +47005,6 @@
               -3,
               1,
               28,
-              -1,
-              0,
-              15,
-              0,
-              0,
-              15,
-              1,
-              0,
-              15,
-              -22,
-              0,
-              -24,
-              -21,
-              0,
-              -24,
-              -20,
-              0,
-              -24,
-              -18,
-              0,
-              1,
-              -17,
-              0,
-              1,
-              -16,
-              0,
-              1,
-              -16,
-              0,
-              14,
-              -15,
-              0,
-              14,
-              -14,
-              0,
-              14,
               -10,
               0,
               -10,
@@ -47096,51 +47169,27 @@
               7,
               8,
               9,
-              10,
-              11,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
+              9,
               9,
               10,
               11,
-              9,
-              10,
-              11,
-              9,
-              10,
-              11,
               12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              12,
-              13,
-              14,
-              15,
-              16
+              13
             ],
             "rf": [
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0,
               0,
               0,
               0,
@@ -47365,18 +47414,6 @@
               0,
               293,
               293,
-              294,
-              294,
-              294,
-              295,
-              295,
-              295,
-              297,
-              297,
-              297,
-              298,
-              298,
-              298,
               0,
               0,
               0,
@@ -64645,8 +64682,8 @@
           "y": 0,
           "points": [
             [
-              -10.5,
-              -8.5
+              -12.5,
+              -17.5
             ]
           ]
         },
@@ -64673,8 +64710,8 @@
           "y": 0,
           "points": [
             [
-              -19.5,
-              -20.5
+              -20.5,
+              -18.5
             ]
           ]
         },
@@ -65261,7 +65298,7 @@
           "protos": [
             "wall_c45c5c_a50"
           ],
-          "count": 164,
+          "count": 165,
           "enc": "json",
           "cellEnc": "abs",
           "attrs": {
@@ -65757,9 +65794,13 @@
               6,
               10,
               0,
-              6
+              6,
+              -9,
+              0,
+              11
             ],
             "proto": [
+              0,
               0,
               0,
               0,
@@ -66089,7 +66130,8 @@
               0,
               0,
               3,
-              1
+              1,
+              0
             ]
           }
         },
@@ -66302,8 +66344,8 @@
     }
   ],
   "stats": {
-    "tiles": 9929,
-    "batches": 66,
-    "drawCalls": 66
+    "tiles": 9930,
+    "batches": 67,
+    "drawCalls": 67
   }
 }

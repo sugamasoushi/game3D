@@ -5,7 +5,10 @@
 //   （0202 の ev_1 で、妹のせりふが姉の上に出ていた）。
 //   **そのマップに居なければ**（出す条件で隠れているなど）書かなかったときと同じ決め方へ落とす——
 //   居ない人を指すと吹き出しの置き所が決まらず、見えないまま止まる。
-// - 書かなければ今までどおり。主人公はプレイヤー、隊列の仲間はその仲間、ほかは**話しかけた相手**。
+// - 書かなければ今までどおり。隊列の先頭はプレイヤー、付いて歩く仲間はその仲間、ほかは**話しかけた相手**。
+//   **隊列を主人公の名前より先に見る**——先頭を入れ替えると主人公も付いて歩く側になり、
+//   名前だけで「プレイヤー」と決めると三角が先頭の人を指したままになる（forest_mansion の man0001）。
+//   主人公が隊列に居なければ、今までどおりプレイヤーの上。
 // - 空を返したら吹き出しにできない（話し相手の居ないイベント）。下のウィンドウで出す。
 
 import type { TalkLine } from '../event/types';
@@ -25,11 +28,11 @@ export function talkAnchor(line: Pick<TalkLine, 'who' | 'at'>, world: TalkAnchor
   if (line.at === 'player') return 'player';
   if (line.at && world.hasNpc(line.at)) return line.at;
   const who = line.who;
-  if (who === world.player) return 'player';
   if (who) {
     const role = world.partyRole(who);
     if (role === 'leader') return 'player';
     if (role === 'follower') return `follower:${who}`;
+    if (who === world.player) return 'player';
   }
   return world.self || '';
 }

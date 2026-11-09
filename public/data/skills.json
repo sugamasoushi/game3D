@@ -48,8 +48,7 @@
       "se": "slash",
       "field": {
         "type": "shot",
-        "hitEffect": "wind",
-        "fxScale": 0.4
+        "hitEffect": "wind"
       }
     },
     "ice_chunk": {
@@ -92,7 +91,36 @@
       "value": 10,
       "se": "slash",
       "reach": "all",
-      "range": "melee"
+      "range": "melee",
+      "field": {
+        "type": "area",
+        "effect": "sweep",
+        "cells": [
+          [
+            -1,
+            1
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            -1,
+            0
+          ],
+          [
+            1,
+            0
+          ]
+        ],
+        "windup": 0.8,
+        "interval": 4
+      },
+      "effect": "sweep"
     },
     "heal": {
       "name": "ヒール",
@@ -152,6 +180,14 @@
       "kind": "特技",
       "type": "cover",
       "text": "このターン 近くの仲間への攻撃を 代わりに受ける。",
+      "mp": 3,
+      "value": 0
+    },
+    "retreat": {
+      "name": "撤退",
+      "kind": "特技",
+      "type": "retreat",
+      "text": "いったん ひいて フィールドで たてなおす。必ず 成功する。",
       "mp": 3,
       "value": 0
     },

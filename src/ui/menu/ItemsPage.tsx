@@ -20,9 +20,15 @@
 // 作っても材料が残る間は小窓を開いたままにし、続けて作れるようにする。
 // **作れるのは隊列に種族特性 `craft` の人（ノル族のメイナ）がいるときだけ（2026-11-03）。** いなければ
 // 「つくる」を出さず、材料もただの持ち物として扱う。
+//
+// **上に種類のタブ（2026-11-04）: 道具／武具／大事な物／つくる。** 分け方は図鑑と同じ（`codexItemKind`）。
+// 「つくる」は作り方の一覧で、作られる物か材料のどれかを手に入れたことがある作り方を並べ（`codexRecipes`）、
+// 要る材料と持っている数を見せる。そろっていれば決定で 1 個作る。まだ手に入れていない物の名前は「？？？」。
+// 「つくる」のタブも作れる人が隊列にいるときだけ出す。
 
 import { useEffect, useRef, useState } from 'react';
-import { itemCanCraft, itemCraftNeeds, itemCraftsUsing, itemName, itemText, itemUse } from '../../game/items';
+import { itemBook, itemCanCraft, itemCraftNeeds, itemCraftsUsing, itemName, itemText, itemUse } from '../../game/items';
+import { codexItemKind, codexRecipes, type CodexItemKind } from '../../game/codex';
 import { memberStats, memberTraits } from '../../game/battle/party';
 import { canCraftWith } from '../../game/battle/races';
 import { wouldHelp } from '../../game/battle/heal';
@@ -31,14 +37,22 @@ import { ailmentDef } from '../../game/battle/book';
 import { Gauge } from './ConditionPage';
 import type { MemberState } from '../../game/state';
 
+/** 種類のタブ。「つくる」は作れる人がいるときだけ並べる。 */
+const KINDS: readonly CodexItemKind[] = ['道具', '武具', '大事な物'];
+type Tab = CodexItemKind | 'つくる';
+const UNKNOWN = '？？？';
+
 export function ItemsPage({
   items,
+  found,
   party,
   members,
   onUse,
   onCraft,
 }: {
   items: Map<string, number>;
+  /** 手に入れたことのある持ち物（2026-11-04）。「つくる」の一覧で名前を伏せるかを決める。 */
+  found: ReadonlySet<string>;
   /** 隊列（GS-60）。使い先の小窓に並ぶ順。 */
   party: string[];
   members: Map<string, MemberState>;
@@ -49,6 +63,8 @@ export function ItemsPage({
 }) {
   // 使うと数が減る。**記録は入れ物のまま書き換わる**ので、描き直しはここで促す。
   const [tick, setTick] = useState(0);
+  /** 開いている種類のタブ（2026-11-04）。 */
+  const [tab, setTab] = useState<Tab>('道具');
   const [note, setNote] = useState('');
   /** 使い先を選んでいる物。null なら選んでいない。 */
   const [asking, setAsking] = useState<string | null>(null);
@@ -67,7 +83,10 @@ export function ItemsPage({
   /** 小窓で最後に使った人。続けて使うときにカーソルを留める。 */
   const lastWho = useRef('');
 
-  const rows = [...items.entries()].filter(([, count]) => count > 0);
+  const owned = [...items.entries()].filter(([, count]) => count > 0);
+  /** 台帳に無い id は大事な物に数える（名前は id のまま出る）。 */
+  const kindOf = (id: string) => codexItemKind(itemBook()[id]);
+  const rows = owned.filter(([id]) => kindOf(id) === tab);
 
   useEffect(() => {
     if (acting) {
@@ -95,11 +114,16 @@ export function ItemsPage({
     (all.find((el) => el.dataset.item === back.id) ?? all[Math.min(back.row, all.length - 1)])?.focus();
   }, [asking, acting, crafting, tick]);
 
-  if (rows.length === 0) return <p className="menu-empty">なにも持っていない</p>;
-
   const alive = party.filter((who) => members.has(who));
   /** 隊列に道具を作れる人がいるか（種族特性 `craft`。2026-11-03）。 */
   const canMake = canCraftWith(alive.map((who) => memberTraits(who, members.get(who)?.level ?? 1)));
+  const tabs: Tab[] = canMake ? [...KINDS, 'つくる'] : [...KINDS];
+  // 作れる人が抜けたら「つくる」は無くなる。道具へ戻す。
+  const at: Tab = tabs.includes(tab) ? tab : '道具';
+  /** 身に着けている物も手に入れた扱い（はじめから着ている物は袋を通らない）。 */
+  const equipped = alive.flatMap((who) => Object.values(members.get(who)?.equip ?? {}));
+  const recipes = at === 'つくる' ? codexRecipes(itemBook(), found, equipped) : [];
+  const knownName = (id: string, known: boolean) => (known ? itemName(id) : UNKNOWN);
   /** 「つかう／つくる」を選ばせる物（作れる人がいて、材料になる物）。 */
   const makes = (id: string) => canMake && itemCraftsUsing(id).length > 0;
 
@@ -166,6 +190,16 @@ export function ItemsPage({
     setTick(tick + 1);
   };
 
+  /** 「つくる」の一覧から作る（2026-11-04）。行は残るので、カーソルもそのまま。 */
+  const makeHere = (result: string) => {
+    if (!itemCanCraft(items, result)) {
+      setNote('材料が たりない');
+      return;
+    }
+    setNote(onCraft(result));
+    setTick(tick + 1);
+  };
+
   const cancel = () => {
     const open = asking ?? acting ?? crafting;
     if (open) remember(open);
@@ -176,6 +210,52 @@ export function ItemsPage({
 
   return (
     <div className="item-page">
+      {/* 種類のタブ（2026-11-04）。中身の先頭の行（←→ で隣へ、決定で切り替え）。数は持っている種類の数。 */}
+      <div className="quest-kinds" role="tablist" aria-label="持ち物の種類">
+        {tabs.map((one) => {
+          const count = one === 'つくる' ? 0 : owned.filter(([id]) => kindOf(id) === one).length;
+          return (
+            <button key={one} type="button" role="tab" data-pick aria-selected={one === at} className={one === at ? 'on' : ''} onClick={() => { setTab(one); setNote(''); }}>
+              {one}
+              {count ? <small>{count}</small> : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {at === 'つくる' ? (
+        recipes.length === 0 ? (
+          <p className="menu-empty">まだ 作り方を 知らない</p>
+        ) : (
+          <ul className="item-craft-list item-recipes" data-tick={tick}>
+            {recipes.map((entry) => {
+              const ready = itemCanCraft(items, entry.id);
+              return (
+                <li key={entry.id}>
+                  <button type="button" data-pick className="item-craft-row" aria-disabled={!ready} onClick={() => makeHere(entry.id)}>
+                    <span className="item-craft-name">
+                      {knownName(entry.id, entry.known)}
+                      <span className="item-craft-have">（持っている {items.get(entry.id) ?? 0}）</span>
+                    </span>
+                    <span className="item-craft-needs">
+                      {entry.parts.map((part) => {
+                        const have = items.get(part.id) ?? 0;
+                        return (
+                          <span key={part.id} className={have < part.count ? 'short' : ''}>
+                            {knownName(part.id, part.known)} {part.count}（{have}）
+                          </span>
+                        );
+                      })}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )
+      ) : rows.length === 0 ? (
+        <p className="menu-empty">{owned.length === 0 ? 'なにも持っていない' : `${at}は 持っていない`}</p>
+      ) : (
       <ul className="menu-items item-list" ref={listRef} data-tick={tick}>
         {rows.map(([id, count]) => {
           const ready = Boolean(itemUse(id, 'field')) || makes(id);
@@ -201,6 +281,7 @@ export function ItemsPage({
           );
         })}
       </ul>
+      )}
 
       {/* 使い先を選ぶ小窓（GS-208）。取り消し・使い切りで一覧の同じ行へ戻る。 */}
       {asking ? (

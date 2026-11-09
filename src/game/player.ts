@@ -52,8 +52,10 @@ export interface ActorSheet {
   /**
    * 歩きの見せ方（GS-47）。**シートごとに違ってよい**ので台帳が持つ。
    * 省くと今までどおり（3 コマなら真ん中が止まり絵、1 コマ 0.16 秒）。
+   * `always: true` は**止まっていても歩きのコマを回し続ける**（2026-11-04。飛んで羽ばたく物など）。
+   * 行は今向いている向きのまま。止まっている間は歩きの速さ（`ms`）で回す。
    */
-  walk?: { stand?: number; ms?: number };
+  walk?: { stand?: number; ms?: number; always?: boolean };
   /**
    * **1 コマの中で、足元が下端から何画素上にあるか**（GS-52）。
    *
@@ -326,6 +328,8 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
   /** 1 コマの秒数（GS-47）。走りは歩きの 0.625 倍（もとの 0.16 / 0.1 と同じ比）。 */
   const STEP_S = (sheet.walk?.ms ?? STEP_SECONDS * 1000) / 1000;
   const RUN_STEP_S = STEP_S * (RUN_STEP_SECONDS / STEP_SECONDS);
+  /** 止まっていても歩きのコマを回すか（2026-11-04。台帳の `walk.always`）。 */
+  const ALWAYS_STEP = sheet.walk?.always === true;
   /**
    * 指名された静止コマ（GS-47）。**入っている間は歩きも向きも絵に出さない。**
    * 宝箱のように「開いたら開いたまま」でいてほしい物のための止め具。
@@ -586,8 +590,15 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
       stepIndex = (stepIndex + 1) % WALK_PATTERN.length;
     }
   };
-  /** 止まる。止まり絵へ戻し、次に動き出したらまた 1 コマ目から出す。 */
-  const stopStep = () => {
+  /**
+   * 止まる。止まり絵へ戻し、次に動き出したらまた 1 コマ目から出す。
+   * `walk.always` の絵は止まり絵へ戻さず、歩きの速さでコマを回し続ける（`dt` はそのための経過秒）。
+   */
+  const stopStep = (dt = 0) => {
+    if (ALWAYS_STEP) {
+      if (dt > 0) advanceStep(dt, STEP_S);
+      return;
+    }
     stepping = false;
     stepTime = 0;
     stepIndex = STAND;
@@ -713,7 +724,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
         else if (Math.hypot(dx, dz) > 0.0001 * unit) facing = facingForWorld(dx, dz, yaw);
         advanceStep(dt, distance / dt > 6 * unit ? RUN_STEP_S : STEP_S);
       } else {
-        stopStep();
+        stopStep(dt);
       }
       position.set(at.x, at.y, at.z);
       group.position.copy(position);
@@ -859,7 +870,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
         if (axis.y !== 0) {
           advanceStep(deltaSeconds, input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S);
         } else {
-          stopStep();
+          stopStep(deltaSeconds);
         }
         // はしごは背中を見せて登る。向きを合わせてから絵を出す。
         facing = 'north';
@@ -901,7 +912,7 @@ export function createPlayer(unit: number, tilePx: number, sheet: ActorSheet,{ s
         if (!input.slide && (axis.x !== 0 || axis.y !== 0)) {
           advanceStep(deltaSeconds, input.stepMs !== undefined ? input.stepMs / 1000 : running ? RUN_STEP_S : STEP_S);
         } else {
-          stopStep();
+          stopStep(deltaSeconds);
         }
         refreshFrame();
         group.position.copy(position);

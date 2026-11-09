@@ -14,6 +14,7 @@ import type { NpcRouteMotion } from './npcRoutes';
 import type { IfCondition } from '../event/types';
 import { knownMapKeyForFile } from './mapIndex';
 import type { NoticeDef } from './symbolSense';
+import type { AllyNpcDef } from './allyNpc';
 
 /**
  * うろつき方（GS-48 / GS-50）。**マス単位では動かない。**
@@ -96,6 +97,11 @@ export interface MapNpcDef {
   idleEmote?: string;
   /** 話せる合図（GS-49）のマーク（GS-267）。省略は `talk`（「…」）。商人の `coin` など。 */
   talkEmote?: string;
+  /**
+   * **加勢する NPC**（2026-11-05 / GS-306。`allyNpc.ts`）。仲間の台帳の人を借りて、周りの敵シンボルを攻め、
+   * コマンド戦闘にも客として入る。敵シンボル（`enemy`）とは一緒に書かない。
+   */
+  ally?: AllyNpcDef;
 }
 
 /** お供 1 体ぶんの枠（GS-255）。 */

@@ -9,7 +9,7 @@
         { "type": "fade", "to": "out", "ms": 300 },
         {
           "type": "place",
-          "target": "player",
+          "target": "party:meina",
           "at": { "x": 1, "y": "player", "z": -6 },
           "face": "up"
         },
@@ -25,26 +25,45 @@
           "at": { "x": 0, "y": 0, "z": -10 },
           "face": "down"
         },
+        { "type": "cameraPlace", "to": { "x": 0, "y": 0, "z": -7 }, "ms": 900 },
         { "type": "fade", "to": "in", "ms": 300 },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
-        { "type": "emote", "target": "player", "id": "music", "wait": false },
-        { "type": "message", "talk": [{ "who": "meina", "lines": ["よ～し、こいつを狩るか", "足引っ張らないでよ！"] }] },
-        { "type": "emote", "target": "party:lamy", "id": "music", "wait": false },
         {
-          "type": "message",
-          "talk": [{ "who": "lamy", "lines": ["任せときなって！", "まずあたしが軽くジャブ打ってぇ！", "それからぁ！"] }]
+          "type": "if",
+          "when": { "self": "挑んだ" },
+          "then": [
+            { "type": "emote", "target": "party:meina", "id": "anger", "wait": false },
+            { "type": "message", "talk": [{ "who": "meina", "lines": ["今度こそ仕留めるよ！"] }] },
+            { "type": "message", "talk": [{ "who": "lamy", "lines": ["次は本気出すからぁ！"] }] }
+          ],
+          "else": [
+            { "type": "emote", "target": "party:meina", "id": "music", "wait": false },
+            {
+              "type": "message",
+              "talk": [{ "who": "meina", "lines": ["よ～し、こいつを狩るか", "足引っ張らないでよ！"] }]
+            },
+            { "type": "emote", "target": "party:lamy", "id": "music", "wait": false },
+            {
+              "type": "message",
+              "talk": [{ "who": "lamy", "lines": ["任せときなって！", "まずあたしが軽くジャブ打ってぇ！", "それからぁ！"] }]
+            },
+            { "type": "setSelfSwitch", "key": "挑んだ", "value": true }
+          ]
         },
         { "type": "portrait", "slot": "left", "hide": true },
         { "type": "portrait", "slot": "right", "hide": true },
-        { "type": "hide", "target": "npc:BOSS_GreatBear" },
         {
           "type": "battle",
           "enemies": ["great_bear"],
+          "formation": "pattern03",
+          "noEscape": true,
+          "chase": "npc:BOSS_GreatBear",
           "win": [{ "type": "hide", "target": "npc:BOSS_GreatBear" }],
           "lose": [],
           "escape": []
         },
+        { "type": "hide", "target": "npc:BOSS_GreatBear" },
         { "type": "portrait", "slot": "right", "who": "meina", "face": "talk" },
         { "type": "portrait", "slot": "left", "who": "lamy", "face": "talk" },
         { "type": "emote", "target": "player", "id": "sweat", "wait": false },
@@ -69,6 +88,7 @@
         },
         { "type": "emote", "target": "party:lamy", "id": "anger", "wait": false },
         { "type": "message", "talk": [{ "who": "lamy", "lines": ["ちょっと！！そこまで言うな！！"] }] },
+        { "type": "stepInPlace", "target": "player", "steps": 4 },
         { "type": "message", "talk": [{ "who": "meina", "lines": ["よし、帰って処理しないとね"] }] },
         { "type": "emote", "target": "party:lamy", "id": "question", "wait": false },
         {

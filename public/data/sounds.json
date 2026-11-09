@@ -25,7 +25,8 @@
     "雨が降る1": { "file": "EnvironmentalSE/雨が降る1.mp3", "volume": 0.5, "loop": true },
     "風が吹く3": { "file": "EnvironmentalSE/風が吹く3.mp3", "volume": 0.5, "loop": true },
     "落雷2": { "file": "EnvironmentalSE/落雷2.mp3", "volume": 0.5 },
-    "雷雨": { "file": "EnvironmentalSE/雷雨.mp3", "volume": 0.5, "loop": true }
+    "雷雨": { "file": "EnvironmentalSE/雷雨.mp3", "volume": 0.5, "loop": true },
+    "風を切る戦い": { "file": "BattleBGM/01_風を切る戦い.ogg", "volume": 0.5, "loop": true, "loopStart": 1057683, "loopEnd": 3165637 }
   },
   "ui": {
     "message": "message",

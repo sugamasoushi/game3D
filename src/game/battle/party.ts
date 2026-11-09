@@ -13,10 +13,19 @@ import { ailmentDef, enemyDef, levelUpRule, memberDef, raceDef, startingParty } 
 import { traitsAt, type RaceDef, type RaceTrait } from './races';
 import { addExp, statsAt, type LevelNews } from './growth';
 import { itemEquip } from '../items';
-import type { Fighter, Stats } from './rules';
+import { magicGuardOf, magicOf, type Fighter, type Stats } from './rules';
+
+/** 装備で増える（減る）数（GS-67。魔法の 2 つは 2026-11-07）。 */
+export interface EquipBonus {
+  attack: number;
+  guard: number;
+  magic: number;
+  magicGuard: number;
+  speed: number;
+}
 
 /** 台帳が読めていないときの数値。**0 にしない**——即死する仲間を作らないため。 */
-const FALLBACK: Stats = { level: 1, hp: 10, mp: 0, attack: 1, guard: 0, speed: 1 };
+const FALLBACK: Stats = { level: 1, hp: 10, mp: 0, attack: 1, guard: 0, magic: 1, magicGuard: 0, speed: 1 };
 
 /**
  * その人の満タンの値。`level` を渡すと**そのレベルまで育てた**値（GS-63）。
@@ -132,7 +141,7 @@ export function enemyFighters(ids: string[]): Fighter[] {
       id: `${id}#${count}`,
       name: `${def.name}${suffix}`,
       side: 'enemy',
-      stats: { level: def.level, hp: def.hp, mp: def.mp, attack: def.attack, guard: def.guard, speed: def.speed },
+      stats: { level: def.level, hp: def.hp, mp: def.mp, attack: def.attack, guard: def.guard, magic: magicOf(def), magicGuard: magicGuardOf(def), speed: def.speed },
       hp: def.hp,
       mp: def.mp,
       guarding: 0,
@@ -153,13 +162,15 @@ export function enemyIdOf(fighter: Fighter): string {
  * 装備で増える数（GS-67）。**満タンの HP・MP は動かさない**——
  * 装備で最大値が変わると、外した瞬間に「いまの HP が満タンを超える」始末が要る。
  */
-export function equipBonus(equip: Record<string, string> | undefined): Pick<Stats, 'attack' | 'guard' | 'speed'> {
-  const out = { attack: 0, guard: 0, speed: 0 };
+export function equipBonus(equip: Record<string, string> | undefined): EquipBonus {
+  const out = { attack: 0, guard: 0, magic: 0, magicGuard: 0, speed: 0 };
   for (const id of Object.values(equip ?? {})) {
     const gear = itemEquip(id);
     if (!gear) continue;
     out.attack += gear.attack ?? 0;
     out.guard += gear.guard ?? 0;
+    out.magic += gear.magic ?? 0;
+    out.magicGuard += gear.magicGuard ?? 0;
     out.speed += gear.speed ?? 0;
   }
   return out;
@@ -177,6 +188,9 @@ export function statsOf(state: GameState, who: string): Stats {
     ...base,
     attack: base.attack + gear.attack,
     guard: base.guard + gear.guard,
+    // 魔法攻撃力・魔法防御力（2026-11-07）。物理の装備ぶんは足さない（杖・ローブなどは `magic`・`magicGuard` で書く）。
+    magic: magicOf(base) + gear.magic,
+    magicGuard: magicGuardOf(base) + gear.magicGuard,
     // 速さは 1 より下げない（0 だと順番の考えが崩れる）。
     speed: Math.max(1, base.speed + gear.speed),
   };

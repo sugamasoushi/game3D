@@ -247,6 +247,19 @@ export type EventCommand =
    */
   | { type: 'cameraFollow'; on: boolean }
   /**
+   * カメラ配置（2026-11-04）。カメラの見る所を、**マップの上を `ms` かけてまっすぐ**行き先へ動かす（`ms` 省略・0 はその場で置く）。
+   * 行き先 `to` と出発点 `from` は `CameraSpot`（マスか人）。`from` を書かなければ今カメラが見ている所から。
+   * 数の軸は**マスの真ん中**（高さは主人公を追うときと同じく床から 0.6 マス上）、`"player"` の軸は主人公の居る所。
+   * 人はこの命令を始めたときのその人の所（後で歩いても付いて行かない）。
+   * `distance` は着いたときの寄りの倍率（1 がいつも。小さいほど寄る。省略は今のまま）。
+   *
+   * 着いたらそこに**留まる**（カメラエディタの保持の演出と同じ）。`back: true` で `ms` かけて**いつもの位置へ戻す**
+   * （主人公を追う所・いつもの寄り。`to`・`from`・`distance` は見ない）。
+   * カメラの追従はマップのスクロール範囲で止まるが、この命令の行き先は止めない——狭い部屋でも人に寄せられる。
+   * **既定では着くまで待つ**——`wait: false` で待たない。
+   */
+  | { type: 'cameraPlace'; to?: CameraSpot; from?: CameraSpot; ms?: number; distance?: number; back?: boolean; wait?: boolean }
+  /**
    * 消す（GS-157）。**その場ですぐ居なくなる。** 見送った鶏、倒したイベント敵、去っていく人。
    *
    * 消えたことは**そのキャラ自身の覚え**（`self:消えた`）に残るので、
@@ -601,6 +614,19 @@ export type EventCommand =
       enemies: string[];
       /** `battleFormations.json` のID。指定時はマップのランダム候補より優先。 */
       formation?: string;
+      /** 「逃げる」を使えない（2026-11-05）。撤退したあと追ってくる相手との戦いにも効く。 */
+      noEscape?: boolean;
+      /**
+       * 撤退したら追ってくる NPC（2026-11-05。`npc:<id>` か id）。書いた戦闘だけ特技「撤退」が使える。
+       * 撤退するとイベントは止まったまま歩けるようになり、この NPC が `enemies` の先頭の敵として制限なく追ってくる。
+       * コマンド戦闘で勝つかフィールドで倒したら `win` へ進んで続きを動かす。マップを出たらイベントはそこで終わる。
+       */
+      chase?: string;
+      /**
+       * この戦闘の曲（2026-11-09。`sounds.json` のキー。BattleBGM フォルダの音）。書かなければ敵・マップ・戦闘共通の曲
+       * （決まりは `game/battle/battleBgm.ts`）。撤退して追われたあとの戦闘でも流す。
+       */
+      bgm?: string;
       win?: EventCommand[];
       lose?: EventCommand[];
       escape?: EventCommand[];
@@ -666,6 +692,9 @@ export interface EventDef {
  * エディタに欄が無い設定は、台帳にだけ残って誰にも見えなくなる。
  */
 export type PlaceAxis = number | 'player';
+
+/** カメラ配置の行き先・出発点（2026-11-04）。マス（`PlaceAt`）か人（`player`・`npc:<id>`・`party:<id>`）。 */
+export type CameraSpot = PlaceAt | ActorRef;
 
 /**
  * 置き直す先（GS-154）。数はマス、**`"player"` は主人公と同じ**。

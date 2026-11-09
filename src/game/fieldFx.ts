@@ -5,9 +5,11 @@
 // 向きはいつもカメラの正面（キャラの板と違い、上下にも向ける）。光は当てない（夜でも見える）。
 //
 // 大きさは 2 通り:
-// - フィールド: キャラの絵と同じ割合（絵の画素 ÷ マップの 1 マスの画素 × マス × マップの `CharacterScale`）× 技の `field.fxScale`。
-// - 戦闘（`pixel`）: **画面の上で絵の画素どおり**（1280×720 の画面で）。出した時点のカメラからの距離で決める——
-//   戦闘のカメラは寄っているので、マスの割合にすると絵がずっと大きく見えてしまう（前の DOM の重ね絵と同じ大きさにそろえる）。
+// - フィールド: キャラの絵と同じ割合（絵の画素 ÷ マップの 1 マスの画素 × マス × マップの `CharacterScale`）× 絵の「フィールドの大きさ」（`place.field.scale`。GS-320）。
+// - コマンド戦闘: 舞台の板と同じものさし（絵の画素 ÷ 戦闘の絵の 1 マスの画素 `figurePx` × `CharacterScale`。GS-321・GS-325）。
+//   呼ぶ側（`GameView.figureFx`）が `scale` に `tilePx ÷ figurePx` を渡す。フィールドの大きさは掛けない。カメラが寄れば板と一緒に大きくなる。
+// - `pixel`: **画面の上で絵の画素どおり**（1280×720 の画面で。出した時点のカメラからの距離で決める）。今は使っていない
+//   （GS-321 までは戦闘はいつもこれ、GS-328 までは相手の板が画面に入らないときに使っていた）。
 // 置き場所から**カメラの方へ少し寄せる**（`TOWARD_CAMERA`）。狙った相手の板に半分埋もれないように。手前に別の物があれば隠れる。
 // コマのめくり方・大きさの変化は `effects.json` の行（`fieldFxFrame`）。
 // 戦闘の攻撃の絵もこれを使う（2026-10-31。それまで戦闘は DOM の重ね絵でいつも手前に出ていた）。
@@ -18,6 +20,10 @@
 
 import {
   BufferAttribute,
+  BufferGeometry,
+  Float32BufferAttribute,
+  LineBasicMaterial,
+  LineSegments,
   Vector3,
   DoubleSide,
   Mesh,
@@ -34,6 +40,7 @@ import { sheetUrl } from './spriteSheets';
 import { isFieldEffect, type EffectDef, type FieldEffectEntry, type SpriteEffectDef } from './battle/book';
 import { createFieldEffects, type FieldEffects } from '../mep3d/fieldEffects';
 import { skillFieldVolume, skillFieldWeight } from './skillFieldFx';
+import { planeCenterShift, type PlaneAnchor } from './effectPlace';
 
 /** キャラより後に描く（深度は見るので、手前の物には隠れる）。 */
 const FX_RENDER_ORDER = 8000;
@@ -57,9 +64,9 @@ export function worldPerPixel(camera: Camera, at: Vector3): number {
 export interface FieldFxOptions {
   /** 長さが来ても消さない（飛ぶ物。呼ぶ側が `end` で消す）。 */
   hold?: boolean;
-  /** 大きさの倍率（技の `field.fxScale`）。 */
+  /** 大きさの倍率（フィールドでは絵の `place.field.scale`）。 */
   scale?: number;
-  /** 画面の上で絵の画素どおりの大きさにする（戦闘）。そのときのカメラを渡す。 */
+  /** 画面の上で絵の画素どおりの大きさにする（コマンド戦闘で相手の板が画面に入らないとき。GS-321）。そのときのカメラを渡す。 */
   pixel?: Camera;
   /** 足元の高さ（マス）。フィールドエフェクトの柱・炎などを床から立てるのに使う（GS-297）。無ければ `at` の高さ。 */
   foot?: number;
@@ -73,13 +80,18 @@ export interface FieldFxOptions {
    * 描くので、ほかの層に置くと板に塗りつぶされる（板どうしの前後は深度で決まる）。
    */
   layer?: number;
+  /** 絵の基準点とずらし（GS-318。`effectPlace.ts`）。無ければ絵の真ん中を置き場所へ。コマ絵だけ。 */
+  anchor?: PlaneAnchor;
 }
 
 /** コマの番号と大きさの倍率（`t` は出してからのミリ秒）。前の戦闘の DOM の絵（`EffectSprite`）と同じ決め方。 */
-export function fieldFxFrame(def: Pick<SpriteEffectDef, 'frames' | 'fps' | 'scale' | 'scaleMs' | 'yoyo'>, t: number): { frame: number; scale: number } {
+export function fieldFxFrame(def: Pick<SpriteEffectDef, 'frames' | 'fps' | 'scale' | 'scaleMs' | 'yoyo' | 'loops'>, t: number): { frame: number; scale: number } {
   const [first, last] = def.frames;
   const count = Math.max(1, last - first + 1);
-  const frame = first + (Math.floor((Math.max(0, t) * def.fps) / 1000) % count);
+  const step = Math.floor((Math.max(0, t) * def.fps) / 1000);
+  // めくる回数（GS-336）を書いたら、その回数めくった後は最後のコマで止める。
+  const shown = def.loops && def.loops > 0 ? Math.min(step, def.loops * count - 1) : step;
+  const frame = first + (shown % count);
   let scale = 1;
   if (def.scale && def.scaleMs) {
     const [from, to] = def.scale;
@@ -101,6 +113,10 @@ interface Fx {
   base: Vector3;
   /** 絵の 1 画素あたりのワールドの長さ（倍率込み）。 */
   perPx: number;
+  /** 基準点とずらし（GS-318）。 */
+  anchor: PlaneAnchor;
+  /** 絵の枠と基準点の十字（戦闘演出エディタの「絵の枠を出す」）。 */
+  guide: LineSegments | null;
 }
 
 export interface FieldFx {
@@ -114,6 +130,8 @@ export interface FieldFx {
   clear(): void;
   /** 毎フレーム。コマを進め、カメラの正面へ向けて少し寄せる。 */
   update(dt: number, camera: Camera): void;
+  /** 絵の枠と基準点の十字を重ねるか（GS-318。戦闘演出エディタで大きさと位置を合わせる用）。深度を見ずに描く。 */
+  setGuide(on: boolean): void;
   dispose(): void;
 }
 
@@ -129,6 +147,36 @@ export function createFieldFx(options: {
   const materials = new Map<string, MeshBasicMaterial>();
   const list = new Map<number, Fx>();
   let next = 1;
+  let guideOn = false;
+  const guideMaterial = new LineBasicMaterial({ color: 0x40ff80, depthTest: false, depthWrite: false, transparent: true, toneMapped: false, fog: false });
+  /** 板（1×1）に重ねる線: 外枠と、基準点を通る縦横の線。 */
+  const makeGuide = (fx: Fx): LineSegments => {
+    const [px, py] = fx.anchor.pivot;
+    const x = px - 0.5;
+    const y = 0.5 - py;
+    const h = 0.5;
+    const points = [
+      -h, -h, 0, h, -h, 0, h, -h, 0, h, h, 0, h, h, 0, -h, h, 0, -h, h, 0, -h, -h, 0,
+      -h, y, 0, h, y, 0, x, -h, 0, x, h, 0,
+    ];
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new Float32BufferAttribute(points, 3));
+    const lines = new LineSegments(geometry, guideMaterial);
+    lines.renderOrder = FX_RENDER_ORDER + 1;
+    lines.frustumCulled = false;
+    lines.layers.mask = fx.mesh.layers.mask;
+    return lines;
+  };
+  const showGuide = (fx: Fx, on: boolean) => {
+    if (on && !fx.guide) {
+      fx.guide = makeGuide(fx);
+      fx.mesh.add(fx.guide);
+    } else if (!on && fx.guide) {
+      fx.guide.removeFromParent();
+      fx.guide.geometry.dispose();
+      fx.guide = null;
+    }
+  };
 
   /** フィールドエフェクトの技の絵（GS-297）。出している物と、返された物（使い回す。シェーダと材質を作り直さない）。 */
   interface Burst {
@@ -226,6 +274,8 @@ export function createFieldFx(options: {
     uv.needsUpdate = true;
     fx.mesh.scale.set(def.frameWidth * fx.perPx * scale, def.frameHeight * fx.perPx * scale, 1);
   };
+  const right = new Vector3();
+  const up = new Vector3();
 
   const end = (id: number) => {
     if (bursts.has(id)) {
@@ -234,6 +284,7 @@ export function createFieldFx(options: {
     }
     const fx = list.get(id);
     if (!fx) return;
+    showGuide(fx, false);
     fx.mesh.removeFromParent();
     fx.mesh.geometry.dispose();
     list.delete(id);
@@ -247,13 +298,17 @@ export function createFieldFx(options: {
       mesh.frustumCulled = false;
       mesh.name = 'fieldFx';
       if (how.layer !== undefined) mesh.layers.set(how.layer);
-      const fx: Fx = { mesh, def, t: 0, hold: how.hold === true, base: new Vector3(), perPx: 0 };
+      const anchor: PlaneAnchor = how.anchor ?? { pivot: [0.5, 0.5], shift: [0, 0] };
+      const fx: Fx = { mesh, def, t: 0, hold: how.hold === true, base: new Vector3(), perPx: 0, anchor, guide: null };
+      // 基準点へ合わせるのはカメラの向きが要るので、最初の `update` まで隠す。
+      mesh.visible = false;
       place(fx, at);
       const grow = how.scale && how.scale > 0 ? how.scale : 1;
       fx.perPx = how.pixel
         ? worldPerPixel(how.pixel, fx.base) * grow
         : ((options.unit() * (options.scale() || 1)) / (options.tilePx() || 32)) * grow;
       draw(fx);
+      showGuide(fx, guideOn);
       options.parent.add(mesh);
       const id = next++;
       list.set(id, fx);
@@ -288,6 +343,12 @@ export function createFieldFx(options: {
         const far = toCamera.length();
         fx.mesh.position.copy(fx.base).addScaledVector(toCamera.normalize(), Math.min(toward, far * 0.5));
         draw(fx);
+        // 基準点を置き場所へ合わせる（GS-318）。板はカメラの正面を向くので、カメラの右・上へ動かす。
+        const shift = planeCenterShift(fx.anchor, fx.mesh.scale.x, fx.mesh.scale.y, fx.perPx);
+        right.set(1, 0, 0).applyQuaternion(camera.quaternion);
+        up.set(0, 1, 0).applyQuaternion(camera.quaternion);
+        fx.mesh.position.addScaledVector(right, shift.right).addScaledVector(up, shift.up);
+        fx.mesh.visible = true;
       }
       for (const [id, burst] of [...bursts]) {
         burst.t += dt * 1000;
@@ -299,8 +360,13 @@ export function createFieldFx(options: {
         burst.effects.update(dt);
       }
     },
+    setGuide(on) {
+      guideOn = on;
+      for (const fx of list.values()) showGuide(fx, on);
+    },
     dispose() {
       this.clear();
+      guideMaterial.dispose();
       for (const effects of idle) effects.dispose();
       idle.length = 0;
       for (const material of materials.values()) material.dispose();

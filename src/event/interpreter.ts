@@ -9,7 +9,7 @@
 // 読み込んだデータが勝手なことをできない（`eval` を使わない）。
 // 逃げ道の `script` も、動かすのは**先に TS 側で登録した関数**だけ。
 
-import type { ActorRef, BlockFace, EventCommand, EventDef, IfCondition, IfWhen, PixelOffset, PlaceAt, QuestIs, QuestScene, Step, StoryIs, TalkLine, TalkStyle } from './types';
+import type { ActorRef, BlockFace, CameraSpot, EventCommand, EventDef, IfCondition, IfWhen, PixelOffset, PlaceAt, QuestIs, QuestScene, Step, StoryIs, TalkLine, TalkStyle } from './types';
 
 /** 討伐依頼の場面ごとに書いた会話（書いた場面だけ）。 */
 export type QuestTalk = { [K in QuestScene]?: TalkLine };
@@ -18,6 +18,35 @@ export const QUEST_SCENES: readonly QuestScene[] = ['offer', 'accepted', 'progre
 /** 分岐・共通イベントの呼び出し元も含めて実行を終了する合図。 */
 export class ReturnToTitle extends Error {
   constructor() { super('return to title'); this.name = 'ReturnToTitle'; }
+}
+
+/**
+ * 撤退して追われているあいだにマップを出た（2026-11-05）。イベントはそこで終わる（続きは動かさない）。
+ * ゲームオーバーと同じく赤い印は出さない。
+ */
+export class EventAbandoned extends Error {
+  constructor() { super('event abandoned'); this.name = 'EventAbandoned'; }
+}
+
+/** `battle` 命令の決まり（2026-11-05）。 */
+export interface BattleRules {
+  /** 「逃げる」を使えない。 */
+  noEscape?: boolean;
+  /** 撤退できる（撤退したら追ってくる NPC がいる）。 */
+  retreat?: boolean;
+  /**
+   * 戦闘のあいだフィールドから隠す NPC の id（2026-11-07。`chase` の NPC）。イベント前は置物なので、
+   * 敵シンボルのように舞台で自動では隠れない。舞台を片付けたら出し直すので、撤退したらそのまま追ってくる。
+   */
+  hide?: string[];
+  /** この戦闘の曲（2026-11-09。`battle` 命令の `bgm`）。書かなければ敵・マップ・戦闘共通の曲。 */
+  bgm?: string;
+}
+
+/** `chase` の値から NPC の id（`npc:` を外す）。書いていなければ空。 */
+export function chaseNpcOf(chase: string | undefined): string {
+  const value = (chase ?? '').trim();
+  return value.startsWith('npc:') ? value.slice(4) : value;
 }
 
 /**
@@ -97,6 +126,11 @@ export interface EventContext {
    * 戻すのは `on: true` の書き直しか、イベントの終わり（マップの読み直しでも戻る）。
    */
   cameraFollow(on: boolean): void;
+  /**
+   * カメラ配置（2026-11-04）。見る所を `ms` かけて動かし、**長さ（ミリ秒）**を返す。
+   * `back` はいつもの位置へ戻す（`to`・`from`・`distance` は見ない）。
+   */
+  cameraPlace(move: { to?: CameraSpot; from?: CameraSpot; ms: number; distance?: number; back: boolean }): number;
   /**
    * 消す（GS-157）。**その場ですぐ居なくなる。** `remember` が真なら、
    * そのキャラ自身の覚えに残してマップを読み直しても出さない。居ない相手なら何もしない。
@@ -203,7 +237,12 @@ export interface EventContext {
    * 戦闘（GS-60）。**決着が付くまで返らない。**
    * 負けたときに話を続けるかどうかは呼ぶ側（`battle` 命令の `lose`）が決める。
    */
-  battle(enemies: string[], canLose?: boolean, formation?: string): Promise<'win' | 'lose' | 'escape'>;
+  battle(enemies: string[], canLose?: boolean, formation?: string, rules?: BattleRules): Promise<'win' | 'lose' | 'escape' | 'retreat'>;
+  /**
+   * 撤退したあと、`npc` に追われる（2026-11-05）。歩けるようにして、その NPC を `enemy` として制限なく追わせる。
+   * コマンド戦闘で勝つかフィールドで倒したら `win`、マップを出たら `left`。無ければ撤退は逃げと同じ。
+   */
+  hunt?(npc: string, enemy: string, noEscape: boolean, bgm?: string): Promise<'win' | 'left'>;
   /**
    * カメラ演出（GS-73）。鳴らして**長さ（ミリ秒）**を返す。
    * `release` は残している演出を戻す。
@@ -414,6 +453,13 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
     ctx.cameraFollow(cmd.on);
   },
 
+  // カメラ配置（2026-11-04）。**既定では着くまで待つ。**
+  cameraPlace: async (ctx, cmd) => {
+    const ms = ctx.cameraPlace({ to: cmd.to, from: cmd.from, ms: Math.max(0, cmd.ms ?? 0), distance: cmd.distance, back: cmd.back === true });
+    if (cmd.wait === false || ms <= 0) return;
+    await ctx.wait(ms);
+  },
+
   // 消す（GS-157）。**覚えるのが既定**——見送った鶏が入り直すと戻っていたら話が合わない。
   hide: async (ctx, cmd) => {
     // 消え方（GS-208）。書いたときだけ薄くしてから消す。
@@ -543,7 +589,21 @@ const COMMANDS: { [K in EventCommand['type']]: Handler<Extract<EventCommand, { t
   // 戦闘（GS-60）。**終わるまで待つ**ので、続きは勝ってから動く。
   battle: async (ctx, cmd) => {
     // 戦闘中のカメラ演出はイベントでは指定しない（GS-98）。戦闘演出の割り当てが決める。
-    const outcome = await ctx.battle(cmd.enemies, Boolean(cmd.lose?.length), cmd.formation);
+    const chase = chaseNpcOf(cmd.chase);
+    const noEscape = cmd.noEscape === true;
+    const rules: BattleRules = {
+      ...(noEscape ? { noEscape } : {}),
+      ...(chase && ctx.hunt ? { retreat: true } : {}),
+      ...(chase ? { hide: [chase] } : {}),
+      ...(cmd.bgm ? { bgm: cmd.bgm } : {}),
+    };
+    let outcome = await ctx.battle(cmd.enemies, Boolean(cmd.lose?.length), cmd.formation, Object.keys(rules).length ? rules : undefined);
+    // 撤退した（2026-11-05）。追ってくる相手を倒すまで、イベントは止まったまま歩ける。マップを出たらここで終わる。
+    if (outcome === 'retreat') {
+      if (!chase || !ctx.hunt || !cmd.enemies[0]) outcome = 'escape';
+      else if ((await ctx.hunt(chase, cmd.enemies[0], noEscape, cmd.bgm || undefined)) === 'win') outcome = 'win';
+      else throw new EventAbandoned();
+    }
     const branch = outcome === 'win' ? cmd.win : outcome === 'lose' ? cmd.lose : cmd.escape;
     if (branch) await runCommands(branch, ctx);
   },

@@ -6,8 +6,8 @@
 import { loadQuestBook, questBook, questLocked, questMeets, questNeed, questResultIs, questStatus, questStepMeets, talkQuest } from './quests';
 import { enemyDef } from './battle/book';
 import { timeSettings } from './timeClock';
-import type { EventContext } from '../event/interpreter';
-import type { ActorRef, EventCommand, PixelOffset, PlaceAt, PlaceAxis, Step } from '../event/types';
+import type { BattleRules, EventContext } from '../event/interpreter';
+import type { ActorRef, CameraSpot, EventCommand, PixelOffset, PlaceAt, PlaceAxis, Step } from '../event/types';
 import type { GameView, WalkDir } from './GameView';
 import { selfKey, switchOn, type GameState } from './state';
 import { layerKey } from './layerSwitch';
@@ -86,7 +86,9 @@ export interface EventBridgeOptions {
    * 戦闘を始めて、決着が付くまで待つ（GS-60）。画面（`BattleView`）を出すのは
    * 呼ぶ側の仕事——ここは「始めてくれ」と言うだけ。
    */
-  battle(enemies: string[], canLose: boolean, formation?: string): Promise<'win' | 'lose' | 'escape'>;
+  battle(enemies: string[], canLose: boolean, formation?: string, rules?: BattleRules): Promise<'win' | 'lose' | 'escape' | 'retreat'>;
+  /** 撤退したあと追われる（2026-11-05。`EventContext.hunt`）。無ければ撤退は逃げと同じ。 */
+  hunt?(npc: string, enemy: string, noEscape: boolean, bgm?: string): Promise<'win' | 'left'>;
   /** 店を開いて、閉じるまで待つ（GS-66）。画面を出すのは呼ぶ側。 */
   shop(items: string[], sell: boolean): Promise<void>;
   /** 宿の窓を開いて、閉じるまで待つ（GS-290）。泊まると決めたら true。画面を出すのは呼ぶ側。 */
@@ -632,6 +634,33 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
       options.getView()?.setCameraFollow(on);
     },
 
+    /**
+     * カメラ配置（2026-11-04）。人の引き方はジャンプと同じ（`party:` の先頭は主人公、ほかは付いて歩く仲間）。
+     * 所が決まらなければ動かさない（`todo` を出す）。
+     */
+    cameraPlace(move) {
+      const view = options.getView();
+      if (!view) return 0;
+      if (move.back) return view.placeCamera(null, move.ms);
+      const spotOf = (spot: CameraSpot | undefined): PlaceAt | string | null => {
+        if (spot === undefined) return null;
+        if (typeof spot !== 'string') return spot;
+        const party = partyOf(spot);
+        if (party) return party.role === 'leader' ? 'player' : party.role === 'follower' ? `follower:${party.id}` : null;
+        if (spot === 'player') return 'player';
+        const npc = actorId(spot);
+        return npc === null ? null : `npc:${npc}`;
+      };
+      const to = spotOf(move.to);
+      if (!to) {
+        todo(`カメラ配置の行き先（${JSON.stringify(move.to ?? null)}）——どこか決まらない`);
+        return 0;
+      }
+      const from = spotOf(move.from);
+      if (move.from !== undefined && !from) todo(`カメラ配置の出発点（${JSON.stringify(move.from)}）——どこか決まらない。今の所から動かす`);
+      return view.placeCamera(to, move.ms, { from: from ?? undefined, distance: move.distance });
+    },
+
     /** 行き先までの道順（GS-138）。**いまどこに立っているか**から組むので、途中で呼び直せば組み直る。 */
     routeTo(target, at, first) {
       const view = options.getView();
@@ -907,7 +936,8 @@ export function createEventBridge(options: EventBridgeOptions): EventBridge {
     },
 
     /** 戦闘（GS-60）。決着が付くまで返らない。 */
-    battle: (enemies, canLose, formation) => options.battle(enemies, canLose ?? false, formation),
+    battle: (enemies, canLose, formation, rules) => options.battle(enemies, canLose ?? false, formation, rules),
+    ...(options.hunt ? { hunt: (npc: string, enemy: string, noEscape: boolean, bgm?: string) => options.hunt!(npc, enemy, noEscape, bgm) } : {}),
     returnToTitle: () => options.returnToTitle(),
 
     /**

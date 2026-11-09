@@ -237,6 +237,22 @@
           "venom"
         ],
         "say": "体が 楽に なった。"
+      },
+      "craft": {
+        "from": [
+          {
+            "item": "fine_herb"
+          },
+          {
+            "item": "burn_salve"
+          },
+          {
+            "item": "antidote"
+          },
+          {
+            "item": "paralysis_cure"
+          }
+        ]
       }
     },
     "traveler_clothes": {
